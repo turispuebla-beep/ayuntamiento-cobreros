@@ -3576,13 +3576,16 @@ function login() {
 }
 
 // Función de registro
-function register() {
-    const name = document.getElementById('registerName').value;
-    const email = document.getElementById('registerEmail').value;
-    const password = document.getElementById('registerPassword').value;
-    const confirmPassword = document.getElementById('registerConfirmPassword').value;
+async function register() {
+    const name = document.getElementById('regName').value;
+    const email = document.getElementById('regEmail').value;
+    const phone = document.getElementById('regPhone').value;
+    const password = document.getElementById('regPassword').value;
+    const confirmPassword = document.getElementById('regPasswordConfirm').value;
+    const consent = document.getElementById('consent').checked;
+    const notificationConsent = document.getElementById('notificationConsent').checked;
     
-    if (!name || !email || !password || !confirmPassword) {
+    if (!name || !email || !phone || !password || !confirmPassword) {
         alert('Por favor, complete todos los campos.');
         return;
     }
@@ -3592,23 +3595,55 @@ function register() {
         return;
     }
     
+    if (!consent) {
+        alert('Debe aceptar el tratamiento de datos personales.');
+        return;
+    }
+    
     if (users.find(u => u.email === email)) {
         alert('Ya existe un usuario con este email.');
         return;
+    }
+    
+    // Obtener token FCM si el usuario da consentimiento para notificaciones
+    let fcmToken = null;
+    if (notificationConsent) {
+        try {
+            // Solicitar permiso para notificaciones
+            const permission = await Notification.requestPermission();
+            if (permission === 'granted') {
+                // Obtener token FCM
+                if (window.getFCMToken) {
+                    fcmToken = await window.getFCMToken();
+                }
+            }
+        } catch (error) {
+            console.error('Error obteniendo token FCM:', error);
+        }
     }
     
     const newUser = {
         id: Date.now(),
         name,
         email,
+        phone,
         password,
-        isAdmin: false
+        consent,
+        notificationConsent,
+        fcmToken,
+        isAdmin: false,
+        registrationDate: new Date().toISOString()
     };
     
     users.push(newUser);
     localStorage.setItem('users', JSON.stringify(users));
     closeModal('registerModal');
     showNotification('Usuario registrado correctamente', 'success');
+    
+    // Si dio consentimiento para notificaciones, mostrar mensaje
+    if (notificationConsent && fcmToken) {
+        showNotification('Notificaciones push activadas correctamente', 'success');
+    }
 }
 
 // Función de logout
@@ -3818,6 +3853,7 @@ function loadServiciosAdmin() {
     loadServiciosList('medical');
     loadServiciosList('itv');
     loadServiciosList('phone');
+    actualizarEstadisticasNotificaciones();
 }
 
 // Cargar lista específica
@@ -4666,6 +4702,304 @@ function updateSectionTitles() {
     }
     if (phoneTitle) {
         phoneTitle.textContent = `${seccionesConfig.phone.icon} ${seccionesConfig.phone.title}`;
+    }
+}
+
+// ===== SISTEMA DE NOTIFICACIONES PUSH - TURISTEAM =====
+
+// Enviar notificación push a todos los usuarios registrados
+async function enviarNotificacionPush(titulo, mensaje, tipo = 'general') {
+    try {
+        // Obtener usuarios que han dado consentimiento para notificaciones
+        const usuariosConNotificaciones = users.filter(user => 
+            user.notificationConsent && user.fcmToken
+        );
+        
+        if (usuariosConNotificaciones.length === 0) {
+            alert('No hay usuarios registrados que hayan dado consentimiento para recibir notificaciones.');
+            return;
+        }
+
+        // Datos de la notificación
+        const notificationData = {
+            titulo: titulo,
+            mensaje: mensaje,
+            tipo: tipo,
+            timestamp: new Date().toISOString(),
+            enviadoPor: currentUser ? currentUser.name : 'Administrador',
+            proyecto: 'Ayuntamiento de Cobreros'
+        };
+
+        let notificacionesEnviadas = 0;
+        let notificacionesFallidas = 0;
+
+        // Enviar a cada usuario individualmente
+        for (const usuario of usuariosConNotificaciones) {
+            try {
+                const response = await fetch('https://fcm.googleapis.com/fcm/send', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': 'key=TU_SERVER_KEY_AQUI', // Necesitas tu Server Key de Firebase
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        to: usuario.fcmToken,
+                        notification: {
+                            title: titulo,
+                            body: mensaje,
+                            icon: 'images/escudo-cobreros.png',
+                            badge: 'images/escudo-cobreros.png',
+                            click_action: window.location.origin
+                        },
+                        data: {
+                            ...notificationData,
+                            destinatario: usuario.email
+                        }
+                    })
+                });
+
+                if (response.ok) {
+                    notificacionesEnviadas++;
+                } else {
+                    notificacionesFallidas++;
+                }
+            } catch (error) {
+                console.error(`Error enviando notificación a ${usuario.email}:`, error);
+                notificacionesFallidas++;
+            }
+        }
+
+        // Mostrar resultado
+        if (notificacionesEnviadas > 0) {
+            showNotification(`Notificación enviada a ${notificacionesEnviadas} usuarios`, 'success');
+        }
+        if (notificacionesFallidas > 0) {
+            showNotification(`${notificacionesFallidas} notificaciones fallaron`, 'warning');
+        }
+
+        console.log('Notificación enviada:', {
+            ...notificationData,
+            totalUsuarios: usuariosConNotificaciones.length,
+            enviadas: notificacionesEnviadas,
+            fallidas: notificacionesFallidas
+        });
+
+    } catch (error) {
+        console.error('Error enviando notificación push:', error);
+        showNotification('Error al enviar notificación push', 'error');
+    }
+}
+
+// Enviar notificación de cita confirmada
+function enviarNotificacionCita(nombre, fecha, hora) {
+    const titulo = 'Cita Confirmada - Ayuntamiento de Cobreros';
+    const mensaje = `Hola ${nombre}, tu cita ha sido confirmada para el ${fecha} a las ${hora}.`;
+    enviarNotificacionPush(titulo, mensaje, 'cita');
+}
+
+// Enviar notificación de evento
+function enviarNotificacionEvento(tituloEvento, fecha, descripcion) {
+    const titulo = 'Nuevo Evento - Ayuntamiento de Cobreros';
+    const mensaje = `${tituloEvento} - ${fecha}. ${descripcion}`;
+    enviarNotificacionPush(titulo, mensaje, 'evento');
+}
+
+// Enviar notificación de bando
+function enviarNotificacionBando(tituloBando) {
+    const titulo = 'Nuevo Bando - Ayuntamiento de Cobreros';
+    const mensaje = `Se ha publicado un nuevo bando: ${tituloBando}`;
+    enviarNotificacionPush(titulo, mensaje, 'bando');
+}
+
+// Enviar notificación de emergencia
+function enviarNotificacionEmergencia(mensaje) {
+    const titulo = '🚨 EMERGENCIA - Ayuntamiento de Cobreros';
+    enviarNotificacionPush(titulo, mensaje, 'emergencia');
+}
+
+// Abrir modal para enviar notificación personalizada
+function abrirModalNotificacion() {
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.style.display = 'block';
+    modal.innerHTML = `
+        <div class="modal-content">
+            <span class="close" onclick="this.closest('.modal').remove()">&times;</span>
+            <h2>📱 Enviar Notificación Push</h2>
+            <form id="notificacionForm">
+                <div class="form-group">
+                    <label for="notifTitulo">Título:</label>
+                    <input type="text" id="notifTitulo" required placeholder="Ej: Nueva noticia importante">
+                </div>
+                
+                <div class="form-group">
+                    <label for="notifMensaje">Mensaje:</label>
+                    <textarea id="notifMensaje" rows="3" required placeholder="Escribe el mensaje que quieres enviar..."></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label for="notifTipo">Tipo de notificación:</label>
+                    <select id="notifTipo">
+                        <option value="general">General</option>
+                        <option value="cita">Cita</option>
+                        <option value="evento">Evento</option>
+                        <option value="bando">Bando</option>
+                        <option value="emergencia">Emergencia</option>
+                    </select>
+                </div>
+                
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline" onclick="this.closest('.modal').remove()">Cancelar</button>
+                    <button type="button" class="btn btn-primary" onclick="enviarNotificacionPersonalizada(this)">Enviar</button>
+                </div>
+            </form>
+        </div>
+    `;
+    document.body.appendChild(modal);
+}
+
+// Enviar notificación personalizada
+function enviarNotificacionPersonalizada(button) {
+    const modal = button.closest('.modal');
+    const titulo = document.getElementById('notifTitulo').value.trim();
+    const mensaje = document.getElementById('notifMensaje').value.trim();
+    const tipo = document.getElementById('notifTipo').value;
+    
+    if (!titulo || !mensaje) {
+        alert('Por favor, completa todos los campos');
+        return;
+    }
+    
+    enviarNotificacionPush(titulo, mensaje, tipo);
+    modal.remove();
+}
+
+// Actualizar estadísticas de notificaciones
+function actualizarEstadisticasNotificaciones() {
+    const usuariosConNotificaciones = users.filter(user => 
+        user.notificationConsent && user.fcmToken
+    );
+    
+    const contador = document.getElementById('contadorUsuarios');
+    if (contador) {
+        contador.textContent = usuariosConNotificaciones.length;
+    }
+    
+    showNotification(`Estadísticas actualizadas: ${usuariosConNotificaciones.length} usuarios con notificaciones activadas`, 'success');
+}
+
+// Mostrar modal de descarga de APK
+function mostrarDescargaAPK() {
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.style.display = 'block';
+    modal.innerHTML = `
+        <div class="modal-content">
+            <span class="close" onclick="this.closest('.modal').remove()">&times;</span>
+            <h2>📲 Configurar Descarga de APK</h2>
+            <form id="apkConfigForm">
+                <div class="form-group">
+                    <label for="apkUrl">URL de descarga de la APK:</label>
+                    <input type="url" id="apkUrl" placeholder="https://tu-dominio.com/app.apk">
+                    <small style="color: #666;">URL donde estará alojada la aplicación APK</small>
+                </div>
+                
+                <div class="form-group">
+                    <label for="apkVersion">Versión de la APK:</label>
+                    <input type="text" id="apkVersion" placeholder="1.0.0">
+                </div>
+                
+                <div class="form-group">
+                    <label for="apkDescripcion">Descripción de la aplicación:</label>
+                    <textarea id="apkDescripcion" rows="3" placeholder="Aplicación oficial del Ayuntamiento de Cobreros para recibir notificaciones push..."></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label for="apkTamaño">Tamaño de la APK:</label>
+                    <input type="text" id="apkTamaño" placeholder="15 MB">
+                </div>
+                
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline" onclick="this.closest('.modal').remove()">Cancelar</button>
+                    <button type="button" class="btn btn-primary" onclick="guardarConfiguracionAPK(this)">Guardar</button>
+                </div>
+            </form>
+        </div>
+    `;
+    document.body.appendChild(modal);
+}
+
+// Guardar configuración de APK
+function guardarConfiguracionAPK(button) {
+    const modal = button.closest('.modal');
+    const apkUrl = document.getElementById('apkUrl').value.trim();
+    const apkVersion = document.getElementById('apkVersion').value.trim();
+    const apkDescripcion = document.getElementById('apkDescripcion').value.trim();
+    const apkTamaño = document.getElementById('apkTamaño').value.trim();
+    
+    if (!apkUrl || !apkVersion) {
+        alert('Por favor, completa la URL y la versión de la APK');
+        return;
+    }
+    
+    // Guardar configuración en localStorage
+    const apkConfig = {
+        url: apkUrl,
+        version: apkVersion,
+        descripcion: apkDescripcion,
+        tamaño: apkTamaño,
+        fechaActualizacion: new Date().toISOString()
+    };
+    
+    localStorage.setItem('apkConfig', JSON.stringify(apkConfig));
+    
+    // Crear sección de descarga en la página principal
+    crearSeccionDescargaAPK(apkConfig);
+    
+    modal.remove();
+    showNotification('Configuración de APK guardada correctamente', 'success');
+}
+
+// Crear sección de descarga de APK en la página principal
+function crearSeccionDescargaAPK(config) {
+    // Buscar si ya existe la sección
+    let seccionAPK = document.getElementById('descargaAPK');
+    
+    if (!seccionAPK) {
+        // Crear nueva sección
+        seccionAPK = document.createElement('section');
+        seccionAPK.id = 'descargaAPK';
+        seccionAPK.className = 'content-section';
+        seccionAPK.innerHTML = `
+            <div class="container">
+                <h2>📲 Aplicación Móvil</h2>
+                <div class="app-download-card">
+                    <div class="app-info">
+                        <h3>Ayuntamiento de Cobreros</h3>
+                        <p>Versión ${config.version}</p>
+                        <p>${config.descripcion}</p>
+                        <p><strong>Tamaño:</strong> ${config.tamaño}</p>
+                        <a href="${config.url}" class="btn btn-primary download-btn" download>
+                            <i class="fas fa-download"></i> Descargar APK
+                        </a>
+                    </div>
+                    <div class="app-icon">
+                        <img src="images/escudo-cobreros.png" alt="Ayuntamiento de Cobreros" style="width: 100px; height: 100px;">
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        // Insertar después de la sección de servicios
+        const serviciosSection = document.getElementById('servicios');
+        if (serviciosSection) {
+            serviciosSection.parentNode.insertBefore(seccionAPK, serviciosSection.nextSibling);
+        }
+    } else {
+        // Actualizar sección existente
+        seccionAPK.querySelector('h3').textContent = 'Ayuntamiento de Cobreros';
+        seccionAPK.querySelector('p').textContent = `Versión ${config.version}`;
+        seccionAPK.querySelector('.download-btn').href = config.url;
     }
 }
 

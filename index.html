@@ -9,6 +9,90 @@
     <link rel="stylesheet" href="css/styles.css">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Firebase SDK -->
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+        import { getMessaging, getToken, onMessage } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging.js';
+        
+        // Configuración de Firebase
+        const firebaseConfig = {
+            apiKey: "AIzaSyBXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX", // Necesitas tu API key real
+            authDomain: "turisteam-80f1b.firebaseapp.com",
+            projectId: "turisteam-80f1b",
+            storageBucket: "turisteam-80f1b.appspot.com",
+            messagingSenderId: "623846192437",
+            appId: "1:623846192437:web:XXXXXXXXXXXXXXXX" // Necesitas tu App ID real
+        };
+        
+        // Inicializar Firebase
+        const app = initializeApp(firebaseConfig);
+        const messaging = getMessaging(app);
+        
+        // Solicitar permiso para notificaciones
+        async function requestNotificationPermission() {
+            const permission = await Notification.requestPermission();
+            if (permission === 'granted') {
+                console.log('Permiso de notificaciones concedido');
+                return true;
+            } else {
+                console.log('Permiso de notificaciones denegado');
+                return false;
+            }
+        }
+        
+        // Obtener token de FCM
+        async function getFCMToken() {
+            try {
+                const token = await getToken(messaging, {
+                    vapidKey: 'TU_VAPID_KEY_AQUI' // Necesitas generar una VAPID key
+                });
+                console.log('FCM Token:', token);
+                return token;
+            } catch (error) {
+                console.error('Error obteniendo token:', error);
+                return null;
+            }
+        }
+        
+        // Escuchar mensajes en primer plano
+        onMessage(messaging, (payload) => {
+            console.log('Mensaje recibido:', payload);
+            // Mostrar notificación personalizada
+            if (payload.notification) {
+                showCustomNotification(payload.notification.title, payload.notification.body);
+            }
+        });
+        
+        // Función para mostrar notificación personalizada
+        function showCustomNotification(title, body) {
+            if (Notification.permission === 'granted') {
+                new Notification(title, {
+                    body: body,
+                    icon: 'images/escudo-cobreros.png',
+                    badge: 'images/escudo-cobreros.png'
+                });
+            }
+        }
+        
+        // Inicializar cuando se carga la página
+        window.addEventListener('load', async () => {
+            const hasPermission = await requestNotificationPermission();
+            if (hasPermission) {
+                const token = await getFCMToken();
+                if (token) {
+                    // Guardar token para enviar notificaciones
+                    localStorage.setItem('fcmToken', token);
+                    console.log('Token guardado para notificaciones');
+                }
+            }
+        });
+        
+        // Hacer funciones globales
+        window.requestNotificationPermission = requestNotificationPermission;
+        window.getFCMToken = getFCMToken;
+        window.showCustomNotification = showCustomNotification;
+    </script>
 </head>
 <body>
     <!-- Header -->
@@ -168,6 +252,15 @@
                                 <input type="checkbox" id="gdprConsent" name="gdprConsent" required>
                                 <label for="gdprConsent" class="checkbox-label">
                                     Acepto la <a href="#" onclick="showGDPRModal()" class="gdpr-link">Política de Protección de Datos</a> y autorizo el tratamiento de mis datos personales para la gestión de la cita previa.
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <div class="checkbox-group">
+                                <input type="checkbox" id="notificationConsent" name="notificationConsent">
+                                <label for="notificationConsent" class="checkbox-label">
+                                    📱 Quiero recibir notificaciones push del Ayuntamiento de Cobreros (eventos, citas, bandos, etc.)
                                 </label>
                             </div>
                         </div>
@@ -832,6 +925,54 @@
                         </div>
                         <p style="margin-top: 10px; color: #666; font-size: 0.9em;">
                             Personaliza los títulos e iconos de cada sección
+                        </p>
+                    </div>
+                    
+                    <!-- Notificaciones Push - TURISTEAM -->
+                    <div class="admin-section">
+                        <h4>📱 Notificaciones Push - TURISTEAM</h4>
+                        <div class="form-group">
+                            <button class="btn btn-primary" onclick="abrirModalNotificacion()">
+                                <i class="fas fa-bell"></i> Enviar Notificación
+                            </button>
+                            <button class="btn btn-secondary" onclick="enviarNotificacionEmergencia('Mensaje de prueba de emergencia')">
+                                <i class="fas fa-exclamation-triangle"></i> Prueba Emergencia
+                            </button>
+                        </div>
+                        <div class="form-group">
+                            <h5>Notificaciones Automáticas:</h5>
+                            <button class="btn btn-outline" onclick="enviarNotificacionCita('Juan Pérez', '15 de Enero', '10:00')">
+                                <i class="fas fa-calendar-check"></i> Prueba Cita
+                            </button>
+                            <button class="btn btn-outline" onclick="enviarNotificacionEvento('Fiesta del Pueblo', '20 de Enero', 'Celebración anual del pueblo')">
+                                <i class="fas fa-calendar-alt"></i> Prueba Evento
+                            </button>
+                            <button class="btn btn-outline" onclick="enviarNotificacionBando('Bando de Limpieza')">
+                                <i class="fas fa-file-alt"></i> Prueba Bando
+                            </button>
+                        </div>
+                        <div class="form-group">
+                            <h5>📊 Estadísticas:</h5>
+                            <p id="usuariosNotificaciones">Usuarios con notificaciones activadas: <span id="contadorUsuarios">0</span></p>
+                            <button class="btn btn-outline" onclick="actualizarEstadisticasNotificaciones()">
+                                <i class="fas fa-sync-alt"></i> Actualizar
+                            </button>
+                        </div>
+                        <p style="margin-top: 10px; color: #666; font-size: 0.9em;">
+                            Sistema de notificaciones push integrado con Firebase Cloud Messaging
+                        </p>
+                    </div>
+                    
+                    <!-- Descarga de APK -->
+                    <div class="admin-section">
+                        <h4>📲 Aplicación Móvil - TURISTEAM</h4>
+                        <div class="form-group">
+                            <button class="btn btn-success" onclick="mostrarDescargaAPK()">
+                                <i class="fas fa-download"></i> Configurar Descarga APK
+                            </button>
+                        </div>
+                        <p style="margin-top: 10px; color: #666; font-size: 0.9em;">
+                            Los ciudadanos podrán descargar la aplicación móvil desde la web del ayuntamiento
                         </p>
                     </div>
                     

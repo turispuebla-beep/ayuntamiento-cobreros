@@ -1470,6 +1470,72 @@ a.btn {
     color: #666;
 }
 
+/* Estilos para la sección de descarga de APK */
+.app-download-card {
+    background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+    border-radius: 15px;
+    padding: 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    color: white;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+    margin: 2rem 0;
+}
+
+.app-info h3 {
+    margin: 0 0 1rem 0;
+    font-size: 1.8rem;
+    font-weight: 600;
+}
+
+.app-info p {
+    margin: 0.5rem 0;
+    opacity: 0.9;
+}
+
+.download-btn {
+    background: white;
+    color: var(--primary-color);
+    border: none;
+    padding: 1rem 2rem;
+    border-radius: 8px;
+    font-weight: 600;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 1rem;
+    transition: all 0.3s ease;
+}
+
+.download-btn:hover {
+    background: #f8f9fa;
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+}
+
+.app-icon {
+    flex-shrink: 0;
+}
+
+.app-icon img {
+    border-radius: 20px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+}
+
+@media (max-width: 768px) {
+    .app-download-card {
+        flex-direction: column;
+        text-align: center;
+        gap: 1.5rem;
+    }
+    
+    .app-info h3 {
+        font-size: 1.5rem;
+    }
+}
+
 @media (max-width: 768px) {
     .logout-floating-btn {
         width: 40px;
