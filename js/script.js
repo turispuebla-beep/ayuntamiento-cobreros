@@ -3585,6 +3585,13 @@ async function register() {
     const consent = document.getElementById('consent').checked;
     const notificationConsent = document.getElementById('notificationConsent').checked;
     
+    // Obtener localidades seleccionadas
+    const selectedLocalities = [];
+    const localityCheckboxes = document.querySelectorAll('input[name="localities"]:checked');
+    localityCheckboxes.forEach(checkbox => {
+        selectedLocalities.push(checkbox.value);
+    });
+    
     if (!name || !email || !phone || !password || !confirmPassword) {
         alert('Por favor, complete todos los campos.');
         return;
@@ -3631,6 +3638,7 @@ async function register() {
         consent,
         notificationConsent,
         fcmToken,
+        localities: selectedLocalities,
         isAdmin: false,
         registrationDate: new Date().toISOString()
     };
@@ -4707,16 +4715,29 @@ function updateSectionTitles() {
 
 // ===== SISTEMA DE NOTIFICACIONES PUSH - TURISTEAM =====
 
-// Enviar notificación push a todos los usuarios registrados
-async function enviarNotificacionPush(titulo, mensaje, tipo = 'general') {
+// Enviar notificación push con filtrado por localidades
+async function enviarNotificacionPushConLocalidades(titulo, mensaje, tipo = 'general', alcance = 'todos', localidadesSeleccionadas = []) {
     try {
         // Obtener usuarios que han dado consentimiento para notificaciones
-        const usuariosConNotificaciones = users.filter(user => 
+        let usuariosConNotificaciones = users.filter(user => 
             user.notificationConsent && user.fcmToken
         );
         
+        // Filtrar por localidades si es necesario
+        if (alcance === 'localidades' && localidadesSeleccionadas.length > 0) {
+            usuariosConNotificaciones = usuariosConNotificaciones.filter(user => 
+                user.localities && user.localities.some(localidad => 
+                    localidadesSeleccionadas.includes(localidad)
+                )
+            );
+        }
+        
         if (usuariosConNotificaciones.length === 0) {
-            alert('No hay usuarios registrados que hayan dado consentimiento para recibir notificaciones.');
+            if (alcance === 'localidades') {
+                alert('No hay usuarios registrados en las localidades seleccionadas que hayan dado consentimiento para recibir notificaciones.');
+            } else {
+                alert('No hay usuarios registrados que hayan dado consentimiento para recibir notificaciones.');
+            }
             return;
         }
 
@@ -4771,7 +4792,11 @@ async function enviarNotificacionPush(titulo, mensaje, tipo = 'general') {
 
         // Mostrar resultado
         if (notificacionesEnviadas > 0) {
-            showNotification(`Notificación enviada a ${notificacionesEnviadas} usuarios`, 'success');
+            let mensaje = `Notificación enviada a ${notificacionesEnviadas} usuarios`;
+            if (alcance === 'localidades' && localidadesSeleccionadas.length > 0) {
+                mensaje += ` en: ${localidadesSeleccionadas.join(', ')}`;
+            }
+            showNotification(mensaje, 'success');
         }
         if (notificacionesFallidas > 0) {
             showNotification(`${notificacionesFallidas} notificaciones fallaron`, 'warning');
@@ -4779,6 +4804,8 @@ async function enviarNotificacionPush(titulo, mensaje, tipo = 'general') {
 
         console.log('Notificación enviada:', {
             ...notificationData,
+            alcance: alcance,
+            localidades: localidadesSeleccionadas,
             totalUsuarios: usuariosConNotificaciones.length,
             enviadas: notificacionesEnviadas,
             fallidas: notificacionesFallidas
@@ -4788,6 +4815,11 @@ async function enviarNotificacionPush(titulo, mensaje, tipo = 'general') {
         console.error('Error enviando notificación push:', error);
         showNotification('Error al enviar notificación push', 'error');
     }
+}
+
+// Función original para compatibilidad (envía a todos)
+async function enviarNotificacionPush(titulo, mensaje, tipo = 'general') {
+    return await enviarNotificacionPushConLocalidades(titulo, mensaje, tipo, 'todos', []);
 }
 
 // Enviar notificación de cita confirmada
@@ -4848,6 +4880,74 @@ function abrirModalNotificacion() {
                     </select>
                 </div>
                 
+                <div class="form-group">
+                    <label for="notifAlcance">Alcance de la notificación:</label>
+                    <select id="notifAlcance" onchange="toggleLocalidadesSelection()">
+                        <option value="todos">Todos los usuarios</option>
+                        <option value="localidades">Localidades específicas</option>
+                    </select>
+                </div>
+                
+                <div class="form-group" id="localidadesSelection" style="display: none;">
+                    <label>Seleccionar localidades:</label>
+                    <div class="localities-selection">
+                        <div class="localities-grid">
+                            <label class="locality-checkbox">
+                                <input type="checkbox" name="notifLocalities" value="Cobreros">
+                                <span>Cobreros</span>
+                            </label>
+                            <label class="locality-checkbox">
+                                <input type="checkbox" name="notifLocalities" value="Avedillo de Sanabria">
+                                <span>Avedillo de Sanabria</span>
+                            </label>
+                            <label class="locality-checkbox">
+                                <input type="checkbox" name="notifLocalities" value="Barrio de Lomba">
+                                <span>Barrio de Lomba</span>
+                            </label>
+                            <label class="locality-checkbox">
+                                <input type="checkbox" name="notifLocalities" value="Castro de Sanabria">
+                                <span>Castro de Sanabria</span>
+                            </label>
+                            <label class="locality-checkbox">
+                                <input type="checkbox" name="notifLocalities" value="Limianos">
+                                <span>Limianos</span>
+                            </label>
+                            <label class="locality-checkbox">
+                                <input type="checkbox" name="notifLocalities" value="Quintana de Sanabria">
+                                <span>Quintana de Sanabria</span>
+                            </label>
+                            <label class="locality-checkbox">
+                                <input type="checkbox" name="notifLocalities" value="Riego de Lomba">
+                                <span>Riego de Lomba</span>
+                            </label>
+                            <label class="locality-checkbox">
+                                <input type="checkbox" name="notifLocalities" value="San Martín del Terroso">
+                                <span>San Martín del Terroso</span>
+                            </label>
+                            <label class="locality-checkbox">
+                                <input type="checkbox" name="notifLocalities" value="San Miguel de Lomba">
+                                <span>San Miguel de Lomba</span>
+                            </label>
+                            <label class="locality-checkbox">
+                                <input type="checkbox" name="notifLocalities" value="San Román de Sanabria">
+                                <span>San Román de Sanabria</span>
+                            </label>
+                            <label class="locality-checkbox">
+                                <input type="checkbox" name="notifLocalities" value="Santa Colomba">
+                                <span>Santa Colomba</span>
+                            </label>
+                            <label class="locality-checkbox">
+                                <input type="checkbox" name="notifLocalities" value="Sotillo">
+                                <span>Sotillo</span>
+                            </label>
+                            <label class="locality-checkbox">
+                                <input type="checkbox" name="notifLocalities" value="Terroso">
+                                <span>Terroso</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+                
                 <div class="modal-footer">
                     <button type="button" class="btn btn-outline" onclick="this.closest('.modal').remove()">Cancelar</button>
                     <button type="button" class="btn btn-primary" onclick="enviarNotificacionPersonalizada(this)">Enviar</button>
@@ -4858,19 +4958,46 @@ function abrirModalNotificacion() {
     document.body.appendChild(modal);
 }
 
+// Toggle para mostrar/ocultar selección de localidades
+function toggleLocalidadesSelection() {
+    const alcance = document.getElementById('notifAlcance').value;
+    const localidadesDiv = document.getElementById('localidadesSelection');
+    
+    if (alcance === 'localidades') {
+        localidadesDiv.style.display = 'block';
+    } else {
+        localidadesDiv.style.display = 'none';
+    }
+}
+
 // Enviar notificación personalizada
 function enviarNotificacionPersonalizada(button) {
     const modal = button.closest('.modal');
     const titulo = document.getElementById('notifTitulo').value.trim();
     const mensaje = document.getElementById('notifMensaje').value.trim();
     const tipo = document.getElementById('notifTipo').value;
+    const alcance = document.getElementById('notifAlcance').value;
     
     if (!titulo || !mensaje) {
         alert('Por favor, completa todos los campos');
         return;
     }
     
-    enviarNotificacionPush(titulo, mensaje, tipo);
+    // Obtener localidades seleccionadas si es necesario
+    let localidadesSeleccionadas = [];
+    if (alcance === 'localidades') {
+        const localityCheckboxes = modal.querySelectorAll('input[name="notifLocalities"]:checked');
+        localityCheckboxes.forEach(checkbox => {
+            localidadesSeleccionadas.push(checkbox.value);
+        });
+        
+        if (localidadesSeleccionadas.length === 0) {
+            alert('Por favor, selecciona al menos una localidad');
+            return;
+        }
+    }
+    
+    enviarNotificacionPushConLocalidades(titulo, mensaje, tipo, alcance, localidadesSeleccionadas);
     modal.remove();
 }
 
@@ -4884,6 +5011,21 @@ function actualizarEstadisticasNotificaciones() {
     if (contador) {
         contador.textContent = usuariosConNotificaciones.length;
     }
+    
+    // Mostrar estadísticas por localidad
+    const estadisticasPorLocalidad = {};
+    usuariosConNotificaciones.forEach(usuario => {
+        if (usuario.localities) {
+            usuario.localities.forEach(localidad => {
+                if (!estadisticasPorLocalidad[localidad]) {
+                    estadisticasPorLocalidad[localidad] = 0;
+                }
+                estadisticasPorLocalidad[localidad]++;
+            });
+        }
+    });
+    
+    console.log('Estadísticas por localidad:', estadisticasPorLocalidad);
     
     showNotification(`Estadísticas actualizadas: ${usuariosConNotificaciones.length} usuarios con notificaciones activadas`, 'success');
 }

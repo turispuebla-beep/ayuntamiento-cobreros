@@ -1536,6 +1536,62 @@ a.btn {
     }
 }
 
+/* Estilos para selección de localidades */
+.localities-selection {
+    background: #f8f9fa;
+    border-radius: 8px;
+    padding: 1rem;
+    border: 1px solid #e9ecef;
+}
+
+.localities-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 0.5rem;
+    max-height: 200px;
+    overflow-y: auto;
+    padding: 0.5rem;
+    border: 1px solid #dee2e6;
+    border-radius: 6px;
+    background: white;
+}
+
+.locality-checkbox {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+    font-size: 0.9rem;
+}
+
+.locality-checkbox:hover {
+    background-color: #f8f9fa;
+}
+
+.locality-checkbox input[type="checkbox"] {
+    margin: 0;
+    cursor: pointer;
+}
+
+.locality-checkbox input[type="checkbox"]:checked + span {
+    font-weight: 600;
+    color: var(--primary-color);
+}
+
+.locality-checkbox input[type="checkbox"]:checked {
+    accent-color: var(--primary-color);
+}
+
+@media (max-width: 768px) {
+    .localities-grid {
+        grid-template-columns: 1fr;
+        max-height: 150px;
+    }
+}
+
 @media (max-width: 768px) {
     .logout-floating-btn {
         width: 40px;
