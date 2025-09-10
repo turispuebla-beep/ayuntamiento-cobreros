@@ -3629,6 +3629,11 @@ function logout() {
     
     updateUserInterface();
     showNotification('Sesión cerrada correctamente', 'success');
+    
+    // Refrescar la página después de un breve delay para mostrar la notificación
+    setTimeout(() => {
+        window.location.reload();
+    }, 1500);
 }
 
 // Abrir panel de administración
