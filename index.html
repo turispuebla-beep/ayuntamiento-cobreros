@@ -1095,7 +1095,23 @@
         </div>
         <div class="notifications-list" id="notificationsList">
             <!-- Notifications will be populated here -->
-        /div>
+        </div>
+        
+        <!-- Sección de notificaciones recibidas -->
+        <div class="notifications-received-section">
+            <h3>📥 Notificaciones Recibidas</h3>
+            <div class="notifications-controls">
+                <button onclick="toggleNotificationsView()" class="btn btn-secondary">
+                    <span id="notificationsToggleText">Ver recibidas</span>
+                </button>
+                <button onclick="refreshReceivedNotifications()" class="btn btn-outline">
+                    🔄 Actualizar
+                </button>
+            </div>
+            <div id="receivedNotificationsList" class="notifications-list" style="display: none;">
+                <!-- Las notificaciones recibidas se cargarán dinámicamente -->
+            </div>
+        </div>
     </div>
 
     <!-- Notification Bell -->

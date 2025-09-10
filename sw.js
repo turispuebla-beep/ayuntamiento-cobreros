@@ -73,20 +73,82 @@ self.addEventListener('fetch', event => {
 
 // Manejar notificaciones push
 self.addEventListener('push', event => {
-  console.log('Push recibido:', event);
+  console.log('Push recibido en la web:', event);
   
-  const options = {
-    body: event.data ? event.data.text() : 'Nueva notificación del Ayuntamiento de Cobreros',
+  let notificationData = {
+    title: '🏛️ Ayuntamiento de Cobreros',
+    body: 'Nueva notificación del Ayuntamiento de Cobreros',
     icon: '/images/escudo-cobreros-192.png',
     badge: '/images/escudo-cobreros-192.png',
+    type: 'general',
+    localities: '',
+    sentFrom: 'WEB'
+  };
+  
+  // Procesar datos de la notificación
+  if (event.data) {
+    try {
+      const data = event.data.json();
+      notificationData = {
+        title: data.title || notificationData.title,
+        body: data.body || data.message || notificationData.body,
+        icon: data.icon || notificationData.icon,
+        badge: data.badge || notificationData.badge,
+        type: data.type || 'general',
+        localities: data.localities || '',
+        sentFrom: data.sent_from || 'WEB',
+        hasAttachments: data.has_attachments || false,
+        attachmentUrl: data.attachment_url || null,
+        attachmentType: data.attachment_type || null
+      };
+    } catch (e) {
+      console.log('Error procesando datos de notificación:', e);
+    }
+  }
+  
+  // Personalizar según el tipo
+  let color = '#1e3a8a'; // Azul por defecto
+  let priority = 'normal';
+  
+  switch (notificationData.type) {
+    case 'emergencia':
+      color = '#dc2626';
+      priority = 'high';
+      break;
+    case 'cita':
+      color = '#16a34a';
+      priority = 'high';
+      break;
+    case 'evento':
+      color = '#ea580c';
+      priority = 'high';
+      break;
+    case 'bando':
+      color = '#9333ea';
+      priority = 'high';
+      break;
+  }
+  
+  const options = {
+    body: notificationData.body,
+    icon: notificationData.icon,
+    badge: notificationData.badge,
     vibrate: [200, 100, 200],
+    color: color,
+    priority: priority,
     data: {
       dateOfArrival: Date.now(),
-      primaryKey: 1
+      primaryKey: Date.now(),
+      type: notificationData.type,
+      localities: notificationData.localities,
+      sentFrom: notificationData.sentFrom,
+      hasAttachments: notificationData.hasAttachments,
+      attachmentUrl: notificationData.attachmentUrl,
+      attachmentType: notificationData.attachmentType
     },
     actions: [
       {
-        action: 'explore',
+        action: 'view',
         title: 'Ver detalles',
         icon: '/images/icon-view.png'
       },
@@ -99,7 +161,7 @@ self.addEventListener('push', event => {
   };
   
   event.waitUntil(
-    self.registration.showNotification('🏛️ Ayuntamiento de Cobreros', options)
+    self.registration.showNotification(notificationData.title, options)
   );
 });
 
@@ -109,10 +171,10 @@ self.addEventListener('notificationclick', event => {
   
   event.notification.close();
   
-  if (event.action === 'explore') {
-    // Abrir la app
+  if (event.action === 'view') {
+    // Abrir la app y mostrar detalles de la notificación
     event.waitUntil(
-      clients.openWindow('/')
+      clients.openWindow('/#notification-details')
     );
   } else if (event.action === 'close') {
     // Solo cerrar la notificación

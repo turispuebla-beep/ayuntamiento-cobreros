@@ -4943,6 +4943,196 @@ function showPWAInstallBanner() {
 function initializePWA() {
     registerServiceWorker();
     showPWAInstallBanner();
+    
+    // Configurar recepción de notificaciones
+    setupNotificationReception();
+}
+
+// ===== SISTEMA DE NOTIFICACIONES RECIBIDAS =====
+
+// Configurar recepción de notificaciones
+function setupNotificationReception() {
+    // Escuchar notificaciones push en tiempo real
+    if ('serviceWorker' in navigator && 'PushManager' in window) {
+        navigator.serviceWorker.ready.then(registration => {
+            // Escuchar mensajes del service worker
+            navigator.serviceWorker.addEventListener('message', event => {
+                if (event.data.type === 'NOTIFICATION_RECEIVED') {
+                    handleReceivedNotification(event.data.notification);
+                }
+            });
+        });
+    }
+    
+    // Cargar notificaciones recibidas al iniciar
+    loadReceivedNotifications();
+}
+
+// Manejar notificación recibida
+function handleReceivedNotification(notificationData) {
+    console.log('Notificación recibida en la web:', notificationData);
+    
+    // Agregar a la lista de notificaciones recibidas
+    addReceivedNotificationToList(notificationData);
+    
+    // Actualizar contador
+    updateNotificationBadge();
+    
+    // Mostrar notificación visual si está disponible
+    if (Notification.permission === 'granted') {
+        showWebNotification(notificationData);
+    }
+}
+
+// Mostrar notificación web
+function showWebNotification(notificationData) {
+    const options = {
+        body: notificationData.message || notificationData.body,
+        icon: '/images/escudo-cobreros-192.png',
+        badge: '/images/escudo-cobreros-192.png',
+        tag: 'ayuntamiento-notification',
+        data: notificationData
+    };
+    
+    new Notification(notificationData.title || '🏛️ Ayuntamiento de Cobreros', options);
+}
+
+// Cargar notificaciones recibidas desde Firestore
+async function loadReceivedNotifications() {
+    try {
+        if (window.firebase && window.firebase.firestore) {
+            const snapshot = await window.firebase.firestore()
+                .collection('notifications')
+                .where('sentTo', '==', 'WEB')
+                .orderBy('timestamp', 'desc')
+                .limit(50)
+                .get();
+            
+            const receivedNotifications = [];
+            snapshot.forEach(doc => {
+                const data = doc.data();
+                receivedNotifications.push({
+                    id: doc.id,
+                    ...data
+                });
+            });
+            
+            displayReceivedNotifications(receivedNotifications);
+        }
+    } catch (error) {
+        console.error('Error cargando notificaciones recibidas:', error);
+    }
+}
+
+// Mostrar notificaciones recibidas en la interfaz
+function displayReceivedNotifications(notifications) {
+    const container = document.getElementById('receivedNotificationsList');
+    if (!container) return;
+    
+    if (notifications.length === 0) {
+        container.innerHTML = '<p class="no-notifications">No hay notificaciones recibidas</p>';
+        return;
+    }
+    
+    container.innerHTML = notifications.map(notification => `
+        <div class="notification-item received" data-id="${notification.id}">
+            <div class="notification-header">
+                <span class="notification-type ${notification.type}">
+                    ${getTypeIcon(notification.type)} ${notification.type.toUpperCase()}
+                </span>
+                <span class="notification-time">
+                    ${formatNotificationTime(notification.timestamp)}
+                </span>
+            </div>
+            <div class="notification-content">
+                <h4>${notification.title}</h4>
+                <p>${notification.message}</p>
+                ${notification.localities ? `<p class="notification-localities">📍 ${notification.localities}</p>` : ''}
+                ${notification.hasAttachments ? '<p class="notification-attachment">📎 Archivo adjunto</p>' : ''}
+                <p class="notification-source">Enviado desde: ${notification.sentFrom}</p>
+            </div>
+            <div class="notification-actions">
+                ${notification.hasAttachments ? '<button onclick="downloadAttachment(\'' + notification.attachmentUrl + '\')" class="btn btn-small">📥 Descargar</button>' : ''}
+                <button onclick="markNotificationAsRead('${notification.id}')" class="btn btn-small">✓ Leído</button>
+            </div>
+        </div>
+    `).join('');
+}
+
+// Alternar vista de notificaciones
+function toggleNotificationsView() {
+    const receivedList = document.getElementById('receivedNotificationsList');
+    const toggleText = document.getElementById('notificationsToggleText');
+    
+    if (receivedList.style.display === 'none') {
+        receivedList.style.display = 'block';
+        toggleText.textContent = 'Ocultar recibidas';
+        loadReceivedNotifications();
+    } else {
+        receivedList.style.display = 'none';
+        toggleText.textContent = 'Ver recibidas';
+    }
+}
+
+// Actualizar notificaciones recibidas
+function refreshReceivedNotifications() {
+    loadReceivedNotifications();
+    showNotification('Notificaciones actualizadas', 'success');
+}
+
+// Obtener icono según el tipo
+function getTypeIcon(type) {
+    const icons = {
+        'emergencia': '🚨',
+        'cita': '📅',
+        'evento': '🎉',
+        'bando': '📢',
+        'general': '🏛️'
+    };
+    return icons[type] || '🏛️';
+}
+
+// Formatear tiempo de notificación
+function formatNotificationTime(timestamp) {
+    const date = new Date(timestamp);
+    const now = new Date();
+    const diff = now - date;
+    
+    if (diff < 60000) return 'Hace un momento';
+    if (diff < 3600000) return `Hace ${Math.floor(diff / 60000)} minutos`;
+    if (diff < 86400000) return `Hace ${Math.floor(diff / 3600000)} horas`;
+    return date.toLocaleDateString('es-ES');
+}
+
+// Marcar notificación como leída
+async function markNotificationAsRead(notificationId) {
+    try {
+        if (window.firebase && window.firebase.firestore) {
+            await window.firebase.firestore()
+                .collection('notifications')
+                .doc(notificationId)
+                .update({ read: true });
+            
+            // Remover de la lista
+            const notificationElement = document.querySelector(`[data-id="${notificationId}"]`);
+            if (notificationElement) {
+                notificationElement.remove();
+            }
+            
+            showNotification('Notificación marcada como leída', 'success');
+        }
+    } catch (error) {
+        console.error('Error marcando notificación como leída:', error);
+    }
+}
+
+// Descargar archivo adjunto
+function downloadAttachment(attachmentUrl) {
+    if (attachmentUrl) {
+        window.open(attachmentUrl, '_blank');
+    } else {
+        showNotification('No hay archivo adjunto disponible', 'error');
+    }
 }
 
 // ===== SISTEMA DE NOTIFICACIONES PUSH - TURISTEAM =====
