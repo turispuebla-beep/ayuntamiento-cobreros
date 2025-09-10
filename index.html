@@ -816,6 +816,25 @@
                 <div id="servicios-tab" class="tab-content">
                     <h3>Gestión de Servicios</h3>
                     
+                    <!-- Configuración de Secciones -->
+                    <div class="admin-section">
+                        <h4>⚙️ Configuración de Secciones</h4>
+                        <div class="form-group">
+                            <button class="btn btn-secondary" onclick="openSeccionConfig('medical')">
+                                <i class="fas fa-edit"></i> Configurar Consultas Médicas
+                            </button>
+                            <button class="btn btn-secondary" onclick="openSeccionConfig('itv')">
+                                <i class="fas fa-edit"></i> Configurar ITV
+                            </button>
+                            <button class="btn btn-secondary" onclick="openSeccionConfig('phone')">
+                                <i class="fas fa-edit"></i> Configurar Teléfonos
+                            </button>
+                        </div>
+                        <p style="margin-top: 10px; color: #666; font-size: 0.9em;">
+                            Personaliza los títulos e iconos de cada sección
+                        </p>
+                    </div>
+                    
                     <!-- Herramientas adicionales -->
                     <div class="admin-section">
                         <h4>🛠️ Herramientas</h4>
@@ -830,7 +849,7 @@
                     </div>
                     
                     <div class="admin-section">
-                        <h4>🏥 Consultas Médicas</h4>
+                        <h4 id="medicalSectionTitle">🏥 Consultas Médicas</h4>
                         <div class="form-group">
                             <button class="btn btn-primary" onclick="addServicio('medical')">➕ Añadir Consulta Médica</button>
                         </div>
@@ -838,7 +857,7 @@
                     </div>
                     
                     <div class="admin-section">
-                        <h4>🚗 ITV</h4>
+                        <h4 id="itvSectionTitle">🚗 ITV</h4>
                         <div class="form-group">
                             <button class="btn btn-primary" onclick="addServicio('itv')">➕ Añadir ITV</button>
                         </div>
@@ -846,7 +865,7 @@
                     </div>
                     
                     <div class="admin-section">
-                        <h4>📞 Teléfonos de Interés</h4>
+                        <h4 id="phoneSectionTitle">📞 Teléfonos de Interés</h4>
                         <div class="form-group">
                             <button class="btn btn-primary" onclick="addServicio('phone')">➕ Añadir Teléfono</button>
                         </div>

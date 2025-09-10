@@ -3670,6 +3670,33 @@ let servicios = {
     phone: []
 };
 
+// Configuración de las secciones (títulos e iconos editables)
+let seccionesConfig = {
+    medical: {
+        title: 'Consultas Médicas',
+        icon: '🏥',
+        description: 'Servicios médicos y de salud'
+    },
+    itv: {
+        title: 'ITV',
+        icon: '🚗',
+        description: 'Inspección técnica de vehículos'
+    },
+    phone: {
+        title: 'Teléfonos de Interés',
+        icon: '📞',
+        description: 'Números de teléfono importantes'
+    }
+};
+
+// Cargar configuración de secciones
+function loadSeccionesConfig() {
+    const saved = localStorage.getItem('seccionesConfig');
+    if (saved) {
+        seccionesConfig = JSON.parse(saved);
+    }
+}
+
 // Cargar servicios
 function loadServicios() {
     const saved = localStorage.getItem('servicios');
@@ -3717,7 +3744,13 @@ function loadServicios() {
         };
         saveServicios();
     }
+    loadSeccionesConfig();
     renderServicios();
+}
+
+// Guardar configuración de secciones
+function saveSeccionesConfig() {
+    localStorage.setItem('seccionesConfig', JSON.stringify(seccionesConfig));
 }
 
 // Guardar servicios
@@ -3733,21 +3766,21 @@ function renderServicios() {
     let html = '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 2rem;">';
     
     // Consultas Médicas
-    html += '<div class="admin-section"><h3>🏥 Consultas Médicas</h3>';
+    html += `<div class="admin-section"><h3>${seccionesConfig.medical.icon} ${seccionesConfig.medical.title}</h3>`;
     servicios.medical.forEach(servicio => {
         html += createServicioCard(servicio, 'medical');
     });
     html += '</div>';
     
     // ITV
-    html += '<div class="admin-section"><h3>🚗 ITV</h3>';
+    html += `<div class="admin-section"><h3>${seccionesConfig.itv.icon} ${seccionesConfig.itv.title}</h3>`;
     servicios.itv.forEach(servicio => {
         html += createServicioCard(servicio, 'itv');
     });
     html += '</div>';
     
     // Teléfonos
-    html += '<div class="admin-section"><h3>📞 Teléfonos de Interés</h3>';
+    html += `<div class="admin-section"><h3>${seccionesConfig.phone.icon} ${seccionesConfig.phone.title}</h3>`;
     servicios.phone.forEach(servicio => {
         html += createServicioCard(servicio, 'phone');
     });
@@ -3780,6 +3813,8 @@ function createServicioCard(servicio, type) {
 
 // Cargar listas en admin
 function loadServiciosAdmin() {
+    loadSeccionesConfig();
+    updateSectionTitles();
     loadServiciosList('medical');
     loadServiciosList('itv');
     loadServiciosList('phone');
@@ -4537,6 +4572,100 @@ function deleteAdmin(email) {
         localStorage.setItem('administrators', JSON.stringify(updatedAdmins));
         loadAdminsList();
         showNotification('Administrador eliminado correctamente', 'success');
+    }
+}
+
+// ===== CONFIGURACIÓN DE SECCIONES =====
+
+// Abrir modal de configuración de sección
+function openSeccionConfig(type) {
+    const config = seccionesConfig[type];
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.style.display = 'block';
+    modal.innerHTML = `
+        <div class="modal-content">
+            <span class="close" onclick="this.closest('.modal').remove()">&times;</span>
+            <h2>Configurar Sección</h2>
+            <form id="seccionConfigForm">
+                <input type="hidden" id="seccionType" value="${type}">
+                
+                <div class="form-group">
+                    <label for="seccionTitle">Título de la Sección:</label>
+                    <input type="text" id="seccionTitle" value="${config.title}" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="seccionIcon">Icono (Emoji):</label>
+                    <input type="text" id="seccionIcon" value="${config.icon}" maxlength="2" required>
+                    <small style="color: #666;">Usa un emoji o símbolo (ej: 🏥, 🚗, 📞, ⚕️, 🏛️)</small>
+                </div>
+                
+                <div class="form-group">
+                    <label for="seccionDescription">Descripción:</label>
+                    <textarea id="seccionDescription" rows="2">${config.description}</textarea>
+                    <small style="color: #666;">Descripción opcional que aparecerá como subtítulo</small>
+                </div>
+                
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline" onclick="this.closest('.modal').remove()">Cancelar</button>
+                    <button type="button" class="btn btn-primary" onclick="saveSeccionConfig(this)">Guardar</button>
+                </div>
+            </form>
+        </div>
+    `;
+    document.body.appendChild(modal);
+}
+
+// Guardar configuración de sección
+function saveSeccionConfig(button) {
+    const modal = button.closest('.modal');
+    const type = document.getElementById('seccionType').value;
+    const title = document.getElementById('seccionTitle').value.trim();
+    const icon = document.getElementById('seccionIcon').value.trim();
+    const description = document.getElementById('seccionDescription').value.trim();
+    
+    if (!title || !icon) {
+        alert('El título y el icono son obligatorios');
+        return;
+    }
+    
+    // Actualizar configuración
+    seccionesConfig[type] = {
+        title: title,
+        icon: icon,
+        description: description
+    };
+    
+    // Guardar en localStorage
+    saveSeccionesConfig();
+    
+    // Actualizar títulos en el panel de administración
+    updateSectionTitles();
+    
+    // Actualizar servicios en la página principal
+    renderServicios();
+    
+    // Cerrar modal
+    modal.remove();
+    
+    showNotification('Configuración de sección guardada correctamente', 'success');
+}
+
+// Actualizar títulos de secciones en el panel de administración
+function updateSectionTitles() {
+    const medicalTitle = document.getElementById('medicalSectionTitle');
+    const itvTitle = document.getElementById('itvSectionTitle');
+    const phoneTitle = document.getElementById('phoneSectionTitle');
+    
+    if (medicalTitle) {
+        medicalTitle.textContent = `${seccionesConfig.medical.icon} ${seccionesConfig.medical.title}`;
+    }
+    if (itvTitle) {
+        itvTitle.textContent = `${seccionesConfig.itv.icon} ${seccionesConfig.itv.title}`;
+    }
+    if (phoneTitle) {
+        phoneTitle.textContent = `${seccionesConfig.phone.icon} ${seccionesConfig.phone.title}`;
     }
 }
 
