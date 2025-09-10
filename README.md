@@ -1,186 +1,201 @@
-# 🏛️ Ayuntamiento de Cobreros - Página Web Municipal
+# 🏛️ Ayuntamiento de Cobreros - Portal Web Municipal
 
-## 📋 Descripción
+Portal web completo para el Ayuntamiento de Cobreros con sistema de gestión administrativa, citas previas, servicios municipales y panel de administración avanzado.
 
-Página web completa para el Ayuntamiento de Cobreros con todas las funcionalidades necesarias para un ayuntamiento moderno. Incluye gestión de contenido, sistema de usuarios, notificaciones y panel de administración.
+## 🚀 Características Principales
 
-## ✨ Características Principales
+### 📋 Sistema de Citas Previas
+- **Formulario de solicitud** con validación completa
+- **Gestión administrativa** de citas (confirmar, cancelar, editar)
+- **Notificaciones por email** automáticas
+- **Sistema de alertas** para el ayuntamiento
+- **Configuración flexible** (con/sin cita previa)
+- **Cumplimiento GDPR** con política de protección de datos
 
-### 🏛️ Secciones del Ayuntamiento
-- **Inicio**: Página principal con acceso rápido a servicios
-- **Bando Municipal**: Publicación de normativas y anuncios oficiales
-- **Noticias**: Gestión de noticias municipales
-- **Cita Previa**: Sistema de solicitud de citas
-- **Sede Electrónica**: Trámites online
-- **Documentos**: Formularios y normativas descargables
-- **Cultura y Ocio**: Eventos y instalaciones municipales
+### 🏥 Servicios Municipales
+- **Consultas Médicas** con horarios y ubicaciones
+- **ITV** con información detallada
+- **Teléfonos de Interés** municipales
+- **Logos personalizados** para cada servicio
+- **Enlaces web** para más información
+- **Subida de fotos** para servicios médicos e ITV
+- **Gestión completa** desde panel de administración
 
-### 👥 Sistema de Usuarios
-- ✅ Registro de usuarios con consentimiento GDPR
-- ✅ Sistema de notificaciones push y por email
-- ✅ Gestión de datos personales según ley vigente
-- ✅ Funcionalidad completa sin necesidad de registro
+### 👥 Gestión de Usuarios y Administradores
+- **Registro e inicio de sesión** de usuarios
+- **Panel de administración** completo
+- **Super administrador oculto** (amco@gmx.es)
+- **Gestión de usuarios** y administradores
+- **Sistema de permisos** y roles
 
-### 🔔 Sistema de Notificaciones
-- ✅ Notificaciones push del navegador
-- ✅ Notificaciones por correo electrónico
-- ✅ Centro de notificaciones con historial
-- ✅ Almacenamiento de hasta 5 notificaciones por usuario
-- ✅ Diferentes tipos: general, urgente, evento
+### 📢 Sistema de Notificaciones
+- **Notificaciones públicas** con scroll en header
+- **Centro de notificaciones** para usuarios
+- **Alertas municipales** para administradores
+- **Sistema de campana** con contador
+- **Notificaciones push** y sonoras
 
-### ⚙️ Panel de Administración
-- ✅ Login seguro para administradores
-- ✅ Super administrador oculto (TURISTEAM)
-- ✅ Gestión completa de contenido (noticias, bandos, eventos, acceso rápido)
-- ✅ Gestión de usuarios registrados
-- ✅ Gestión de administradores (crear, editar, eliminar)
-- ✅ Sistema de envío de notificaciones
-- ✅ Gestión de documentos (subir, editar, eliminar, descargar)
-- ✅ Base de datos (exportar/importar datos)
-- ✅ Configuración del escudo municipal
-- ✅ Historial de notificaciones enviadas
+### 🛠️ Herramientas de Desarrollo
+- **Modal genérico** reutilizable
+- **Modal personalizable** con formularios dinámicos
+- **Sistema de gestión** de contenido
+- **Exportación de datos** en JSON
+- **Base de datos local** con localStorage
 
-### 📱 Diseño Responsive
-- ✅ Adaptado para móviles, tablets y escritorio
-- ✅ Navegación intuitiva
-- ✅ Diseño moderno y accesible
-- ✅ Optimizado para SEO
+## 🎨 Diseño y UX
 
-## 🚀 Instalación y Uso
+### 📱 Responsive Design
+- **Adaptable** a móviles, tablets y desktop
+- **Navegación intuitiva** con menú hamburguesa
+- **Iconos coloridos** en navegación
+- **Scroll suave** entre secciones
+- **Animaciones** y transiciones fluidas
 
-### Requisitos
-- Navegador web moderno
-- Servidor web (opcional para desarrollo local)
+### 🎯 Interfaz de Usuario
+- **Header fijo** con navegación sticky
+- **Botón de cerrar sesión flotante** en panel admin
+- **Modales** con diseño moderno
+- **Formularios** con validación en tiempo real
+- **Feedback visual** para todas las acciones
 
-### Instalación
-1. Descargar todos los archivos del proyecto
-2. Colocar en el directorio del servidor web
-3. Abrir `index.html` en el navegador
+## 🔧 Tecnologías Utilizadas
 
-### 🔑 Acceso de Administrador
-- **Email**: `admin@ayuntamientocobreros.es`
-- **Contraseña**: `admin123`
-
-### 🔐 Acceso de Super Administrador (TURISTEAM)
-- **Email**: `amco@gmx.es`
-- **Contraseña**: `533712`
-- **Características**: Oculto del público, acceso completo al sistema
+- **HTML5** - Estructura semántica
+- **CSS3** - Estilos modernos con variables CSS
+- **JavaScript ES6+** - Funcionalidad interactiva
+- **LocalStorage** - Persistencia de datos
+- **Font Awesome** - Iconografía
+- **Responsive Design** - Mobile-first approach
 
 ## 📁 Estructura del Proyecto
 
 ```
 ayuntamiento-cobreros/
-├── index.html          # Página principal (478 líneas)
+├── index.html              # Página principal
 ├── css/
-│   └── styles.css      # Estilos CSS (1087 líneas)
+│   └── styles.css          # Estilos principales
 ├── js/
-│   └── script.js       # Funcionalidad JavaScript (892 líneas)
-├── images/             # Imágenes del sitio
-└── README.md          # Este archivo
+│   └── script.js           # Lógica de la aplicación
+├── images/
+│   ├── escudo-cobreros.jpg # Logo del ayuntamiento
+│   ├── escudo-cobreros.png # Logo alternativo
+│   └── favicon.ico         # Favicon
+├── config.js               # Configuración
+├── README.md               # Documentación
+└── DEMO.md                 # Guía de demostración
 ```
 
-## 🎯 Funcionalidades Técnicas
+## 🚀 Instalación y Uso
 
-### Almacenamiento Local
-- Utiliza localStorage para persistencia de datos
-- Gestión de usuarios, notificaciones y contenido
-- Datos se mantienen entre sesiones
+### Requisitos
+- Navegador web moderno (Chrome, Firefox, Safari, Edge)
+- Servidor web local (opcional, para desarrollo)
 
-### Notificaciones Push
-- Solicita permisos del navegador
-- Envía notificaciones nativas
-- Sistema de badges para notificaciones no leídas
+### Instalación
+1. **Clonar o descargar** el proyecto
+2. **Abrir** `index.html` en el navegador
+3. **¡Listo!** La aplicación funciona completamente offline
 
-### Formularios
-- Validación en tiempo real
-- Envío de citas previas
-- Registro de usuarios con validación
-- Consentimiento GDPR integrado
+### Acceso al Panel de Administración
+- **Email:** `amco@gmx.es`
+- **Contraseña:** `533712`
 
-### Panel de Administración
-- Gestión CRUD completa
-- Tabs organizados por funcionalidad
-- Editor de contenido integrado
-- Subida de archivos (escudo municipal)
+## 📋 Funcionalidades del Panel de Administración
 
-## 🎨 Personalización
+### 🏠 Gestión de Contenido
+- **Noticias** - Crear, editar, eliminar
+- **Bandos** - Gestión de comunicados oficiales
+- **Eventos** - Calendario de actividades
+- **Accesos rápidos** - Enlaces importantes
 
-### Colores
-Los colores se pueden modificar en las variables CSS del archivo `styles.css`:
+### 📅 Citas Previas
+- **Lista de citas** con filtros
+- **Cambio de estado** (pendiente, confirmada, cancelada)
+- **Edición** de datos de citas
+- **Notificaciones** automáticas por email
+- **Configuración** del sistema de citas
 
-```css
-:root {
-    --primary-color: #1e40af;
-    --secondary-color: #3b82f6;
-    --accent-color: #f59e0b;
-    /* ... más variables */
-}
-```
+### 👥 Usuarios y Administradores
+- **Lista de usuarios** registrados
+- **Gestión de administradores**
+- **Super administrador oculto**
+- **Acciones masivas** (exportar, estadísticas)
 
-### Contenido
-- Editar noticias y bandos desde el panel de administración
-- Subir nuevo escudo municipal
-- Personalizar información de contacto en el footer
+### 🏥 Servicios Municipales
+- **Consultas Médicas** - Horarios, ubicaciones, fotos
+- **ITV** - Información y documentación
+- **Teléfonos de Interés** - Contactos municipales
+- **Modal personalizable** para nuevas funcionalidades
 
-### Notificaciones
-- Configurar tipos de notificaciones
-- Personalizar mensajes por defecto
-- Ajustar límite de notificaciones almacenadas
+### 📢 Notificaciones
+- **Notificaciones públicas** con scroll
+- **Centro de notificaciones** para usuarios
+- **Alertas municipales** para administradores
+- **Sistema de campana** con contador
 
-## ⚖️ Cumplimiento Legal
+### ⚙️ Configuración
+- **Configuración general** del sistema
+- **Gestión de notificaciones** públicas
+- **Herramientas de desarrollo**
 
-### GDPR/LOPD
-- ✅ Consentimiento explícito para tratamiento de datos
-- ✅ Información clara sobre uso de datos
-- ✅ Derecho al olvido implementado
-- ✅ Política de privacidad integrada
+## 🎯 Características Técnicas
 
-### Accesibilidad
-- ✅ Navegación por teclado
-- ✅ Contraste adecuado
-- ✅ Textos alternativos en imágenes
-- ✅ Estructura semántica HTML
+### 🔒 Seguridad
+- **Validación** de formularios
+- **Sanitización** de datos
+- **Sistema de permisos** por roles
+- **Cumplimiento GDPR**
 
-## 🔧 Soporte y Mantenimiento
+### 💾 Persistencia de Datos
+- **LocalStorage** para datos locales
+- **Exportación** en formato JSON
+- **Importación** de datos
+- **Respaldo** automático
 
-### Backup de Datos
-- Los datos se almacenan en localStorage
-- Recomendado hacer backup periódico
-- Exportar datos de usuarios y notificaciones
+### 🎨 Personalización
+- **Variables CSS** para temas
+- **Modales reutilizables**
+- **Componentes** modulares
+- **Sistema de iconos** flexible
 
-### Actualizaciones
-- Sistema modular fácil de actualizar
-- Separación clara entre lógica y presentación
-- Código documentado y comentado
+## 📞 Información de Contacto
 
-## 📞 Contacto
+**Ayuntamiento de Cobreros**
+- **Dirección:** Principal, s/n - 49396 Cobreros
+- **Teléfono:** 980 62 26 18
+- **Email:** aytocobreros@gmail.com
+- **Alcalde:** Luis Miguel López Fernández
+- **Grupo político:** F (Futuro)
 
-Para soporte técnico o consultas sobre la implementación:
-- **Email**: info@ayuntamientocobreros.es
-- **Teléfono**: 987 123 456
+## 🌐 Enlaces de Interés
+
+- [Diputación de Zamora](https://www.diputaciondezamora.es/)
+- [Junta de Castilla y León](https://www.jcyl.es/)
+- [Boletín Oficial de la Provincia](https://www.diputaciondezamora.es/opencms/servicios/BOP/bop/index.html)
+- [Comarca de Sanabria](https://www.sanabriacarballeda.com/)
+- [Turismo Zamora](https://turismo-zamora.com/)
+
+## 📝 Changelog
+
+### v1.0.0 - Implementación Completa
+- ✅ Sistema de citas previas funcional
+- ✅ Panel de administración completo
+- ✅ Servicios municipales con gestión
+- ✅ Sistema de notificaciones
+- ✅ Modal genérico reutilizable
+- ✅ Super administrador oculto
+- ✅ Botón de cerrar sesión flotante
+- ✅ Diseño responsive completo
+- ✅ Cumplimiento GDPR
+
+## 🤝 Contribuciones
+
+Este proyecto está desarrollado específicamente para el Ayuntamiento de Cobreros. Para sugerencias o mejoras, contactar con el administrador del sistema.
+
+## 📄 Licencia
+
+Proyecto desarrollado para uso exclusivo del Ayuntamiento de Cobreros.
 
 ---
 
-**Desarrollado para el Ayuntamiento de Cobreros**  
-*Sistema web municipal moderno y funcional*
-
-## 🎉 ¡Listo para usar!
-
-La página web está completamente funcional. Solo necesitas abrir `index.html` en tu navegador y comenzar a usar todas las funcionalidades.
-
-### 🚀 Cómo empezar:
-1. Abre `index.html` en tu navegador
-2. Prueba el registro de usuarios
-3. Accede como administrador con las credenciales
-4. **Botón verde de acceso admin** en la esquina superior derecha
-5. Explora todas las funcionalidades
-6. Personaliza el contenido según tus necesidades
-
-### 🎯 Características Destacadas:
-- **Escudo municipal** personalizado (160x160px)
-- **Botón de acceso admin** verde en esquina superior derecha
-- **Super administrador oculto** para control total del sistema
-- **Gestión completa de contenido** desde el panel de administración
-- **Sistema de notificaciones** solo para usuarios registrados con consentimiento
-
-¡Disfruta de tu nueva página web municipal! 🎊
+**Desarrollado con ❤️ para el Ayuntamiento de Cobreros**
