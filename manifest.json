@@ -1,0 +1,67 @@
+{
+  "name": "Ayuntamiento de Cobreros",
+  "short_name": "Cobreros",
+  "description": "Aplicación oficial del Ayuntamiento de Cobreros",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#1e3a8a",
+  "theme_color": "#1e3a8a",
+  "orientation": "portrait",
+  "scope": "/",
+  "lang": "es",
+  "icons": [
+    {
+      "src": "images/escudo-cobreros-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "images/escudo-cobreros-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["government", "utilities"],
+  "screenshots": [
+    {
+      "src": "images/screenshot1.png",
+      "sizes": "1280x720",
+      "type": "image/png",
+      "form_factor": "wide"
+    },
+    {
+      "src": "images/screenshot2.png",
+      "sizes": "750x1334",
+      "type": "image/png",
+      "form_factor": "narrow"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Notificaciones",
+      "short_name": "Notificaciones",
+      "description": "Ver notificaciones del Ayuntamiento",
+      "url": "/#notifications",
+      "icons": [
+        {
+          "src": "images/icon-notifications.png",
+          "sizes": "96x96"
+        }
+      ]
+    },
+    {
+      "name": "Contacto",
+      "short_name": "Contacto",
+      "description": "Contactar con el Ayuntamiento",
+      "url": "/#contact",
+      "icons": [
+        {
+          "src": "images/icon-contact.png",
+          "sizes": "96x96"
+        }
+      ]
+    }
+  ]
+}

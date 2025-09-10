@@ -33,6 +33,12 @@ document.addEventListener('DOMContentLoaded', function() {
     loadDocuments();
     loadEvents();
     loadQuickAccess();
+    
+    // Migrar usuarios a Firestore si es necesario
+    migrateUsersToFirestore();
+    
+    // Inicializar PWA
+    initializePWA();
 });
 
 // Inicializar la aplicación
@@ -810,7 +816,7 @@ function handleAdminLogin(e) {
 }
 
 // Manejar registro
-function handleRegister(e) {
+async function handleRegister(e) {
     e.preventDefault();
     const formData = new FormData(e.target);
     const name = formData.get('name');
@@ -857,6 +863,9 @@ function handleRegister(e) {
 
     users.push(newUser);
     localStorage.setItem('users', JSON.stringify(users));
+    
+    // Sincronizar con Firestore
+    await syncUserToFirestore(newUser);
 
     showNotification('Registro completado correctamente. Ahora recibirá notificaciones.', 'success');
     closeModal('registerModal');
@@ -4713,11 +4722,237 @@ function updateSectionTitles() {
     }
 }
 
+// ===== MIGRACIÓN Y SINCRONIZACIÓN DE USUARIOS =====
+
+// Migrar usuarios del localStorage a Firestore
+async function migrateUsersToFirestore() {
+    try {
+        // Verificar si ya se migró
+        const migrationDone = localStorage.getItem('usersMigratedToFirestore');
+        if (migrationDone === 'true') {
+            // Cargar usuarios desde Firestore
+            await loadUsersFromFirestore();
+            return;
+        }
+        
+        // Obtener usuarios del localStorage
+        const localUsers = JSON.parse(localStorage.getItem('users') || '[]');
+        
+        if (localUsers.length === 0) {
+            console.log('No hay usuarios locales para migrar');
+            await loadUsersFromFirestore();
+            return;
+        }
+        
+        console.log(`Migrando ${localUsers.length} usuarios a Firestore...`);
+        
+        // Migrar cada usuario a Firestore
+        for (const user of localUsers) {
+            try {
+                await window.firebase.firestore().collection('users').add({
+                    nombre: user.nombre || '',
+                    apellidos: user.apellidos || '',
+                    email: user.email || '',
+                    telefono: user.telefono || '',
+                    notificationConsent: user.notificationConsent || false,
+                    localities: user.localities || [],
+                    fcmToken: user.fcmToken || '',
+                    registeredFrom: 'WEB_MIGRATION',
+                    registrationDate: new Date(),
+                    originalId: user.id || Date.now().toString()
+                });
+                console.log(`✅ Usuario migrado: ${user.email}`);
+            } catch (error) {
+                console.error(`❌ Error migrando usuario ${user.email}:`, error);
+            }
+        }
+        
+        // Marcar migración como completada
+        localStorage.setItem('usersMigratedToFirestore', 'true');
+        console.log('✅ Migración completada');
+        
+        // Cargar usuarios desde Firestore
+        await loadUsersFromFirestore();
+        
+    } catch (error) {
+        console.error('Error en la migración:', error);
+        // Si hay error, mantener usuarios locales
+        loadUsersFromLocalStorage();
+    }
+}
+
+// Cargar usuarios desde Firestore
+async function loadUsersFromFirestore() {
+    try {
+        const snapshot = await window.firebase.firestore().collection('users').get();
+        users = [];
+        
+        snapshot.forEach(doc => {
+            const userData = doc.data();
+            users.push({
+                id: doc.id,
+                nombre: userData.nombre || '',
+                apellidos: userData.apellidos || '',
+                email: userData.email || '',
+                telefono: userData.telefono || '',
+                notificationConsent: userData.notificationConsent || false,
+                localities: userData.localities || [],
+                fcmToken: userData.fcmToken || '',
+                registeredFrom: userData.registeredFrom || 'WEB',
+                registrationDate: userData.registrationDate || new Date()
+            });
+        });
+        
+        // Actualizar localStorage como respaldo
+        localStorage.setItem('users', JSON.stringify(users));
+        console.log(`✅ Cargados ${users.length} usuarios desde Firestore`);
+        
+        // Actualizar estadísticas
+        actualizarEstadisticasNotificaciones();
+        
+    } catch (error) {
+        console.error('Error cargando usuarios desde Firestore:', error);
+        // Fallback a localStorage
+        loadUsersFromLocalStorage();
+    }
+}
+
+// Cargar usuarios desde localStorage (fallback)
+function loadUsersFromLocalStorage() {
+    users = JSON.parse(localStorage.getItem('users') || '[]');
+    console.log(`✅ Cargados ${users.length} usuarios desde localStorage`);
+    actualizarEstadisticasNotificaciones();
+}
+
+// Sincronizar usuario con Firestore
+async function syncUserToFirestore(userData) {
+    try {
+        await window.firebase.firestore().collection('users').add({
+            nombre: userData.nombre,
+            apellidos: userData.apellidos,
+            email: userData.email,
+            telefono: userData.telefono,
+            notificationConsent: userData.notificationConsent,
+            localities: userData.localities,
+            fcmToken: userData.fcmToken || '',
+            registeredFrom: 'WEB',
+            registrationDate: new Date()
+        });
+        console.log('✅ Usuario sincronizado con Firestore');
+    } catch (error) {
+        console.error('Error sincronizando usuario:', error);
+    }
+}
+
+// ===== PWA (Progressive Web App) =====
+
+// Registrar Service Worker para PWA
+function registerServiceWorker() {
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('/sw.js')
+                .then(registration => {
+                    console.log('✅ Service Worker registrado exitosamente:', registration.scope);
+                    
+                    // Verificar actualizaciones
+                    registration.addEventListener('updatefound', () => {
+                        const newWorker = registration.installing;
+                        newWorker.addEventListener('statechange', () => {
+                            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                                // Nueva versión disponible
+                                if (confirm('Nueva versión disponible. ¿Recargar la página?')) {
+                                    window.location.reload();
+                                }
+                            }
+                        });
+                    });
+                })
+                .catch(error => {
+                    console.log('❌ Error registrando Service Worker:', error);
+                });
+        });
+    }
+}
+
+// Instalar PWA
+function installPWA() {
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.ready.then(registration => {
+            if (registration.waiting) {
+                registration.waiting.postMessage({ action: 'skipWaiting' });
+            }
+        });
+    }
+}
+
+// Mostrar banner de instalación PWA
+function showPWAInstallBanner() {
+    let deferredPrompt;
+    
+    window.addEventListener('beforeinstallprompt', (e) => {
+        // Prevenir que se muestre automáticamente
+        e.preventDefault();
+        deferredPrompt = e;
+        
+        // Mostrar banner personalizado
+        const installBanner = document.createElement('div');
+        installBanner.id = 'pwa-install-banner';
+        installBanner.innerHTML = `
+            <div style="position: fixed; bottom: 20px; left: 20px; right: 20px; background: #1e3a8a; color: white; padding: 16px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.3); z-index: 1000; display: flex; align-items: center; gap: 12px;">
+                <div style="flex: 1;">
+                    <div style="font-weight: bold; margin-bottom: 4px;">📱 Instalar App</div>
+                    <div style="font-size: 14px; opacity: 0.9;">Instala la app del Ayuntamiento de Cobreros en tu iPhone</div>
+                </div>
+                <button onclick="installPWAApp()" style="background: white; color: #1e3a8a; border: none; padding: 8px 16px; border-radius: 6px; font-weight: bold; cursor: pointer;">
+                    Instalar
+                </button>
+                <button onclick="closePWAInstallBanner()" style="background: transparent; color: white; border: none; padding: 8px; cursor: pointer; font-size: 18px;">
+                    ×
+                </button>
+            </div>
+        `;
+        document.body.appendChild(installBanner);
+    });
+    
+    // Función para instalar la app
+    window.installPWAApp = () => {
+        if (deferredPrompt) {
+            deferredPrompt.prompt();
+            deferredPrompt.userChoice.then((choiceResult) => {
+                if (choiceResult.outcome === 'accepted') {
+                    console.log('✅ Usuario aceptó instalar la PWA');
+                } else {
+                    console.log('❌ Usuario rechazó instalar la PWA');
+                }
+                deferredPrompt = null;
+                closePWAInstallBanner();
+            });
+        }
+    };
+    
+    // Función para cerrar el banner
+    window.closePWAInstallBanner = () => {
+        const banner = document.getElementById('pwa-install-banner');
+        if (banner) {
+            banner.remove();
+        }
+    };
+}
+
+// Inicializar PWA
+function initializePWA() {
+    registerServiceWorker();
+    showPWAInstallBanner();
+}
+
 // ===== SISTEMA DE NOTIFICACIONES PUSH - TURISTEAM =====
 
-// Enviar notificación push con filtrado por localidades
-async function enviarNotificacionPushConLocalidades(titulo, mensaje, tipo = 'general', alcance = 'todos', localidadesSeleccionadas = []) {
+// Enviar notificación push con filtrado por localidades (SOLO DESDE WEB)
+async function enviarNotificacionPushConLocalidades(titulo, mensaje, tipo = 'general', alcance = 'todos', localidadesSeleccionadas = [], hasAttachments = false, attachmentUrl = null, attachmentType = null) {
     try {
+        // Verificar que se está enviando desde la web
+        console.log('🌐 Enviando notificación desde la WEB hacia la APK');
+        
         // Obtener usuarios que han dado consentimiento para notificaciones
         let usuariosConNotificaciones = users.filter(user => 
             user.notificationConsent && user.fcmToken
@@ -4774,13 +5009,40 @@ async function enviarNotificacionPushConLocalidades(titulo, mensaje, tipo = 'gen
                         },
                         data: {
                             ...notificationData,
-                            destinatario: usuario.email
+                            destinatario: usuario.email,
+                            has_attachments: hasAttachments,
+                            attachment_url: attachmentUrl,
+                            attachment_type: attachmentType,
+                            sent_from: 'WEB',
+                            sent_to: 'APK'
                         }
                     })
                 });
 
                 if (response.ok) {
                     notificacionesEnviadas++;
+                    
+                    // Guardar notificación en Firestore para sincronización
+                    if (window.firebase && window.firebase.firestore) {
+                        window.firebase.firestore().collection('notifications').add({
+                            userId: usuario.id,
+                            userEmail: usuario.email,
+                            title: titulo,
+                            message: mensaje,
+                            type: tipo,
+                            localities: localidadesSeleccionadas.length > 0 ? localidadesSeleccionadas.join(', ') : 'Todas',
+                            hasAttachments: hasAttachments,
+                            attachmentUrl: attachmentUrl,
+                            attachmentType: attachmentType,
+                            timestamp: new Date(),
+                            read: false,
+                            sentFrom: 'WEB',
+                            sentTo: 'APK',
+                            fcmToken: usuario.fcmToken
+                        }).catch(error => {
+                            console.error('Error guardando notificación en Firestore:', error);
+                        });
+                    }
                 } else {
                     notificacionesFallidas++;
                 }
@@ -4881,6 +5143,12 @@ function abrirModalNotificacion() {
                 </div>
                 
                 <div class="form-group">
+                    <label for="notifArchivo">Archivo adjunto (opcional):</label>
+                    <input type="file" id="notifArchivo" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.gif">
+                    <small style="color: #666;">Puedes adjuntar documentos, imágenes o archivos PDF</small>
+                </div>
+                
+                <div class="form-group">
                     <label for="notifAlcance">Alcance de la notificación:</label>
                     <select id="notifAlcance" onchange="toggleLocalidadesSelection()">
                         <option value="todos">Todos los usuarios</option>
@@ -4890,6 +5158,14 @@ function abrirModalNotificacion() {
                 
                 <div class="form-group" id="localidadesSelection" style="display: none;">
                     <label>Seleccionar localidades:</label>
+                    <div class="localities-controls" style="margin-bottom: 1rem;">
+                        <button type="button" class="btn btn-outline btn-small" onclick="seleccionarTodasLocalidades()">
+                            <i class="fas fa-check-square"></i> Seleccionar Todas
+                        </button>
+                        <button type="button" class="btn btn-outline btn-small" onclick="deseleccionarTodasLocalidades()">
+                            <i class="fas fa-square"></i> Deseleccionar Todas
+                        </button>
+                    </div>
                     <div class="localities-selection">
                         <div class="localities-grid">
                             <label class="locality-checkbox">
@@ -4970,6 +5246,24 @@ function toggleLocalidadesSelection() {
     }
 }
 
+// Seleccionar todas las localidades
+function seleccionarTodasLocalidades() {
+    const checkboxes = document.querySelectorAll('input[name="notifLocalities"]');
+    checkboxes.forEach(checkbox => {
+        checkbox.checked = true;
+    });
+    showNotification('Todas las localidades seleccionadas', 'success');
+}
+
+// Deseleccionar todas las localidades
+function deseleccionarTodasLocalidades() {
+    const checkboxes = document.querySelectorAll('input[name="notifLocalities"]');
+    checkboxes.forEach(checkbox => {
+        checkbox.checked = false;
+    });
+    showNotification('Todas las localidades deseleccionadas', 'success');
+}
+
 // Enviar notificación personalizada
 function enviarNotificacionPersonalizada(button) {
     const modal = button.closest('.modal');
@@ -4977,6 +5271,7 @@ function enviarNotificacionPersonalizada(button) {
     const mensaje = document.getElementById('notifMensaje').value.trim();
     const tipo = document.getElementById('notifTipo').value;
     const alcance = document.getElementById('notifAlcance').value;
+    const archivoAdjunto = document.getElementById('notifArchivo');
     
     if (!titulo || !mensaje) {
         alert('Por favor, completa todos los campos');
@@ -4997,7 +5292,20 @@ function enviarNotificacionPersonalizada(button) {
         }
     }
     
-    enviarNotificacionPushConLocalidades(titulo, mensaje, tipo, alcance, localidadesSeleccionadas);
+    // Verificar si hay archivo adjunto
+    let hasAttachments = false;
+    let attachmentUrl = null;
+    let attachmentType = null;
+    
+    if (archivoAdjunto && archivoAdjunto.files.length > 0) {
+        hasAttachments = true;
+        // Aquí se subiría el archivo a Firebase Storage
+        // Por ahora simulamos la URL
+        attachmentUrl = "https://firebasestorage.googleapis.com/...";
+        attachmentType = archivoAdjunto.files[0].type;
+    }
+    
+    enviarNotificacionPushConLocalidades(titulo, mensaje, tipo, alcance, localidadesSeleccionadas, hasAttachments, attachmentUrl, attachmentType);
     modal.remove();
 }
 

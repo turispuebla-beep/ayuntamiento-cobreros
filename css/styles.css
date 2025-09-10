@@ -1592,6 +1592,23 @@ a.btn {
     }
 }
 
+/* Estilos para controles de localidades */
+.localities-controls {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.btn-small {
+    padding: 0.5rem 1rem;
+    font-size: 0.8rem;
+    border-radius: 4px;
+}
+
+.btn-small i {
+    margin-right: 0.25rem;
+}
+
 @media (max-width: 768px) {
     .logout-floating-btn {
         width: 40px;

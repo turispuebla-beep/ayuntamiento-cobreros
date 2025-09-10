@@ -1,0 +1,256 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/ayuntamiento_blue_light">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="24dp">
+
+        <!-- Header con escudo -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:layout_marginBottom="24dp">
+
+            <ImageView
+                android:layout_width="60dp"
+                android:layout_height="60dp"
+                android:src="@drawable/escudo_cobreros"
+                android:contentDescription="Escudo de Cobreros" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="🏛️ Panel de Administración"
+                android:textSize="20sp"
+                android:textStyle="bold"
+                android:textColor="@color/ayuntamiento_blue"
+                android:layout_marginTop="12dp" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Enviar Notificaciones desde APK"
+                android:textSize="16sp"
+                android:textColor="@color/ayuntamiento_blue"
+                android:layout_marginTop="8dp" />
+
+        </LinearLayout>
+
+        <!-- Estadísticas -->
+        <androidx.cardview.widget.CardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="16dp"
+            app:cardCornerRadius="12dp"
+            app:cardElevation="4dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="16dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="📊 Estadísticas"
+                    android:textSize="18sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/ayuntamiento_blue"
+                    android:layout_marginBottom="8dp" />
+
+                <TextView
+                    android:id="@+id/estadisticasTextView"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Cargando estadísticas..."
+                    android:textSize="14sp"
+                    android:textColor="@color/ayuntamiento_blue" />
+
+            </LinearLayout>
+
+        </androidx.cardview.widget.CardView>
+
+        <!-- Formulario de notificación -->
+        <androidx.cardview.widget.CardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="16dp"
+            app:cardCornerRadius="12dp"
+            app:cardElevation="4dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="24dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="📢 Nueva Notificación"
+                    android:textSize="18sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/ayuntamiento_blue"
+                    android:layout_marginBottom="16dp" />
+
+                <!-- Título -->
+                <com.google.android.material.textfield.TextInputLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="16dp"
+                    app:boxStrokeColor="@color/ayuntamiento_blue"
+                    app:hintTextColor="@color/ayuntamiento_blue">
+
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/tituloEditText"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:hint="Título de la notificación *"
+                        android:inputType="textCapSentences"
+                        android:textColor="@color/ayuntamiento_blue" />
+
+                </com.google.android.material.textfield.TextInputLayout>
+
+                <!-- Mensaje -->
+                <com.google.android.material.textfield.TextInputLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="16dp"
+                    app:boxStrokeColor="@color/ayuntamiento_blue"
+                    app:hintTextColor="@color/ayuntamiento_blue">
+
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/mensajeEditText"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:hint="Mensaje de la notificación *"
+                        android:inputType="textCapSentences|textMultiLine"
+                        android:lines="3"
+                        android:textColor="@color/ayuntamiento_blue" />
+
+                </com.google.android.material.textfield.TextInputLayout>
+
+                <!-- Tipo -->
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Tipo de notificación:"
+                    android:textSize="16sp"
+                    android:textColor="@color/ayuntamiento_blue"
+                    android:layout_marginBottom="8dp" />
+
+                <Spinner
+                    android:id="@+id/tipoSpinner"
+                    android:layout_width="match_parent"
+                    android:layout_height="48dp"
+                    android:layout_marginBottom="16dp"
+                    android:background="@drawable/spinner_background" />
+
+                <!-- Alcance -->
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Alcance de la notificación:"
+                    android:textSize="16sp"
+                    android:textColor="@color/ayuntamiento_blue"
+                    android:layout_marginBottom="8dp" />
+
+                <Spinner
+                    android:id="@+id/alcanceSpinner"
+                    android:layout_width="match_parent"
+                    android:layout_height="48dp"
+                    android:layout_marginBottom="16dp"
+                    android:background="@drawable/spinner_background" />
+
+            </LinearLayout>
+
+        </androidx.cardview.widget.CardView>
+
+        <!-- Localidades -->
+        <androidx.cardview.widget.CardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="24dp"
+            app:cardCornerRadius="12dp"
+            app:cardElevation="4dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="24dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="📍 Localidades"
+                    android:textSize="18sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/ayuntamiento_blue"
+                    android:layout_marginBottom="16dp" />
+
+                <!-- Botones de control -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:layout_marginBottom="16dp">
+
+                    <Button
+                        android:id="@+id/seleccionarTodasButton"
+                        android:layout_width="0dp"
+                        android:layout_height="40dp"
+                        android:layout_weight="1"
+                        android:text="Seleccionar Todas"
+                        android:textSize="12sp"
+                        android:background="@drawable/button_outline_ayuntamiento"
+                        android:textColor="@color/ayuntamiento_blue"
+                        android:layout_marginEnd="8dp" />
+
+                    <Button
+                        android:id="@+id/deseleccionarTodasButton"
+                        android:layout_width="0dp"
+                        android:layout_height="40dp"
+                        android:layout_weight="1"
+                        android:text="Deseleccionar Todas"
+                        android:textSize="12sp"
+                        android:background="@drawable/button_outline_ayuntamiento"
+                        android:textColor="@color/ayuntamiento_blue"
+                        android:layout_marginStart="8dp" />
+
+                </LinearLayout>
+
+                <!-- Lista de localidades -->
+                <LinearLayout
+                    android:id="@+id/localitiesLayout"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical" />
+
+            </LinearLayout>
+
+        </androidx.cardview.widget.CardView>
+
+        <!-- Botón de envío -->
+        <Button
+            android:id="@+id/enviarButton"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:text="📤 Enviar Notificación"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            android:background="@drawable/button_ayuntamiento"
+            android:textColor="@android:color/white" />
+
+    </LinearLayout>
+
+</ScrollView>
