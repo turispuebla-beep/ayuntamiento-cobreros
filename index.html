@@ -152,7 +152,7 @@
             <div class="container">
                 <div class="hero-content">
                     <h2>Bienvenidos al Ayuntamiento de Cobreros</h2>
-                    <p>Su portal de servicios municipales y información local</p>
+                    <p>Su portal de servicios municipales e información local</p>
                     <div class="hero-actions">
                         <button class="btn btn-primary btn-large" onclick="scrollToSection('cita-previa')">
                             <i class="fas fa-calendar-alt"></i>
@@ -338,52 +338,8 @@
         <section id="cultura-ocio" class="content-section">
             <div class="container">
                 <h2>Cultura y Ocio</h2>
-                <div class="culture-content">
-                    <div class="events-section">
-                        <h3>Próximos Eventos</h3>
-                        <div class="events-list">
-                            <div class="event-item">
-                                <div class="event-date">
-                                    <span class="day">25</span>
-                                    <span class="month">ENE</span>
-                                </div>
-                                <div class="event-info">
-                                    <h4>Concierto de música clásica</h4>
-                                    <p>Auditorio Municipal - 20:00h</p>
-                                </div>
-                            </div>
-                            <div class="event-item">
-                                <div class="event-date">
-                                    <span class="day">28</span>
-                                    <span class="month">ENE</span>
-                                </div>
-                                <div class="event-info">
-                                    <h4>Taller de pintura para niños</h4>
-                                    <p>Centro Cultural - 17:00h</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="facilities-section">
-                        <h3>Instalaciones Municipales</h3>
-                        <div class="facilities-grid">
-                            <div class="facility-item">
-                                <i class="fas fa-book"></i>
-                                <h4>Biblioteca Municipal</h4>
-                                <p>Lunes a Viernes: 9:00-14:00 y 16:00-20:00</p>
-                            </div>
-                            <div class="facility-item">
-                                <i class="fas fa-dumbbell"></i>
-                                <h4>Polideportivo</h4>
-                                <p>Lunes a Domingo: 7:00-23:00</p>
-                            </div>
-                            <div class="facility-item">
-                                <i class="fas fa-palette"></i>
-                                <h4>Centro Cultural</h4>
-                                <p>Lunes a Viernes: 10:00-14:00 y 16:00-21:00</p>
-                            </div>
-                        </div>
-                    </div>
+                <div class="cultura-tarjetas-container" id="culturaTarjetasContainer">
+                    <!-- Se llenará dinámicamente con tarjetas configurables -->
                 </div>
             </div>
         </section>
@@ -397,6 +353,7 @@
                 </div>
             </div>
         </section>
+
 
     </main>
 
@@ -642,6 +599,19 @@
                         <div class="content-list" id="bandoList"></div>
                     </div>
                     
+                    <!-- Gestión completa de Cultura y Ocio -->
+                    <div class="admin-section">
+                        <h4>🎭 Gestión de Cultura y Ocio</h4>
+                        <div class="content-actions">
+                            <button class="btn btn-primary" onclick="openCulturaOcioManager()">
+                                <i class="fas fa-cog"></i> Gestionar Sección Completa
+                            </button>
+                            <button class="btn btn-secondary" onclick="exportCulturaOcio()">
+                                <i class="fas fa-download"></i> Exportar Todo
+                            </button>
+                        </div>
+                    </div>
+                    
                     <!-- Eventos de Cultura y Ocio -->
                     <div class="admin-section">
                         <h4>Gestionar Eventos</h4>
@@ -855,37 +825,147 @@
                 
                 <!-- Notifications Tab -->
                 <div id="notifications-tab" class="tab-content">
-                    <h3>Gestión de Notificaciones</h3>
-                    <div class="notification-form">
-                        <h4>Enviar Notificación</h4>
+                    <h3>📱 Enviar Notificación</h3>
+                    
+                    <!-- Formulario Principal de Notificación -->
+                    <div class="admin-section">
                         <form id="notificationForm">
                             <div class="form-group">
-                                <label for="notifTitle">Título:</label>
-                                <input type="text" id="notifTitle" name="title" required>
+                                <label for="notifTitle">Título de la notificación:</label>
+                                <input type="text" id="notifTitle" name="title" placeholder="Ej: Nuevo bando municipal" required>
                             </div>
+                            
                             <div class="form-group">
-                                <label for="notifMessage">Mensaje:</label>
-                                <textarea id="notifMessage" name="message" rows="4" required></textarea>
+                                <label for="notifMessage">Mensaje (opcional):</label>
+                                <textarea id="notifMessage" name="message" rows="3" placeholder="Información adicional sobre la notificación..."></textarea>
                             </div>
+                            
                             <div class="form-group">
-                                <label for="notifType">Tipo:</label>
-                                <select id="notifType" name="type">
-                                    <option value="general">General</option>
-                                    <option value="urgent">Urgente</option>
-                                    <option value="event">Evento</option>
+                                <label for="notifType">Tipo de notificación:</label>
+                                <select id="notifType" name="type" required>
+                                    <option value="">Seleccione un tipo</option>
+                                    <option value="bando">📄 Bando Municipal</option>
+                                    <option value="noticia">📰 Noticia</option>
+                                    <option value="evento">🎉 Evento</option>
+                                    <option value="incidencia">⚠️ Incidencia</option>
+                                    <option value="cita">📅 Cita Previa</option>
+                                    <option value="emergencia">🚨 Emergencia</option>
+                                    <option value="general">ℹ️ General</option>
                                 </select>
                             </div>
+                            
                             <div class="form-group">
                                 <label for="notifAttachment">Documento adjunto (opcional):</label>
                                 <input type="file" id="notifAttachment" name="attachment" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png">
                                 <small>Formatos permitidos: PDF, DOC, DOCX, JPG, PNG</small>
                             </div>
-                            <button type="submit" class="btn btn-primary">Enviar Notificación</button>
+                            
+                            <div class="form-group">
+                                <label>Destinatarios:</label>
+                                <div class="destinatarios-options">
+                                    <label class="radio-option">
+                                        <input type="radio" name="destinatarios" value="todos" checked>
+                                        <span>🌍 Todos los usuarios</span>
+                                    </label>
+                                    <label class="radio-option">
+                                        <input type="radio" name="destinatarios" value="localidades">
+                                        <span>🏘️ Localidades específicas</span>
+                                    </label>
+                                </div>
+                            </div>
+                            
+                            <div class="form-group" id="localidadesGroup" style="display: none;">
+                                <label>Seleccionar localidades:</label>
+                                <div class="localidades-checkboxes">
+                                    <label class="checkbox-option">
+                                        <input type="checkbox" name="localidades" value="Cobreros">
+                                        <span>Cobreros</span>
+                                    </label>
+                                    <label class="checkbox-option">
+                                        <input type="checkbox" name="localidades" value="Avedillo de Sanabria">
+                                        <span>Avedillo de Sanabria</span>
+                                    </label>
+                                    <label class="checkbox-option">
+                                        <input type="checkbox" name="localidades" value="Barrio de Lomba">
+                                        <span>Barrio de Lomba</span>
+                                    </label>
+                                    <label class="checkbox-option">
+                                        <input type="checkbox" name="localidades" value="Castro de Sanabria">
+                                        <span>Castro de Sanabria</span>
+                                    </label>
+                                    <label class="checkbox-option">
+                                        <input type="checkbox" name="localidades" value="Limianos">
+                                        <span>Limianos</span>
+                                    </label>
+                                    <label class="checkbox-option">
+                                        <input type="checkbox" name="localidades" value="Quintana de Sanabria">
+                                        <span>Quintana de Sanabria</span>
+                                    </label>
+                                    <label class="checkbox-option">
+                                        <input type="checkbox" name="localidades" value="Riego de Lomba">
+                                        <span>Riego de Lomba</span>
+                                    </label>
+                                    <label class="checkbox-option">
+                                        <input type="checkbox" name="localidades" value="San Martín del Terroso">
+                                        <span>San Martín del Terroso</span>
+                                    </label>
+                                    <label class="checkbox-option">
+                                        <input type="checkbox" name="localidades" value="San Miguel de Lomba">
+                                        <span>San Miguel de Lomba</span>
+                                    </label>
+                                    <label class="checkbox-option">
+                                        <input type="checkbox" name="localidades" value="San Román de Sanabria">
+                                        <span>San Román de Sanabria</span>
+                                    </label>
+                                    <label class="checkbox-option">
+                                        <input type="checkbox" name="localidades" value="Santa Colomba">
+                                        <span>Santa Colomba</span>
+                                    </label>
+                                    <label class="checkbox-option">
+                                        <input type="checkbox" name="localidades" value="Sotillo">
+                                        <span>Sotillo</span>
+                                    </label>
+                                    <label class="checkbox-option">
+                                        <input type="checkbox" name="localidades" value="Terroso">
+                                        <span>Terroso</span>
+                                    </label>
+                                </div>
+                            </div>
+                            
+                            <div class="form-actions">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-paper-plane"></i> Enviar Notificación
+                                </button>
+                                <button type="button" class="btn btn-outline" onclick="limpiarFormularioNotificacion()">
+                                    <i class="fas fa-eraser"></i> Limpiar
+                                </button>
+                            </div>
                         </form>
                     </div>
+                    
+                    <!-- Estadísticas y Historial -->
                     <div class="admin-section">
-                        <h4>Historial de Notificaciones</h4>
-                        <div class="notifications-history" id="notificationsHistory"></div>
+                        <h4>📊 Estadísticas</h4>
+                        <div class="stats-row">
+                            <div class="stat-item">
+                                <span class="stat-number" id="contadorUsuarios">0</span>
+                                <span class="stat-label">Usuarios activos</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-number" id="contadorNotificaciones">0</span>
+                                <span class="stat-label">Notificaciones enviadas</span>
+                            </div>
+                            <button class="btn btn-outline btn-sm" onclick="actualizarEstadisticasNotificaciones()">
+                                <i class="fas fa-sync-alt"></i> Actualizar
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="admin-section">
+                        <h4>📋 Historial de Notificaciones</h4>
+                        <div class="notifications-history" id="notificationsHistory">
+                            <!-- Se cargará dinámicamente -->
+                        </div>
                     </div>
                 </div>
                 
@@ -997,71 +1077,12 @@
                         </p>
                     </div>
                     
-                    <!-- Notificaciones Push - TURISTEAM -->
-                    <div class="admin-section">
-                        <h4>📱 Notificaciones Push - TURISTEAM</h4>
-                        <div class="form-group">
-                            <button class="btn btn-primary" onclick="abrirModalNotificacion()">
-                                <i class="fas fa-bell"></i> Enviar Notificación
-                            </button>
-                            <button class="btn btn-secondary" onclick="enviarNotificacionEmergencia('Mensaje de prueba de emergencia')">
-                                <i class="fas fa-exclamation-triangle"></i> Prueba Emergencia
-                            </button>
-                        </div>
-                        <div class="form-group">
-                            <h5>Notificaciones Automáticas:</h5>
-                            <button class="btn btn-outline" onclick="enviarNotificacionCita('Juan Pérez', '15 de Enero', '10:00')">
-                                <i class="fas fa-calendar-check"></i> Prueba Cita
-                            </button>
-                            <button class="btn btn-outline" onclick="enviarNotificacionEvento('Fiesta del Pueblo', '20 de Enero', 'Celebración anual del pueblo')">
-                                <i class="fas fa-calendar-alt"></i> Prueba Evento
-                            </button>
-                            <button class="btn btn-outline" onclick="enviarNotificacionBando('Bando de Limpieza')">
-                                <i class="fas fa-file-alt"></i> Prueba Bando
-                            </button>
-                        </div>
-                        <div class="form-group">
-                            <h5>📊 Estadísticas:</h5>
-                            <p id="usuariosNotificaciones">Usuarios con notificaciones activadas: <span id="contadorUsuarios">0</span></p>
-                            <button class="btn btn-outline" onclick="actualizarEstadisticasNotificaciones()">
-                                <i class="fas fa-sync-alt"></i> Actualizar
-                            </button>
-                        </div>
-                        <p style="margin-top: 10px; color: #666; font-size: 0.9em;">
-                            Sistema de notificaciones push integrado con Firebase Cloud Messaging
-                        </p>
-                    </div>
-                    
-                    <!-- Descarga de APK -->
-                    <div class="admin-section">
-                        <h4>📲 Aplicación Móvil - TURISTEAM</h4>
-                        <div class="form-group">
-                            <button class="btn btn-success" onclick="mostrarDescargaAPK()">
-                                <i class="fas fa-download"></i> Configurar Descarga APK
-                            </button>
-                        </div>
-                        <p style="margin-top: 10px; color: #666; font-size: 0.9em;">
-                            Los ciudadanos podrán descargar la aplicación móvil desde la web del ayuntamiento
-                        </p>
-                    </div>
-                    
-                    <!-- Herramientas adicionales -->
-                    <div class="admin-section">
-                        <h4>🛠️ Herramientas</h4>
-                        <div class="form-group">
-                            <button class="btn btn-secondary" onclick="openCustomModal()">
-                                <i class="fas fa-plus"></i> Modal en Blanco
-                            </button>
-                            <p style="margin-top: 10px; color: #666; font-size: 0.9em;">
-                                Modal reutilizable para nuevas funcionalidades
-                            </p>
-                        </div>
-                    </div>
                     
                     <div class="admin-section">
-                        <h4 id="medicalSectionTitle">🏥 Consultas Médicas</h4>
+                        <h4 id="medicalSectionTitle">🏥 CONSULTORIO MÉDICO</h4>
                         <div class="form-group">
-                            <button class="btn btn-primary" onclick="addServicio('medical')">➕ Añadir Consulta Médica</button>
+                            <button class="btn btn-primary" onclick="editConsultorioDocumentos()">📄 Gestionar Documentos</button>
+                            <button class="btn btn-secondary" onclick="editConsultorioFotos()">📸 Gestionar Fotos</button>
                         </div>
                         <div id="medicalList"></div>
                     </div>
@@ -1485,6 +1506,338 @@
             <div class="modal-footer" id="genericModalFooter">
                 <button class="btn btn-outline" onclick="closeGenericModal()">Cancelar</button>
                 <button class="btn btn-primary" onclick="genericModalAction()">Aceptar</button>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- Modal Gestionar Documentos Consultorio -->
+    <div id="consultorioDocumentosModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>📄 Gestionar Documentos del Consultorio Médico</h3>
+                <span class="close" onclick="closeConsultorioDocumentosModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="documentos-section">
+                    <h4>Subir Nuevo Documento</h4>
+                    <form id="consultorioDocumentoForm" enctype="multipart/form-data">
+                        <div class="form-group">
+                            <label for="documentoTitulo">Título del documento:</label>
+                            <input type="text" id="documentoTitulo" placeholder="Ej: Horarios del Consultorio 2024" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="documentoFile">Archivo PDF:</label>
+                            <input type="file" id="documentoFile" accept=".pdf" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Subir Documento</button>
+                    </form>
+                </div>
+                <div class="documentos-section">
+                    <h4>Documentos Actuales</h4>
+                    <div id="consultorioDocumentosList">
+                        <!-- Los documentos se cargarán dinámicamente -->
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline" onclick="closeConsultorioDocumentosModal()">Cerrar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Gestionar Fotos Consultorio -->
+    <div id="consultorioFotosModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>📸 Gestionar Fotos del Consultorio</h3>
+                <span class="close" onclick="closeConsultorioFotosModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="fotos-section">
+                    <h4>Subir Nueva Foto</h4>
+                    <form id="consultorioFotoForm" enctype="multipart/form-data">
+                        <div class="form-group">
+                            <label for="fotoTitulo">Título de la foto:</label>
+                            <input type="text" id="fotoTitulo" placeholder="Ej: Consultorio Principal" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="fotoFile">Archivo de imagen:</label>
+                            <input type="file" id="fotoFile" accept="image/*" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Subir Foto</button>
+                    </form>
+                </div>
+                <div class="fotos-section">
+                    <h4>Fotos Actuales</h4>
+                    <div id="consultorioFotosList">
+                        <!-- Las fotos se cargarán dinámicamente -->
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline" onclick="closeConsultorioFotosModal()">Cerrar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para crear/editar eventos -->
+    <div id="eventModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="eventModalTitle">🎉 Nuevo Evento</h3>
+                <span class="close" onclick="closeEventModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form id="eventForm">
+                    <input type="hidden" id="eventId" name="id">
+                    <div class="form-group">
+                        <label for="eventTitle">Título del evento:</label>
+                        <input type="text" id="eventTitle" name="title" placeholder="Ej: Concierto de música clásica" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="eventDescription">Descripción:</label>
+                        <textarea id="eventDescription" name="description" rows="3" placeholder="Descripción detallada del evento..." required></textarea>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="eventDate">Fecha:</label>
+                            <input type="date" id="eventDate" name="date" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="eventTime">Hora:</label>
+                            <input type="time" id="eventTime" name="time" required>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="eventLocation">Ubicación:</label>
+                        <input type="text" id="eventLocation" name="location" placeholder="Ej: Auditorio Municipal" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="eventCategory">Categoría:</label>
+                        <select id="eventCategory" name="category" required>
+                            <option value="">Seleccione una categoría</option>
+                            <option value="cultura">🎭 Cultura</option>
+                            <option value="deporte">⚽ Deporte</option>
+                            <option value="educacion">📚 Educación</option>
+                            <option value="musica">🎵 Música</option>
+                            <option value="arte">🎨 Arte</option>
+                            <option value="teatro">🎭 Teatro</option>
+                            <option value="fiesta">🎉 Fiesta</option>
+                            <option value="conferencia">💼 Conferencia</option>
+                            <option value="otros">🔸 Otros</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="eventImage">Imagen del evento (opcional):</label>
+                        <input type="file" id="eventImage" name="image" accept=".jpg,.jpeg,.png,.gif">
+                        <small>Formatos permitidos: JPG, PNG, GIF</small>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline" onclick="closeEventModal()">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="saveEvent()">
+                    <i class="fas fa-save"></i> Guardar Evento
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para gestionar Cultura y Ocio -->
+    <div id="culturaOcioModal" class="modal">
+        <div class="modal-content" style="max-width: 1000px;">
+            <div class="modal-header">
+                <h3>🎭 Gestión de Cultura y Ocio</h3>
+                <span class="close" onclick="closeCulturaOcioModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="cultura-tabs">
+                    <button class="tab-btn active" onclick="switchCulturaTab('contenido')">📝 Contenido</button>
+                    <button class="tab-btn" onclick="switchCulturaTab('tarjetas')">🃏 Tarjetas</button>
+                    <button class="tab-btn" onclick="switchCulturaTab('eventos')">🎉 Eventos</button>
+                </div>
+                
+                <!-- Tab de Contenido -->
+                <div id="cultura-contenido-tab" class="tab-content active">
+                    <div class="form-group">
+                        <label for="culturaTitulo">Título de la sección:</label>
+                        <input type="text" id="culturaTitulo" value="Cultura y Ocio">
+                    </div>
+                    <div class="form-group">
+                        <label for="culturaDescripcion">Descripción principal:</label>
+                        <textarea id="culturaDescripcion" rows="4" placeholder="Descripción de la sección de Cultura y Ocio..."></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="culturaSubtitle">Subtítulo de eventos:</label>
+                        <input type="text" id="culturaSubtitle" value="Próximos Eventos">
+                    </div>
+                </div>
+                
+                <!-- Tab de Eventos -->
+                <div id="cultura-eventos-tab" class="tab-content">
+                    <div class="content-actions">
+                        <button class="btn btn-primary" onclick="openEventEditor()">
+                            <i class="fas fa-plus"></i> Nuevo Evento
+                        </button>
+                        <button class="btn btn-secondary" onclick="exportEvents()">
+                            <i class="fas fa-download"></i> Exportar Eventos
+                        </button>
+                    </div>
+                    <div class="content-list" id="culturaEventsList">
+                        <!-- Se cargará dinámicamente -->
+                    </div>
+                </div>
+                
+                <!-- Tab de Instalaciones -->
+                <div id="cultura-instalaciones-tab" class="tab-content">
+                    <div class="content-actions">
+                        <button class="btn btn-primary" onclick="addCulturaInstalacion()">
+                            <i class="fas fa-plus"></i> Nueva Instalación
+                        </button>
+                    </div>
+                    <div class="content-list" id="culturaInstalacionesList">
+                        <!-- Se cargará dinámicamente -->
+                    </div>
+                </div>
+                
+                <!-- Tab de Tarjetas -->
+                <div id="cultura-tarjetas-tab" class="tab-content">
+                    <div class="content-actions">
+                        <button class="btn btn-primary" onclick="addCulturaTarjeta()">
+                            <i class="fas fa-plus"></i> Nueva Tarjeta
+                        </button>
+                    </div>
+                    <div class="content-list" id="culturaTarjetasList">
+                        <!-- Se cargará dinámicamente -->
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline" onclick="closeCulturaOcioModal()">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="saveCulturaOcio()">
+                    <i class="fas fa-save"></i> Guardar Cambios
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para editar elementos de tarjetas -->
+    <div id="elementoModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="elementoModalTitle">✏️ Editar Elemento</h3>
+                <span class="close" onclick="closeElementoModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form id="elementoForm">
+                    <input type="hidden" id="elementoId" name="id">
+                    <input type="hidden" id="elementoTarjetaId" name="tarjetaId">
+                    <input type="hidden" id="elementoIndex" name="index">
+                    
+                    <div class="form-group">
+                        <label for="elementoTitulo">Título del elemento (con emoji):</label>
+                        <input type="text" id="elementoTitulo" name="titulo" placeholder="Ej: 📚 Biblioteca Municipal" required>
+                        <small>💡 Tip: Puedes usar emojis para hacer más atractivo el título</small>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="elementoDescripcion">Descripción:</label>
+                        <textarea id="elementoDescripcion" name="descripcion" rows="3" placeholder="Descripción detallada del elemento..." required></textarea>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>
+                            <input type="checkbox" id="elementoEsEnlace" name="esEnlace">
+                            Es un enlace (marcar si quieres que sea clickeable)
+                        </label>
+                    </div>
+                    
+                    <div class="form-group" id="elementoEnlaceGroup" style="display: none;">
+                        <label for="elementoEnlace">URL del enlace:</label>
+                        <input type="url" id="elementoEnlace" name="enlace" placeholder="Ej: #biblioteca o https://ejemplo.com">
+                        <small>💡 Tip: Usa #nombre para enlaces internos o URL completa para externos</small>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="elementoOrden">Orden de aparición:</label>
+                        <input type="number" id="elementoOrden" name="orden" min="1" value="1">
+                        <small>Los elementos se mostrarán en este orden dentro de la tarjeta</small>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline" onclick="closeElementoModal()">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="saveElemento()">
+                    <i class="fas fa-save"></i> Guardar Elemento
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para configurar tarjetas completas -->
+    <div id="tarjetaConfigModal" class="modal">
+        <div class="modal-content" style="max-width: 800px;">
+            <div class="modal-header">
+                <h3 id="tarjetaConfigModalTitle">🃏 Configurar Tarjeta</h3>
+                <span class="close" onclick="closeTarjetaConfigModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form id="tarjetaConfigForm">
+                    <input type="hidden" id="tarjetaConfigId" name="id">
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="tarjetaConfigTitulo">Título de la tarjeta (con emoji):</label>
+                            <input type="text" id="tarjetaConfigTitulo" name="titulo" placeholder="Ej: 🎭 Cultura y Ocio" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="tarjetaConfigIcono">Icono (clase FontAwesome):</label>
+                            <input type="text" id="tarjetaConfigIcono" name="icono" placeholder="Ej: fas fa-theater-masks" required>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="tarjetaConfigDescripcion">Descripción de la tarjeta:</label>
+                        <textarea id="tarjetaConfigDescripcion" name="descripcion" rows="2" placeholder="Breve descripción de lo que contiene esta tarjeta..." required></textarea>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="tarjetaConfigColor">Color de la tarjeta:</label>
+                            <input type="color" id="tarjetaConfigColor" name="color" value="#3b82f6">
+                        </div>
+                        <div class="form-group">
+                            <label for="tarjetaConfigOrden">Orden de aparición:</label>
+                            <input type="number" id="tarjetaConfigOrden" name="orden" min="1" value="1">
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>
+                            <input type="checkbox" id="tarjetaConfigActiva" name="activa" checked>
+                            Tarjeta activa (visible en la página)
+                        </label>
+                    </div>
+                </form>
+                
+                <div class="elementos-section">
+                    <div class="section-header">
+                        <h4>📋 Elementos de la Tarjeta</h4>
+                        <button type="button" class="btn btn-primary btn-sm" onclick="openElementoEditor()">
+                            <i class="fas fa-plus"></i> Agregar Elemento
+                        </button>
+                    </div>
+                    <div class="elementos-list" id="tarjetaElementosList">
+                        <!-- Se cargará dinámicamente -->
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline" onclick="closeTarjetaConfigModal()">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="saveTarjetaConfig()">
+                    <i class="fas fa-save"></i> Guardar Tarjeta
+                </button>
             </div>
         </div>
     </div>

@@ -32,6 +32,8 @@ document.addEventListener('DOMContentLoaded', function() {
     loadAdministrators();
     loadDocuments();
     loadEvents();
+    renderEventos();
+    updateCulturaOcioSection();
     loadQuickAccess();
     
     // Migrar usuarios a Firestore si es necesario
@@ -62,6 +64,13 @@ function initializeApp() {
         isAdmin = true; // Super admin también es admin
         document.getElementById('adminBtn').style.display = 'block';
     }
+
+    // Inicializar configuración del consultorio médico
+    loadConsultorioConfig();
+    
+    // Configurar formulario de notificaciones
+    setupNotificationForm();
+    
 
     // Configurar notificaciones push
     if ('Notification' in window && Notification.permission === 'default') {
@@ -1217,15 +1226,13 @@ function updateUserInterface() {
     if (currentUser) {
         // Mostrar nombre del usuario (sin revelar que es super admin)
         const displayName = currentUser.name;
-        document.getElementById('loginBtn').textContent = displayName;
         document.getElementById('registerBtn').style.display = 'none';
-        // El botón de acceso admin siempre visible (comentado para mantenerlo siempre visible)
-        // document.getElementById('adminLoginBtn').style.display = 'none';
         
-        // Mostrar botón de logout
-        document.getElementById('loginBtn').onclick = logout;
-        document.getElementById('loginBtn').style.background = '#ef4444';
+        // Mostrar botón de logout con estilo distintivo
         document.getElementById('loginBtn').textContent = `Cerrar Sesión (${displayName})`;
+        document.getElementById('loginBtn').onclick = logout;
+        document.getElementById('loginBtn').className = 'btn btn-outline btn-logout';
+        document.getElementById('loginBtn').title = 'Cerrar sesión';
         
         if (isAdmin) {
             document.getElementById('adminBtn').style.display = 'block';
@@ -1240,7 +1247,8 @@ function updateUserInterface() {
         // Mostrar botones de login para usuarios no autenticados
         document.getElementById('loginBtn').textContent = 'Iniciar Sesión';
         document.getElementById('loginBtn').onclick = () => openModal('loginModal');
-        document.getElementById('loginBtn').style.background = '';
+        document.getElementById('loginBtn').className = 'btn btn-outline';
+        document.getElementById('loginBtn').title = 'Iniciar sesión';
         document.getElementById('registerBtn').style.display = 'block';
         // El botón de acceso admin siempre visible (comentado para mantenerlo siempre visible)
         // document.getElementById('adminLoginBtn').style.display = 'block';
@@ -2312,6 +2320,1114 @@ function exportEvents() {
     link.click();
     URL.revokeObjectURL(url);
     showNotification('Eventos exportados correctamente', 'success');
+}
+
+// Funciones para gestionar eventos
+function openEventEditor(eventId = null) {
+    const modal = document.getElementById('eventModal');
+    const modalTitle = document.getElementById('eventModalTitle');
+    const form = document.getElementById('eventForm');
+    
+    if (eventId) {
+        // Editar evento existente
+        const event = events.find(e => e.id === eventId);
+        if (event) {
+            modalTitle.textContent = '✏️ Editar Evento';
+            document.getElementById('eventId').value = event.id;
+            document.getElementById('eventTitle').value = event.title;
+            document.getElementById('eventDescription').value = event.description;
+            document.getElementById('eventDate').value = event.date;
+            document.getElementById('eventTime').value = event.time;
+            document.getElementById('eventLocation').value = event.location;
+            document.getElementById('eventCategory').value = event.category;
+        }
+    } else {
+        // Nuevo evento
+        modalTitle.textContent = '🎉 Nuevo Evento';
+        form.reset();
+        document.getElementById('eventId').value = '';
+    }
+    
+    openModal('eventModal');
+}
+
+function closeEventModal() {
+    closeModal('eventModal');
+}
+
+function saveEvent() {
+    const form = document.getElementById('eventForm');
+    const formData = new FormData(form);
+    
+    const eventData = {
+        title: formData.get('title'),
+        description: formData.get('description'),
+        date: formData.get('date'),
+        time: formData.get('time'),
+        location: formData.get('location'),
+        category: formData.get('category'),
+        image: formData.get('image')?.name || null
+    };
+    
+    const eventId = document.getElementById('eventId').value;
+    
+    if (eventId) {
+        // Actualizar evento existente
+        const eventIndex = events.findIndex(e => e.id === parseInt(eventId));
+        if (eventIndex !== -1) {
+            events[eventIndex] = {
+                ...events[eventIndex],
+                ...eventData,
+                updatedAt: new Date().toISOString()
+            };
+            showNotification('Evento actualizado correctamente', 'success');
+        }
+    } else {
+        // Crear nuevo evento
+        const newEvent = {
+            id: Date.now(),
+            ...eventData,
+            createdBy: currentUser ? currentUser.name : 'admin',
+            createdAt: new Date().toISOString()
+        };
+        events.push(newEvent);
+        showNotification('Evento creado correctamente', 'success');
+    }
+    
+    // Guardar en localStorage
+    localStorage.setItem('events', JSON.stringify(events));
+    
+    // Actualizar la lista de eventos
+    loadEventsList();
+    renderEventos();
+    
+    // Cerrar modal
+    closeEventModal();
+}
+
+function editEvent(eventId) {
+    openEventEditor(eventId);
+}
+
+function deleteEvent(eventId) {
+    if (confirm('¿Estás seguro de que quieres eliminar este evento?')) {
+        events = events.filter(e => e.id !== eventId);
+        localStorage.setItem('events', JSON.stringify(events));
+        loadEventsList();
+        renderEventos();
+        showNotification('Evento eliminado correctamente', 'success');
+    }
+}
+
+// Función para renderizar eventos en la página principal
+function renderEventos() {
+    const eventosContent = document.getElementById('eventosContent');
+    if (!eventosContent) return;
+    
+    // Buscar la sección de eventos en cultura-ocio
+    const culturaOcioSection = document.getElementById('cultura-ocio');
+    if (!culturaOcioSection) return;
+    
+    let eventosSection = culturaOcioSection.querySelector('.eventos-section');
+    if (!eventosSection) {
+        eventosSection = document.createElement('div');
+        eventosSection.className = 'eventos-section';
+        eventosSection.innerHTML = '<h3>🎉 Próximos Eventos</h3><div class="eventos-grid" id="eventosGrid"></div>';
+        culturaOcioSection.appendChild(eventosSection);
+    }
+    
+    const eventosGrid = eventosSection.querySelector('#eventosGrid') || eventosSection.querySelector('.eventos-grid');
+    if (!eventosGrid) return;
+    
+    eventosGrid.innerHTML = '';
+    
+    if (events.length === 0) {
+        eventosGrid.innerHTML = '<p>No hay eventos programados en este momento.</p>';
+        return;
+    }
+    
+    // Filtrar eventos futuros y ordenar por fecha
+    const today = new Date().toISOString().split('T')[0];
+    const upcomingEvents = events
+        .filter(event => event.date >= today)
+        .sort((a, b) => new Date(a.date) - new Date(b.date))
+        .slice(0, 6); // Mostrar máximo 6 eventos
+    
+    upcomingEvents.forEach(event => {
+        const eventCard = document.createElement('div');
+        eventCard.className = 'event-card';
+        
+        const eventDate = new Date(event.date);
+        const day = eventDate.getDate();
+        const month = eventDate.toLocaleDateString('es-ES', { month: 'short' }).toUpperCase();
+        
+        eventCard.innerHTML = `
+            <div class="event-date">
+                <span class="event-day">${day}</span>
+                <span class="event-month">${month}</span>
+            </div>
+            <div class="event-info">
+                <h4>${event.title}</h4>
+                <p class="event-description">${event.description}</p>
+                <div class="event-details">
+                    <span class="event-time">🕐 ${event.time}</span>
+                    <span class="event-location">📍 ${event.location}</span>
+                </div>
+                <span class="event-category">${getCategoryIcon(event.category)} ${event.category}</span>
+            </div>
+        `;
+        
+        eventosGrid.appendChild(eventCard);
+    });
+}
+
+function getCategoryIcon(category) {
+    const icons = {
+        cultura: '🎭',
+        deporte: '⚽',
+        educacion: '📚',
+        musica: '🎵',
+        arte: '🎨',
+        teatro: '🎭',
+        fiesta: '🎉',
+        conferencia: '💼',
+        otros: '🔸'
+    };
+    return icons[category] || '🔸';
+}
+
+// Variables para gestión de Cultura y Ocio
+let culturaOcioConfig = {
+    titulo: 'Cultura y Ocio',
+    tarjetas: [
+        {
+            id: 1,
+            titulo: '🎭 Cultura y Ocio',
+            descripcion: 'Actividades culturales y de ocio',
+            icono: 'fas fa-theater-masks',
+            color: '#3b82f6',
+            elementos: [
+                {
+                    id: 1,
+                    titulo: '📚 Biblioteca Municipal',
+                    descripcion: 'Lunes a Viernes: 9:00-14:00 y 16:00-20:00',
+                    enlace: '#biblioteca',
+                    esEnlace: true
+                },
+                {
+                    id: 2,
+                    titulo: '🏃 Polideportivo',
+                    descripcion: 'Lunes a Domingo: 7:00-23:00',
+                    enlace: '#polideportivo',
+                    esEnlace: true
+                },
+                {
+                    id: 3,
+                    titulo: '🎨 Centro Cultural',
+                    descripcion: 'Lunes a Viernes: 10:00-14:00 y 16:00-21:00',
+                    enlace: '#centro-cultural',
+                    esEnlace: true
+                },
+                {
+                    id: 4,
+                    titulo: '🎵 Talleres Musicales',
+                    descripcion: 'Clases de música para todas las edades',
+                    enlace: '#talleres-musicales',
+                    esEnlace: true
+                }
+            ],
+            orden: 1,
+            activa: true
+        },
+        {
+            id: 2,
+            titulo: '🎉 Próximos Eventos',
+            descripcion: 'Eventos y actividades programadas',
+            icono: 'fas fa-calendar-alt',
+            color: '#10b981',
+            elementos: [
+                {
+                    id: 1,
+                    titulo: '🎼 Concierto de música clásica',
+                    descripcion: 'Auditorio Municipal - 20:00h',
+                    enlace: '#concierto-clasica',
+                    esEnlace: false
+                },
+                {
+                    id: 2,
+                    titulo: '🎨 Taller de pintura para niños',
+                    descripcion: 'Centro Cultural - 17:00h',
+                    enlace: '#taller-pintura',
+                    esEnlace: false
+                },
+                {
+                    id: 3,
+                    titulo: '📖 Club de lectura',
+                    descripcion: 'Biblioteca Municipal - 19:00h',
+                    enlace: '#club-lectura',
+                    esEnlace: false
+                }
+            ],
+            orden: 2,
+            activa: true
+        }
+    ]
+};
+
+// Funciones para gestionar Cultura y Ocio
+function openCulturaOcioManager() {
+    loadCulturaOcioConfig();
+    openModal('culturaOcioModal');
+    switchCulturaTab('contenido');
+}
+
+function closeCulturaOcioModal() {
+    closeModal('culturaOcioModal');
+}
+
+function switchCulturaTab(tabName) {
+    // Ocultar todas las pestañas
+    document.querySelectorAll('#culturaOcioModal .tab-content').forEach(tab => {
+        tab.classList.remove('active');
+    });
+    
+    // Remover clase active de todos los botones
+    document.querySelectorAll('#culturaOcioModal .tab-btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    
+    // Mostrar la pestaña seleccionada
+    document.getElementById(`cultura-${tabName}-tab`).classList.add('active');
+    
+    // Activar el botón correspondiente
+    event.target.classList.add('active');
+    
+    // Cargar contenido específico de la pestaña
+    switch(tabName) {
+        case 'eventos':
+            loadCulturaEventsList();
+            break;
+        case 'tarjetas':
+            loadCulturaTarjetasList();
+            break;
+    }
+}
+
+function loadCulturaOcioConfig() {
+    const saved = localStorage.getItem('culturaOcioConfig');
+    if (saved) {
+        culturaOcioConfig = JSON.parse(saved);
+    }
+    
+    document.getElementById('culturaTitulo').value = culturaOcioConfig.titulo;
+}
+
+function saveCulturaOcio() {
+    culturaOcioConfig.titulo = document.getElementById('culturaTitulo').value;
+    
+    localStorage.setItem('culturaOcioConfig', JSON.stringify(culturaOcioConfig));
+    
+    // Actualizar la sección en la página principal
+    updateCulturaOcioSection();
+    
+    showNotification('Configuración de Cultura y Ocio guardada correctamente', 'success');
+    closeCulturaOcioModal();
+}
+
+function loadCulturaTarjetasList() {
+    const tarjetasList = document.getElementById('culturaTarjetasList');
+    if (!tarjetasList) return;
+    
+    tarjetasList.innerHTML = '';
+    
+    culturaOcioConfig.tarjetas.forEach(tarjeta => {
+        const tarjetaItem = document.createElement('div');
+        tarjetaItem.className = 'tarjeta-item';
+        tarjetaItem.style.cssText = 'border: 1px solid #e5e7eb; border-radius: 8px; padding: 1rem; margin-bottom: 1rem; background: #f9fafb;';
+        
+        tarjetaItem.innerHTML = `
+            <div style="display: flex; justify-content: space-between; align-items: start;">
+                <div style="flex: 1;">
+                    <h4><i class="${tarjeta.icono}" style="color: ${tarjeta.color}"></i> ${tarjeta.titulo}</h4>
+                    <p>${tarjeta.descripcion}</p>
+                    <p><strong>Elementos:</strong> ${tarjeta.elementos.length}</p>
+                    <p><strong>Orden:</strong> ${tarjeta.orden}</p>
+                    <p><strong>Estado:</strong> ${tarjeta.activa ? 'Activa' : 'Inactiva'}</p>
+                </div>
+                <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+                    <button class="btn btn-primary btn-small" onclick="editCulturaTarjeta(${tarjeta.id})">
+                        <i class="fas fa-edit"></i> Editar
+                    </button>
+                    <button class="btn btn-secondary btn-small" onclick="editCulturaTarjetaElementos(${tarjeta.id})">
+                        <i class="fas fa-list"></i> Elementos
+                    </button>
+                    <button class="btn btn-danger btn-small" onclick="deleteCulturaTarjeta(${tarjeta.id})">
+                        <i class="fas fa-trash"></i> Eliminar
+                    </button>
+                </div>
+            </div>
+        `;
+        tarjetasList.appendChild(tarjetaItem);
+    });
+}
+
+function addCulturaTarjeta() {
+    // Limpiar formulario
+    document.getElementById('tarjetaConfigForm').reset();
+    document.getElementById('tarjetaConfigId').value = '';
+    document.getElementById('tarjetaConfigModalTitle').textContent = '🃏 Nueva Tarjeta';
+    
+    // Cargar elementos vacíos
+    loadTarjetaElementosList();
+    
+    openModal('tarjetaConfigModal');
+}
+
+function editCulturaTarjeta(tarjetaId) {
+    const tarjeta = culturaOcioConfig.tarjetas.find(t => t.id === tarjetaId);
+    if (!tarjeta) return;
+    
+    // Llenar formulario con datos existentes
+    document.getElementById('tarjetaConfigId').value = tarjeta.id;
+    document.getElementById('tarjetaConfigTitulo').value = tarjeta.titulo;
+    document.getElementById('tarjetaConfigDescripcion').value = tarjeta.descripcion;
+    document.getElementById('tarjetaConfigIcono').value = tarjeta.icono;
+    document.getElementById('tarjetaConfigColor').value = tarjeta.color;
+    document.getElementById('tarjetaConfigOrden').value = tarjeta.orden;
+    document.getElementById('tarjetaConfigActiva').checked = tarjeta.activa;
+    
+    document.getElementById('tarjetaConfigModalTitle').textContent = '✏️ Editar Tarjeta';
+    
+    // Cargar elementos de la tarjeta
+    loadTarjetaElementosList(tarjetaId);
+    
+    openModal('tarjetaConfigModal');
+}
+
+function deleteCulturaTarjeta(tarjetaId) {
+    if (confirm('¿Estás seguro de que quieres eliminar esta tarjeta?')) {
+        culturaOcioConfig.tarjetas = culturaOcioConfig.tarjetas.filter(t => t.id !== tarjetaId);
+        localStorage.setItem('culturaOcioConfig', JSON.stringify(culturaOcioConfig));
+        
+        loadCulturaTarjetasList();
+        updateCulturaOcioSection();
+        showNotification('Tarjeta eliminada correctamente', 'success');
+    }
+}
+
+function editCulturaTarjetaElementos(tarjetaId) {
+    const tarjeta = culturaOcioConfig.tarjetas.find(t => t.id === tarjetaId);
+    if (!tarjeta) return;
+    
+    const accion = prompt(`Gestión de elementos para "${tarjeta.titulo}":\n1 - Agregar elemento\n2 - Ver elementos\n3 - Editar elemento\n4 - Eliminar elemento\n\nEscribe el número (1-4):`);
+    
+    switch(accion) {
+        case '1':
+            addCulturaTarjetaElemento(tarjetaId);
+            break;
+        case '2':
+            showCulturaTarjetaElementos(tarjetaId);
+            break;
+        case '3':
+            editCulturaTarjetaElemento(tarjetaId);
+            break;
+        case '4':
+            deleteCulturaTarjetaElemento(tarjetaId);
+            break;
+        default:
+            showNotification('Opción no válida', 'error');
+    }
+}
+
+function addCulturaTarjetaElemento(tarjetaId) {
+    const tarjeta = culturaOcioConfig.tarjetas.find(t => t.id === tarjetaId);
+    if (!tarjeta) return;
+    
+    const titulo = prompt('Título del elemento (con emoji):');
+    if (!titulo) return;
+    
+    const descripcion = prompt('Descripción del elemento:');
+    if (!descripcion) return;
+    
+    const esEnlace = confirm('¿Es un enlace? (Aceptar = Sí, Cancelar = No)');
+    let enlace = '';
+    if (esEnlace) {
+        enlace = prompt('URL del enlace (ej: #enlace o https://...):', '#');
+        if (enlace === null) return;
+    }
+    
+    const nuevoElemento = {
+        id: Date.now(),
+        titulo: titulo,
+        descripcion: descripcion,
+        enlace: enlace,
+        esEnlace: esEnlace
+    };
+    
+    tarjeta.elementos.push(nuevoElemento);
+    localStorage.setItem('culturaOcioConfig', JSON.stringify(culturaOcioConfig));
+    
+    loadCulturaTarjetasList();
+    updateCulturaOcioSection();
+    showNotification('Elemento agregado correctamente', 'success');
+}
+
+function showCulturaTarjetaElementos(tarjetaId) {
+    const tarjeta = culturaOcioConfig.tarjetas.find(t => t.id === tarjetaId);
+    if (!tarjeta) return;
+    
+    let mensaje = `Elementos de "${tarjeta.titulo}":\n\n`;
+    tarjeta.elementos.forEach((elemento, index) => {
+        mensaje += `${index + 1}. ${elemento.titulo}\n`;
+        mensaje += `   ${elemento.descripcion}\n`;
+        mensaje += `   ${elemento.esEnlace ? '🔗 Enlace: ' + elemento.enlace : '📄 Solo información'}\n\n`;
+    });
+    
+    alert(mensaje);
+}
+
+function editCulturaTarjetaElemento(tarjetaId) {
+    const tarjeta = culturaOcioConfig.tarjetas.find(t => t.id === tarjetaId);
+    if (!tarjeta || tarjeta.elementos.length === 0) {
+        showNotification('No hay elementos para editar', 'error');
+        return;
+    }
+    
+    let listaElementos = `Selecciona el elemento a editar:\n\n`;
+    tarjeta.elementos.forEach((elemento, index) => {
+        listaElementos += `${index + 1}. ${elemento.titulo}\n`;
+    });
+    
+    const seleccion = prompt(listaElementos + '\nEscribe el número del elemento:');
+    const indice = parseInt(seleccion) - 1;
+    
+    if (indice >= 0 && indice < tarjeta.elementos.length) {
+        const elemento = tarjeta.elementos[indice];
+        
+        const titulo = prompt('Título del elemento (con emoji):', elemento.titulo);
+        if (titulo === null) return;
+        
+        const descripcion = prompt('Descripción del elemento:', elemento.descripcion);
+        if (descripcion === null) return;
+        
+        const esEnlace = confirm('¿Es un enlace? (Aceptar = Sí, Cancelar = No)');
+        let enlace = elemento.enlace;
+        if (esEnlace && elemento.esEnlace) {
+            enlace = prompt('URL del enlace:', elemento.enlace);
+            if (enlace === null) return;
+        } else if (esEnlace && !elemento.esEnlace) {
+            enlace = prompt('URL del enlace:', '#');
+            if (enlace === null) return;
+        }
+        
+        elemento.titulo = titulo;
+        elemento.descripcion = descripcion;
+        elemento.enlace = enlace;
+        elemento.esEnlace = esEnlace;
+        
+        localStorage.setItem('culturaOcioConfig', JSON.stringify(culturaOcioConfig));
+        
+        loadCulturaTarjetasList();
+        updateCulturaOcioSection();
+        showNotification('Elemento actualizado correctamente', 'success');
+    } else {
+        showNotification('Número de elemento no válido', 'error');
+    }
+}
+
+function deleteCulturaTarjetaElemento(tarjetaId) {
+    const tarjeta = culturaOcioConfig.tarjetas.find(t => t.id === tarjetaId);
+    if (!tarjeta || tarjeta.elementos.length === 0) {
+        showNotification('No hay elementos para eliminar', 'error');
+        return;
+    }
+    
+    let listaElementos = `Selecciona el elemento a eliminar:\n\n`;
+    tarjeta.elementos.forEach((elemento, index) => {
+        listaElementos += `${index + 1}. ${elemento.titulo}\n`;
+    });
+    
+    const seleccion = prompt(listaElementos + '\nEscribe el número del elemento:');
+    const indice = parseInt(seleccion) - 1;
+    
+    if (indice >= 0 && indice < tarjeta.elementos.length) {
+        if (confirm('¿Estás seguro de que quieres eliminar este elemento?')) {
+            tarjeta.elementos.splice(indice, 1);
+            localStorage.setItem('culturaOcioConfig', JSON.stringify(culturaOcioConfig));
+            
+            loadCulturaTarjetasList();
+            updateCulturaOcioSection();
+            showNotification('Elemento eliminado correctamente', 'success');
+        }
+    } else {
+        showNotification('Número de elemento no válido', 'error');
+    }
+}
+
+// Funciones para los nuevos modales avanzados
+function closeTarjetaConfigModal() {
+    closeModal('tarjetaConfigModal');
+}
+
+function closeElementoModal() {
+    closeModal('elementoModal');
+}
+
+function saveTarjetaConfig() {
+    const form = document.getElementById('tarjetaConfigForm');
+    const formData = new FormData(form);
+    
+    const tarjetaData = {
+        titulo: formData.get('titulo'),
+        descripcion: formData.get('descripcion'),
+        icono: formData.get('icono'),
+        color: formData.get('color'),
+        orden: parseInt(formData.get('orden')),
+        activa: formData.get('activa') === 'on'
+    };
+    
+    const tarjetaId = document.getElementById('tarjetaConfigId').value;
+    
+    if (tarjetaId) {
+        // Actualizar tarjeta existente
+        const tarjetaIndex = culturaOcioConfig.tarjetas.findIndex(t => t.id === parseInt(tarjetaId));
+        if (tarjetaIndex !== -1) {
+            culturaOcioConfig.tarjetas[tarjetaIndex] = {
+                ...culturaOcioConfig.tarjetas[tarjetaIndex],
+                ...tarjetaData
+            };
+            showNotification('Tarjeta actualizada correctamente', 'success');
+        }
+    } else {
+        // Crear nueva tarjeta
+        const nuevaTarjeta = {
+            id: Date.now(),
+            ...tarjetaData,
+            elementos: []
+        };
+        culturaOcioConfig.tarjetas.push(nuevaTarjeta);
+        showNotification('Tarjeta creada correctamente', 'success');
+    }
+    
+    localStorage.setItem('culturaOcioConfig', JSON.stringify(culturaOcioConfig));
+    
+    loadCulturaTarjetasList();
+    updateCulturaOcioSection();
+    closeTarjetaConfigModal();
+}
+
+function loadTarjetaElementosList(tarjetaId = null) {
+    const elementosList = document.getElementById('tarjetaElementosList');
+    if (!elementosList) return;
+    
+    elementosList.innerHTML = '';
+    
+    let tarjeta = null;
+    if (tarjetaId) {
+        tarjeta = culturaOcioConfig.tarjetas.find(t => t.id === tarjetaId);
+    } else {
+        // Para nueva tarjeta, usar el ID del formulario si existe
+        const formTarjetaId = document.getElementById('tarjetaConfigId').value;
+        if (formTarjetaId) {
+            tarjeta = culturaOcioConfig.tarjetas.find(t => t.id === parseInt(formTarjetaId));
+        }
+    }
+    
+    console.log('Cargando elementos para tarjeta:', tarjeta);
+    
+    if (!tarjeta || !tarjeta.elementos || tarjeta.elementos.length === 0) {
+        elementosList.innerHTML = '<p class="no-elements">No hay elementos en esta tarjeta. Agrega el primero usando el botón "Agregar Elemento".</p>';
+        return;
+    }
+    
+    // Ordenar elementos por orden, luego por índice original
+    const elementosOrdenados = tarjeta.elementos
+        .map((elemento, indexOriginal) => ({ ...elemento, indexOriginal }))
+        .sort((a, b) => (a.orden || 0) - (b.orden || 0));
+    
+    elementosOrdenados.forEach((elemento, index) => {
+        const elementoItem = document.createElement('div');
+        elementoItem.className = 'elemento-item';
+        elementoItem.style.cssText = 'border: 1px solid #e5e7eb; border-radius: 6px; padding: 0.75rem; margin-bottom: 0.5rem; background: #f9fafb;';
+        
+        elementoItem.innerHTML = `
+            <div style="display: flex; justify-content: space-between; align-items: start;">
+                <div style="flex: 1;">
+                    <h5 style="margin: 0 0 0.25rem 0; color: #1f2937;">${elemento.titulo}</h5>
+                    <p style="margin: 0 0 0.25rem 0; color: #6b7280; font-size: 0.875rem;">${elemento.descripcion}</p>
+                    <p style="margin: 0; color: #9ca3af; font-size: 0.75rem;">
+                        ${elemento.esEnlace ? '🔗 Enlace: ' + elemento.enlace : '📄 Solo información'} | 
+                        Orden: ${elemento.orden || index + 1}
+                    </p>
+                </div>
+                <div style="display: flex; gap: 0.25rem;">
+                    <button class="btn btn-primary btn-xs" onclick="editElemento(${tarjeta.id}, ${elemento.indexOriginal})">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                    <button class="btn btn-danger btn-xs" onclick="deleteElemento(${tarjeta.id}, ${elemento.indexOriginal})">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            </div>
+        `;
+        
+        elementosList.appendChild(elementoItem);
+    });
+}
+
+function openElementoEditor(tarjetaId = null, elementoIndex = null) {
+    const form = document.getElementById('elementoForm');
+    form.reset();
+    
+    console.log('Abriendo editor de elemento:', { tarjetaId, elementoIndex });
+    
+    if (tarjetaId && elementoIndex !== null) {
+        // Editar elemento existente
+        const tarjeta = culturaOcioConfig.tarjetas.find(t => t.id === tarjetaId);
+        console.log('Tarjeta encontrada:', tarjeta);
+        
+        if (tarjeta && tarjeta.elementos[elementoIndex]) {
+            const elemento = tarjeta.elementos[elementoIndex];
+            console.log('Elemento encontrado:', elemento);
+            
+            document.getElementById('elementoId').value = elemento.id || '';
+            document.getElementById('elementoTarjetaId').value = tarjetaId;
+            document.getElementById('elementoIndex').value = elementoIndex;
+            document.getElementById('elementoTitulo').value = elemento.titulo || '';
+            document.getElementById('elementoDescripcion').value = elemento.descripcion || '';
+            document.getElementById('elementoEsEnlace').checked = elemento.esEnlace || false;
+            document.getElementById('elementoEnlace').value = elemento.enlace || '';
+            document.getElementById('elementoOrden').value = elemento.orden || elementoIndex + 1;
+            
+            document.getElementById('elementoModalTitle').textContent = '✏️ Editar Elemento';
+            toggleEnlaceGroup(elemento.esEnlace || false);
+        } else {
+            console.error('Elemento no encontrado en índice:', elementoIndex);
+            showNotification('Error: Elemento no encontrado', 'error');
+            return;
+        }
+    } else {
+        // Nuevo elemento
+        const currentTarjetaId = document.getElementById('tarjetaConfigId').value;
+        document.getElementById('elementoId').value = '';
+        document.getElementById('elementoTarjetaId').value = currentTarjetaId;
+        document.getElementById('elementoIndex').value = '';
+        document.getElementById('elementoModalTitle').textContent = '➕ Nuevo Elemento';
+        toggleEnlaceGroup(false);
+    }
+    
+    openModal('elementoModal');
+}
+
+function editElemento(tarjetaId, elementoIndex) {
+    openElementoEditor(tarjetaId, elementoIndex);
+}
+
+function deleteElemento(tarjetaId, elementoIndex) {
+    if (confirm('¿Estás seguro de que quieres eliminar este elemento?')) {
+        const tarjeta = culturaOcioConfig.tarjetas.find(t => t.id === tarjetaId);
+        if (tarjeta && tarjeta.elementos[elementoIndex]) {
+            tarjeta.elementos.splice(elementoIndex, 1);
+            localStorage.setItem('culturaOcioConfig', JSON.stringify(culturaOcioConfig));
+            
+            loadTarjetaElementosList(tarjetaId);
+            updateCulturaOcioSection();
+            showNotification('Elemento eliminado correctamente', 'success');
+        }
+    }
+}
+
+function saveElemento() {
+    const form = document.getElementById('elementoForm');
+    const formData = new FormData(form);
+    
+    const elementoData = {
+        titulo: formData.get('titulo'),
+        descripcion: formData.get('descripcion'),
+        esEnlace: formData.get('esEnlace') === 'on',
+        enlace: formData.get('enlace') || '',
+        orden: parseInt(formData.get('orden')) || 1
+    };
+    
+    const elementoId = document.getElementById('elementoId').value;
+    const tarjetaId = parseInt(document.getElementById('elementoTarjetaId').value);
+    const elementoIndex = document.getElementById('elementoIndex').value;
+    
+    console.log('Guardando elemento:', { elementoId, tarjetaId, elementoIndex, elementoData });
+    
+    const tarjeta = culturaOcioConfig.tarjetas.find(t => t.id === tarjetaId);
+    if (!tarjeta) {
+        showNotification('Error: Tarjeta no encontrada', 'error');
+        return;
+    }
+    
+    if (elementoId && elementoIndex !== '') {
+        // Actualizar elemento existente
+        const index = parseInt(elementoIndex);
+        if (tarjeta.elementos[index]) {
+            tarjeta.elementos[index] = {
+                ...tarjeta.elementos[index],
+                ...elementoData
+            };
+            showNotification('Elemento actualizado correctamente', 'success');
+        }
+    } else {
+        // Crear nuevo elemento
+        const nuevoElemento = {
+            id: Date.now(),
+            ...elementoData
+        };
+        tarjeta.elementos.push(nuevoElemento);
+        showNotification('Elemento creado correctamente', 'success');
+    }
+    
+    localStorage.setItem('culturaOcioConfig', JSON.stringify(culturaOcioConfig));
+    
+    loadTarjetaElementosList(tarjetaId);
+    updateCulturaOcioSection();
+    closeElementoModal();
+}
+
+// Función para mostrar/ocultar el campo de enlace
+function toggleEnlaceGroup(esEnlace) {
+    const enlaceGroup = document.getElementById('elementoEnlaceGroup');
+    if (esEnlace) {
+        enlaceGroup.style.display = 'block';
+    } else {
+        enlaceGroup.style.display = 'none';
+    }
+}
+
+// Event listener para el checkbox de enlace
+document.addEventListener('DOMContentLoaded', function() {
+    const elementoEsEnlace = document.getElementById('elementoEsEnlace');
+    if (elementoEsEnlace) {
+        elementoEsEnlace.addEventListener('change', function() {
+            toggleEnlaceGroup(this.checked);
+        });
+    }
+});
+
+function updateCulturaOcioSection() {
+    const section = document.getElementById('cultura-ocio');
+    if (!section) return;
+    
+    const titleElement = section.querySelector('h2');
+    if (titleElement) {
+        titleElement.textContent = culturaOcioConfig.titulo;
+    }
+    
+    // Renderizar las tarjetas configurables
+    const container = section.querySelector('#culturaTarjetasContainer');
+    if (container) {
+        container.innerHTML = '';
+        
+        if (culturaOcioConfig.tarjetas && culturaOcioConfig.tarjetas.length > 0) {
+            const tarjetasGrid = document.createElement('div');
+            tarjetasGrid.className = 'cultura-tarjetas-grid';
+            
+            culturaOcioConfig.tarjetas
+                .filter(tarjeta => tarjeta.activa)
+                .sort((a, b) => a.orden - b.orden)
+                .forEach(tarjeta => {
+                    const tarjetaElement = document.createElement('div');
+                    tarjetaElement.className = 'cultura-tarjeta';
+                    tarjetaElement.style.borderTop = `4px solid ${tarjeta.color}`;
+                    
+                    // Header de la tarjeta
+                    const header = document.createElement('div');
+                    header.className = 'cultura-tarjeta-header';
+                    header.innerHTML = `
+                        <i class="${tarjeta.icono}" style="color: ${tarjeta.color}"></i>
+                        <h3>${tarjeta.titulo}</h3>
+                        <p>${tarjeta.descripcion}</p>
+                    `;
+                    
+                    // Lista de elementos
+                    const elementosList = document.createElement('div');
+                    elementosList.className = 'cultura-tarjeta-elementos';
+                    
+                    tarjeta.elementos.forEach(elemento => {
+                        const elementoDiv = document.createElement('div');
+                        elementoDiv.className = 'cultura-elemento';
+                        
+                        if (elemento.esEnlace) {
+                            elementoDiv.innerHTML = `
+                                <a href="${elemento.enlace}" class="elemento-link">
+                                    <h4>${elemento.titulo}</h4>
+                                    <p>${elemento.descripcion}</p>
+                                </a>
+                            `;
+                        } else {
+                            elementoDiv.innerHTML = `
+                                <div class="elemento-info">
+                                    <h4>${elemento.titulo}</h4>
+                                    <p>${elemento.descripcion}</p>
+                                </div>
+                            `;
+                        }
+                        
+                        elementosList.appendChild(elementoDiv);
+                    });
+                    
+                    tarjetaElement.appendChild(header);
+                    tarjetaElement.appendChild(elementosList);
+                    tarjetasGrid.appendChild(tarjetaElement);
+                });
+            
+            container.appendChild(tarjetasGrid);
+        }
+    }
+}
+
+function loadCulturaEventsList() {
+    const eventsList = document.getElementById('culturaEventsList');
+    if (!eventsList) return;
+    
+    eventsList.innerHTML = '';
+    
+    if (events.length === 0) {
+        eventsList.innerHTML = '<p>No hay eventos programados.</p>';
+        return;
+    }
+    
+    events.forEach(event => {
+        const eventItem = document.createElement('div');
+        eventItem.className = 'event-item';
+        eventItem.style.cssText = 'border: 1px solid #e5e7eb; border-radius: 8px; padding: 1rem; margin-bottom: 1rem; background: #f9fafb;';
+        
+        eventItem.innerHTML = `
+            <div style="display: flex; justify-content: space-between; align-items: start;">
+                <div style="flex: 1;">
+                    <h4>${event.title}</h4>
+                    <p>${event.description}</p>
+                    <p><strong>Fecha:</strong> ${formatDate(event.date)}</p>
+                    <p><strong>Hora:</strong> ${event.time}</p>
+                    <p><strong>Ubicación:</strong> ${event.location}</p>
+                    <p><strong>Categoría:</strong> ${event.category}</p>
+                </div>
+                <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+                    <button class="btn btn-primary btn-small" onclick="editEvent(${event.id})">
+                        <i class="fas fa-edit"></i> Editar
+                    </button>
+                    <button class="btn btn-danger btn-small" onclick="deleteEvent(${event.id})">
+                        <i class="fas fa-trash"></i> Eliminar
+                    </button>
+                </div>
+            </div>
+        `;
+        eventsList.appendChild(eventItem);
+    });
+}
+
+function loadCulturaCardsList() {
+    const cardsList = document.getElementById('culturaCardsList');
+    if (!cardsList) return;
+    
+    cardsList.innerHTML = '';
+    
+    culturaOcioConfig.tarjetas.forEach(card => {
+        const cardItem = document.createElement('div');
+        cardItem.className = 'card-item';
+        cardItem.style.cssText = 'border: 1px solid #e5e7eb; border-radius: 8px; padding: 1rem; margin-bottom: 1rem; background: #f9fafb;';
+        
+        cardItem.innerHTML = `
+            <div style="display: flex; justify-content: space-between; align-items: start;">
+                <div style="flex: 1;">
+                    <h4><i class="${card.icono}"></i> ${card.titulo}</h4>
+                    <p>${card.descripcion}</p>
+                    <p><strong>Enlace:</strong> ${card.enlace}</p>
+                    <p><strong>Orden:</strong> ${card.orden}</p>
+                    <p><strong>Estado:</strong> ${card.activa ? 'Activa' : 'Inactiva'}</p>
+                </div>
+                <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+                    <button class="btn btn-primary btn-small" onclick="editCulturaCard(${card.id})">
+                        <i class="fas fa-edit"></i> Editar
+                    </button>
+                    <button class="btn btn-danger btn-small" onclick="deleteCulturaCard(${card.id})">
+                        <i class="fas fa-trash"></i> Eliminar
+                    </button>
+                </div>
+            </div>
+        `;
+        cardsList.appendChild(cardItem);
+    });
+}
+
+function addCulturaCard() {
+    const titulo = prompt('Título de la tarjeta:');
+    if (!titulo) return;
+    
+    const descripcion = prompt('Descripción:');
+    if (!descripcion) return;
+    
+    const icono = prompt('Icono (clase FontAwesome, ej: fas fa-music):', 'fas fa-star');
+    
+    const enlace = prompt('Enlace (ej: #enlace):', '#');
+    
+    const nuevaTarjeta = {
+        id: Date.now(),
+        titulo: titulo,
+        descripcion: descripcion,
+        icono: icono,
+        enlace: enlace,
+        orden: culturaOcioConfig.tarjetas.length + 1,
+        activa: true
+    };
+    
+    culturaOcioConfig.tarjetas.push(nuevaTarjeta);
+    localStorage.setItem('culturaOcioConfig', JSON.stringify(culturaOcioConfig));
+    
+    loadCulturaCardsList();
+    showNotification('Tarjeta agregada correctamente', 'success');
+}
+
+function editCulturaCard(cardId) {
+    const card = culturaOcioConfig.tarjetas.find(c => c.id === cardId);
+    if (!card) return;
+    
+    const titulo = prompt('Título de la tarjeta:', card.titulo);
+    if (titulo === null) return;
+    
+    const descripcion = prompt('Descripción:', card.descripcion);
+    if (descripcion === null) return;
+    
+    const icono = prompt('Icono (clase FontAwesome):', card.icono);
+    if (icono === null) return;
+    
+    const enlace = prompt('Enlace:', card.enlace);
+    if (enlace === null) return;
+    
+    card.titulo = titulo;
+    card.descripcion = descripcion;
+    card.icono = icono;
+    card.enlace = enlace;
+    
+    localStorage.setItem('culturaOcioConfig', JSON.stringify(culturaOcioConfig));
+    
+    loadCulturaCardsList();
+    showNotification('Tarjeta actualizada correctamente', 'success');
+}
+
+function deleteCulturaCard(cardId) {
+    if (confirm('¿Estás seguro de que quieres eliminar esta tarjeta?')) {
+        culturaOcioConfig.tarjetas = culturaOcioConfig.tarjetas.filter(c => c.id !== cardId);
+        localStorage.setItem('culturaOcioConfig', JSON.stringify(culturaOcioConfig));
+        
+        loadCulturaCardsList();
+        showNotification('Tarjeta eliminada correctamente', 'success');
+    }
+}
+
+function loadCulturaInstalacionesList() {
+    const instalacionesList = document.getElementById('culturaInstalacionesList');
+    if (!instalacionesList) return;
+    
+    instalacionesList.innerHTML = '';
+    
+    culturaOcioConfig.instalaciones.forEach(instalacion => {
+        const instalacionItem = document.createElement('div');
+        instalacionItem.className = 'instalacion-item';
+        instalacionItem.style.cssText = 'border: 1px solid #e5e7eb; border-radius: 8px; padding: 1rem; margin-bottom: 1rem; background: #f9fafb;';
+        
+        instalacionItem.innerHTML = `
+            <div style="display: flex; justify-content: space-between; align-items: start;">
+                <div style="flex: 1;">
+                    <h4><i class="${instalacion.icono}"></i> ${instalacion.nombre}</h4>
+                    <p>${instalacion.descripcion}</p>
+                    <p><strong>Orden:</strong> ${instalacion.orden}</p>
+                    <p><strong>Estado:</strong> ${instalacion.activa ? 'Activa' : 'Inactiva'}</p>
+                </div>
+                <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+                    <button class="btn btn-primary btn-small" onclick="editCulturaInstalacion(${instalacion.id})">
+                        <i class="fas fa-edit"></i> Editar
+                    </button>
+                    <button class="btn btn-danger btn-small" onclick="deleteCulturaInstalacion(${instalacion.id})">
+                        <i class="fas fa-trash"></i> Eliminar
+                    </button>
+                </div>
+            </div>
+        `;
+        instalacionesList.appendChild(instalacionItem);
+    });
+}
+
+function addCulturaInstalacion() {
+    const nombre = prompt('Nombre de la instalación:');
+    if (!nombre) return;
+    
+    const descripcion = prompt('Descripción/Horarios:');
+    if (!descripcion) return;
+    
+    const icono = prompt('Icono (clase FontAwesome, ej: fas fa-building):', 'fas fa-building');
+    
+    const nuevaInstalacion = {
+        id: Date.now(),
+        nombre: nombre,
+        descripcion: descripcion,
+        icono: icono,
+        orden: culturaOcioConfig.instalaciones.length + 1,
+        activa: true
+    };
+    
+    culturaOcioConfig.instalaciones.push(nuevaInstalacion);
+    localStorage.setItem('culturaOcioConfig', JSON.stringify(culturaOcioConfig));
+    
+    loadCulturaInstalacionesList();
+    updateCulturaOcioSection();
+    showNotification('Instalación agregada correctamente', 'success');
+}
+
+function editCulturaInstalacion(instalacionId) {
+    const instalacion = culturaOcioConfig.instalaciones.find(i => i.id === instalacionId);
+    if (!instalacion) return;
+    
+    const nombre = prompt('Nombre de la instalación:', instalacion.nombre);
+    if (nombre === null) return;
+    
+    const descripcion = prompt('Descripción/Horarios:', instalacion.descripcion);
+    if (descripcion === null) return;
+    
+    const icono = prompt('Icono (clase FontAwesome):', instalacion.icono);
+    if (icono === null) return;
+    
+    instalacion.nombre = nombre;
+    instalacion.descripcion = descripcion;
+    instalacion.icono = icono;
+    
+    localStorage.setItem('culturaOcioConfig', JSON.stringify(culturaOcioConfig));
+    
+    loadCulturaInstalacionesList();
+    updateCulturaOcioSection();
+    showNotification('Instalación actualizada correctamente', 'success');
+}
+
+function deleteCulturaInstalacion(instalacionId) {
+    if (confirm('¿Estás seguro de que quieres eliminar esta instalación?')) {
+        culturaOcioConfig.instalaciones = culturaOcioConfig.instalaciones.filter(i => i.id !== instalacionId);
+        localStorage.setItem('culturaOcioConfig', JSON.stringify(culturaOcioConfig));
+        
+        loadCulturaInstalacionesList();
+        updateCulturaOcioSection();
+        showNotification('Instalación eliminada correctamente', 'success');
+    }
+}
+
+function exportCulturaOcio() {
+    const data = {
+        config: culturaOcioConfig,
+        events: events
+    };
+    
+    const dataStr = JSON.stringify(data, null, 2);
+    const dataBlob = new Blob([dataStr], {type: 'application/json'});
+    const url = URL.createObjectURL(dataBlob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `cultura_ocio_${new Date().toISOString().split('T')[0]}.json`;
+    link.click();
+    URL.revokeObjectURL(url);
+    showNotification('Datos de Cultura y Ocio exportados correctamente', 'success');
 }
 
 function exportQuickAccess() {
@@ -3725,9 +4841,9 @@ let servicios = {
 // Configuración de las secciones (títulos e iconos editables)
 let seccionesConfig = {
     medical: {
-        title: 'Consultas Médicas',
+        title: 'CONSULTORIO MÉDICO',
         icon: '🏥',
-        description: 'Servicios médicos y de salud'
+        description: 'Horarios y información del consultorio médico'
     },
     itv: {
         title: 'ITV',
@@ -3810,6 +4926,155 @@ function saveServicios() {
     localStorage.setItem('servicios', JSON.stringify(servicios));
 }
 
+// Configuración del consultorio médico
+let consultorioConfig = {
+    documentos: [],
+    fotos: []
+};
+
+// Cargar configuración del consultorio
+function loadConsultorioConfig() {
+    const saved = localStorage.getItem('consultorioConfig');
+    if (saved) {
+        consultorioConfig = JSON.parse(saved);
+    }
+}
+
+// Guardar configuración del consultorio
+function saveConsultorioConfig() {
+    localStorage.setItem('consultorioConfig', JSON.stringify(consultorioConfig));
+}
+
+// Funciones para el consultorio
+function viewConsultorioDocument() {
+    if (consultorioConfig.documentos.length > 0) {
+        // Mostrar el primer documento disponible
+        window.open(consultorioConfig.documentos[0].url, '_blank');
+    } else {
+        alert('No hay documentos disponibles. Contacte con el administrador.');
+    }
+}
+
+function viewConsultorioPhoto() {
+    if (consultorioConfig.fotos.length > 0) {
+        // Mostrar la primera foto disponible
+        window.open(consultorioConfig.fotos[0].url, '_blank');
+    } else {
+        alert('No hay fotos disponibles. Contacte con el administrador.');
+    }
+}
+
+// Funciones para ITV - PUEBLA DE SANABRIA
+function viewItvDocument() {
+    if (consultorioConfig.documentos.length > 0) {
+        // Mostrar el primer documento disponible
+        window.open(consultorioConfig.documentos[0].url, '_blank');
+    } else {
+        alert('No hay documentos disponibles. Contacte con el administrador.');
+    }
+}
+
+function viewItvPhoto() {
+    if (consultorioConfig.fotos.length > 0) {
+        // Mostrar la primera foto disponible
+        window.open(consultorioConfig.fotos[0].url, '_blank');
+    } else {
+        alert('No hay fotos disponibles. Contacte con el administrador.');
+    }
+}
+
+// Funciones para gestionar los modales del consultorio
+
+function editConsultorioDocumentos() {
+    loadConsultorioDocumentosInModal();
+    document.getElementById('consultorioDocumentosModal').style.display = 'block';
+}
+
+function closeConsultorioDocumentosModal() {
+    document.getElementById('consultorioDocumentosModal').style.display = 'none';
+}
+
+function editConsultorioFotos() {
+    loadConsultorioFotosInModal();
+    document.getElementById('consultorioFotosModal').style.display = 'block';
+}
+
+function closeConsultorioFotosModal() {
+    document.getElementById('consultorioFotosModal').style.display = 'none';
+}
+
+
+// Cargar documentos en el modal
+function loadConsultorioDocumentosInModal() {
+    const container = document.getElementById('consultorioDocumentosList');
+    if (consultorioConfig.documentos.length === 0) {
+        container.innerHTML = '<p>No hay documentos subidos.</p>';
+        return;
+    }
+    
+    let html = '<div class="documentos-grid">';
+    consultorioConfig.documentos.forEach((doc, index) => {
+        html += `
+            <div class="documento-item">
+                <h5>${doc.titulo}</h5>
+                <p><strong>Archivo:</strong> ${doc.nombreArchivo}</p>
+                <div class="documento-actions">
+                    <button class="btn btn-outline btn-sm" onclick="window.open('${doc.url}', '_blank')">Ver</button>
+                    <button class="btn btn-error btn-sm" onclick="deleteConsultorioDocument(${index})">Eliminar</button>
+                </div>
+            </div>
+        `;
+    });
+    html += '</div>';
+    container.innerHTML = html;
+}
+
+// Cargar fotos en el modal
+function loadConsultorioFotosInModal() {
+    const container = document.getElementById('consultorioFotosList');
+    if (consultorioConfig.fotos.length === 0) {
+        container.innerHTML = '<p>No hay fotos subidas.</p>';
+        return;
+    }
+    
+    let html = '<div class="fotos-grid">';
+    consultorioConfig.fotos.forEach((foto, index) => {
+        html += `
+            <div class="foto-item">
+                <h5>${foto.titulo}</h5>
+                <img src="${foto.url}" alt="${foto.titulo}" style="max-width: 200px; height: auto; margin: 10px 0;">
+                <div class="foto-actions">
+                    <button class="btn btn-outline btn-sm" onclick="window.open('${foto.url}', '_blank')">Ver</button>
+                    <button class="btn btn-error btn-sm" onclick="deleteConsultorioFoto(${index})">Eliminar</button>
+                </div>
+            </div>
+        `;
+    });
+    html += '</div>';
+    container.innerHTML = html;
+}
+
+// Eliminar documento del consultorio
+function deleteConsultorioDocument(index) {
+    if (confirm('¿Estás seguro de que quieres eliminar este documento?')) {
+        consultorioConfig.documentos.splice(index, 1);
+        saveConsultorioConfig();
+        loadConsultorioDocumentosInModal();
+        renderServicios();
+    }
+}
+
+// Eliminar foto del consultorio
+function deleteConsultorioFoto(index) {
+    if (confirm('¿Estás seguro de que quieres eliminar esta foto?')) {
+        consultorioConfig.fotos.splice(index, 1);
+        saveConsultorioConfig();
+        loadConsultorioFotosInModal();
+        renderServicios();
+    }
+}
+
+
 // Renderizar servicios en la página
 function renderServicios() {
     const container = document.getElementById('serviciosContent');
@@ -3817,18 +5082,51 @@ function renderServicios() {
     
     let html = '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 2rem;">';
     
-    // Consultas Médicas
+    // CONSULTORIO MÉDICO
     html += `<div class="admin-section"><h3>${seccionesConfig.medical.icon} ${seccionesConfig.medical.title}</h3>`;
-    servicios.medical.forEach(servicio => {
-        html += createServicioCard(servicio, 'medical');
-    });
+    html += '<div class="consultorio-simple">';
+    
+    if (consultorioConfig.documentos.length > 0 || consultorioConfig.fotos.length > 0) {
+        html += '<div class="consultorio-enlaces">';
+        
+        if (consultorioConfig.documentos.length > 0) {
+            html += `<a href="#" class="btn btn-outline" onclick="viewConsultorioDocument()">📋 Ver Documento</a>`;
+        }
+        
+        if (consultorioConfig.fotos.length > 0) {
+            html += `<a href="#" class="btn btn-outline" onclick="viewConsultorioPhoto()">📸 Ver Foto</a>`;
+        }
+        
+        html += '</div>';
+    } else {
+        html += '<p class="no-content">No hay contenido disponible</p>';
+    }
+    
+    html += '</div>';
     html += '</div>';
     
-    // ITV
+    // ITV - PUEBLA DE SANABRIA
     html += `<div class="admin-section"><h3>${seccionesConfig.itv.icon} ${seccionesConfig.itv.title}</h3>`;
-    servicios.itv.forEach(servicio => {
-        html += createServicioCard(servicio, 'itv');
-    });
+    html += '<div class="itv-puebla">';
+    html += '<h4>🏘️ PUEBLA DE SANABRIA</h4>';
+    
+    if (consultorioConfig.documentos.length > 0 || consultorioConfig.fotos.length > 0) {
+        html += '<div class="itv-enlaces">';
+        
+        if (consultorioConfig.documentos.length > 0) {
+            html += `<a href="#" class="btn btn-outline" onclick="viewItvDocument()">📋 Ver Documento</a>`;
+        }
+        
+        if (consultorioConfig.fotos.length > 0) {
+            html += `<a href="#" class="btn btn-outline" onclick="viewItvPhoto()">📸 Ver Foto</a>`;
+        }
+        
+        html += '</div>';
+    } else {
+        html += '<p class="no-content">No hay contenido disponible</p>';
+    }
+    
+    html += '</div>';
     html += '</div>';
     
     // Teléfonos
@@ -5275,30 +6573,126 @@ async function enviarNotificacionPush(titulo, mensaje, tipo = 'general') {
 }
 
 // Enviar notificación de cita confirmada
-function enviarNotificacionCita(nombre, fecha, hora) {
-    const titulo = 'Cita Confirmada - Ayuntamiento de Cobreros';
-    const mensaje = `Hola ${nombre}, tu cita ha sido confirmada para el ${fecha} a las ${hora}.`;
-    enviarNotificacionPush(titulo, mensaje, 'cita');
+function enviarNotificacionCita() {
+    const titulo = prompt('Título de la notificación de cita:', 'Cita Confirmada - Ayuntamiento de Cobreros');
+    if (titulo) {
+        const mensaje = prompt('Mensaje de la notificación:', 'Su cita ha sido confirmada. Por favor, acuda a la hora indicada.');
+        if (mensaje) {
+            enviarNotificacionPush(titulo, mensaje, 'cita');
+        }
+    }
 }
 
 // Enviar notificación de evento
-function enviarNotificacionEvento(tituloEvento, fecha, descripcion) {
-    const titulo = 'Nuevo Evento - Ayuntamiento de Cobreros';
-    const mensaje = `${tituloEvento} - ${fecha}. ${descripcion}`;
-    enviarNotificacionPush(titulo, mensaje, 'evento');
+function enviarNotificacionEvento() {
+    const titulo = prompt('Título del evento:', 'Nuevo Evento - Ayuntamiento de Cobreros');
+    if (titulo) {
+        const mensaje = prompt('Descripción del evento:', 'Se ha programado un nuevo evento municipal. Más información próximamente.');
+        if (mensaje) {
+            enviarNotificacionPush(titulo, mensaje, 'evento');
+        }
+    }
 }
 
 // Enviar notificación de bando
-function enviarNotificacionBando(tituloBando) {
-    const titulo = 'Nuevo Bando - Ayuntamiento de Cobreros';
-    const mensaje = `Se ha publicado un nuevo bando: ${tituloBando}`;
-    enviarNotificacionPush(titulo, mensaje, 'bando');
+function enviarNotificacionBando() {
+    const titulo = prompt('Título del bando:', 'Nuevo Bando Municipal');
+    if (titulo) {
+        const mensaje = prompt('Descripción del bando:', 'Se ha publicado un nuevo bando municipal. Consulte la información completa en la web.');
+        if (mensaje) {
+            enviarNotificacionPush(titulo, mensaje, 'bando');
+        }
+    }
 }
 
 // Enviar notificación de emergencia
 function enviarNotificacionEmergencia(mensaje) {
-    const titulo = '🚨 EMERGENCIA - Ayuntamiento de Cobreros';
-    enviarNotificacionPush(titulo, mensaje, 'emergencia');
+    if (!mensaje) {
+        mensaje = prompt('Mensaje de emergencia:', 'Comunicado urgente del Ayuntamiento. Por favor, preste atención a esta información.');
+    }
+    if (mensaje) {
+        const titulo = '🚨 EMERGENCIA - Ayuntamiento de Cobreros';
+        enviarNotificacionPush(titulo, mensaje, 'emergencia');
+    }
+}
+
+// Configurar formulario de notificaciones
+function setupNotificationForm() {
+    // Mostrar/ocultar localidades según selección
+    const destinatariosRadios = document.querySelectorAll('input[name="destinatarios"]');
+    const localidadesGroup = document.getElementById('localidadesGroup');
+    
+    destinatariosRadios.forEach(radio => {
+        radio.addEventListener('change', function() {
+            if (this.value === 'localidades') {
+                localidadesGroup.style.display = 'block';
+            } else {
+                localidadesGroup.style.display = 'none';
+                // Desmarcar todas las localidades
+                document.querySelectorAll('input[name="localidades"]').forEach(checkbox => {
+                    checkbox.checked = false;
+                });
+            }
+        });
+    });
+    
+    // Configurar envío del formulario
+    const form = document.getElementById('notificationForm');
+    if (form) {
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            enviarNotificacionDesdeFormulario();
+        });
+    }
+}
+
+// Enviar notificación desde el formulario
+function enviarNotificacionDesdeFormulario() {
+    const titulo = document.getElementById('notifTitle').value.trim();
+    const mensaje = document.getElementById('notifMessage').value.trim();
+    const tipo = document.getElementById('notifType').value;
+    const archivo = document.getElementById('notifAttachment').files[0];
+    const destinatarios = document.querySelector('input[name="destinatarios"]:checked').value;
+    
+    // Validaciones
+    if (!titulo) {
+        alert('Por favor, ingrese un título para la notificación.');
+        return;
+    }
+    
+    if (!tipo) {
+        alert('Por favor, seleccione un tipo de notificación.');
+        return;
+    }
+    
+    if (destinatarios === 'localidades') {
+        const localidadesSeleccionadas = Array.from(document.querySelectorAll('input[name="localidades"]:checked'));
+        if (localidadesSeleccionadas.length === 0) {
+            alert('Por favor, seleccione al menos una localidad.');
+            return;
+        }
+    }
+    
+    // Obtener localidades seleccionadas
+    let localidades = [];
+    if (destinatarios === 'localidades') {
+        localidades = Array.from(document.querySelectorAll('input[name="localidades"]:checked')).map(cb => cb.value);
+    }
+    
+    // Enviar notificación
+    enviarNotificacionPushConLocalidades(titulo, mensaje, tipo, destinatarios, localidades, archivo);
+    
+    // Limpiar formulario después del envío
+    limpiarFormularioNotificacion();
+    
+    alert('Notificación enviada correctamente.');
+}
+
+// Limpiar formulario de notificación
+function limpiarFormularioNotificacion() {
+    document.getElementById('notificationForm').reset();
+    document.getElementById('localidadesGroup').style.display = 'none';
+    document.querySelector('input[name="destinatarios"][value="todos"]').checked = true;
 }
 
 // Abrir modal para enviar notificación personalizada
@@ -5643,3 +7037,6 @@ function crearSeccionDescargaAPK(config) {
     }
 }
 
+
+
+ 

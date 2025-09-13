@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Colores del Ayuntamiento de Cobreros -->
+    <color name="ayuntamiento_blue">#1e3a8a</color>
+    <color name="ayuntamiento_blue_light">#3b82f6</color>
+    <color name="ayuntamiento_blue_dark">#1e40af</color>
+    
+    <!-- Colores adicionales -->
+    <color name="white">#FFFFFF</color>
+    <color name="black">#000000</color>
+    <color name="gray_light">#F3F4F6</color>
+    <color name="gray_dark">#374151</color>
+    
+    <!-- Colores para notificaciones -->
+    <color name="notification_emergency">#dc2626</color>
+    <color name="notification_cita">#16a34a</color>
+    <color name="notification_evento">#ea580c</color>
+    <color name="notification_bando">#9333ea</color>
+    <color name="notification_general">#1e3a8a</color>
+</resources>
+
