@@ -159,6 +159,7 @@ const firebaseConfig = {
 
 ### **🌐 Panel Web:**
 - ✅ **Gestión de servicios** municipales
+- ✅ **Sistema de tarjetas configurables** para Cultura y Ocio
 - ✅ **Envío de notificaciones** push
 - ✅ **Estadísticas** de usuarios
 - ✅ **Configuración** de secciones
@@ -178,6 +179,32 @@ const firebaseConfig = {
 - ✅ **Notificaciones** push nativas
 - ✅ **Funcionalidad** completa
 - ✅ **Sincronización** con web y APK
+
+## 🃏 **Sistema de Tarjetas Configurables**
+
+### **🎭 Cultura y Ocio:**
+- **Tarjetas personalizables** con títulos, descripciones e iconos
+- **Colores personalizables** para cada tarjeta
+- **Elementos configurables** dentro de cada tarjeta
+- **Títulos con emojis** para mayor atractivo visual
+- **Enlaces opcionales** (internos #enlace o externos https://...)
+- **Orden personalizable** de elementos
+- **Activación/desactivación** de tarjetas
+
+### **📋 Gestión desde Administración:**
+- **Panel intuitivo** para configurar tarjetas
+- **Formularios avanzados** con validación
+- **Preview en tiempo real** de cambios
+- **Modales especializados** para cada función
+- **Persistencia automática** en localStorage
+- **Actualización instantánea** en la página principal
+
+### **🎨 Características Visuales:**
+- **Diseño moderno** con efectos hover
+- **Iconos FontAwesome** personalizables
+- **Bordes de colores** distintivos
+- **Layout responsive** para móviles
+- **Transiciones suaves** y animaciones
 
 ## 🔔 **Sistema de Notificaciones**
 
@@ -251,6 +278,18 @@ const firebaseConfig = {
 - **Soporte** técnico disponible
 
 ## 📝 **Changelog**
+
+### **v1.1.0** - Sistema de Tarjetas Configurables ✨
+- ✅ **Sistema completo de tarjetas configurables** para Cultura y Ocio
+- ✅ **Formularios avanzados** para gestión desde administración
+- ✅ **Interfaz moderna** con colores personalizables e iconos FontAwesome
+- ✅ **Sistema de enlaces opcionales** (internos y externos)
+- ✅ **Gestión de elementos** con títulos, descripciones y emojis
+- ✅ **Panel de administración intuitivo** con modales avanzados
+- ✅ **Persistencia en localStorage** con actualización automática
+- ✅ **Funcionalidades completas**: crear, editar, eliminar, ordenar elementos
+- ✅ **Diseño responsive** y efectos hover
+- ✅ **Todo el contenido completamente configurable** desde admin
 
 ### **v1.0.0** - Sistema Completo
 - ✅ **Web del Ayuntamiento** con PWA
