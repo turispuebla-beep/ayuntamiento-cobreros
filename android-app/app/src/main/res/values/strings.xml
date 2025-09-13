@@ -1,0 +1,37 @@
+<resources>
+    <string name="app_name">Ayuntamiento Cobreros</string>
+    <string name="app_description">Notificaciones del Ayuntamiento de Cobreros</string>
+    
+    <!-- Main Activity -->
+    <string name="welcome_title">Bienvenido al Ayuntamiento de Cobreros</string>
+    <string name="welcome_subtitle">Mantente informado con nuestras notificaciones</string>
+    
+    <!-- Login -->
+    <string name="login_title">Iniciar Sesión</string>
+    <string name="email_hint">Correo electrónico</string>
+    <string name="password_hint">Contraseña</string>
+    <string name="login_button">Iniciar Sesión</string>
+    <string name="register_button">Registrarse</string>
+    
+    <!-- Admin -->
+    <string name="admin_login">Acceso Administrador</string>
+    <string name="admin_panel">Panel de Administración</string>
+    
+    <!-- Notifications -->
+    <string name="notifications_title">Notificaciones</string>
+    <string name="no_notifications">No hay notificaciones</string>
+    
+    <!-- Localities -->
+    <string name="select_localities">Seleccionar Localidades</string>
+    <string name="save_preferences">Guardar Preferencias</string>
+    
+    <!-- Common -->
+    <string name="loading">Cargando...</string>
+    <string name="error">Error</string>
+    <string name="success">Éxito</string>
+    <string name="cancel">Cancelar</string>
+    <string name="save">Guardar</string>
+    <string name="delete">Eliminar</string>
+    <string name="edit">Editar</string>
+    <string name="send">Enviar</string>
+</resources>

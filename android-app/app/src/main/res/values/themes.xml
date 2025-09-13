@@ -1,0 +1,15 @@
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <!-- Base application theme. -->
+    <style name="Base.Theme.AyuntamientoCobreros" parent="Theme.Material3.DayNight">
+        <!-- Customize your light theme here. -->
+        <item name="colorPrimary">@color/ayuntamiento_blue</item>
+        <item name="colorPrimaryVariant">@color/ayuntamiento_blue_dark</item>
+        <item name="colorOnPrimary">@color/white</item>
+        <item name="colorSecondary">@color/ayuntamiento_gold</item>
+        <item name="colorSecondaryVariant">@color/ayuntamiento_gold_dark</item>
+        <item name="colorOnSecondary">@color/black</item>
+        <item name="android:statusBarColor">@color/ayuntamiento_blue_dark</item>
+    </style>
+
+    <style name="Theme.AyuntamientoCobreros" parent="Base.Theme.AyuntamientoCobreros" />
+</resources>

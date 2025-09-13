@@ -33,12 +33,9 @@
         </activity>
 
         <!-- Actividades de la aplicación -->
+        <!-- Actividades de la aplicación -->
         <activity
             android:name=".RegisterActivity"
-            android:exported="false" />
-        
-        <activity
-            android:name=".UserDashboardActivity"
             android:exported="false" />
         
         <activity
@@ -54,27 +51,7 @@
             android:exported="false" />
         
         <activity
-            android:name=".AdminManagementActivity"
-            android:exported="false" />
-        
-        <activity
-            android:name=".StatisticsActivity"
-            android:exported="false" />
-        
-        <activity
             android:name=".NotificationDetailActivity"
-            android:exported="false" />
-        
-        <activity
-            android:name=".RegisterActivity"
-            android:exported="false" />
-        
-        <activity
-            android:name=".AdminLoginActivity"
-            android:exported="false" />
-        
-        <activity
-            android:name=".AdminPanelActivity"
             android:exported="false" />
 
         <!-- Servicio de Firebase Cloud Messaging -->
