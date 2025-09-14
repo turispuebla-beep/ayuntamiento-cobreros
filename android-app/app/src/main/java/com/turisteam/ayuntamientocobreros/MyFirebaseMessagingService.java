@@ -63,7 +63,7 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
         );
         
         // Crear notificación con diseño personalizado
-        NotificationCompat.Builder builder = new NotificationCompat.Builder(this, CHANNEL_ID)
+        NotificationCompat.Builder builder = new NotificationCompat.Builder(getApplicationContext(), CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_escudo_cobreros) // Escudo de Cobreros como icono pequeño
             .setLargeIcon(getEscudoBitmap()) // Escudo grande en la notificación
             .setContentTitle(title != null ? title : "🏛️ Ayuntamiento de Cobreros")

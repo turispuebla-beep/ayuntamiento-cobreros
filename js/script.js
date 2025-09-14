@@ -68,6 +68,9 @@ function initializeApp() {
     // Inicializar configuración del consultorio médico
     loadConsultorioConfig();
     
+    // Cargar configuración de teléfonos de interés
+    loadTelefonosInteresConfig();
+    
     // Configurar formulario de notificaciones
     setupNotificationForm();
     
@@ -4834,8 +4837,68 @@ function closeAdminPanel() {
 
 let servicios = {
     medical: [],
-    itv: [],
-    phone: []
+    itv: []
+};
+
+// Configuración de teléfonos de interés
+let telefonosInteresConfig = {
+    titulo: 'TELÉFONOS DE INTERÉS',
+    icono: '📞',
+    descripcion: 'Servicios importantes de la zona',
+    tarjeta: {
+        nombre: 'Servicios',
+        emoji: '📞',
+        descripcion: 'Información y contactos de servicios locales',
+        elementos: [
+            {
+                id: 1,
+                nombre: 'Taxis',
+                emoji: '🚕',
+                descripcion: 'Servicio de taxis locales',
+                tipo: 'telefonos',
+                datos: [
+                    { nombre: 'Taxi Cobreros', telefono: '980 62 26 18' },
+                    { nombre: 'Taxi Sanabria', telefono: '980 62 26 19' },
+                    { nombre: 'Taxi Express', telefono: '980 62 26 20' }
+                ],
+                documento: null,
+                foto: null,
+                orden: 1,
+                isActive: true
+            },
+            {
+                id: 2,
+                nombre: 'ITV',
+                emoji: '🚗',
+                descripcion: 'Inspección Técnica de Vehículos',
+                tipo: 'servicio',
+                datos: [
+                    { nombre: 'Dirección', valor: 'Carretera N-525, km 12' },
+                    { nombre: 'Teléfono', valor: '980 62 26 21' },
+                    { nombre: 'Horario', valor: 'L-V: 8:00-18:00, S: 8:00-14:00' }
+                ],
+                documento: null,
+                foto: null,
+                orden: 2,
+                isActive: true
+            },
+            {
+                id: 3,
+                nombre: 'Renovación DNI',
+                emoji: '🆔',
+                descripcion: 'Gestión de documentación',
+                tipo: 'documento',
+                datos: [
+                    { nombre: 'Teléfono', valor: '980 62 26 18' },
+                    { nombre: 'Horario', valor: 'L-V: 9:00-14:00' }
+                ],
+                documento: 'https://ejemplo.com/renovacion-dni.pdf',
+                foto: null,
+                orden: 3,
+                isActive: true
+            }
+        ]
+    }
 };
 
 // Configuración de las secciones (títulos e iconos editables)
@@ -4850,10 +4913,11 @@ let seccionesConfig = {
         icon: '🚗',
         description: 'Inspección técnica de vehículos'
     },
-    phone: {
-        title: 'Teléfonos de Interés',
+    telefonosInteres: {
+        title: 'TELÉFONOS DE INTERÉS',
         icon: '📞',
-        description: 'Números de teléfono importantes'
+        description: 'Servicios importantes de la zona',
+        isActive: true
     }
 };
 
@@ -4863,6 +4927,19 @@ function loadSeccionesConfig() {
     if (saved) {
         seccionesConfig = JSON.parse(saved);
     }
+}
+
+// Cargar configuración de teléfonos de interés
+function loadTelefonosInteresConfig() {
+    const saved = localStorage.getItem('telefonosInteresConfig');
+    if (saved) {
+        telefonosInteresConfig = JSON.parse(saved);
+    }
+}
+
+// Guardar configuración de teléfonos de interés
+function saveTelefonosInteresConfig() {
+    localStorage.setItem('telefonosInteresConfig', JSON.stringify(telefonosInteresConfig));
 }
 
 // Cargar servicios
@@ -4897,18 +4974,6 @@ function loadServicios() {
                     photo: null
                 }
             ],
-            phone: [
-                {
-                    id: 1,
-                    name: 'Emergencias',
-                    day: '24 horas',
-                    time: '24h',
-                    location: 'Servicio de emergencias',
-                    phone: '112',
-                    description: 'Número de emergencias generales',
-                    photo: null
-                }
-            ]
         };
         saveServicios();
     }
@@ -5129,11 +5194,52 @@ function renderServicios() {
     html += '</div>';
     html += '</div>';
     
-    // Teléfonos
-    html += `<div class="admin-section"><h3>${seccionesConfig.phone.icon} ${seccionesConfig.phone.title}</h3>`;
-    servicios.phone.forEach(servicio => {
-        html += createServicioCard(servicio, 'phone');
-    });
+    
+    // Teléfonos de Interés
+    html += `<div class="admin-section"><h3>${telefonosInteresConfig.icono} ${telefonosInteresConfig.titulo}</h3>`;
+    html += '<div class="telefonos-interes-container">';
+    html += `<p>${telefonosInteresConfig.descripcion}</p>`;
+    
+    // Tarjeta principal expandible
+    html += `
+        <div class="telefono-tarjeta-principal" onclick="toggleTelefonoExpansion()">
+            <div class="telefono-tarjeta-header">
+                <span class="telefono-emoji">${telefonosInteresConfig.tarjeta.emoji}</span>
+                <div class="telefono-details">
+                    <h4>${telefonosInteresConfig.tarjeta.nombre}</h4>
+                    <p>${telefonosInteresConfig.tarjeta.descripcion}</p>
+                </div>
+                <span class="telefono-expand-icon" id="telefonoExpandIcon">▼</span>
+            </div>
+        </div>
+    `;
+    
+    // Contenido expandible
+    html += '<div class="telefonos-dropdown-content" id="telefonosDropdownContent" style="display: none;">';
+    
+    telefonosInteresConfig.tarjeta.elementos
+        .filter(elemento => elemento.isActive)
+        .sort((a, b) => a.orden - b.orden)
+        .forEach(elemento => {
+            html += `
+                <div class="telefono-elemento" onclick="toggleElementoExpansion(${elemento.id})">
+                    <div class="telefono-elemento-header">
+                        <span class="telefono-emoji">${elemento.emoji}</span>
+                        <div class="telefono-details">
+                            <h4>${elemento.nombre}</h4>
+                            <p>${elemento.descripcion}</p>
+                        </div>
+                        <span class="telefono-expand-icon" id="elementoExpandIcon${elemento.id}">▼</span>
+                    </div>
+                    <div class="telefono-elemento-content" id="elementoContent${elemento.id}" style="display: none;">
+                        ${renderTelefonoElementoContent(elemento)}
+                    </div>
+                </div>
+            `;
+        });
+    
+    html += '</div>';
+    html += '</div>';
     html += '</div>';
     
     html += '</div>';
@@ -5161,13 +5267,366 @@ function createServicioCard(servicio, type) {
     `;
 }
 
+// Funciones para manejar la expansión de teléfonos
+function toggleTelefonoExpansion() {
+    const content = document.getElementById('telefonosDropdownContent');
+    const icon = document.getElementById('telefonoExpandIcon');
+    
+    if (content.style.display === 'none') {
+        content.style.display = 'block';
+        icon.textContent = '▲';
+    } else {
+        content.style.display = 'none';
+        icon.textContent = '▼';
+    }
+}
+
+function toggleElementoExpansion(elementoId) {
+    const content = document.getElementById(`elementoContent${elementoId}`);
+    const icon = document.getElementById(`elementoExpandIcon${elementoId}`);
+    
+    if (content.style.display === 'none') {
+        content.style.display = 'block';
+        icon.textContent = '▲';
+    } else {
+        content.style.display = 'none';
+        icon.textContent = '▼';
+    }
+}
+
+function renderTelefonoElementoContent(elemento) {
+    let html = '';
+    
+    // Mostrar datos según el tipo
+    if (elemento.tipo === 'telefonos') {
+        elemento.datos.forEach(dato => {
+            html += `
+                <div class="telefono-dato-item">
+                    <span class="dato-nombre">${dato.nombre}:</span>
+                    <a href="tel:${dato.telefono}" class="dato-valor telefono-link">
+                        <i class="fas fa-phone"></i> ${dato.telefono}
+                    </a>
+                </div>
+            `;
+        });
+    } else {
+        elemento.datos.forEach(dato => {
+            html += `
+                <div class="telefono-dato-item">
+                    <span class="dato-nombre">${dato.nombre}:</span>
+                    <span class="dato-valor">${dato.valor}</span>
+                </div>
+            `;
+        });
+    }
+    
+    // Mostrar documento si existe
+    if (elemento.documento) {
+        html += `
+            <div class="telefono-dato-item">
+                <span class="dato-nombre">Documento:</span>
+                <a href="${elemento.documento}" target="_blank" class="dato-valor documento-link">
+                    <i class="fas fa-file-pdf"></i> Ver Documento
+                </a>
+            </div>
+        `;
+    }
+    
+    // Mostrar foto si existe
+    if (elemento.foto) {
+        html += `
+            <div class="telefono-dato-item">
+                <span class="dato-nombre">Foto:</span>
+                <a href="${elemento.foto}" target="_blank" class="dato-valor foto-link">
+                    <i class="fas fa-image"></i> Ver Foto
+                </a>
+            </div>
+        `;
+    }
+    
+    return html;
+}
+
+// Funciones para gestionar Teléfonos de Interés
+function openTelefonosInteresManager() {
+    loadTelefonosInteresConfig();
+    document.getElementById('telefonosInteresModal').style.display = 'block';
+}
+
+function closeTelefonosInteresModal() {
+    document.getElementById('telefonosInteresModal').style.display = 'none';
+}
+
+function switchTelefonosTab(tabName) {
+    // Ocultar todas las pestañas
+    document.querySelectorAll('#telefonosInteresModal .tab-content').forEach(tab => {
+        tab.classList.remove('active');
+    });
+    
+    // Desactivar todos los botones de pestaña
+    document.querySelectorAll('#telefonosInteresModal .tab-btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    
+    // Mostrar la pestaña seleccionada
+    document.getElementById(`telefonos-${tabName}-tab`).classList.add('active');
+    
+    // Activar el botón de pestaña correspondiente
+    event.target.classList.add('active');
+    
+    // Cargar contenido específico si es necesario
+    if (tabName === 'elementos') {
+        loadTelefonosElementosList();
+    }
+}
+
+function loadTelefonosInteresConfig() {
+    document.getElementById('telefonosTitulo').value = telefonosInteresConfig.titulo;
+    document.getElementById('telefonosDescripcion').value = telefonosInteresConfig.descripcion;
+    document.getElementById('telefonosTarjetaNombre').value = telefonosInteresConfig.tarjeta.nombre;
+    document.getElementById('telefonosTarjetaEmoji').value = telefonosInteresConfig.tarjeta.emoji;
+    document.getElementById('telefonosTarjetaDescripcion').value = telefonosInteresConfig.tarjeta.descripcion;
+}
+
+function saveTelefonosInteres() {
+    telefonosInteresConfig.titulo = document.getElementById('telefonosTitulo').value;
+    telefonosInteresConfig.descripcion = document.getElementById('telefonosDescripcion').value;
+    telefonosInteresConfig.tarjeta.nombre = document.getElementById('telefonosTarjetaNombre').value;
+    telefonosInteresConfig.tarjeta.emoji = document.getElementById('telefonosTarjetaEmoji').value;
+    telefonosInteresConfig.tarjeta.descripcion = document.getElementById('telefonosTarjetaDescripcion').value;
+    
+    saveTelefonosInteresConfig();
+    renderServicios();
+    closeTelefonosInteresModal();
+    
+    showNotification('Configuración de Teléfonos de Interés guardada correctamente', 'success');
+}
+
+function loadTelefonosElementosList() {
+    const container = document.getElementById('telefonosElementosList');
+    if (!container) return;
+    
+    let html = '';
+    
+    telefonosInteresConfig.tarjeta.elementos
+        .sort((a, b) => a.orden - b.orden)
+        .forEach(elemento => {
+            html += `
+                <div class="telefono-elemento-item">
+                    <div class="elemento-info">
+                        <span class="elemento-emoji">${elemento.emoji}</span>
+                        <div class="elemento-details">
+                            <h4>${elemento.nombre}</h4>
+                            <p>${elemento.descripcion}</p>
+                            <small>Tipo: ${elemento.tipo} | Orden: ${elemento.orden}</small>
+                        </div>
+                    </div>
+                    <div class="elemento-actions">
+                        <button class="btn btn-sm btn-primary" onclick="editTelefonoElemento(${elemento.id})">
+                            <i class="fas fa-edit"></i> Editar
+                        </button>
+                        <button class="btn btn-sm btn-danger" onclick="deleteTelefonoElemento(${elemento.id})">
+                            <i class="fas fa-trash"></i> Eliminar
+                        </button>
+                    </div>
+                </div>
+            `;
+        });
+    
+    if (html === '') {
+        html = '<p class="no-content">No hay elementos configurados</p>';
+    }
+    
+    container.innerHTML = html;
+}
+
+function openTelefonoElementoEditor(elementoId = null) {
+    if (elementoId) {
+        editTelefonoElemento(elementoId);
+    } else {
+        // Crear nuevo elemento
+        document.getElementById('telefonoElementoModal').style.display = 'block';
+        document.getElementById('telefonoElementoNombre').value = '';
+        document.getElementById('telefonoElementoEmoji').value = '';
+        document.getElementById('telefonoElementoDescripcion').value = '';
+        document.getElementById('telefonoElementoTipo').value = 'telefonos';
+        document.getElementById('telefonoElementoOrden').value = telefonosInteresConfig.tarjeta.elementos.length + 1;
+        document.getElementById('telefonoElementoActivo').checked = true;
+        document.getElementById('telefonoElementoDocumento').value = '';
+        document.getElementById('telefonoElementoFoto').value = '';
+        
+        // Limpiar datos dinámicos
+        document.getElementById('telefonoElementoDatosContainer').innerHTML = '';
+        
+        // Ocultar grupos de documento/foto
+        document.getElementById('telefonoElementoDocumentoGroup').style.display = 'none';
+        document.getElementById('telefonoElementoFotoGroup').style.display = 'none';
+        
+        toggleTelefonoElementoFields();
+    }
+}
+
+function editTelefonoElemento(elementoId) {
+    const elemento = telefonosInteresConfig.tarjeta.elementos.find(e => e.id === elementoId);
+    if (!elemento) return;
+    
+    document.getElementById('telefonoElementoModal').style.display = 'block';
+    document.getElementById('telefonoElementoNombre').value = elemento.nombre;
+    document.getElementById('telefonoElementoEmoji').value = elemento.emoji;
+    document.getElementById('telefonoElementoDescripcion').value = elemento.descripcion;
+    document.getElementById('telefonoElementoTipo').value = elemento.tipo;
+    document.getElementById('telefonoElementoOrden').value = elemento.orden;
+    document.getElementById('telefonoElementoActivo').checked = elemento.isActive;
+    document.getElementById('telefonoElementoDocumento').value = elemento.documento || '';
+    document.getElementById('telefonoElementoFoto').value = elemento.foto || '';
+    
+    // Guardar ID para edición
+    document.getElementById('telefonoElementoModal').dataset.editingId = elementoId;
+    
+    toggleTelefonoElementoFields();
+}
+
+function closeTelefonoElementoModal() {
+    document.getElementById('telefonoElementoModal').style.display = 'none';
+    document.getElementById('telefonoElementoModal').dataset.editingId = '';
+}
+
+function toggleTelefonoElementoFields() {
+    const tipo = document.getElementById('telefonoElementoTipo').value;
+    const datosContainer = document.getElementById('telefonoElementoDatosContainer');
+    
+    // Limpiar container
+    datosContainer.innerHTML = '';
+    
+    if (tipo === 'telefonos') {
+        datosContainer.innerHTML = `
+            <div class="form-group">
+                <label>Teléfonos (uno por línea, formato: Nombre|Teléfono):</label>
+                <textarea id="telefonoElementoDatosTextarea" rows="5" placeholder="Taxi Cobreros|980 62 26 18&#10;Taxi Sanabria|980 62 26 19&#10;Taxi Express|980 62 26 20"></textarea>
+            </div>
+        `;
+    } else if (tipo === 'servicio') {
+        datosContainer.innerHTML = `
+            <div class="form-group">
+                <label>Información del servicio (una por línea, formato: Campo|Valor):</label>
+                <textarea id="telefonoElementoDatosTextarea" rows="4" placeholder="Dirección|Carretera N-525, km 12&#10;Teléfono|980 62 26 21&#10;Horario|L-V: 8:00-18:00, S: 8:00-14:00"></textarea>
+            </div>
+        `;
+    } else if (tipo === 'documento') {
+        datosContainer.innerHTML = `
+            <div class="form-group">
+                <label>Información básica (una por línea, formato: Campo|Valor):</label>
+                <textarea id="telefonoElementoDatosTextarea" rows="3" placeholder="Teléfono|980 62 26 18&#10;Horario|L-V: 9:00-14:00"></textarea>
+            </div>
+        `;
+    }
+    
+    // Mostrar/ocultar grupos según el tipo
+    if (tipo === 'documento') {
+        document.getElementById('telefonoElementoDocumentoGroup').style.display = 'block';
+        document.getElementById('telefonoElementoFotoGroup').style.display = 'none';
+    } else {
+        document.getElementById('telefonoElementoDocumentoGroup').style.display = 'none';
+        document.getElementById('telefonoElementoFotoGroup').style.display = 'none';
+    }
+}
+
+function saveTelefonoElemento() {
+    const editingId = document.getElementById('telefonoElementoModal').dataset.editingId;
+    const nombre = document.getElementById('telefonoElementoNombre').value;
+    const emoji = document.getElementById('telefonoElementoEmoji').value;
+    const descripcion = document.getElementById('telefonoElementoDescripcion').value;
+    const tipo = document.getElementById('telefonoElementoTipo').value;
+    const orden = parseInt(document.getElementById('telefonoElementoOrden').value);
+    const isActive = document.getElementById('telefonoElementoActivo').checked;
+    const documento = document.getElementById('telefonoElementoDocumento').value;
+    const foto = document.getElementById('telefonoElementoFoto').value;
+    
+    // Procesar datos del textarea
+    const datosTextarea = document.getElementById('telefonoElementoDatosTextarea').value;
+    const datos = [];
+    
+    if (datosTextarea.trim()) {
+        const lineas = datosTextarea.split('\n');
+        lineas.forEach(linea => {
+            const partes = linea.split('|');
+            if (partes.length === 2) {
+                if (tipo === 'telefonos') {
+                    datos.push({
+                        nombre: partes[0].trim(),
+                        telefono: partes[1].trim()
+                    });
+                } else {
+                    datos.push({
+                        nombre: partes[0].trim(),
+                        valor: partes[1].trim()
+                    });
+                }
+            }
+        });
+    }
+    
+    const elementoData = {
+        nombre,
+        emoji,
+        descripcion,
+        tipo,
+        datos,
+        documento: documento || null,
+        foto: foto || null,
+        orden,
+        isActive
+    };
+    
+    if (editingId) {
+        // Editar elemento existente
+        const index = telefonosInteresConfig.tarjeta.elementos.findIndex(e => e.id === parseInt(editingId));
+        if (index !== -1) {
+            elementoData.id = parseInt(editingId);
+            telefonosInteresConfig.tarjeta.elementos[index] = elementoData;
+        }
+    } else {
+        // Crear nuevo elemento
+        const newId = Math.max(...telefonosInteresConfig.tarjeta.elementos.map(e => e.id), 0) + 1;
+        elementoData.id = newId;
+        telefonosInteresConfig.tarjeta.elementos.push(elementoData);
+    }
+    
+    saveTelefonosInteresConfig();
+    loadTelefonosElementosList();
+    closeTelefonoElementoModal();
+    renderServicios();
+    
+    showNotification('Elemento de teléfono guardado correctamente', 'success');
+}
+
+function deleteTelefonoElemento(elementoId) {
+    if (confirm('¿Estás seguro de que quieres eliminar este elemento?')) {
+        telefonosInteresConfig.tarjeta.elementos = telefonosInteresConfig.tarjeta.elementos.filter(e => e.id !== elementoId);
+        saveTelefonosInteresConfig();
+        loadTelefonosElementosList();
+        renderServicios();
+        showNotification('Elemento eliminado correctamente', 'success');
+    }
+}
+
+function exportTelefonosInteres() {
+    const dataStr = JSON.stringify(telefonosInteresConfig, null, 2);
+    const dataBlob = new Blob([dataStr], {type: 'application/json'});
+    const url = URL.createObjectURL(dataBlob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'telefonos-interes-config.json';
+    link.click();
+    URL.revokeObjectURL(url);
+}
+
 // Cargar listas en admin
 function loadServiciosAdmin() {
     loadSeccionesConfig();
     updateSectionTitles();
     loadServiciosList('medical');
     loadServiciosList('itv');
-    loadServiciosList('phone');
     actualizarEstadisticasNotificaciones();
 }
 
@@ -6007,16 +6466,12 @@ function saveSeccionConfig(button) {
 function updateSectionTitles() {
     const medicalTitle = document.getElementById('medicalSectionTitle');
     const itvTitle = document.getElementById('itvSectionTitle');
-    const phoneTitle = document.getElementById('phoneSectionTitle');
     
     if (medicalTitle) {
         medicalTitle.textContent = `${seccionesConfig.medical.icon} ${seccionesConfig.medical.title}`;
     }
     if (itvTitle) {
         itvTitle.textContent = `${seccionesConfig.itv.icon} ${seccionesConfig.itv.title}`;
-    }
-    if (phoneTitle) {
-        phoneTitle.textContent = `${seccionesConfig.phone.icon} ${seccionesConfig.phone.title}`;
     }
 }
 

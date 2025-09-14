@@ -1,0 +1,19 @@
+{
+    "logs": [
+        {
+            "outputFile": "com.turisteam.ayuntamientocobreros.app-mergeDebugResources-39:/values-h320dp-port-v13/values-h320dp-port-v13.xml",
+            "map": [
+                {
+                    "source": "C:\\Users\\marsa\\.gradle\\caches\\transforms-3\\f25922657e124331905feeb0e8243802\\transformed\\material-1.10.0\\res\\values-h320dp-port-v13\\values-h320dp-port-v13.xml",
+                    "from": {
+                        "startLines": "2",
+                        "startColumns": "4",
+                        "startOffsets": "55",
+                        "endColumns": "75",
+                        "endOffsets": "126"
+                    }
+                }
+            ]
+        }
+    ]
+}

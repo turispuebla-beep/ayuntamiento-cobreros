@@ -180,6 +180,7 @@ FIREBASE_MESSAGING_SENDER_ID=623846192437
 - [ ] ✅ Configuración Firebase actualizada
 - [ ] ✅ Server Key FCM configurada
 - [ ] ✅ Sistema de tarjetas configurables incluido
+- [ ] ✅ Sistema de Teléfonos de Interés configurable
 - [ ] ✅ Panel de administración completo
 - [ ] ✅ LocalStorage configurado para persistencia
 
@@ -191,6 +192,7 @@ FIREBASE_MESSAGING_SENDER_ID=623846192437
 - [ ] ✅ Panel de administración accesible
 - [ ] ✅ Tarjetas configurables funcionando
 - [ ] ✅ Sistema de Cultura y Ocio operativo
+- [ ] ✅ Teléfonos de Interés expandibles funcionando
 - [ ] ✅ Dominio personalizado configurado
 
 ## 🚨 **Problemas Comunes:**
@@ -222,6 +224,13 @@ FIREBASE_MESSAGING_SENDER_ID=623846192437
 - Verificar que localStorage persiste los datos
 - Comprobar que las funciones JavaScript están definidas
 
+### **6. 📞 Teléfonos de Interés no funcionan:**
+- Verificar que la tarjeta principal se expande al hacer clic
+- Comprobar que los elementos individuales se expanden
+- Verificar que los enlaces telefónicos funcionan (tel:)
+- Comprobar que los documentos/fotos se abren correctamente
+- Verificar que el panel de administración permite gestionar elementos
+
 ## 🎯 **Resultado Final:**
 
 **¡Tendrás una web completa del Ayuntamiento de Cobreros con:**
@@ -250,6 +259,26 @@ FIREBASE_MESSAGING_SENDER_ID=623846192437
 - 🎯 **Configuración granular** de elementos
 - 🔄 **Actualización en tiempo real**
 - 🎨 **Interfaz moderna** y intuitiva
+
+## 📞 **Nuevas Funcionalidades v1.2.0:**
+
+### **Sistema de Teléfonos de Interés Configurables:**
+- 📞 **Tarjeta única expandible** en lugar de múltiples tarjetas
+- 🎯 **Sistema de elementos configurables** por categorías
+- 📋 **Tipos de elementos**:
+  - **Teléfonos múltiples**: Lista de números (ej: Taxis)
+  - **Información de servicio**: Datos completos (ej: ITV)
+  - **Documento/Foto**: Info básica + archivo adjunto (ej: Renovación DNI)
+- ⚙️ **Panel de administración especializado** con modales específicos
+- 📊 **Datos estructurados** con formato Nombre|Valor
+- 🔗 **Enlaces opcionales** a documentos PDF y fotos
+- 🎨 **Interfaz responsive** con efectos de expansión
+
+### **Mejoras en la Gestión:**
+- 🗑️ **Eliminación de sección duplicada** no configurable
+- 🔄 **Gestión completa**: crear, editar, eliminar, ordenar elementos
+- 💾 **Persistencia mejorada** en localStorage
+- 🎯 **Configuración granular** por elemento individual
 
 **¡Perfecto para el Ayuntamiento de Cobreros!** 🏛️✨
 

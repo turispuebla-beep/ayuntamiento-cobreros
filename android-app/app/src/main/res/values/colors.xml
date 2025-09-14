@@ -4,6 +4,8 @@
     <color name="ayuntamiento_blue">#1e3a8a</color>
     <color name="ayuntamiento_blue_light">#3b82f6</color>
     <color name="ayuntamiento_blue_dark">#1e40af</color>
+    <color name="ayuntamiento_gold">#fbbf24</color>
+    <color name="ayuntamiento_gold_dark">#f59e0b</color>
     
     <!-- Colores adicionales -->
     <color name="white">#FFFFFF</color>

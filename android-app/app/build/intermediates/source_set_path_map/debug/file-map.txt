@@ -1,0 +1,44 @@
+com.turisteam.ayuntamientocobreros.app-emoji2-1.2.0-0 C:\Users\marsa\.gradle\caches\transforms-3\15f06260c4a7ba4b4ff14347069021d7\transformed\emoji2-1.2.0\res
+com.turisteam.ayuntamientocobreros.app-savedstate-1.2.1-1 C:\Users\marsa\.gradle\caches\transforms-3\212ea505b982a8625ac5002527b908e2\transformed\savedstate-1.2.1\res
+com.turisteam.ayuntamientocobreros.app-browser-1.4.0-2 C:\Users\marsa\.gradle\caches\transforms-3\2a07aa00fb4fc398540900d4d0b9c9b7\transformed\browser-1.4.0\res
+com.turisteam.ayuntamientocobreros.app-lifecycle-viewmodel-2.6.1-3 C:\Users\marsa\.gradle\caches\transforms-3\2c29382685253bb32aae23bbd0ff2164\transformed\lifecycle-viewmodel-2.6.1\res
+com.turisteam.ayuntamientocobreros.app-lifecycle-viewmodel-savedstate-2.6.1-4 C:\Users\marsa\.gradle\caches\transforms-3\2d6a59c8d51e961f6256d0a93acc49bf\transformed\lifecycle-viewmodel-savedstate-2.6.1\res
+com.turisteam.ayuntamientocobreros.app-annotation-experimental-1.3.0-5 C:\Users\marsa\.gradle\caches\transforms-3\371ab6159ff658d004fd0bc3c3706e09\transformed\annotation-experimental-1.3.0\res
+com.turisteam.ayuntamientocobreros.app-coordinatorlayout-1.1.0-6 C:\Users\marsa\.gradle\caches\transforms-3\388e3a7e2aee66b73c29e32e7e331970\transformed\coordinatorlayout-1.1.0\res
+com.turisteam.ayuntamientocobreros.app-core-1.9.0-7 C:\Users\marsa\.gradle\caches\transforms-3\412053de3272e2648543d87a9cf3d9e7\transformed\core-1.9.0\res
+com.turisteam.ayuntamientocobreros.app-appcompat-1.6.1-8 C:\Users\marsa\.gradle\caches\transforms-3\44c5beb341352e4c06110aeeef654833\transformed\appcompat-1.6.1\res
+com.turisteam.ayuntamientocobreros.app-core-runtime-2.2.0-9 C:\Users\marsa\.gradle\caches\transforms-3\50e38f8e39e564ff7db93010190dd3ea\transformed\core-runtime-2.2.0\res
+com.turisteam.ayuntamientocobreros.app-constraintlayout-2.1.4-10 C:\Users\marsa\.gradle\caches\transforms-3\51e46e85deaa1d2084ddfded39561ff6\transformed\constraintlayout-2.1.4\res
+com.turisteam.ayuntamientocobreros.app-transition-1.2.0-11 C:\Users\marsa\.gradle\caches\transforms-3\547eba5abaa82e47c67ab77d620d96f0\transformed\transition-1.2.0\res
+com.turisteam.ayuntamientocobreros.app-lifecycle-livedata-2.6.1-12 C:\Users\marsa\.gradle\caches\transforms-3\55435bdd12f3896b38b0876cc03bd0a7\transformed\lifecycle-livedata-2.6.1\res
+com.turisteam.ayuntamientocobreros.app-play-services-basement-18.2.0-13 C:\Users\marsa\.gradle\caches\transforms-3\5ba741abf33a32070c414880d21fd3b4\transformed\play-services-basement-18.2.0\res
+com.turisteam.ayuntamientocobreros.app-drawerlayout-1.1.1-14 C:\Users\marsa\.gradle\caches\transforms-3\77d65f6012e12f2cd8cd65166b3de296\transformed\drawerlayout-1.1.1\res
+com.turisteam.ayuntamientocobreros.app-recyclerview-1.1.0-15 C:\Users\marsa\.gradle\caches\transforms-3\7965cb870ca9eacfd3dc6bec6470e19e\transformed\recyclerview-1.1.0\res
+com.turisteam.ayuntamientocobreros.app-startup-runtime-1.1.1-16 C:\Users\marsa\.gradle\caches\transforms-3\861c18e5b62467b055f3fae9bd3b792a\transformed\startup-runtime-1.1.1\res
+com.turisteam.ayuntamientocobreros.app-profileinstaller-1.3.0-17 C:\Users\marsa\.gradle\caches\transforms-3\8ecf2f458aa2a24058a4a79fdab211a4\transformed\profileinstaller-1.3.0\res
+com.turisteam.ayuntamientocobreros.app-cardview-1.0.0-18 C:\Users\marsa\.gradle\caches\transforms-3\94fdc965799803dfda4bbd4ede04322e\transformed\cardview-1.0.0\res
+com.turisteam.ayuntamientocobreros.app-lifecycle-runtime-2.6.1-19 C:\Users\marsa\.gradle\caches\transforms-3\969ac3f48695adebfd67af3e9a81c3ba\transformed\lifecycle-runtime-2.6.1\res
+com.turisteam.ayuntamientocobreros.app-core-ktx-1.9.0-20 C:\Users\marsa\.gradle\caches\transforms-3\972bc24ba3057c495f2054c160dd544b\transformed\core-ktx-1.9.0\res
+com.turisteam.ayuntamientocobreros.app-ads-adservices-1.0.0-beta05-21 C:\Users\marsa\.gradle\caches\transforms-3\9a21f0a652ab2faf1a16b4b7370d08a1\transformed\ads-adservices-1.0.0-beta05\res
+com.turisteam.ayuntamientocobreros.app-appcompat-resources-1.6.1-22 C:\Users\marsa\.gradle\caches\transforms-3\a94195d614c3aebae928b454fcacd7b8\transformed\appcompat-resources-1.6.1\res
+com.turisteam.ayuntamientocobreros.app-ads-adservices-java-1.0.0-beta05-23 C:\Users\marsa\.gradle\caches\transforms-3\ad48b5ef24c25a07637264e396c7cc1c\transformed\ads-adservices-java-1.0.0-beta05\res
+com.turisteam.ayuntamientocobreros.app-firebase-common-20.4.2-24 C:\Users\marsa\.gradle\caches\transforms-3\aecc3f2d78f0e295d467239561fc2419\transformed\firebase-common-20.4.2\res
+com.turisteam.ayuntamientocobreros.app-lifecycle-process-2.6.1-25 C:\Users\marsa\.gradle\caches\transforms-3\b140e09c66d0df3da65d1ecd16fceeb5\transformed\lifecycle-process-2.6.1\res
+com.turisteam.ayuntamientocobreros.app-firebase-messaging-23.4.0-26 C:\Users\marsa\.gradle\caches\transforms-3\b5e7a7dbc88dc8362ad8f6ea81abf5a0\transformed\firebase-messaging-23.4.0\res
+com.turisteam.ayuntamientocobreros.app-activity-1.8.0-27 C:\Users\marsa\.gradle\caches\transforms-3\c3c2ddf4a4a1eed373ea58f00bd5bc11\transformed\activity-1.8.0\res
+com.turisteam.ayuntamientocobreros.app-play-services-base-18.0.1-28 C:\Users\marsa\.gradle\caches\transforms-3\ccfb49caf55591b9170808607d383047\transformed\play-services-base-18.0.1\res
+com.turisteam.ayuntamientocobreros.app-fragment-1.3.6-29 C:\Users\marsa\.gradle\caches\transforms-3\d423dde329917f49e2f4d1728cf50eda\transformed\fragment-1.3.6\res
+com.turisteam.ayuntamientocobreros.app-play-services-auth-20.7.0-30 C:\Users\marsa\.gradle\caches\transforms-3\e90f8910aac63ccc8f57712506b166c1\transformed\play-services-auth-20.7.0\res
+com.turisteam.ayuntamientocobreros.app-viewpager2-1.0.0-31 C:\Users\marsa\.gradle\caches\transforms-3\f0507e5508a44388533def74b097efc2\transformed\viewpager2-1.0.0\res
+com.turisteam.ayuntamientocobreros.app-play-services-measurement-api-21.5.0-32 C:\Users\marsa\.gradle\caches\transforms-3\f050b984cb27720c90d461bcea2442bb\transformed\play-services-measurement-api-21.5.0\res
+com.turisteam.ayuntamientocobreros.app-material-1.10.0-33 C:\Users\marsa\.gradle\caches\transforms-3\f25922657e124331905feeb0e8243802\transformed\material-1.10.0\res
+com.turisteam.ayuntamientocobreros.app-emoji2-views-helper-1.2.0-34 C:\Users\marsa\.gradle\caches\transforms-3\f6486bc8b8deb544a0c4d944777c2894\transformed\emoji2-views-helper-1.2.0\res
+com.turisteam.ayuntamientocobreros.app-lifecycle-livedata-core-2.6.1-35 C:\Users\marsa\.gradle\caches\transforms-3\fde358fb0df003635420c58d20370bf2\transformed\lifecycle-livedata-core-2.6.1\res
+com.turisteam.ayuntamientocobreros.app-google-services-36 C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\build\generated\res\google-services\debug
+com.turisteam.ayuntamientocobreros.app-pngs-37 C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\build\generated\res\pngs\debug
+com.turisteam.ayuntamientocobreros.app-resValues-38 C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\build\generated\res\resValues\debug
+com.turisteam.ayuntamientocobreros.app-packageDebugResources-39 C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\build\intermediates\incremental\debug\packageDebugResources\merged.dir
+com.turisteam.ayuntamientocobreros.app-packageDebugResources-40 C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\build\intermediates\incremental\debug\packageDebugResources\stripped.dir
+com.turisteam.ayuntamientocobreros.app-merged_res-41 C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\build\intermediates\merged_res\debug
+com.turisteam.ayuntamientocobreros.app-debug-42 C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\debug\res
+com.turisteam.ayuntamientocobreros.app-main-43 C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\res

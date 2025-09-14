@@ -13,6 +13,8 @@ Sistema completo de gestión municipal para el **Ayuntamiento de Cobreros** con 
 - **13 localidades** del Ayuntamiento de Cobreros
 - **Base de datos** sólida en Firebase Firestore
 - **Notificaciones** con archivos adjuntos
+- **Sistema de tarjetas configurables** para Cultura y Ocio
+- **Teléfonos de Interés** con tarjeta expandible configurable
 
 ### **📱 APK Android**
 - **App nativa** para Android
@@ -214,6 +216,37 @@ const firebaseConfig = {
 - **Layout responsive** para móviles
 - **Transiciones suaves** y animaciones
 
+## 📞 **Sistema de Teléfonos de Interés**
+
+### **🎯 Características Principales:**
+- **Tarjeta única expandible** con diseño moderno
+- **Sistema de elementos configurables** por categorías
+- **Tipos de elementos**:
+  - **📞 Teléfonos múltiples**: Lista de números de teléfono (ej: Taxis)
+  - **🏢 Información de servicio**: Datos completos (ej: ITV con dirección, horarios)
+  - **📄 Documento/Foto**: Información básica + archivo adjunto (ej: Renovación DNI)
+
+### **⚙️ Gestión desde Administración:**
+- **Panel especializado** para configurar teléfonos de interés
+- **Formularios dinámicos** según el tipo de elemento
+- **Datos estructurados** con formato Nombre|Valor
+- **Enlaces opcionales** a documentos PDF y fotos
+- **Orden personalizable** de elementos
+- **Activación/desactivación** individual de elementos
+
+### **🎨 Interfaz de Usuario:**
+- **Tarjeta principal** con emoji y descripción
+- **Expansión suave** al hacer clic
+- **Elementos individuales** con sus propios datos
+- **Enlaces telefónicos** clickeables (tel:)
+- **Enlaces a documentos** y fotos
+- **Diseño responsive** para móviles
+
+### **📋 Ejemplos de Configuración:**
+- **🚕 Taxis**: Múltiples números de taxis locales
+- **🚗 ITV**: Dirección, teléfono, horarios de apertura
+- **🆔 Renovación DNI**: Teléfono, horarios + documento PDF con días disponibles
+
 ## 🔔 **Sistema de Notificaciones Bidireccional**
 
 ### **Tipos de Notificación:**
@@ -302,6 +335,18 @@ const firebaseConfig = {
 - **Soporte** técnico disponible
 
 ## 📝 **Changelog**
+
+### **v1.2.0** - Teléfonos de Interés Configurables 📞
+- ✅ **Sección de Teléfonos de Interés** completamente refactorizada
+- ✅ **Tarjeta única expandible** en lugar de múltiples tarjetas
+- ✅ **Sistema de elementos configurables** (Taxis, ITV, Renovación DNI)
+- ✅ **Tipos de elementos**: Teléfonos múltiples, Información de servicio, Documento/Foto
+- ✅ **Panel de administración avanzado** con modales específicos
+- ✅ **Datos dinámicos** según el tipo de elemento
+- ✅ **Enlaces a documentos y fotos** opcionales
+- ✅ **Interfaz responsive** con efectos de expansión
+- ✅ **Gestión completa**: crear, editar, eliminar, ordenar elementos
+- ✅ **Eliminación de sección duplicada** no configurable
 
 ### **v1.1.0** - Sistema de Tarjetas Configurables ✨
 - ✅ **Sistema completo de tarjetas configurables** para Cultura y Ocio

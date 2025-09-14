@@ -1,0 +1,21 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="72dp"
+    android:height="72dp"
+    android:viewportWidth="72"
+    android:viewportHeight="72">
+    
+    <!-- Fondo circular -->
+    <path
+        android:fillColor="#1e3a8a"
+        android:pathData="M0,0L72,0L72,72L0,72L0,0Z" />
+    
+    <!-- Escudo de Cobreros -->
+    <path
+        android:fillColor="#fbbf24"
+        android:pathData="M36,12L18,22L18,50L36,60L54,50L54,22L36,12Z" />
+    
+    <!-- Centro del escudo -->
+    <path
+        android:fillColor="#1e3a8a"
+        android:pathData="M30,30L42,30L42,42L30,42L30,30Z" />
+</vector>

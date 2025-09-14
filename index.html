@@ -1068,8 +1068,8 @@
                             <button class="btn btn-secondary" onclick="openSeccionConfig('itv')">
                                 <i class="fas fa-edit"></i> Configurar ITV
                             </button>
-                            <button class="btn btn-secondary" onclick="openSeccionConfig('phone')">
-                                <i class="fas fa-edit"></i> Configurar Teléfonos
+                            <button class="btn btn-primary" onclick="openTelefonosInteresManager()">
+                                <i class="fas fa-phone"></i> Gestionar Teléfonos de Interés
                             </button>
                         </div>
                         <p style="margin-top: 10px; color: #666; font-size: 0.9em;">
@@ -1717,6 +1717,132 @@
                 <button type="button" class="btn btn-outline" onclick="closeCulturaOcioModal()">Cancelar</button>
                 <button type="button" class="btn btn-primary" onclick="saveCulturaOcio()">
                     <i class="fas fa-save"></i> Guardar Cambios
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para gestionar Teléfonos de Interés -->
+    <div id="telefonosInteresModal" class="modal">
+        <div class="modal-content" style="max-width: 1000px;">
+            <div class="modal-header">
+                <h3>📞 Gestión de Teléfonos de Interés</h3>
+                <span class="close" onclick="closeTelefonosInteresModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="telefonos-tabs">
+                    <button class="tab-btn active" onclick="switchTelefonosTab('configuracion')">⚙️ Configuración</button>
+                    <button class="tab-btn" onclick="switchTelefonosTab('elementos')">📋 Elementos</button>
+                </div>
+                
+                <!-- Tab de Configuración -->
+                <div id="telefonos-configuracion-tab" class="tab-content active">
+                    <div class="form-group">
+                        <label for="telefonosTitulo">Título de la sección:</label>
+                        <input type="text" id="telefonosTitulo" value="TELÉFONOS DE INTERÉS">
+                    </div>
+                    <div class="form-group">
+                        <label for="telefonosDescripcion">Descripción:</label>
+                        <textarea id="telefonosDescripcion" rows="3" placeholder="Descripción de la sección de teléfonos de interés..."></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="telefonosTarjetaNombre">Nombre de la tarjeta:</label>
+                        <input type="text" id="telefonosTarjetaNombre" value="Servicios">
+                    </div>
+                    <div class="form-group">
+                        <label for="telefonosTarjetaEmoji">Emoji de la tarjeta:</label>
+                        <input type="text" id="telefonosTarjetaEmoji" value="📞" maxlength="2">
+                    </div>
+                    <div class="form-group">
+                        <label for="telefonosTarjetaDescripcion">Descripción de la tarjeta:</label>
+                        <textarea id="telefonosTarjetaDescripcion" rows="2" placeholder="Descripción que aparece en la tarjeta principal..."></textarea>
+                    </div>
+                </div>
+                
+                <!-- Tab de Elementos -->
+                <div id="telefonos-elementos-tab" class="tab-content">
+                    <div class="content-actions">
+                        <button class="btn btn-primary" onclick="openTelefonoElementoEditor()">
+                            <i class="fas fa-plus"></i> Nuevo Elemento
+                        </button>
+                        <button class="btn btn-secondary" onclick="exportTelefonosInteres()">
+                            <i class="fas fa-download"></i> Exportar Configuración
+                        </button>
+                    </div>
+                    <div class="content-list" id="telefonosElementosList">
+                        <!-- Se cargará dinámicamente -->
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline" onclick="closeTelefonosInteresModal()">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="saveTelefonosInteres()">
+                    <i class="fas fa-save"></i> Guardar Cambios
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para editar elementos de teléfonos -->
+    <div id="telefonoElementoModal" class="modal">
+        <div class="modal-content" style="max-width: 800px;">
+            <div class="modal-header">
+                <h3>📞 Editar Elemento de Teléfono</h3>
+                <span class="close" onclick="closeTelefonoElementoModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="telefonoElementoNombre">Nombre del elemento:</label>
+                    <input type="text" id="telefonoElementoNombre" placeholder="Ej: Taxis, ITV, Renovación DNI">
+                </div>
+                <div class="form-group">
+                    <label for="telefonoElementoEmoji">Emoji:</label>
+                    <input type="text" id="telefonoElementoEmoji" placeholder="🚕" maxlength="2">
+                </div>
+                <div class="form-group">
+                    <label for="telefonoElementoDescripcion">Descripción:</label>
+                    <textarea id="telefonoElementoDescripcion" rows="2" placeholder="Breve descripción del servicio..."></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="telefonoElementoTipo">Tipo de elemento:</label>
+                    <select id="telefonoElementoTipo" onchange="toggleTelefonoElementoFields()">
+                        <option value="telefonos">Teléfonos múltiples</option>
+                        <option value="servicio">Información de servicio</option>
+                        <option value="documento">Documento/Foto</option>
+                    </select>
+                </div>
+                
+                <!-- Campos dinámicos según el tipo -->
+                <div id="telefonoElementoDatosContainer">
+                    <!-- Se mostrarán campos dinámicos según el tipo seleccionado -->
+                </div>
+                
+                <div class="form-group" id="telefonoElementoDocumentoGroup" style="display: none;">
+                    <label for="telefonoElementoDocumento">URL del documento:</label>
+                    <input type="url" id="telefonoElementoDocumento" placeholder="https://ejemplo.com/documento.pdf">
+                </div>
+                
+                <div class="form-group" id="telefonoElementoFotoGroup" style="display: none;">
+                    <label for="telefonoElementoFoto">URL de la foto:</label>
+                    <input type="url" id="telefonoElementoFoto" placeholder="https://ejemplo.com/foto.jpg">
+                </div>
+                
+                <div class="form-group">
+                    <label for="telefonoElementoOrden">Orden de visualización:</label>
+                    <input type="number" id="telefonoElementoOrden" value="1" min="1">
+                </div>
+                
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="telefonoElementoActivo" checked>
+                        Elemento activo
+                    </label>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline" onclick="closeTelefonoElementoModal()">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="saveTelefonoElemento()">
+                    <i class="fas fa-save"></i> Guardar Elemento
                 </button>
             </div>
         </div>
