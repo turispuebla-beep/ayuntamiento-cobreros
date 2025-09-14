@@ -17,5 +17,12 @@
     <color name="notification_evento">#ea580c</color>
     <color name="notification_bando">#9333ea</color>
     <color name="notification_general">#1e3a8a</color>
+    
+    <!-- Colores adicionales para notificaciones -->
+    <color name="emergency_red">#dc2626</color>
+    <color name="appointment_green">#16a34a</color>
+    <color name="event_orange">#ea580c</color>
+    <color name="bando_purple">#9333ea</color>
+    <color name="incidence_yellow">#fbbf24</color>
 </resources>
 

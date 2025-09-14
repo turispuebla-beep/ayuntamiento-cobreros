@@ -1,0 +1,14 @@
+# Placeholder para sonido acuático
+# Este archivo debe ser reemplazado por un archivo de audio real (.mp3, .wav, .ogg)
+# que contenga el sonido de agua que se reproducirá en las notificaciones
+
+# Para obtener un sonido acuático:
+# 1. Descargar un archivo de audio con sonido de agua
+# 2. Convertirlo a formato compatible con Android (.mp3, .wav, .ogg)
+# 3. Renombrar el archivo a "water_sound" (sin extensión)
+# 4. Reemplazar este archivo .txt con el archivo de audio
+
+# Ejemplo de URLs para sonidos acuáticos gratuitos:
+# - https://freesound.org/people/soundmary/sounds/220731/
+# - https://freesound.org/people/klankschap/sounds/138859/
+# - https://freesound.org/people/SpliceSound/sounds/218461/

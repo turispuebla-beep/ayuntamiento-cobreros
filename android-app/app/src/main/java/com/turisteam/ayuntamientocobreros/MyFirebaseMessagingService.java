@@ -42,15 +42,20 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
         // Crear canal de notificación
         createNotificationChannel();
         
+        // Obtener datos de adjuntos
+        String hasAttachments = remoteMessage.getData().get("has_attachments");
+        String attachmentUrl = remoteMessage.getData().get("attachment_url");
+        String attachmentType = remoteMessage.getData().get("attachment_type");
+        
         // Crear intent para abrir la aplicación
         Intent intent = new Intent(this, MainActivity.class);
         intent.putExtra("notification_type", type);
         intent.putExtra("notification_localities", localities);
         intent.putExtra("notification_title", title);
         intent.putExtra("notification_message", message);
-        intent.putExtra("has_attachments", remoteMessage.getData().get("has_attachments"));
-        intent.putExtra("attachment_url", remoteMessage.getData().get("attachment_url"));
-        intent.putExtra("attachment_type", remoteMessage.getData().get("attachment_type"));
+        intent.putExtra("has_attachments", hasAttachments);
+        intent.putExtra("attachment_url", attachmentUrl);
+        intent.putExtra("attachment_type", attachmentType);
         intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
         
         PendingIntent pendingIntent = PendingIntent.getActivity(
@@ -105,6 +110,15 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
         if (localities != null && !localities.isEmpty()) {
             builder.setSubText("📍 " + localities);
         }
+        
+        // Agregar indicador de adjuntos si los hay
+        if ("true".equals(hasAttachments) && attachmentUrl != null && !attachmentUrl.isEmpty()) {
+            String attachmentIcon = "document".equals(attachmentType) ? "📄" : "📸";
+            builder.setSubText("📍 " + localities + " | " + attachmentIcon + " Adjunto disponible");
+        }
+        
+        // Configurar señal acuática (sonido personalizado)
+        builder.setSound(android.net.Uri.parse("android.resource://" + getPackageName() + "/" + R.raw.water_sound));
         
         // Mostrar notificación
         NotificationManager notificationManager = getSystemService(NotificationManager.class);
