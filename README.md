@@ -29,21 +29,29 @@ Sistema completo de gestión municipal para el **Ayuntamiento de Cobreros** con 
 - **Service Worker** completo
 - **Banner de instalación** automático
 
-## 🔄 **Sistema de Notificaciones Bidireccional**
+## 🔄 **Sistema de Notificaciones Bidireccional Completo**
 
 ### **Flujo Completo:**
-- **WEB → APK** ✅
-- **APK → APK** ✅  
-- **APK → WEB** ✅
-- **WEB → WEB** ✅
-- **PWA iPhone** recibe todas ✅
+- **WEB → APK** ✅ (Web envía notificación a APK)
+- **APK → APK** ✅ (APK envía notificación a otro APK)
+- **APK → WEB** ✅ (APK envía notificación a Web)
+- **WEB → WEB** ✅ (Web envía notificación a Web)
+- **PWA iPhone** recibe todas ✅ (iPhone recibe todas las notificaciones)
+
+### **Arquitectura del Sistema:**
+```
+📱 APK Android ←→ 🔥 Firebase FCM ←→ 🌐 Web/PWA
+     ↕️                    ↕️                    ↕️
+📱 PWA iPhone ←→ 🔥 Firebase FCM ←→ 🌐 Web/PWA
+```
 
 ### **Funcionalidades:**
-- **Filtrado por localidades** específicas
-- **Archivos adjuntos** en notificaciones
-- **Tipos de notificación:** General, Emergencia, Cita, Evento, Bando
-- **Estadísticas** en tiempo real
+- **Filtrado por localidades** específicas (13 pueblos)
+- **Archivos adjuntos** en notificaciones (PDF, imágenes)
+- **Tipos de notificación:** General, Emergencia, Cita, Evento, Bando, Incidencia
+- **Estadísticas** en tiempo real de entrega
 - **Sistema de consentimiento** de usuarios
+- **Sincronización bidireccional** entre todas las plataformas
 
 ## 🏘️ **Localidades del Ayuntamiento**
 
@@ -206,7 +214,7 @@ const firebaseConfig = {
 - **Layout responsive** para móviles
 - **Transiciones suaves** y animaciones
 
-## 🔔 **Sistema de Notificaciones**
+## 🔔 **Sistema de Notificaciones Bidireccional**
 
 ### **Tipos de Notificación:**
 - **🏛️ General** - Información general del ayuntamiento
@@ -214,13 +222,29 @@ const firebaseConfig = {
 - **📅 Cita** - Recordatorios de citas (verde, prioridad alta)
 - **🎉 Evento** - Eventos municipales (naranja, prioridad alta)
 - **📢 Bando** - Bandos oficiales (morado, prioridad alta)
+- **⚠️ Incidencia** - Reportes de incidencias (amarillo, prioridad media)
 
 ### **Características:**
 - **Escudo de Cobreros** en todas las notificaciones
 - **Archivos adjuntos** (PDF, imágenes, documentos)
-- **Filtrado por localidades** específicas
-- **Estadísticas** de entrega
+- **Filtrado por localidades** específicas (13 pueblos)
+- **Estadísticas** de entrega en tiempo real
 - **Historial** de notificaciones
+- **Sincronización bidireccional** entre todas las plataformas
+
+### **Flujos de Notificación:**
+1. **🌐 Web → 📱 APK:** Administrador web envía notificación a usuarios APK
+2. **📱 APK → 📱 APK:** Usuario APK envía notificación a otro usuario APK
+3. **📱 APK → 🌐 Web:** Usuario APK envía notificación a administrador web
+4. **🌐 Web → 🌐 Web:** Administrador web envía notificación a otros administradores web
+5. **📱 PWA iPhone:** Recibe todas las notificaciones de cualquier origen
+
+### **Arquitectura Técnica:**
+- **Firebase Cloud Messaging (FCM)** como backbone
+- **Firestore** para almacenamiento de notificaciones
+- **Service Worker** para PWA y notificaciones web
+- **Firebase SDK** para APK Android
+- **Sincronización en tiempo real** entre todas las plataformas
 
 ## 🚀 **Despliegue y Producción**
 
