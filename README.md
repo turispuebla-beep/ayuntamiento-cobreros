@@ -282,7 +282,7 @@ const firebaseConfig = {
 ## 🚀 **Despliegue y Producción**
 
 ### **🌐 Web (Netlify):**
-- **URL:** https://ayuntamiento-cobreros.netlify.app
+- **URL:** https://ayuntamientocobreros.netlify.app
 - **HTTPS:** Automático
 - **CDN:** Global
 - **Actualizaciones:** Automáticas
