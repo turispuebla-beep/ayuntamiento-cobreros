@@ -1349,6 +1349,42 @@ a.btn {
     color: var(--accent-color);
 }
 
+/* reCAPTCHA Styles */
+.recaptcha-info {
+    margin: 1rem 0;
+    padding: 0.75rem;
+    background-color: var(--bg-secondary);
+    border-left: 3px solid var(--primary-color);
+    border-radius: 4px;
+}
+
+.recaptcha-info small {
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+    line-height: 1.4;
+}
+
+.recaptcha-info a {
+    color: var(--primary-color);
+    text-decoration: none;
+}
+
+.recaptcha-info a:hover {
+    text-decoration: underline;
+}
+
+.btn-loading {
+    display: none;
+}
+
+.btn.loading .btn-text {
+    display: none;
+}
+
+.btn.loading .btn-loading {
+    display: inline;
+}
+
 /* Modals */
 .modal {
     display: none;

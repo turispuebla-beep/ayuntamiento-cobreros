@@ -53,6 +53,10 @@
         <activity
             android:name=".NotificationDetailActivity"
             android:exported="false" />
+        
+        <activity
+            android:name=".UserDashboardActivity"
+            android:exported="false" />
 
         <!-- Servicio de Firebase Cloud Messaging -->
         <service

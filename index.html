@@ -18,6 +18,9 @@
     <meta name="apple-mobile-web-app-title" content="Cobreros">
     <link rel="apple-touch-icon" href="images/escudo-cobreros-192.png">
     
+    <!-- reCAPTCHA v3 -->
+    <script src="https://www.google.com/recaptcha/api.js?render=6LeBYM4rAAAAALaDVtPi1H4jWjpj_Ovjf9g8VnT4"></script>
+    
     <!-- Firebase SDK -->
     <script type="module">
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
@@ -415,7 +418,20 @@
                     <label for="loginPassword">Contraseña:</label>
                     <input type="password" id="loginPassword" name="password" required>
                 </div>
-                <button type="submit" class="btn btn-primary">Iniciar Sesión</button>
+                <!-- reCAPTCHA Info -->
+                <div class="recaptcha-info">
+                    <small>🛡️ Este sitio está protegido por reCAPTCHA y se aplican la 
+                        <a href="https://policies.google.com/privacy" target="_blank">Política de Privacidad</a> 
+                        y los <a href="https://policies.google.com/terms" target="_blank">Términos de Servicio</a> 
+                        de Google.
+                    </small>
+                </div>
+                <button type="submit" class="btn btn-primary" id="loginSubmitBtn">
+                    <span class="btn-text">Iniciar Sesión</span>
+                    <span class="btn-loading" style="display: none;">
+                        <i class="fas fa-spinner fa-spin"></i> Verificando...
+                    </span>
+                </button>
             </form>
         </div>
     </div>
@@ -515,7 +531,20 @@
                     <input type="checkbox" id="notificationConsent" name="notificationConsent" required>
                     <label for="notificationConsent">Doy mi consentimiento para recibir notificaciones del Ayuntamiento de Cobreros, incluyendo comunicaciones importantes, eventos y documentos oficiales.</label>
                 </div>
-                <button type="submit" class="btn btn-primary">Registrarse</button>
+                <!-- reCAPTCHA Info -->
+                <div class="recaptcha-info">
+                    <small>🛡️ Este sitio está protegido por reCAPTCHA y se aplican la 
+                        <a href="https://policies.google.com/privacy" target="_blank">Política de Privacidad</a> 
+                        y los <a href="https://policies.google.com/terms" target="_blank">Términos de Servicio</a> 
+                        de Google.
+                    </small>
+                </div>
+                <button type="submit" class="btn btn-primary" id="registerSubmitBtn">
+                    <span class="btn-text">Registrarse</span>
+                    <span class="btn-loading" style="display: none;">
+                        <i class="fas fa-spinner fa-spin"></i> Verificando...
+                    </span>
+                </button>
             </form>
         </div>
     </div>
@@ -1969,6 +1998,7 @@
     </div>
 
     <script src="js/script.js"></script>
+    <script src="js/recaptcha.js"></script>
 </body> 
 
 

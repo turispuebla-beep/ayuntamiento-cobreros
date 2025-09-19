@@ -24,9 +24,12 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
             String message = remoteMessage.getData().get("message");
             String type = remoteMessage.getData().get("type");
             String localities = remoteMessage.getData().get("localities");
+            String hasAttachments = remoteMessage.getData().get("has_attachments");
+            String attachmentUrl = remoteMessage.getData().get("attachment_url");
+            String attachmentType = remoteMessage.getData().get("attachment_type");
             
             // Mostrar notificación
-            showNotification(title, message, type, localities);
+            showNotification(title, message, type, localities, hasAttachments, attachmentUrl, attachmentType);
         }
         
         // Verificar si el mensaje contiene notificación
@@ -34,18 +37,18 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
             String title = remoteMessage.getNotification().getTitle();
             String body = remoteMessage.getNotification().getBody();
             
-            showNotification(title, body, "general", "");
+            showNotification(title, body, "general", "", null, null, null);
         }
     }
     
     private void showNotification(String title, String message, String type, String localities) {
+        showNotification(title, message, type, localities, null, null, null);
+    }
+    
+    private void showNotification(String title, String message, String type, String localities, 
+                                 String hasAttachments, String attachmentUrl, String attachmentType) {
         // Crear canal de notificación
         createNotificationChannel();
-        
-        // Obtener datos de adjuntos
-        String hasAttachments = remoteMessage.getData().get("has_attachments");
-        String attachmentUrl = remoteMessage.getData().get("attachment_url");
-        String attachmentType = remoteMessage.getData().get("attachment_type");
         
         // Crear intent para abrir la aplicación
         Intent intent = new Intent(this, MainActivity.class);
