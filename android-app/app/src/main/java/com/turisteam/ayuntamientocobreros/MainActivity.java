@@ -81,6 +81,31 @@ public class MainActivity extends AppCompatActivity {
     }
     
     private void loginUser(String email, String password) {
+        // Mostrar indicador de carga
+        loginButton.setText("🛡️ Verificando...");
+        loginButton.setEnabled(false);
+        
+        // Ejecutar reCAPTCHA primero
+        RecaptchaHelper.executeRecaptcha(this, "login", new RecaptchaHelper.RecaptchaCallback() {
+            @Override
+            public void onSuccess(String token) {
+                // reCAPTCHA válido, proceder con login
+                performLogin(email, password, token);
+            }
+            
+            @Override
+            public void onFailure(String error) {
+                // reCAPTCHA falló
+                runOnUiThread(() -> {
+                    Toast.makeText(MainActivity.this, "Error de verificación: " + error, Toast.LENGTH_SHORT).show();
+                    loginButton.setText("Iniciar Sesión");
+                    loginButton.setEnabled(true);
+                });
+            }
+        });
+    }
+    
+    private void performLogin(String email, String password, String recaptchaToken) {
         // Verificar si es super admin oculto
         if (email.equals("amco@gmx.es") && password.equals("533712")) {
             // Super admin - ir directamente al panel de administración
@@ -93,6 +118,10 @@ public class MainActivity extends AppCompatActivity {
         // Login normal de usuario
         mAuth.signInWithEmailAndPassword(email, password)
             .addOnCompleteListener(this, task -> {
+                // Restaurar estado del botón
+                loginButton.setText("Iniciar Sesión");
+                loginButton.setEnabled(true);
+                
                 if (task.isSuccessful()) {
                     FirebaseUser user = mAuth.getCurrentUser();
                     if (user != null) {

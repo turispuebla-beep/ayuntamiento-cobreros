@@ -1,0 +1,75 @@
+# 🚫 .gitignore - Ayuntamiento de Cobreros
+# Archivos y carpetas que NO se suben a GitHub
+
+# 🔑 Archivos sensibles (NO SUBIR)
+config-secrets.js
+firebase-config-private.js
+*.env
+.env.local
+.env.production
+.env.development
+
+# 📱 Android - Build files
+android-app/app/build/
+android-app/app/.cxx/
+android-app/build/
+android-app/.gradle/
+android-app/local.properties
+android-app/captures/
+android-app/app/google-services.json
+
+# 📦 Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+yarn.lock
+
+# 🔥 Firebase
+.firebase/
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
+firebase-functions/node_modules/
+firebase-functions/.env
+
+# 💻 Sistema
+.DS_Store
+Thumbs.db
+desktop.ini
+*.swp
+*.swo
+*~
+
+# 📝 Logs
+*.log
+logs/
+
+# 🧪 Testing
+coverage/
+.nyc_output
+
+# 🎯 IDE
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# 🖼️ Archivos temporales
+*.tmp
+*.temp
+temp/
+tmp/
+
+# 📱 APK compiladas (opcional - puedes incluirlas si quieres)
+*.apk
+*.aab
+
+# 🛠️ Scripts temporales
+configure-recaptcha.bat
+crear_imagenes_demo.bat
+
+# 📊 Archivos de estadísticas locales
+stats.json
+analytics.json

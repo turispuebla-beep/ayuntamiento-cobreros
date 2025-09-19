@@ -5162,7 +5162,7 @@ function renderServicios() {
             html += `<a href="#" class="btn btn-outline" onclick="viewConsultorioPhoto()">📸 Ver Foto</a>`;
         }
         
-        html += '</div>';
+    html += '</div>';
     } else {
         html += '<p class="no-content">No hay contenido disponible</p>';
     }
@@ -5186,7 +5186,7 @@ function renderServicios() {
             html += `<a href="#" class="btn btn-outline" onclick="viewItvPhoto()">📸 Ver Foto</a>`;
         }
         
-        html += '</div>';
+    html += '</div>';
     } else {
         html += '<p class="no-content">No hay contenido disponible</p>';
     }
@@ -7033,7 +7033,7 @@ function enviarNotificacionCita() {
     if (titulo) {
         const mensaje = prompt('Mensaje de la notificación:', 'Su cita ha sido confirmada. Por favor, acuda a la hora indicada.');
         if (mensaje) {
-            enviarNotificacionPush(titulo, mensaje, 'cita');
+    enviarNotificacionPush(titulo, mensaje, 'cita');
         }
     }
 }
@@ -7044,7 +7044,7 @@ function enviarNotificacionEvento() {
     if (titulo) {
         const mensaje = prompt('Descripción del evento:', 'Se ha programado un nuevo evento municipal. Más información próximamente.');
         if (mensaje) {
-            enviarNotificacionPush(titulo, mensaje, 'evento');
+    enviarNotificacionPush(titulo, mensaje, 'evento');
         }
     }
 }
@@ -7055,7 +7055,7 @@ function enviarNotificacionBando() {
     if (titulo) {
         const mensaje = prompt('Descripción del bando:', 'Se ha publicado un nuevo bando municipal. Consulte la información completa en la web.');
         if (mensaje) {
-            enviarNotificacionPush(titulo, mensaje, 'bando');
+    enviarNotificacionPush(titulo, mensaje, 'bando');
         }
     }
 }
@@ -7066,8 +7066,8 @@ function enviarNotificacionEmergencia(mensaje) {
         mensaje = prompt('Mensaje de emergencia:', 'Comunicado urgente del Ayuntamiento. Por favor, preste atención a esta información.');
     }
     if (mensaje) {
-        const titulo = '🚨 EMERGENCIA - Ayuntamiento de Cobreros';
-        enviarNotificacionPush(titulo, mensaje, 'emergencia');
+    const titulo = '🚨 EMERGENCIA - Ayuntamiento de Cobreros';
+    enviarNotificacionPush(titulo, mensaje, 'emergencia');
     }
 }
 
