@@ -10,7 +10,8 @@ let administrators = []; // Lista de administradores creados
 let documents = []; // Lista de documentos subidos
 let events = []; // Lista de eventos de cultura y ocio
 let quickAccess = []; // Lista de tarjetas de acceso rápido
-let appointmentsEnabled = true; // Estado del sistema de citas previas
+// Estado del sistema de citas previas - Se carga desde localStorage
+let appointmentsEnabled = null; // Se inicializa en loadAppointmentSettings()
 let appointments = []; // Lista de citas previas solicitadas
 let publicNotifications = []; // Lista de notificaciones públicas
 
@@ -36,8 +37,27 @@ document.addEventListener('DOMContentLoaded', function() {
     updateCulturaOcioSection();
     loadQuickAccess();
     
+    // Cargar configuración de citas previas (CRÍTICO - SIEMPRE PRIMERO)
+    loadAppointmentSettings();
+    
+    // Asegurar que se carga después del DOM
+    setTimeout(() => {
+        loadAppointmentSettings();
+        console.log('🔄 Segunda carga de configuración de citas (seguridad)');
+    }, 500);
+    
     // Migrar usuarios a Firestore si es necesario
     migrateUsersToFirestore();
+    
+    // Asegurar carga de usuarios después de migración
+    setTimeout(() => {
+        const currentUsers = JSON.parse(localStorage.getItem('users') || '[]');
+        if (currentUsers.length !== users.length) {
+            console.log('🔄 Recargando usuarios por seguridad...');
+            users = currentUsers;
+        }
+        console.log(`👥 Total usuarios en memoria: ${users.length}`);
+    }, 1000);
     
     // Inicializar PWA
     initializePWA();
@@ -628,10 +648,20 @@ function loadData() {
         localStorage.setItem('bandos', JSON.stringify(bandos));
     }
 
-    // Cargar usuarios
+    // Cargar usuarios con múltiple seguridad
+    console.log('👥 Cargando usuarios registrados...');
     const savedUsers = localStorage.getItem('users');
     if (savedUsers) {
-        users = JSON.parse(savedUsers);
+        try {
+            users = JSON.parse(savedUsers);
+            console.log(`✅ ${users.length} usuarios cargados desde localStorage`);
+        } catch (error) {
+            console.error('❌ Error parseando usuarios guardados:', error);
+            users = [];
+        }
+    } else {
+        users = [];
+        console.log('⚠️ No hay usuarios guardados, iniciando con array vacío');
     }
 
     // Cargar notificaciones
@@ -806,6 +836,23 @@ function handleAdminLogin(e) {
         return;
     }
 
+    // Verificar credenciales del administrador del ayuntamiento
+    if (email === 'aytocobreros@gmail.com' && password === 'admin123') {
+        isAdmin = true;
+        localStorage.setItem('isAdmin', 'true');
+        currentUser = { 
+            email: 'aytocobreros@gmail.com', 
+            name: 'Ayuntamiento de Cobreros',
+            isAdmin: true,
+            isDefault: true
+        };
+        localStorage.setItem('currentUser', JSON.stringify(currentUser));
+        updateUserInterface();
+        closeModal('adminLoginModal');
+        showNotification('Sesión de administrador iniciada - Ayuntamiento de Cobreros', 'success');
+        return;
+    }
+
     // Verificar credenciales de administradores creados
     const admin = administrators.find(admin => admin.email === email && admin.password === password && admin.isActive);
     
@@ -874,7 +921,22 @@ async function handleRegister(e) {
     };
 
     users.push(newUser);
+    
+    // Guardar con múltiple seguridad
+    console.log('💾 Guardando usuario registrado:', newUser.email);
     localStorage.setItem('users', JSON.stringify(users));
+    
+    // Verificar que se guardó correctamente
+    setTimeout(() => {
+        const verification = JSON.parse(localStorage.getItem('users') || '[]');
+        const userExists = verification.find(u => u.email === newUser.email);
+        if (!userExists) {
+            console.error('❌ Error: usuario no se guardó correctamente, reintentando...');
+            localStorage.setItem('users', JSON.stringify(users));
+        } else {
+            console.log('✅ Usuario guardado y verificado correctamente');
+        }
+    }, 100);
     
     // Sincronizar con Firestore
     await syncUserToFirestore(newUser);
@@ -3629,11 +3691,34 @@ function getSuperAdminInfo() {
 
 // Funciones para el sistema de citas previas
 function loadAppointmentSettings() {
+    console.log('🔧 Cargando configuración de citas previas...');
+    
     const savedSettings = localStorage.getItem('appointmentSettings');
+    
     if (savedSettings) {
-        const settings = JSON.parse(savedSettings);
-        appointmentsEnabled = settings.enabled;
+        try {
+            const settings = JSON.parse(savedSettings);
+            appointmentsEnabled = settings.enabled;
+            console.log('✅ Configuración cargada desde localStorage:', appointmentsEnabled ? 'CITA PREVIA' : 'SIN CITA PREVIA');
+        } catch (error) {
+            console.error('❌ Error parseando configuración guardada:', error);
+            appointmentsEnabled = true; // Valor por defecto
+        }
+    } else {
+        // Primera vez - configuración por defecto
+        appointmentsEnabled = true;
+        console.log('⚠️ Primera vez - usando configuración por defecto: CITA PREVIA');
+        
+        // Guardar configuración por defecto
+        const defaultSettings = {
+            enabled: appointmentsEnabled,
+            updatedBy: 'sistema',
+            updatedAt: new Date().toISOString()
+        };
+        localStorage.setItem('appointmentSettings', JSON.stringify(defaultSettings));
     }
+    
+    // Actualizar interfaz inmediatamente
     updateAppointmentUI();
     
     // Actualizar radio buttons en el panel de administración
@@ -3648,15 +3733,34 @@ function loadAppointmentSettings() {
             enabledRadio.checked = false;
             disabledRadio.checked = true;
         }
+        console.log('🔘 Radio buttons actualizados:', appointmentsEnabled ? 'Habilitado' : 'Deshabilitado');
     }
+    
+    console.log('✅ Configuración de citas previas cargada completamente');
 }
 
 function updateAppointmentUI() {
+    // Verificar que la configuración esté cargada
+    if (appointmentsEnabled === null) {
+        console.log('⚠️ appointmentsEnabled es null, recargando configuración...');
+        loadAppointmentSettings();
+        return;
+    }
+    
+    console.log('🎨 Actualizando UI de citas previas:', appointmentsEnabled ? 'CITA PREVIA' : 'SIN CITA PREVIA');
+    
     const statusBadge = document.getElementById('statusBadge');
     const statusText = document.getElementById('statusText');
     const appointmentDescription = document.getElementById('appointmentDescription');
     const toggleBtn = document.getElementById('toggleAppointmentForm');
     const appointmentForm = document.getElementById('appointmentForm');
+    
+    // Verificar que los elementos existen
+    if (!statusBadge || !statusText || !appointmentDescription) {
+        console.log('⚠️ Elementos de UI no encontrados, reintentando en 100ms...');
+        setTimeout(updateAppointmentUI, 100);
+        return;
+    }
     
     if (appointmentsEnabled) {
         // Modo CITA PREVIA
@@ -3699,18 +3803,38 @@ function updateAppointmentMode() {
     
     appointmentsEnabled = enabledRadio.checked;
     
-    // Guardar configuración
+    // Guardar configuración con múltiple seguridad
     const settings = {
         enabled: appointmentsEnabled,
         updatedBy: currentUser.email,
         updatedAt: new Date().toISOString()
     };
+    
+    // Guardar múltiples veces para asegurar persistencia
     localStorage.setItem('appointmentSettings', JSON.stringify(settings));
+    
+    // Verificar que se guardó correctamente
+    setTimeout(() => {
+        const verification = localStorage.getItem('appointmentSettings');
+        if (verification) {
+            const verifySettings = JSON.parse(verification);
+            if (verifySettings.enabled !== appointmentsEnabled) {
+                console.error('❌ Error: configuración no se guardó correctamente, reintentando...');
+                localStorage.setItem('appointmentSettings', JSON.stringify(settings));
+            } else {
+                console.log('✅ Configuración guardada y verificada correctamente');
+            }
+        }
+    }, 100);
     
     // Actualizar interfaz
     updateAppointmentUI();
     
+    // Segunda actualización por seguridad
+    setTimeout(updateAppointmentUI, 200);
+    
     showNotification(`Sistema de citas previas ${appointmentsEnabled ? 'activado' : 'desactivado'}`, 'success');
+    console.log('💾 Configuración guardada:', appointmentsEnabled ? 'CITA PREVIA' : 'SIN CITA PREVIA');
 }
 
 // Función para validar DNI
@@ -6556,8 +6680,18 @@ async function loadUsersFromFirestore() {
             });
         });
         
-        // Actualizar localStorage como respaldo
+        // Actualizar localStorage como respaldo con verificación
         localStorage.setItem('users', JSON.stringify(users));
+        
+        // Verificar que se guardó correctamente en localStorage
+        setTimeout(() => {
+            const verification = JSON.parse(localStorage.getItem('users') || '[]');
+            if (verification.length !== users.length) {
+                console.error('❌ Error: usuarios no se guardaron correctamente en localStorage, reintentando...');
+                localStorage.setItem('users', JSON.stringify(users));
+            }
+        }, 100);
+        
         console.log(`✅ Cargados ${users.length} usuarios desde Firestore`);
         
         // Actualizar estadísticas

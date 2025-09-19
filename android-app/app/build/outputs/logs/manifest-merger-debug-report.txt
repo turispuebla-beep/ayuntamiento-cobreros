@@ -1,9 +1,9 @@
 -- Merging decision tree log ---
 manifest
-ADDED from C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:2:1-82:12
-INJECTED from C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:2:1-82:12
-INJECTED from C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:2:1-82:12
-INJECTED from C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:2:1-82:12
+ADDED from C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:2:1-86:12
+INJECTED from C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:2:1-86:12
+INJECTED from C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:2:1-86:12
+INJECTED from C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:2:1-86:12
 MERGED from [com.google.android.material:material:1.10.0] C:\Users\marsa\.gradle\caches\transforms-3\f25922657e124331905feeb0e8243802\transformed\material-1.10.0\AndroidManifest.xml:17:1-24:12
 MERGED from [androidx.constraintlayout:constraintlayout:2.1.4] C:\Users\marsa\.gradle\caches\transforms-3\51e46e85deaa1d2084ddfded39561ff6\transformed\constraintlayout-2.1.4\AndroidManifest.xml:2:1-11:12
 MERGED from [androidx.appcompat:appcompat-resources:1.6.1] C:\Users\marsa\.gradle\caches\transforms-3\a94195d614c3aebae928b454fcacd7b8\transformed\appcompat-resources-1.6.1\AndroidManifest.xml:17:1-22:12
@@ -12,7 +12,10 @@ MERGED from [com.google.firebase:firebase-auth:22.3.0] C:\Users\marsa\.gradle\ca
 MERGED from [com.google.firebase:firebase-firestore:24.10.0] C:\Users\marsa\.gradle\caches\transforms-3\5078c2639d0ae2acc823dc4af1609335\transformed\firebase-firestore-24.10.0\AndroidManifest.xml:2:1-26:12
 MERGED from [com.google.firebase:firebase-messaging:23.4.0] C:\Users\marsa\.gradle\caches\transforms-3\b5e7a7dbc88dc8362ad8f6ea81abf5a0\transformed\firebase-messaging-23.4.0\AndroidManifest.xml:17:1-66:12
 MERGED from [com.google.firebase:firebase-analytics:21.5.0] C:\Users\marsa\.gradle\caches\transforms-3\cd8fe52de0cfe9effd09ce618eb5fafe\transformed\firebase-analytics-21.5.0\AndroidManifest.xml:2:1-9:12
+MERGED from [com.google.firebase:firebase-storage:20.3.0] C:\Users\marsa\.gradle\caches\transforms-3\239335c851be86169b5ae058b4f40b56\transformed\firebase-storage-20.3.0\AndroidManifest.xml:15:1-39:12
 MERGED from [com.google.android.gms:play-services-auth:20.7.0] C:\Users\marsa\.gradle\caches\transforms-3\e90f8910aac63ccc8f57712506b166c1\transformed\play-services-auth-20.7.0\AndroidManifest.xml:17:1-40:12
+MERGED from [com.github.bumptech.glide:glide:4.16.0] C:\Users\marsa\.gradle\caches\transforms-3\39f1464887aa700effd9eb1712826756\transformed\glide-4.16.0\AndroidManifest.xml:2:1-9:12
+MERGED from [com.google.firebase:firebase-appcheck:17.1.1] C:\Users\marsa\.gradle\caches\transforms-3\80dfa722e3d8142bf49b1f569aa10a8f\transformed\firebase-appcheck-17.1.1\AndroidManifest.xml:15:1-34:12
 MERGED from [com.google.firebase:firebase-datatransport:18.1.7] C:\Users\marsa\.gradle\caches\transforms-3\770931ed3421c7ee7a9188d469253fea\transformed\firebase-datatransport-18.1.7\AndroidManifest.xml:15:1-33:12
 MERGED from [com.google.android.datatransport:transport-backend-cct:3.1.8] C:\Users\marsa\.gradle\caches\transforms-3\f2cf5640a45d17dcacc0cfdfd4a1686d\transformed\transport-backend-cct-3.1.8\AndroidManifest.xml:15:1-37:12
 MERGED from [com.google.android.datatransport:transport-runtime:3.1.8] C:\Users\marsa\.gradle\caches\transforms-3\a0472c1a620ed8c73b422ae5d0d40c28\transformed\transport-runtime-3.1.8\AndroidManifest.xml:15:1-41:12
@@ -26,8 +29,8 @@ MERGED from [androidx.viewpager2:viewpager2:1.0.0] C:\Users\marsa\.gradle\caches
 MERGED from [com.google.android.gms:play-services-auth-api-phone:18.0.1] C:\Users\marsa\.gradle\caches\transforms-3\6aeb07a4ebf3f28b38660623b0ab271f\transformed\play-services-auth-api-phone-18.0.1\AndroidManifest.xml:2:1-7:12
 MERGED from [com.google.android.gms:play-services-auth-base:18.0.4] C:\Users\marsa\.gradle\caches\transforms-3\860a5d99ce5d49e48a12afb760afbe06\transformed\play-services-auth-base-18.0.4\AndroidManifest.xml:2:1-7:12
 MERGED from [com.google.android.gms:play-services-fido:20.0.1] C:\Users\marsa\.gradle\caches\transforms-3\da63e94d2aad46c29c9aad8696fce517\transformed\play-services-fido-20.0.1\AndroidManifest.xml:2:1-10:12
-MERGED from [com.google.firebase:firebase-appcheck-interop:17.0.0] C:\Users\marsa\.gradle\caches\transforms-3\8fc523cd20d6979b6a3bcbbd7f9b6bae\transformed\firebase-appcheck-interop-17.0.0\AndroidManifest.xml:15:1-25:12
 MERGED from [com.google.firebase:firebase-database-collection:18.0.1] C:\Users\marsa\.gradle\caches\transforms-3\cc50da6262002bfbeaa0d8bde5d1214e\transformed\firebase-database-collection-18.0.1\AndroidManifest.xml:2:1-9:12
+MERGED from [com.google.firebase:firebase-appcheck-interop:17.1.0] C:\Users\marsa\.gradle\caches\transforms-3\7b6def15732d88a30d7c431688c8169d\transformed\firebase-appcheck-interop-17.1.0\AndroidManifest.xml:15:1-23:12
 MERGED from [com.google.android.gms:play-services-base:18.0.1] C:\Users\marsa\.gradle\caches\transforms-3\ccfb49caf55591b9170808607d383047\transformed\play-services-base-18.0.1\AndroidManifest.xml:16:1-24:12
 MERGED from [com.google.android.gms:play-services-measurement:21.5.0] C:\Users\marsa\.gradle\caches\transforms-3\28dc0f259bd7ea419d794ae3ec660743\transformed\play-services-measurement-21.5.0\AndroidManifest.xml:17:1-46:12
 MERGED from [com.google.android.gms:play-services-measurement-sdk:21.5.0] C:\Users\marsa\.gradle\caches\transforms-3\ee7397d2e57f09d0a2dddf925ced7221\transformed\play-services-measurement-sdk-21.5.0\AndroidManifest.xml:17:1-25:12
@@ -73,13 +76,15 @@ MERGED from [androidx.fragment:fragment:1.3.6] C:\Users\marsa\.gradle\caches\tra
 MERGED from [androidx.activity:activity:1.8.0] C:\Users\marsa\.gradle\caches\transforms-3\c3c2ddf4a4a1eed373ea58f00bd5bc11\transformed\activity-1.8.0\AndroidManifest.xml:17:1-22:12
 MERGED from [androidx.cursoradapter:cursoradapter:1.0.0] C:\Users\marsa\.gradle\caches\transforms-3\b6d675e6ea2c081d7180b73cf973b4a5\transformed\cursoradapter-1.0.0\AndroidManifest.xml:17:1-22:12
 MERGED from [androidx.cardview:cardview:1.0.0] C:\Users\marsa\.gradle\caches\transforms-3\94fdc965799803dfda4bbd4ede04322e\transformed\cardview-1.0.0\AndroidManifest.xml:17:1-22:12
+MERGED from [com.github.bumptech.glide:gifdecoder:4.16.0] C:\Users\marsa\.gradle\caches\transforms-3\01da36116e84afdc2536945104c8d61e\transformed\gifdecoder-4.16.0\AndroidManifest.xml:2:1-9:12
+MERGED from [androidx.exifinterface:exifinterface:1.3.6] C:\Users\marsa\.gradle\caches\transforms-3\93addd2e40f553a760ef7d7aed7cc799\transformed\exifinterface-1.3.6\AndroidManifest.xml:17:1-24:12
+MERGED from [androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\marsa\.gradle\caches\transforms-3\8ecf2f458aa2a24058a4a79fdab211a4\transformed\profileinstaller-1.3.0\AndroidManifest.xml:17:1-55:12
+MERGED from [androidx.startup:startup-runtime:1.1.1] C:\Users\marsa\.gradle\caches\transforms-3\861c18e5b62467b055f3fae9bd3b792a\transformed\startup-runtime-1.1.1\AndroidManifest.xml:17:1-33:12
+MERGED from [androidx.tracing:tracing:1.0.0] C:\Users\marsa\.gradle\caches\transforms-3\b843a48063b42b271eaa365267b77c01\transformed\tracing-1.0.0\AndroidManifest.xml:17:1-24:12
 MERGED from [androidx.localbroadcastmanager:localbroadcastmanager:1.0.0] C:\Users\marsa\.gradle\caches\transforms-3\38782f0a9f884ef8818632e25fe7fad8\transformed\localbroadcastmanager-1.0.0\AndroidManifest.xml:17:1-22:12
 MERGED from [com.google.firebase:firebase-components:17.1.5] C:\Users\marsa\.gradle\caches\transforms-3\73dcddad79093f71cf1c3814fc2a86fa\transformed\firebase-components-17.1.5\AndroidManifest.xml:15:1-20:12
 MERGED from [com.google.android.datatransport:transport-api:3.1.0] C:\Users\marsa\.gradle\caches\transforms-3\47d1474de5f596540cda05c299a393a2\transformed\transport-api-3.1.0\AndroidManifest.xml:15:1-20:12
 MERGED from [androidx.versionedparcelable:versionedparcelable:1.1.1] C:\Users\marsa\.gradle\caches\transforms-3\9476c00c9ba457d14216bb91c77b937a\transformed\versionedparcelable-1.1.1\AndroidManifest.xml:17:1-27:12
-MERGED from [androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\marsa\.gradle\caches\transforms-3\8ecf2f458aa2a24058a4a79fdab211a4\transformed\profileinstaller-1.3.0\AndroidManifest.xml:17:1-55:12
-MERGED from [androidx.startup:startup-runtime:1.1.1] C:\Users\marsa\.gradle\caches\transforms-3\861c18e5b62467b055f3fae9bd3b792a\transformed\startup-runtime-1.1.1\AndroidManifest.xml:17:1-33:12
-MERGED from [androidx.tracing:tracing:1.0.0] C:\Users\marsa\.gradle\caches\transforms-3\b843a48063b42b271eaa365267b77c01\transformed\tracing-1.0.0\AndroidManifest.xml:17:1-24:12
 MERGED from [androidx.interpolator:interpolator:1.0.0] C:\Users\marsa\.gradle\caches\transforms-3\730da47c239f92eaf5a6edc6c526a982\transformed\interpolator-1.0.0\AndroidManifest.xml:17:1-22:12
 MERGED from [androidx.arch.core:core-runtime:2.2.0] C:\Users\marsa\.gradle\caches\transforms-3\50e38f8e39e564ff7db93010190dd3ea\transformed\core-runtime-2.2.0\AndroidManifest.xml:17:1-22:12
 MERGED from [androidx.documentfile:documentfile:1.0.0] C:\Users\marsa\.gradle\caches\transforms-3\3f487d2fd2750722e544aa0cda0c1e43\transformed\documentfile-1.0.0\AndroidManifest.xml:17:1-22:12
@@ -103,6 +108,8 @@ MERGED from [com.google.firebase:firebase-auth:22.3.0] C:\Users\marsa\.gradle\ca
 MERGED from [com.google.firebase:firebase-auth:22.3.0] C:\Users\marsa\.gradle\caches\transforms-3\86748d16eae8eeb12bc61e76b70cf552\transformed\firebase-auth-22.3.0\AndroidManifest.xml:25:5-67
 MERGED from [com.google.firebase:firebase-firestore:24.10.0] C:\Users\marsa\.gradle\caches\transforms-3\5078c2639d0ae2acc823dc4af1609335\transformed\firebase-firestore-24.10.0\AndroidManifest.xml:11:5-67
 MERGED from [com.google.firebase:firebase-firestore:24.10.0] C:\Users\marsa\.gradle\caches\transforms-3\5078c2639d0ae2acc823dc4af1609335\transformed\firebase-firestore-24.10.0\AndroidManifest.xml:11:5-67
+MERGED from [com.google.firebase:firebase-storage:20.3.0] C:\Users\marsa\.gradle\caches\transforms-3\239335c851be86169b5ae058b4f40b56\transformed\firebase-storage-20.3.0\AndroidManifest.xml:24:5-67
+MERGED from [com.google.firebase:firebase-storage:20.3.0] C:\Users\marsa\.gradle\caches\transforms-3\239335c851be86169b5ae058b4f40b56\transformed\firebase-storage-20.3.0\AndroidManifest.xml:24:5-67
 MERGED from [com.google.android.datatransport:transport-backend-cct:3.1.8] C:\Users\marsa\.gradle\caches\transforms-3\f2cf5640a45d17dcacc0cfdfd4a1686d\transformed\transport-backend-cct-3.1.8\AndroidManifest.xml:25:5-67
 MERGED from [com.google.android.datatransport:transport-backend-cct:3.1.8] C:\Users\marsa\.gradle\caches\transforms-3\f2cf5640a45d17dcacc0cfdfd4a1686d\transformed\transport-backend-cct-3.1.8\AndroidManifest.xml:25:5-67
 MERGED from [com.google.android.gms:play-services-measurement-api:21.5.0] C:\Users\marsa\.gradle\caches\transforms-3\f050b984cb27720c90d461bcea2442bb\transformed\play-services-measurement-api-21.5.0\AndroidManifest.xml:22:5-67
@@ -129,6 +136,8 @@ MERGED from [com.google.firebase:firebase-firestore:24.10.0] C:\Users\marsa\.gra
 MERGED from [com.google.firebase:firebase-firestore:24.10.0] C:\Users\marsa\.gradle\caches\transforms-3\5078c2639d0ae2acc823dc4af1609335\transformed\firebase-firestore-24.10.0\AndroidManifest.xml:10:5-79
 MERGED from [com.google.firebase:firebase-messaging:23.4.0] C:\Users\marsa\.gradle\caches\transforms-3\b5e7a7dbc88dc8362ad8f6ea81abf5a0\transformed\firebase-messaging-23.4.0\AndroidManifest.xml:22:5-79
 MERGED from [com.google.firebase:firebase-messaging:23.4.0] C:\Users\marsa\.gradle\caches\transforms-3\b5e7a7dbc88dc8362ad8f6ea81abf5a0\transformed\firebase-messaging-23.4.0\AndroidManifest.xml:22:5-79
+MERGED from [com.google.firebase:firebase-storage:20.3.0] C:\Users\marsa\.gradle\caches\transforms-3\239335c851be86169b5ae058b4f40b56\transformed\firebase-storage-20.3.0\AndroidManifest.xml:23:5-79
+MERGED from [com.google.firebase:firebase-storage:20.3.0] C:\Users\marsa\.gradle\caches\transforms-3\239335c851be86169b5ae058b4f40b56\transformed\firebase-storage-20.3.0\AndroidManifest.xml:23:5-79
 MERGED from [com.google.android.datatransport:transport-backend-cct:3.1.8] C:\Users\marsa\.gradle\caches\transforms-3\f2cf5640a45d17dcacc0cfdfd4a1686d\transformed\transport-backend-cct-3.1.8\AndroidManifest.xml:24:5-79
 MERGED from [com.google.android.datatransport:transport-backend-cct:3.1.8] C:\Users\marsa\.gradle\caches\transforms-3\f2cf5640a45d17dcacc0cfdfd4a1686d\transformed\transport-backend-cct-3.1.8\AndroidManifest.xml:24:5-79
 MERGED from [com.google.android.datatransport:transport-runtime:3.1.8] C:\Users\marsa\.gradle\caches\transforms-3\a0472c1a620ed8c73b422ae5d0d40c28\transformed\transport-runtime-3.1.8\AndroidManifest.xml:22:5-79
@@ -182,8 +191,8 @@ MERGED from [com.google.firebase:firebase-messaging:23.4.0] C:\Users\marsa\.grad
 	android:name
 		ADDED from C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:11:22-74
 application
-ADDED from C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:13:5-80:19
-INJECTED from C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:13:5-80:19
+ADDED from C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:13:5-84:19
+INJECTED from C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:13:5-84:19
 MERGED from [com.google.android.material:material:1.10.0] C:\Users\marsa\.gradle\caches\transforms-3\f25922657e124331905feeb0e8243802\transformed\material-1.10.0\AndroidManifest.xml:22:5-20
 MERGED from [com.google.android.material:material:1.10.0] C:\Users\marsa\.gradle\caches\transforms-3\f25922657e124331905feeb0e8243802\transformed\material-1.10.0\AndroidManifest.xml:22:5-20
 MERGED from [androidx.constraintlayout:constraintlayout:2.1.4] C:\Users\marsa\.gradle\caches\transforms-3\51e46e85deaa1d2084ddfded39561ff6\transformed\constraintlayout-2.1.4\AndroidManifest.xml:9:5-20
@@ -196,8 +205,12 @@ MERGED from [com.google.firebase:firebase-messaging:23.4.0] C:\Users\marsa\.grad
 MERGED from [com.google.firebase:firebase-messaging:23.4.0] C:\Users\marsa\.gradle\caches\transforms-3\b5e7a7dbc88dc8362ad8f6ea81abf5a0\transformed\firebase-messaging-23.4.0\AndroidManifest.xml:28:5-64:19
 MERGED from [com.google.firebase:firebase-analytics:21.5.0] C:\Users\marsa\.gradle\caches\transforms-3\cd8fe52de0cfe9effd09ce618eb5fafe\transformed\firebase-analytics-21.5.0\AndroidManifest.xml:7:5-20
 MERGED from [com.google.firebase:firebase-analytics:21.5.0] C:\Users\marsa\.gradle\caches\transforms-3\cd8fe52de0cfe9effd09ce618eb5fafe\transformed\firebase-analytics-21.5.0\AndroidManifest.xml:7:5-20
+MERGED from [com.google.firebase:firebase-storage:20.3.0] C:\Users\marsa\.gradle\caches\transforms-3\239335c851be86169b5ae058b4f40b56\transformed\firebase-storage-20.3.0\AndroidManifest.xml:26:5-37:19
+MERGED from [com.google.firebase:firebase-storage:20.3.0] C:\Users\marsa\.gradle\caches\transforms-3\239335c851be86169b5ae058b4f40b56\transformed\firebase-storage-20.3.0\AndroidManifest.xml:26:5-37:19
 MERGED from [com.google.android.gms:play-services-auth:20.7.0] C:\Users\marsa\.gradle\caches\transforms-3\e90f8910aac63ccc8f57712506b166c1\transformed\play-services-auth-20.7.0\AndroidManifest.xml:22:5-38:19
 MERGED from [com.google.android.gms:play-services-auth:20.7.0] C:\Users\marsa\.gradle\caches\transforms-3\e90f8910aac63ccc8f57712506b166c1\transformed\play-services-auth-20.7.0\AndroidManifest.xml:22:5-38:19
+MERGED from [com.google.firebase:firebase-appcheck:17.1.1] C:\Users\marsa\.gradle\caches\transforms-3\80dfa722e3d8142bf49b1f569aa10a8f\transformed\firebase-appcheck-17.1.1\AndroidManifest.xml:21:5-32:19
+MERGED from [com.google.firebase:firebase-appcheck:17.1.1] C:\Users\marsa\.gradle\caches\transforms-3\80dfa722e3d8142bf49b1f569aa10a8f\transformed\firebase-appcheck-17.1.1\AndroidManifest.xml:21:5-32:19
 MERGED from [com.google.firebase:firebase-datatransport:18.1.7] C:\Users\marsa\.gradle\caches\transforms-3\770931ed3421c7ee7a9188d469253fea\transformed\firebase-datatransport-18.1.7\AndroidManifest.xml:23:5-31:19
 MERGED from [com.google.firebase:firebase-datatransport:18.1.7] C:\Users\marsa\.gradle\caches\transforms-3\770931ed3421c7ee7a9188d469253fea\transformed\firebase-datatransport-18.1.7\AndroidManifest.xml:23:5-31:19
 MERGED from [com.google.android.datatransport:transport-backend-cct:3.1.8] C:\Users\marsa\.gradle\caches\transforms-3\f2cf5640a45d17dcacc0cfdfd4a1686d\transformed\transport-backend-cct-3.1.8\AndroidManifest.xml:27:5-35:19
@@ -216,8 +229,8 @@ MERGED from [com.google.firebase:firebase-common:20.4.2] C:\Users\marsa\.gradle\
 MERGED from [com.google.firebase:firebase-common:20.4.2] C:\Users\marsa\.gradle\caches\transforms-3\aecc3f2d78f0e295d467239561fc2419\transformed\firebase-common-20.4.2\AndroidManifest.xml:22:5-39:19
 MERGED from [com.google.android.gms:play-services-fido:20.0.1] C:\Users\marsa\.gradle\caches\transforms-3\da63e94d2aad46c29c9aad8696fce517\transformed\play-services-fido-20.0.1\AndroidManifest.xml:7:5-8:19
 MERGED from [com.google.android.gms:play-services-fido:20.0.1] C:\Users\marsa\.gradle\caches\transforms-3\da63e94d2aad46c29c9aad8696fce517\transformed\play-services-fido-20.0.1\AndroidManifest.xml:7:5-8:19
-MERGED from [com.google.firebase:firebase-appcheck-interop:17.0.0] C:\Users\marsa\.gradle\caches\transforms-3\8fc523cd20d6979b6a3bcbbd7f9b6bae\transformed\firebase-appcheck-interop-17.0.0\AndroidManifest.xml:23:5-20
-MERGED from [com.google.firebase:firebase-appcheck-interop:17.0.0] C:\Users\marsa\.gradle\caches\transforms-3\8fc523cd20d6979b6a3bcbbd7f9b6bae\transformed\firebase-appcheck-interop-17.0.0\AndroidManifest.xml:23:5-20
+MERGED from [com.google.firebase:firebase-appcheck-interop:17.1.0] C:\Users\marsa\.gradle\caches\transforms-3\7b6def15732d88a30d7c431688c8169d\transformed\firebase-appcheck-interop-17.1.0\AndroidManifest.xml:21:5-20
+MERGED from [com.google.firebase:firebase-appcheck-interop:17.1.0] C:\Users\marsa\.gradle\caches\transforms-3\7b6def15732d88a30d7c431688c8169d\transformed\firebase-appcheck-interop-17.1.0\AndroidManifest.xml:21:5-20
 MERGED from [com.google.android.gms:play-services-base:18.0.1] C:\Users\marsa\.gradle\caches\transforms-3\ccfb49caf55591b9170808607d383047\transformed\play-services-base-18.0.1\AndroidManifest.xml:19:5-23:19
 MERGED from [com.google.android.gms:play-services-base:18.0.1] C:\Users\marsa\.gradle\caches\transforms-3\ccfb49caf55591b9170808607d383047\transformed\play-services-base-18.0.1\AndroidManifest.xml:19:5-23:19
 MERGED from [com.google.android.gms:play-services-measurement:21.5.0] C:\Users\marsa\.gradle\caches\transforms-3\28dc0f259bd7ea419d794ae3ec660743\transformed\play-services-measurement-21.5.0\AndroidManifest.xml:28:5-44:19
@@ -250,12 +263,12 @@ MERGED from [com.google.android.gms:play-services-measurement-base:21.5.0] C:\Us
 MERGED from [com.google.android.gms:play-services-measurement-base:21.5.0] C:\Users\marsa\.gradle\caches\transforms-3\3ae27dadd6cf895180c016b4d6171c3d\transformed\play-services-measurement-base-21.5.0\AndroidManifest.xml:7:5-20
 MERGED from [com.google.android.gms:play-services-basement:18.2.0] C:\Users\marsa\.gradle\caches\transforms-3\5ba741abf33a32070c414880d21fd3b4\transformed\play-services-basement-18.2.0\AndroidManifest.xml:20:5-24:19
 MERGED from [com.google.android.gms:play-services-basement:18.2.0] C:\Users\marsa\.gradle\caches\transforms-3\5ba741abf33a32070c414880d21fd3b4\transformed\play-services-basement-18.2.0\AndroidManifest.xml:20:5-24:19
-MERGED from [androidx.versionedparcelable:versionedparcelable:1.1.1] C:\Users\marsa\.gradle\caches\transforms-3\9476c00c9ba457d14216bb91c77b937a\transformed\versionedparcelable-1.1.1\AndroidManifest.xml:24:5-25:19
-MERGED from [androidx.versionedparcelable:versionedparcelable:1.1.1] C:\Users\marsa\.gradle\caches\transforms-3\9476c00c9ba457d14216bb91c77b937a\transformed\versionedparcelable-1.1.1\AndroidManifest.xml:24:5-25:19
 MERGED from [androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\marsa\.gradle\caches\transforms-3\8ecf2f458aa2a24058a4a79fdab211a4\transformed\profileinstaller-1.3.0\AndroidManifest.xml:23:5-53:19
 MERGED from [androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\marsa\.gradle\caches\transforms-3\8ecf2f458aa2a24058a4a79fdab211a4\transformed\profileinstaller-1.3.0\AndroidManifest.xml:23:5-53:19
 MERGED from [androidx.startup:startup-runtime:1.1.1] C:\Users\marsa\.gradle\caches\transforms-3\861c18e5b62467b055f3fae9bd3b792a\transformed\startup-runtime-1.1.1\AndroidManifest.xml:25:5-31:19
 MERGED from [androidx.startup:startup-runtime:1.1.1] C:\Users\marsa\.gradle\caches\transforms-3\861c18e5b62467b055f3fae9bd3b792a\transformed\startup-runtime-1.1.1\AndroidManifest.xml:25:5-31:19
+MERGED from [androidx.versionedparcelable:versionedparcelable:1.1.1] C:\Users\marsa\.gradle\caches\transforms-3\9476c00c9ba457d14216bb91c77b937a\transformed\versionedparcelable-1.1.1\AndroidManifest.xml:24:5-25:19
+MERGED from [androidx.versionedparcelable:versionedparcelable:1.1.1] C:\Users\marsa\.gradle\caches\transforms-3\9476c00c9ba457d14216bb91c77b937a\transformed\versionedparcelable-1.1.1\AndroidManifest.xml:24:5-25:19
 	android:extractNativeLibs
 		INJECTED from C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml
 	android:appComponentFactory
@@ -326,36 +339,42 @@ ADDED from C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cob
 		ADDED from C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:55:13-37
 	android:name
 		ADDED from C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:54:13-55
+activity#com.turisteam.ayuntamientocobreros.UserDashboardActivity
+ADDED from C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:57:9-59:40
+	android:exported
+		ADDED from C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:59:13-37
+	android:name
+		ADDED from C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:58:13-50
 service#com.turisteam.ayuntamientocobreros.MyFirebaseMessagingService
-ADDED from C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:58:9-64:19
+ADDED from C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:62:9-68:19
 	android:exported
-		ADDED from C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:60:13-37
+		ADDED from C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:64:13-37
 	android:name
-		ADDED from C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:59:13-55
+		ADDED from C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:63:13-55
 intent-filter#action:name:com.google.firebase.MESSAGING_EVENT
-ADDED from C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:61:13-63:29
+ADDED from C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:65:13-67:29
 action#com.google.firebase.MESSAGING_EVENT
-ADDED from C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:62:17-78
+ADDED from C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:66:17-78
 	android:name
-		ADDED from C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:62:25-75
+		ADDED from C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:66:25-75
 service#com.turisteam.ayuntamientocobreros.SyncService
-ADDED from C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:67:9-69:40
+ADDED from C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:71:9-73:40
 	android:exported
-		ADDED from C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:69:13-37
+		ADDED from C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:73:13-37
 	android:name
-		ADDED from C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:68:13-40
+		ADDED from C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:72:13-40
 receiver#com.turisteam.ayuntamientocobreros.NotificationReceiver
-ADDED from C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:72:9-78:20
+ADDED from C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:76:9-82:20
 	android:exported
-		ADDED from C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:74:13-37
+		ADDED from C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:78:13-37
 	android:name
-		ADDED from C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:73:13-49
+		ADDED from C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:77:13-49
 intent-filter#action:name:android.intent.action.BOOT_COMPLETED
-ADDED from C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:75:13-77:29
+ADDED from C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:79:13-81:29
 action#android.intent.action.BOOT_COMPLETED
-ADDED from C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:76:17-79
+ADDED from C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:80:17-79
 	android:name
-		ADDED from C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:76:25-76
+		ADDED from C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:80:25-76
 uses-sdk
 INJECTED from C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml reason: use-sdk injection requested
 INJECTED from C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml
@@ -376,8 +395,14 @@ MERGED from [com.google.firebase:firebase-messaging:23.4.0] C:\Users\marsa\.grad
 MERGED from [com.google.firebase:firebase-messaging:23.4.0] C:\Users\marsa\.gradle\caches\transforms-3\b5e7a7dbc88dc8362ad8f6ea81abf5a0\transformed\firebase-messaging-23.4.0\AndroidManifest.xml:20:5-44
 MERGED from [com.google.firebase:firebase-analytics:21.5.0] C:\Users\marsa\.gradle\caches\transforms-3\cd8fe52de0cfe9effd09ce618eb5fafe\transformed\firebase-analytics-21.5.0\AndroidManifest.xml:5:5-44
 MERGED from [com.google.firebase:firebase-analytics:21.5.0] C:\Users\marsa\.gradle\caches\transforms-3\cd8fe52de0cfe9effd09ce618eb5fafe\transformed\firebase-analytics-21.5.0\AndroidManifest.xml:5:5-44
+MERGED from [com.google.firebase:firebase-storage:20.3.0] C:\Users\marsa\.gradle\caches\transforms-3\239335c851be86169b5ae058b4f40b56\transformed\firebase-storage-20.3.0\AndroidManifest.xml:19:5-44
+MERGED from [com.google.firebase:firebase-storage:20.3.0] C:\Users\marsa\.gradle\caches\transforms-3\239335c851be86169b5ae058b4f40b56\transformed\firebase-storage-20.3.0\AndroidManifest.xml:19:5-44
 MERGED from [com.google.android.gms:play-services-auth:20.7.0] C:\Users\marsa\.gradle\caches\transforms-3\e90f8910aac63ccc8f57712506b166c1\transformed\play-services-auth-20.7.0\AndroidManifest.xml:20:5-44
 MERGED from [com.google.android.gms:play-services-auth:20.7.0] C:\Users\marsa\.gradle\caches\transforms-3\e90f8910aac63ccc8f57712506b166c1\transformed\play-services-auth-20.7.0\AndroidManifest.xml:20:5-44
+MERGED from [com.github.bumptech.glide:glide:4.16.0] C:\Users\marsa\.gradle\caches\transforms-3\39f1464887aa700effd9eb1712826756\transformed\glide-4.16.0\AndroidManifest.xml:5:5-7:41
+MERGED from [com.github.bumptech.glide:glide:4.16.0] C:\Users\marsa\.gradle\caches\transforms-3\39f1464887aa700effd9eb1712826756\transformed\glide-4.16.0\AndroidManifest.xml:5:5-7:41
+MERGED from [com.google.firebase:firebase-appcheck:17.1.1] C:\Users\marsa\.gradle\caches\transforms-3\80dfa722e3d8142bf49b1f569aa10a8f\transformed\firebase-appcheck-17.1.1\AndroidManifest.xml:18:5-44
+MERGED from [com.google.firebase:firebase-appcheck:17.1.1] C:\Users\marsa\.gradle\caches\transforms-3\80dfa722e3d8142bf49b1f569aa10a8f\transformed\firebase-appcheck-17.1.1\AndroidManifest.xml:18:5-44
 MERGED from [com.google.firebase:firebase-datatransport:18.1.7] C:\Users\marsa\.gradle\caches\transforms-3\770931ed3421c7ee7a9188d469253fea\transformed\firebase-datatransport-18.1.7\AndroidManifest.xml:18:5-20:41
 MERGED from [com.google.firebase:firebase-datatransport:18.1.7] C:\Users\marsa\.gradle\caches\transforms-3\770931ed3421c7ee7a9188d469253fea\transformed\firebase-datatransport-18.1.7\AndroidManifest.xml:18:5-20:41
 MERGED from [com.google.android.datatransport:transport-backend-cct:3.1.8] C:\Users\marsa\.gradle\caches\transforms-3\f2cf5640a45d17dcacc0cfdfd4a1686d\transformed\transport-backend-cct-3.1.8\AndroidManifest.xml:18:5-20:41
@@ -404,10 +429,10 @@ MERGED from [com.google.android.gms:play-services-auth-base:18.0.4] C:\Users\mar
 MERGED from [com.google.android.gms:play-services-auth-base:18.0.4] C:\Users\marsa\.gradle\caches\transforms-3\860a5d99ce5d49e48a12afb760afbe06\transformed\play-services-auth-base-18.0.4\AndroidManifest.xml:5:5-44
 MERGED from [com.google.android.gms:play-services-fido:20.0.1] C:\Users\marsa\.gradle\caches\transforms-3\da63e94d2aad46c29c9aad8696fce517\transformed\play-services-fido-20.0.1\AndroidManifest.xml:5:5-44
 MERGED from [com.google.android.gms:play-services-fido:20.0.1] C:\Users\marsa\.gradle\caches\transforms-3\da63e94d2aad46c29c9aad8696fce517\transformed\play-services-fido-20.0.1\AndroidManifest.xml:5:5-44
-MERGED from [com.google.firebase:firebase-appcheck-interop:17.0.0] C:\Users\marsa\.gradle\caches\transforms-3\8fc523cd20d6979b6a3bcbbd7f9b6bae\transformed\firebase-appcheck-interop-17.0.0\AndroidManifest.xml:18:5-20:41
-MERGED from [com.google.firebase:firebase-appcheck-interop:17.0.0] C:\Users\marsa\.gradle\caches\transforms-3\8fc523cd20d6979b6a3bcbbd7f9b6bae\transformed\firebase-appcheck-interop-17.0.0\AndroidManifest.xml:18:5-20:41
 MERGED from [com.google.firebase:firebase-database-collection:18.0.1] C:\Users\marsa\.gradle\caches\transforms-3\cc50da6262002bfbeaa0d8bde5d1214e\transformed\firebase-database-collection-18.0.1\AndroidManifest.xml:5:5-7:41
 MERGED from [com.google.firebase:firebase-database-collection:18.0.1] C:\Users\marsa\.gradle\caches\transforms-3\cc50da6262002bfbeaa0d8bde5d1214e\transformed\firebase-database-collection-18.0.1\AndroidManifest.xml:5:5-7:41
+MERGED from [com.google.firebase:firebase-appcheck-interop:17.1.0] C:\Users\marsa\.gradle\caches\transforms-3\7b6def15732d88a30d7c431688c8169d\transformed\firebase-appcheck-interop-17.1.0\AndroidManifest.xml:18:5-44
+MERGED from [com.google.firebase:firebase-appcheck-interop:17.1.0] C:\Users\marsa\.gradle\caches\transforms-3\7b6def15732d88a30d7c431688c8169d\transformed\firebase-appcheck-interop-17.1.0\AndroidManifest.xml:18:5-44
 MERGED from [com.google.android.gms:play-services-base:18.0.1] C:\Users\marsa\.gradle\caches\transforms-3\ccfb49caf55591b9170808607d383047\transformed\play-services-base-18.0.1\AndroidManifest.xml:18:5-43
 MERGED from [com.google.android.gms:play-services-base:18.0.1] C:\Users\marsa\.gradle\caches\transforms-3\ccfb49caf55591b9170808607d383047\transformed\play-services-base-18.0.1\AndroidManifest.xml:18:5-43
 MERGED from [com.google.android.gms:play-services-measurement:21.5.0] C:\Users\marsa\.gradle\caches\transforms-3\28dc0f259bd7ea419d794ae3ec660743\transformed\play-services-measurement-21.5.0\AndroidManifest.xml:20:5-44
@@ -498,6 +523,16 @@ MERGED from [androidx.cursoradapter:cursoradapter:1.0.0] C:\Users\marsa\.gradle\
 MERGED from [androidx.cursoradapter:cursoradapter:1.0.0] C:\Users\marsa\.gradle\caches\transforms-3\b6d675e6ea2c081d7180b73cf973b4a5\transformed\cursoradapter-1.0.0\AndroidManifest.xml:20:5-44
 MERGED from [androidx.cardview:cardview:1.0.0] C:\Users\marsa\.gradle\caches\transforms-3\94fdc965799803dfda4bbd4ede04322e\transformed\cardview-1.0.0\AndroidManifest.xml:20:5-44
 MERGED from [androidx.cardview:cardview:1.0.0] C:\Users\marsa\.gradle\caches\transforms-3\94fdc965799803dfda4bbd4ede04322e\transformed\cardview-1.0.0\AndroidManifest.xml:20:5-44
+MERGED from [com.github.bumptech.glide:gifdecoder:4.16.0] C:\Users\marsa\.gradle\caches\transforms-3\01da36116e84afdc2536945104c8d61e\transformed\gifdecoder-4.16.0\AndroidManifest.xml:5:5-7:41
+MERGED from [com.github.bumptech.glide:gifdecoder:4.16.0] C:\Users\marsa\.gradle\caches\transforms-3\01da36116e84afdc2536945104c8d61e\transformed\gifdecoder-4.16.0\AndroidManifest.xml:5:5-7:41
+MERGED from [androidx.exifinterface:exifinterface:1.3.6] C:\Users\marsa\.gradle\caches\transforms-3\93addd2e40f553a760ef7d7aed7cc799\transformed\exifinterface-1.3.6\AndroidManifest.xml:20:5-22:41
+MERGED from [androidx.exifinterface:exifinterface:1.3.6] C:\Users\marsa\.gradle\caches\transforms-3\93addd2e40f553a760ef7d7aed7cc799\transformed\exifinterface-1.3.6\AndroidManifest.xml:20:5-22:41
+MERGED from [androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\marsa\.gradle\caches\transforms-3\8ecf2f458aa2a24058a4a79fdab211a4\transformed\profileinstaller-1.3.0\AndroidManifest.xml:21:5-44
+MERGED from [androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\marsa\.gradle\caches\transforms-3\8ecf2f458aa2a24058a4a79fdab211a4\transformed\profileinstaller-1.3.0\AndroidManifest.xml:21:5-44
+MERGED from [androidx.startup:startup-runtime:1.1.1] C:\Users\marsa\.gradle\caches\transforms-3\861c18e5b62467b055f3fae9bd3b792a\transformed\startup-runtime-1.1.1\AndroidManifest.xml:21:5-23:41
+MERGED from [androidx.startup:startup-runtime:1.1.1] C:\Users\marsa\.gradle\caches\transforms-3\861c18e5b62467b055f3fae9bd3b792a\transformed\startup-runtime-1.1.1\AndroidManifest.xml:21:5-23:41
+MERGED from [androidx.tracing:tracing:1.0.0] C:\Users\marsa\.gradle\caches\transforms-3\b843a48063b42b271eaa365267b77c01\transformed\tracing-1.0.0\AndroidManifest.xml:20:5-22:41
+MERGED from [androidx.tracing:tracing:1.0.0] C:\Users\marsa\.gradle\caches\transforms-3\b843a48063b42b271eaa365267b77c01\transformed\tracing-1.0.0\AndroidManifest.xml:20:5-22:41
 MERGED from [androidx.localbroadcastmanager:localbroadcastmanager:1.0.0] C:\Users\marsa\.gradle\caches\transforms-3\38782f0a9f884ef8818632e25fe7fad8\transformed\localbroadcastmanager-1.0.0\AndroidManifest.xml:20:5-44
 MERGED from [androidx.localbroadcastmanager:localbroadcastmanager:1.0.0] C:\Users\marsa\.gradle\caches\transforms-3\38782f0a9f884ef8818632e25fe7fad8\transformed\localbroadcastmanager-1.0.0\AndroidManifest.xml:20:5-44
 MERGED from [com.google.firebase:firebase-components:17.1.5] C:\Users\marsa\.gradle\caches\transforms-3\73dcddad79093f71cf1c3814fc2a86fa\transformed\firebase-components-17.1.5\AndroidManifest.xml:18:5-44
@@ -506,12 +541,6 @@ MERGED from [com.google.android.datatransport:transport-api:3.1.0] C:\Users\mars
 MERGED from [com.google.android.datatransport:transport-api:3.1.0] C:\Users\marsa\.gradle\caches\transforms-3\47d1474de5f596540cda05c299a393a2\transformed\transport-api-3.1.0\AndroidManifest.xml:18:5-44
 MERGED from [androidx.versionedparcelable:versionedparcelable:1.1.1] C:\Users\marsa\.gradle\caches\transforms-3\9476c00c9ba457d14216bb91c77b937a\transformed\versionedparcelable-1.1.1\AndroidManifest.xml:20:5-22:41
 MERGED from [androidx.versionedparcelable:versionedparcelable:1.1.1] C:\Users\marsa\.gradle\caches\transforms-3\9476c00c9ba457d14216bb91c77b937a\transformed\versionedparcelable-1.1.1\AndroidManifest.xml:20:5-22:41
-MERGED from [androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\marsa\.gradle\caches\transforms-3\8ecf2f458aa2a24058a4a79fdab211a4\transformed\profileinstaller-1.3.0\AndroidManifest.xml:21:5-44
-MERGED from [androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\marsa\.gradle\caches\transforms-3\8ecf2f458aa2a24058a4a79fdab211a4\transformed\profileinstaller-1.3.0\AndroidManifest.xml:21:5-44
-MERGED from [androidx.startup:startup-runtime:1.1.1] C:\Users\marsa\.gradle\caches\transforms-3\861c18e5b62467b055f3fae9bd3b792a\transformed\startup-runtime-1.1.1\AndroidManifest.xml:21:5-23:41
-MERGED from [androidx.startup:startup-runtime:1.1.1] C:\Users\marsa\.gradle\caches\transforms-3\861c18e5b62467b055f3fae9bd3b792a\transformed\startup-runtime-1.1.1\AndroidManifest.xml:21:5-23:41
-MERGED from [androidx.tracing:tracing:1.0.0] C:\Users\marsa\.gradle\caches\transforms-3\b843a48063b42b271eaa365267b77c01\transformed\tracing-1.0.0\AndroidManifest.xml:20:5-22:41
-MERGED from [androidx.tracing:tracing:1.0.0] C:\Users\marsa\.gradle\caches\transforms-3\b843a48063b42b271eaa365267b77c01\transformed\tracing-1.0.0\AndroidManifest.xml:20:5-22:41
 MERGED from [androidx.interpolator:interpolator:1.0.0] C:\Users\marsa\.gradle\caches\transforms-3\730da47c239f92eaf5a6edc6c526a982\transformed\interpolator-1.0.0\AndroidManifest.xml:20:5-44
 MERGED from [androidx.interpolator:interpolator:1.0.0] C:\Users\marsa\.gradle\caches\transforms-3\730da47c239f92eaf5a6edc6c526a982\transformed\interpolator-1.0.0\AndroidManifest.xml:20:5-44
 MERGED from [androidx.arch.core:core-runtime:2.2.0] C:\Users\marsa\.gradle\caches\transforms-3\50e38f8e39e564ff7db93010190dd3ea\transformed\core-runtime-2.2.0\AndroidManifest.xml:20:5-44
@@ -586,6 +615,10 @@ MERGED from [com.google.firebase:firebase-firestore:24.10.0] C:\Users\marsa\.gra
 MERGED from [com.google.firebase:firebase-firestore:24.10.0] C:\Users\marsa\.gradle\caches\transforms-3\5078c2639d0ae2acc823dc4af1609335\transformed\firebase-firestore-24.10.0\AndroidManifest.xml:14:9-23:19
 MERGED from [com.google.firebase:firebase-messaging:23.4.0] C:\Users\marsa\.gradle\caches\transforms-3\b5e7a7dbc88dc8362ad8f6ea81abf5a0\transformed\firebase-messaging-23.4.0\AndroidManifest.xml:54:9-63:19
 MERGED from [com.google.firebase:firebase-messaging:23.4.0] C:\Users\marsa\.gradle\caches\transforms-3\b5e7a7dbc88dc8362ad8f6ea81abf5a0\transformed\firebase-messaging-23.4.0\AndroidManifest.xml:54:9-63:19
+MERGED from [com.google.firebase:firebase-storage:20.3.0] C:\Users\marsa\.gradle\caches\transforms-3\239335c851be86169b5ae058b4f40b56\transformed\firebase-storage-20.3.0\AndroidManifest.xml:27:9-36:19
+MERGED from [com.google.firebase:firebase-storage:20.3.0] C:\Users\marsa\.gradle\caches\transforms-3\239335c851be86169b5ae058b4f40b56\transformed\firebase-storage-20.3.0\AndroidManifest.xml:27:9-36:19
+MERGED from [com.google.firebase:firebase-appcheck:17.1.1] C:\Users\marsa\.gradle\caches\transforms-3\80dfa722e3d8142bf49b1f569aa10a8f\transformed\firebase-appcheck-17.1.1\AndroidManifest.xml:22:9-31:19
+MERGED from [com.google.firebase:firebase-appcheck:17.1.1] C:\Users\marsa\.gradle\caches\transforms-3\80dfa722e3d8142bf49b1f569aa10a8f\transformed\firebase-appcheck-17.1.1\AndroidManifest.xml:22:9-31:19
 MERGED from [com.google.firebase:firebase-datatransport:18.1.7] C:\Users\marsa\.gradle\caches\transforms-3\770931ed3421c7ee7a9188d469253fea\transformed\firebase-datatransport-18.1.7\AndroidManifest.xml:24:9-30:19
 MERGED from [com.google.firebase:firebase-datatransport:18.1.7] C:\Users\marsa\.gradle\caches\transforms-3\770931ed3421c7ee7a9188d469253fea\transformed\firebase-datatransport-18.1.7\AndroidManifest.xml:24:9-30:19
 MERGED from [com.google.android.gms:play-services-measurement-api:21.5.0] C:\Users\marsa\.gradle\caches\transforms-3\f050b984cb27720c90d461bcea2442bb\transformed\play-services-measurement-api-21.5.0\AndroidManifest.xml:34:9-40:19
@@ -668,6 +701,18 @@ ADDED from [com.google.firebase:firebase-messaging:23.4.0] C:\Users\marsa\.gradl
 		ADDED from [com.google.firebase:firebase-messaging:23.4.0] C:\Users\marsa\.gradle\caches\transforms-3\b5e7a7dbc88dc8362ad8f6ea81abf5a0\transformed\firebase-messaging-23.4.0\AndroidManifest.xml:62:17-82
 	android:name
 		ADDED from [com.google.firebase:firebase-messaging:23.4.0] C:\Users\marsa\.gradle\caches\transforms-3\b5e7a7dbc88dc8362ad8f6ea81abf5a0\transformed\firebase-messaging-23.4.0\AndroidManifest.xml:61:17-119
+meta-data#com.google.firebase.components:com.google.firebase.storage.FirebaseStorageKtxRegistrar
+ADDED from [com.google.firebase:firebase-storage:20.3.0] C:\Users\marsa\.gradle\caches\transforms-3\239335c851be86169b5ae058b4f40b56\transformed\firebase-storage-20.3.0\AndroidManifest.xml:30:13-32:85
+	android:value
+		ADDED from [com.google.firebase:firebase-storage:20.3.0] C:\Users\marsa\.gradle\caches\transforms-3\239335c851be86169b5ae058b4f40b56\transformed\firebase-storage-20.3.0\AndroidManifest.xml:32:17-82
+	android:name
+		ADDED from [com.google.firebase:firebase-storage:20.3.0] C:\Users\marsa\.gradle\caches\transforms-3\239335c851be86169b5ae058b4f40b56\transformed\firebase-storage-20.3.0\AndroidManifest.xml:31:17-118
+meta-data#com.google.firebase.components:com.google.firebase.storage.StorageRegistrar
+ADDED from [com.google.firebase:firebase-storage:20.3.0] C:\Users\marsa\.gradle\caches\transforms-3\239335c851be86169b5ae058b4f40b56\transformed\firebase-storage-20.3.0\AndroidManifest.xml:33:13-35:85
+	android:value
+		ADDED from [com.google.firebase:firebase-storage:20.3.0] C:\Users\marsa\.gradle\caches\transforms-3\239335c851be86169b5ae058b4f40b56\transformed\firebase-storage-20.3.0\AndroidManifest.xml:35:17-82
+	android:name
+		ADDED from [com.google.firebase:firebase-storage:20.3.0] C:\Users\marsa\.gradle\caches\transforms-3\239335c851be86169b5ae058b4f40b56\transformed\firebase-storage-20.3.0\AndroidManifest.xml:34:17-107
 activity#com.google.android.gms.auth.api.signin.internal.SignInHubActivity
 ADDED from [com.google.android.gms:play-services-auth:20.7.0] C:\Users\marsa\.gradle\caches\transforms-3\e90f8910aac63ccc8f57712506b166c1\transformed\play-services-auth-20.7.0\AndroidManifest.xml:23:9-27:75
 	android:excludeFromRecents
@@ -688,6 +733,18 @@ ADDED from [com.google.android.gms:play-services-auth:20.7.0] C:\Users\marsa\.gr
 		ADDED from [com.google.android.gms:play-services-auth:20.7.0] C:\Users\marsa\.gradle\caches\transforms-3\e90f8910aac63ccc8f57712506b166c1\transformed\play-services-auth-20.7.0\AndroidManifest.xml:36:13-107
 	android:name
 		ADDED from [com.google.android.gms:play-services-auth:20.7.0] C:\Users\marsa\.gradle\caches\transforms-3\e90f8910aac63ccc8f57712506b166c1\transformed\play-services-auth-20.7.0\AndroidManifest.xml:34:13-89
+meta-data#com.google.firebase.components:com.google.firebase.appcheck.FirebaseAppCheckKtxRegistrar
+ADDED from [com.google.firebase:firebase-appcheck:17.1.1] C:\Users\marsa\.gradle\caches\transforms-3\80dfa722e3d8142bf49b1f569aa10a8f\transformed\firebase-appcheck-17.1.1\AndroidManifest.xml:25:13-27:85
+	android:value
+		ADDED from [com.google.firebase:firebase-appcheck:17.1.1] C:\Users\marsa\.gradle\caches\transforms-3\80dfa722e3d8142bf49b1f569aa10a8f\transformed\firebase-appcheck-17.1.1\AndroidManifest.xml:27:17-82
+	android:name
+		ADDED from [com.google.firebase:firebase-appcheck:17.1.1] C:\Users\marsa\.gradle\caches\transforms-3\80dfa722e3d8142bf49b1f569aa10a8f\transformed\firebase-appcheck-17.1.1\AndroidManifest.xml:26:17-120
+meta-data#com.google.firebase.components:com.google.firebase.appcheck.FirebaseAppCheckRegistrar
+ADDED from [com.google.firebase:firebase-appcheck:17.1.1] C:\Users\marsa\.gradle\caches\transforms-3\80dfa722e3d8142bf49b1f569aa10a8f\transformed\firebase-appcheck-17.1.1\AndroidManifest.xml:28:13-30:85
+	android:value
+		ADDED from [com.google.firebase:firebase-appcheck:17.1.1] C:\Users\marsa\.gradle\caches\transforms-3\80dfa722e3d8142bf49b1f569aa10a8f\transformed\firebase-appcheck-17.1.1\AndroidManifest.xml:30:17-82
+	android:name
+		ADDED from [com.google.firebase:firebase-appcheck:17.1.1] C:\Users\marsa\.gradle\caches\transforms-3\80dfa722e3d8142bf49b1f569aa10a8f\transformed\firebase-appcheck-17.1.1\AndroidManifest.xml:29:17-117
 meta-data#com.google.firebase.components:com.google.firebase.datatransport.TransportRegistrar
 ADDED from [com.google.firebase:firebase-datatransport:18.1.7] C:\Users\marsa\.gradle\caches\transforms-3\770931ed3421c7ee7a9188d469253fea\transformed\firebase-datatransport-18.1.7\AndroidManifest.xml:27:13-29:85
 	android:value

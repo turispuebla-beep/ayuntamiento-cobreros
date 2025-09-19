@@ -1,0 +1,2004 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ayuntamiento de Cobreros</title>
+    <link rel="icon" type="image/x-icon" href="images/favicon.ico">
+    <link rel="shortcut icon" type="image/x-icon" href="images/favicon.ico">
+    <link rel="stylesheet" href="css/styles.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#1e3a8a">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="Cobreros">
+    <link rel="apple-touch-icon" href="images/escudo-cobreros-192.png">
+    
+    <!-- reCAPTCHA v3 -->
+    <script src="https://www.google.com/recaptcha/api.js?render=6LeBYM4rAAAAALaDVtPi1H4jWjpj_Ovjf9g8VnT4"></script>
+    
+    <!-- Firebase SDK -->
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+        import { getMessaging, getToken, onMessage } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging.js';
+        
+        // Configuración de Firebase
+        const firebaseConfig = {
+            apiKey: "AIzaSyBXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX", // Necesitas tu API key real
+            authDomain: "turisteam-80f1b.firebaseapp.com",
+            projectId: "turisteam-80f1b",
+            storageBucket: "turisteam-80f1b.appspot.com",
+            messagingSenderId: "623846192437",
+            appId: "1:623846192437:web:XXXXXXXXXXXXXXXX" // Necesitas tu App ID real
+        };
+        
+        // Inicializar Firebase
+        const app = initializeApp(firebaseConfig);
+        const messaging = getMessaging(app);
+        
+        // Solicitar permiso para notificaciones
+        async function requestNotificationPermission() {
+            const permission = await Notification.requestPermission();
+            if (permission === 'granted') {
+                console.log('Permiso de notificaciones concedido');
+                return true;
+            } else {
+                console.log('Permiso de notificaciones denegado');
+                return false;
+            }
+        }
+        
+        // Obtener token de FCM
+        async function getFCMToken() {
+            try {
+                const token = await getToken(messaging, {
+                    vapidKey: 'TU_VAPID_KEY_AQUI' // Necesitas generar una VAPID key
+                });
+                console.log('FCM Token:', token);
+                return token;
+            } catch (error) {
+                console.error('Error obteniendo token:', error);
+                return null;
+            }
+        }
+        
+        // Escuchar mensajes en primer plano
+        onMessage(messaging, (payload) => {
+            console.log('Mensaje recibido:', payload);
+            // Mostrar notificación personalizada
+            if (payload.notification) {
+                showCustomNotification(payload.notification.title, payload.notification.body);
+            }
+        });
+        
+        // Función para mostrar notificación personalizada
+        function showCustomNotification(title, body) {
+            if (Notification.permission === 'granted') {
+                new Notification(title, {
+                    body: body,
+                    icon: 'images/escudo-cobreros.png',
+                    badge: 'images/escudo-cobreros.png'
+                });
+            }
+        }
+        
+        // Inicializar cuando se carga la página
+        window.addEventListener('load', async () => {
+            const hasPermission = await requestNotificationPermission();
+            if (hasPermission) {
+                const token = await getFCMToken();
+                if (token) {
+                    // Guardar token para enviar notificaciones
+                    localStorage.setItem('fcmToken', token);
+                    console.log('Token guardado para notificaciones');
+                }
+            }
+        });
+        
+        // Hacer funciones globales
+        window.requestNotificationPermission = requestNotificationPermission;
+        window.getFCMToken = getFCMToken;
+        window.showCustomNotification = showCustomNotification;
+    </script>
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <!-- Scroll de Notificaciones Públicas -->
+        <div class="public-notifications-scroll" id="publicNotificationsScroll">
+            <div class="scroll-content" id="scrollContent">
+                <!-- Las notificaciones se cargarán dinámicamente -->
+            </div>
+        </div>
+        
+        <div class="container">
+            <div class="header-content">
+                <div class="logo-section">
+                    <img src="images/escudo-cobreros.jpg" alt="Escudo de Cobreros" class="logo">
+                    <div class="title-section">
+                        <h1>Ayuntamiento de Cobreros</h1>
+                        <p>Servicios municipales</p>
+                    </div>
+                </div>
+                <nav class="main-nav">
+                    <ul>
+                        <li><a href="#inicio" class="nav-link active" data-icon="home">🏠 Inicio</a></li>
+                        <li><a href="#bando" class="nav-link" data-icon="gavel">⚖️ Bando</a></li>
+                        <li><a href="#noticias" class="nav-link" data-icon="newspaper">📰 Noticias</a></li>
+                        <li><a href="#cita-previa" class="nav-link" data-icon="calendar">📅 Cita Previa</a></li>
+                        <li><a href="#sede-electronica" class="nav-link" data-icon="laptop">💻 Sede Electrónica</a></li>
+                        <li><a href="#documentos" class="nav-link" data-icon="file">📄 Documentos</a></li>
+                        <li><a href="#cultura-ocio" class="nav-link" data-icon="theater">🎭 Cultura y Ocio</a></li>
+                        <li><a href="#servicios" class="nav-link" data-icon="services">🏥 Servicios</a></li>
+                    </ul>
+                </nav>
+                <div class="header-actions">
+                    <button class="btn btn-outline" id="loginBtn">Iniciar Sesión</button>
+                    <button class="btn btn-primary" id="registerBtn">Registrarse</button>
+                    <button class="btn btn-secondary" id="adminBtn" style="display: none;">Panel Admin</button>
+                </div>
+                <button class="mobile-menu-toggle" id="mobileMenuToggle">
+                    <i class="fas fa-bars"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <!-- Hero Section -->
+        <section id="inicio" class="hero-section">
+            <div class="container">
+                <div class="hero-content">
+                    <h2>Bienvenidos al Ayuntamiento de Cobreros</h2>
+                    <p>Su portal de servicios municipales e información local</p>
+                    <div class="hero-actions">
+                        <button class="btn btn-primary btn-large" onclick="scrollToSection('cita-previa')">
+                            <i class="fas fa-calendar-alt"></i>
+                            Solicitar Cita Previa
+                        </button>
+                        <button class="btn btn-outline btn-large" onclick="scrollToSection('noticias')">
+                            <i class="fas fa-newspaper"></i>
+                            Ver Noticias
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+
+        <!-- Bando Section -->
+        <section id="bando" class="content-section">
+            <div class="container">
+                <h2>Bando Municipal</h2>
+                <div class="bando-content" id="bandoContent">
+                    <!-- Contenido cargado dinámicamente -->
+                </div>
+            </div>
+        </section>
+
+        <!-- Noticias Section -->
+        <section id="noticias" class="content-section">
+            <div class="container">
+                <h2>Noticias</h2>
+                <div class="news-grid" id="newsGrid">
+                    <!-- Contenido cargado dinámicamente -->
+                </div>
+            </div>
+        </section>
+
+        <!-- Cita Previa Section -->
+        <section id="cita-previa" class="content-section">
+            <div class="container">
+                <h2>Cita Previa</h2>
+                <div class="appointment-intro">
+                    <div class="appointment-status" id="appointmentStatus">
+                        <div class="status-badge" id="statusBadge">
+                            <i class="fas fa-calendar-check"></i>
+                            <span id="statusText">CITA PREVIA</span>
+                        </div>
+                    </div>
+                    <p id="appointmentDescription">Para solicitar una cita previa, complete el formulario a continuación. Le contactaremos para confirmar la fecha y hora.</p>
+                    <button class="btn btn-primary btn-large" id="toggleAppointmentForm">
+                        <i class="fas fa-calendar-plus"></i>
+                        Solicitar Cita Previa
+                    </button>
+                </div>
+                <div class="appointment-form" id="appointmentFormContainer" style="display: none;">
+                    <form id="appointmentForm">
+                        <div class="form-group">
+                            <label for="service">Servicio solicitado:</label>
+                            <select id="service" name="service" required>
+                                <option value="">Seleccione un servicio</option>
+                                <option value="empadronamiento">Empadronamiento</option>
+                                <option value="licencias">Licencias de obras</option>
+                                <option value="certificados">Certificados</option>
+                                <option value="multas">Consulta de multas</option>
+                                <option value="otros">Otros trámites</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="name">Nombre y apellidos:</label>
+                            <input type="text" id="name" name="name" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="dni">DNI:</label>
+                            <input type="text" id="dni" name="dni" pattern="[0-9]{8}[A-Za-z]" title="Formato: 8 números seguidos de una letra" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="email">Correo electrónico:</label>
+                            <input type="email" id="email" name="email" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="phone">Teléfono:</label>
+                            <input type="tel" id="phone" name="phone" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="date">Fecha preferida:</label>
+                            <input type="date" id="date" name="date" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="time">Hora preferida:</label>
+                            <select id="time" name="time" required>
+                                <option value="">Seleccione una hora</option>
+                                <option value="09:00">09:00</option>
+                                <option value="10:00">10:00</option>
+                                <option value="11:00">11:00</option>
+                                <option value="12:00">12:00</option>
+                                <option value="16:00">16:00</option>
+                                <option value="17:00">17:00</option>
+                                <option value="18:00">18:00</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="comments">Comentarios adicionales:</label>
+                            <textarea id="comments" name="comments" rows="4"></textarea>
+                        </div>
+                        <div class="form-group">
+                            <div class="checkbox-group">
+                                <input type="checkbox" id="gdprConsent" name="gdprConsent" required>
+                                <label for="gdprConsent" class="checkbox-label">
+                                    Acepto la <a href="#" onclick="showGDPRModal()" class="gdpr-link">Política de Protección de Datos</a> y autorizo el tratamiento de mis datos personales para la gestión de la cita previa.
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <div class="checkbox-group">
+                                <input type="checkbox" id="notificationConsent" name="notificationConsent">
+                                <label for="notificationConsent" class="checkbox-label">
+                                    📱 Quiero recibir notificaciones push del Ayuntamiento de Cobreros (eventos, citas, bandos, etc.)
+                                </label>
+                            </div>
+                        </div>
+                        <div class="form-actions">
+                            <button type="submit" class="btn btn-primary">Solicitar Cita</button>
+                            <button type="button" class="btn btn-outline" id="cancelAppointment">Cancelar</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </section>
+
+        <!-- Sede Electrónica Section -->
+        <section id="sede-electronica" class="content-section">
+            <div class="container">
+                <h2>Sede Electrónica</h2>
+                <div class="electronic-office-grid">
+                    <div class="office-item">
+                        <i class="fas fa-file-contract"></i>
+                        <h3>Trámites Online</h3>
+                        <p>Realice sus trámites municipales de forma online</p>
+                        <a href="https://cobreros.sedelectronica.es/dossier.12" target="_blank" class="btn btn-outline">Acceder</a>
+                    </div>
+                    <div class="office-item">
+                        <i class="fas fa-user-check"></i>
+                        <h3>Certificados Digitales</h3>
+                        <p>Comprueba la validez de la firma electrónica de un documento emitido por este Organismo</p>
+                        <a href="https://cobreros.sedelectronica.es/document-validation.1" target="_blank" class="btn btn-outline">Acceder</a>
+                    </div>
+                    <div class="office-item">
+                        <i class="fas fa-folder-open"></i>
+                        <h3>Acceso a Mi Carpeta</h3>
+                        <p>Acceso a mis expedientes presentados, solicitudes en borrador</p>
+                        <a href="https://cobreros.sedelectronica.es/?x=q2zqg3x6qokD7QytOKHVbDsPZ7cZsnjFWBp3ScfjrcP9y52OunZx8o9rxsfaL4sH8eokkwTvVv*i-colAaPhWGUh3KtxgONs0PBPrAl2QcrGaTvIDHA*blaao6nwhvxazziyQzsHDNk" target="_blank" class="btn btn-outline">Acceder</a>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Documentos Section -->
+        <section id="documentos" class="content-section">
+            <div class="container">
+                <h2>Documentos y Formularios</h2>
+                <div class="documents-grid">
+                    <div class="document-category">
+                        <h3>Formularios</h3>
+                        <ul class="document-list">
+                            <li><a href="#" class="document-link"><i class="fas fa-download"></i> Solicitud de empadronamiento</a></li>
+                            <li><a href="#" class="document-link"><i class="fas fa-download"></i> Licencia de obras</a></li>
+                            <li><a href="#" class="document-link"><i class="fas fa-download"></i> Certificado de empadronamiento</a></li>
+                            <li><a href="#" class="document-link"><i class="fas fa-download"></i> Solicitud de subvenciones</a></li>
+                        </ul>
+                    </div>
+                    <div class="document-category">
+                        <h3>Normativas</h3>
+                        <ul class="document-list">
+                            <li><a href="#" class="document-link"><i class="fas fa-download"></i> Ordenanzas municipales</a></li>
+                            <li><a href="#" class="document-link"><i class="fas fa-download"></i> Reglamento de funcionamiento</a></li>
+                            <li><a href="#" class="document-link"><i class="fas fa-download"></i> Normativa de ruidos</a></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Cultura y Ocio Section -->
+        <section id="cultura-ocio" class="content-section">
+            <div class="container">
+                <h2>Cultura y Ocio</h2>
+                <div class="cultura-tarjetas-container" id="culturaTarjetasContainer">
+                    <!-- Se llenará dinámicamente con tarjetas configurables -->
+                </div>
+            </div>
+        </section>
+
+        <!-- Servicios Section -->
+        <section id="servicios" class="content-section">
+            <div class="container">
+                <h2>Servicios Municipales</h2>
+                <div id="serviciosContent">
+                    <!-- Se llenará dinámicamente -->
+                </div>
+            </div>
+        </section>
+
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <h4>Información de Contacto</h4>
+                    <p><i class="fas fa-user-tie"></i> <strong>Alcalde:</strong> Luis Miguel López Fernández</p>
+                    <p><i class="fas fa-landmark"></i> <strong>Grupo político:</strong> F (Futuro)</p>
+                    <p><i class="fas fa-map-marker-alt"></i> <strong>Dirección:</strong> Principal, s/n - 49396 Cobreros</p>
+                    <p><i class="fas fa-phone"></i> <strong>Teléfono:</strong> 980 62 26 18</p>
+                    <p><i class="fas fa-fax"></i> <strong>Fax:</strong> 980 62 26 18</p>
+                    <p><i class="fas fa-envelope"></i> <strong>E-mail:</strong> aytocobreros@gmail.com</p>
+                </div>
+                <div class="footer-section">
+                    <h4>Información del Municipio</h4>
+                    <p><i class="fas fa-map"></i> <strong>Comarca:</strong> Sanabria y Carballeda</p>
+                    <p><i class="fas fa-users"></i> <strong>Habitantes:</strong> 552</p>
+                    <p><i class="fas fa-expand-arrows-alt"></i> <strong>Extensión:</strong> 78 Km²</p>
+                    <p><i class="fas fa-clock"></i> <strong>Horario de Atención:</strong></p>
+                    <p style="margin-left: 1rem;">Lunes a Viernes: 09:00-15:00</p>
+                </div>
+                <div class="footer-section">
+                    <h4>Enlaces de Interés</h4>
+                    <ul>
+                        <li><a href="https://www.diputaciondezamora.es/opencms/inicio/" target="_blank">Diputación Provincial de Zamora</a></li>
+                        <li><a href="https://www.jcyl.es/web/jcyl/Portada/es/Home/1246890364336/_/_/_" target="_blank">Junta de Castilla y León</a></li>
+                        <li><a href="https://www.diputaciondezamora.es/opencms/servicios/BOP/bop/index.html" target="_blank">Boletín Oficial de la Provincia</a></li>
+                        <li><a href="https://www.sanabriacarballeda.com/tierra/muni" target="_blank">Comarca de Sanabria</a></li>
+                        <li><a href="https://turismo-zamora.com/" target="_blank">Turismo de Zamora</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2024 Ayuntamiento de Cobreros. Todos los derechos reservados.</p>
+                <div class="footer-links">
+                    <a href="#">Aviso Legal</a>
+                    <a href="#">Política de Privacidad</a>
+                    <a href="#">Cookies</a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Modals -->
+    <!-- Login Modal -->
+    <div id="loginModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>Iniciar Sesión</h2>
+            <form id="loginForm">
+                <div class="form-group">
+                    <label for="loginEmail">Correo electrónico:</label>
+                    <input type="email" id="loginEmail" name="email" required>
+                </div>
+                <div class="form-group">
+                    <label for="loginPassword">Contraseña:</label>
+                    <input type="password" id="loginPassword" name="password" required>
+                </div>
+                <!-- reCAPTCHA Info -->
+                <div class="recaptcha-info">
+                    <small>🛡️ Este sitio está protegido por reCAPTCHA y se aplican la 
+                        <a href="https://policies.google.com/privacy" target="_blank">Política de Privacidad</a> 
+                        y los <a href="https://policies.google.com/terms" target="_blank">Términos de Servicio</a> 
+                        de Google.
+                    </small>
+                </div>
+                <button type="submit" class="btn btn-primary" id="loginSubmitBtn">
+                    <span class="btn-text">Iniciar Sesión</span>
+                    <span class="btn-loading" style="display: none;">
+                        <i class="fas fa-spinner fa-spin"></i> Verificando...
+                    </span>
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Register Modal -->
+    <div id="registerModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>Registrarse</h2>
+            <form id="registerForm">
+                <div class="form-group">
+                    <label for="regName">Nombre completo:</label>
+                    <input type="text" id="regName" name="name" required>
+                </div>
+                <div class="form-group">
+                    <label for="regEmail">Correo electrónico:</label>
+                    <input type="email" id="regEmail" name="email" required>
+                </div>
+                <div class="form-group">
+                    <label for="regPhone">Teléfono:</label>
+                    <input type="tel" id="regPhone" name="phone" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="regLocalities">Localidades de interés:</label>
+                    <div class="localities-selection">
+                        <p style="color: #666; font-size: 0.9em; margin-bottom: 1rem;">Selecciona una o más localidades para recibir notificaciones específicas:</p>
+                        <div class="localities-grid">
+                            <label class="locality-checkbox">
+                                <input type="checkbox" name="localities" value="Cobreros">
+                                <span>Cobreros</span>
+                            </label>
+                            <label class="locality-checkbox">
+                                <input type="checkbox" name="localities" value="Avedillo de Sanabria">
+                                <span>Avedillo de Sanabria</span>
+                            </label>
+                            <label class="locality-checkbox">
+                                <input type="checkbox" name="localities" value="Barrio de Lomba">
+                                <span>Barrio de Lomba</span>
+                            </label>
+                            <label class="locality-checkbox">
+                                <input type="checkbox" name="localities" value="Castro de Sanabria">
+                                <span>Castro de Sanabria</span>
+                            </label>
+                            <label class="locality-checkbox">
+                                <input type="checkbox" name="localities" value="Limianos">
+                                <span>Limianos</span>
+                            </label>
+                            <label class="locality-checkbox">
+                                <input type="checkbox" name="localities" value="Quintana de Sanabria">
+                                <span>Quintana de Sanabria</span>
+                            </label>
+                            <label class="locality-checkbox">
+                                <input type="checkbox" name="localities" value="Riego de Lomba">
+                                <span>Riego de Lomba</span>
+                            </label>
+                            <label class="locality-checkbox">
+                                <input type="checkbox" name="localities" value="San Martín del Terroso">
+                                <span>San Martín del Terroso</span>
+                            </label>
+                            <label class="locality-checkbox">
+                                <input type="checkbox" name="localities" value="San Miguel de Lomba">
+                                <span>San Miguel de Lomba</span>
+                            </label>
+                            <label class="locality-checkbox">
+                                <input type="checkbox" name="localities" value="San Román de Sanabria">
+                                <span>San Román de Sanabria</span>
+                            </label>
+                            <label class="locality-checkbox">
+                                <input type="checkbox" name="localities" value="Santa Colomba">
+                                <span>Santa Colomba</span>
+                            </label>
+                            <label class="locality-checkbox">
+                                <input type="checkbox" name="localities" value="Sotillo">
+                                <span>Sotillo</span>
+                            </label>
+                            <label class="locality-checkbox">
+                                <input type="checkbox" name="localities" value="Terroso">
+                                <span>Terroso</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="regPassword">Contraseña:</label>
+                    <input type="password" id="regPassword" name="password" required>
+                </div>
+                <div class="form-group">
+                    <label for="regPasswordConfirm">Confirmar contraseña:</label>
+                    <input type="password" id="regPasswordConfirm" name="passwordConfirm" required>
+                </div>
+                <div class="form-group checkbox-group">
+                    <input type="checkbox" id="consent" name="consent" required>
+                    <label for="consent">Acepto el tratamiento de mis datos personales según la <a href="#" target="_blank">Política de Privacidad</a>.</label>
+                </div>
+                <div class="form-group checkbox-group">
+                    <input type="checkbox" id="notificationConsent" name="notificationConsent" required>
+                    <label for="notificationConsent">Doy mi consentimiento para recibir notificaciones del Ayuntamiento de Cobreros, incluyendo comunicaciones importantes, eventos y documentos oficiales.</label>
+                </div>
+                <!-- reCAPTCHA Info -->
+                <div class="recaptcha-info">
+                    <small>🛡️ Este sitio está protegido por reCAPTCHA y se aplican la 
+                        <a href="https://policies.google.com/privacy" target="_blank">Política de Privacidad</a> 
+                        y los <a href="https://policies.google.com/terms" target="_blank">Términos de Servicio</a> 
+                        de Google.
+                    </small>
+                </div>
+                <button type="submit" class="btn btn-primary" id="registerSubmitBtn">
+                    <span class="btn-text">Registrarse</span>
+                    <span class="btn-loading" style="display: none;">
+                        <i class="fas fa-spinner fa-spin"></i> Verificando...
+                    </span>
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Admin Login Modal -->
+    <div id="adminLoginModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>Acceso de Administradores</h2>
+            <div class="admin-login-info">
+                <p><i class="fas fa-shield-alt"></i> Acceso restringido para personal autorizado</p>
+            </div>
+            <form id="adminLoginForm">
+                <div class="form-group">
+                    <label for="adminLoginEmail">Correo electrónico:</label>
+                    <input type="email" id="adminLoginEmail" name="email" required>
+                </div>
+                <div class="form-group">
+                    <label for="adminLoginPassword">Contraseña:</label>
+                    <input type="password" id="adminLoginPassword" name="password" required>
+                </div>
+                <button type="submit" class="btn btn-primary">Acceder como Administrador</button>
+            </form>
+            <div class="admin-login-footer">
+                <p><small>Para usuarios normales, use el botón "Iniciar Sesión"</small></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Admin Panel Modal -->
+    <div id="adminModal" class="modal admin-modal">
+        <div class="modal-content admin-content">
+            <!-- Botón de cerrar sesión flotante -->
+            <button class="logout-floating-btn" onclick="logout()" title="Cerrar Sesión">
+                <i class="fas fa-sign-out-alt"></i>
+            </button>
+            
+            <span class="close">&times;</span>
+            <h2>Panel de Administración</h2>
+            <div class="admin-tabs">
+                <button class="tab-btn active" data-tab="content">Gestión de Contenido</button>
+                <button class="tab-btn" data-tab="appointments">Citas Previas</button>
+                <button class="tab-btn" data-tab="users">Usuarios</button>
+                <button class="tab-btn" data-tab="admins">Administradores</button>
+                <button class="tab-btn" data-tab="documents">Documentos</button>
+                <button class="tab-btn" data-tab="notifications">Notificaciones</button>
+                <button class="tab-btn" data-tab="database">Base de Datos</button>
+                <button class="tab-btn" data-tab="settings">Configuración</button>
+                <button class="tab-btn" data-tab="servicios">Servicios</button>
+            </div>
+            <div class="admin-content-area">
+                <!-- Content Management Tab -->
+                <div id="content-tab" class="tab-content active">
+                    <h3>Gestión de Contenido</h3>
+                    
+                    <!-- Noticias -->
+                    <div class="admin-section">
+                        <h4>Gestionar Noticias</h4>
+                        <div class="content-actions">
+                            <button class="btn btn-primary" onclick="openNewsEditor()">
+                                <i class="fas fa-plus"></i> Nueva Noticia
+                            </button>
+                            <button class="btn btn-secondary" onclick="exportNews()">
+                                <i class="fas fa-download"></i> Exportar
+                            </button>
+                        </div>
+                        <div class="content-list" id="newsList"></div>
+                    </div>
+                    
+                    <!-- Bandos -->
+                    <div class="admin-section">
+                        <h4>Gestionar Bandos</h4>
+                        <div class="content-actions">
+                            <button class="btn btn-primary" onclick="openBandoEditor()">
+                                <i class="fas fa-plus"></i> Nuevo Bando
+                            </button>
+                            <button class="btn btn-secondary" onclick="exportBandos()">
+                                <i class="fas fa-download"></i> Exportar
+                            </button>
+                        </div>
+                        <div class="content-list" id="bandoList"></div>
+                    </div>
+                    
+                    <!-- Gestión completa de Cultura y Ocio -->
+                    <div class="admin-section">
+                        <h4>🎭 Gestión de Cultura y Ocio</h4>
+                        <div class="content-actions">
+                            <button class="btn btn-primary" onclick="openCulturaOcioManager()">
+                                <i class="fas fa-cog"></i> Gestionar Sección Completa
+                            </button>
+                            <button class="btn btn-secondary" onclick="exportCulturaOcio()">
+                                <i class="fas fa-download"></i> Exportar Todo
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Eventos de Cultura y Ocio -->
+                    <div class="admin-section">
+                        <h4>Gestionar Eventos</h4>
+                        <div class="content-actions">
+                            <button class="btn btn-primary" onclick="openEventEditor()">
+                                <i class="fas fa-plus"></i> Nuevo Evento
+                            </button>
+                            <button class="btn btn-secondary" onclick="exportEvents()">
+                                <i class="fas fa-download"></i> Exportar
+                            </button>
+                        </div>
+                        <div class="content-list" id="eventsList"></div>
+                    </div>
+                    
+                    <!-- Tarjetas de Acceso Rápido -->
+                    <div class="admin-section">
+                        <h4>Gestionar Acceso Rápido</h4>
+                        <div class="content-actions">
+                            <button class="btn btn-primary" onclick="openQuickAccessEditor()">
+                                <i class="fas fa-plus"></i> Nueva Tarjeta
+                            </button>
+                            <button class="btn btn-secondary" onclick="exportQuickAccess()">
+                                <i class="fas fa-download"></i> Exportar
+                            </button>
+                        </div>
+                        <div class="content-list" id="quickAccessList"></div>
+                    </div>
+                </div>
+                
+                <!-- Appointments Tab -->
+                <div id="appointments-tab" class="tab-content">
+                    <h3>Gestión de Citas Previas</h3>
+                    
+                    <!-- Alertas Municipales -->
+                    <div class="admin-section">
+                        <h4>🚨 Alertas Municipales</h4>
+                        <div class="municipal-alerts" id="municipalAlertsContainer">
+                            <div class="alerts-header">
+                                <span class="alerts-count" id="alertsCount">0 alertas pendientes</span>
+                                <button class="btn btn-outline btn-sm" onclick="clearAllAlerts()">
+                                    <i class="fas fa-trash"></i> Limpiar Todas
+                                </button>
+                            </div>
+                            <div class="alerts-list" id="municipalAlertsList">
+                                <!-- Las alertas se cargarán dinámicamente -->
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Configuración del Sistema -->
+                    <div class="admin-section">
+                        <h4>Configuración del Sistema</h4>
+                        <div class="appointment-settings">
+                            <div class="setting-item">
+                                <label class="setting-label">
+                                    <input type="radio" name="appointmentMode" value="enabled" id="appointmentEnabled">
+                                    <span class="radio-custom"></span>
+                                    <strong>CITA PREVIA</strong> - Se requiere solicitar cita previa
+                                </label>
+                            </div>
+                            <div class="setting-item">
+                                <label class="setting-label">
+                                    <input type="radio" name="appointmentMode" value="disabled" id="appointmentDisabled">
+                                    <span class="radio-custom"></span>
+                                    <strong>SE ATIENDE SIN CITA PREVIA</strong> - Atención directa sin cita
+                                </label>
+                            </div>
+                            <button class="btn btn-primary" onclick="updateAppointmentMode()">
+                                <i class="fas fa-save"></i> Guardar Configuración
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Lista de Citas Previas -->
+                    <div class="admin-section">
+                        <h4>Citas Previas Solicitadas</h4>
+                        <div class="appointments-controls">
+                            <div class="filter-controls">
+                                <select id="appointmentStatusFilter" onchange="filterAppointments()">
+                                    <option value="all">Todas las citas</option>
+                                    <option value="pending">Pendientes</option>
+                                    <option value="confirmed">Confirmadas</option>
+                                    <option value="cancelled">Canceladas</option>
+                                </select>
+                                <button class="btn btn-outline" onclick="refreshAppointments()">
+                                    <i class="fas fa-sync-alt"></i> Actualizar
+                                </button>
+                                <button class="btn btn-secondary" onclick="createTestAppointment()">
+                                    <i class="fas fa-plus"></i> Crear Cita de Prueba
+                                </button>
+                            </div>
+                        </div>
+                        <div class="appointments-list" id="appointmentsList">
+                            <!-- Las citas se cargarán dinámicamente -->
+                        </div>
+                    </div>
+                    
+                    <!-- Estadísticas -->
+                    <div class="admin-section">
+                        <h4>Estadísticas de Citas</h4>
+                        <div class="stats-grid" id="appointmentStats">
+                            <div class="stat-card">
+                                <div class="stat-number" id="totalAppointments">0</div>
+                                <div class="stat-label">Total Citas</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-number" id="pendingAppointments">0</div>
+                                <div class="stat-label">Pendientes</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-number" id="confirmedAppointments">0</div>
+                                <div class="stat-label">Confirmadas</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-number" id="cancelledAppointments">0</div>
+                                <div class="stat-label">Canceladas</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Users Tab -->
+                <div id="users-tab" class="tab-content">
+                    <h3>Gestión de Usuarios</h3>
+                    <div class="admin-section">
+                        <h4>Acciones Masivas</h4>
+                        <div class="bulk-actions">
+                            <button class="btn btn-primary" onclick="exportUsers()">
+                                <i class="fas fa-download"></i> Exportar Usuarios
+                            </button>
+                            <button class="btn btn-warning" onclick="showUserStats()">
+                                <i class="fas fa-chart-bar"></i> Ver Estadísticas
+                            </button>
+                        </div>
+                    </div>
+                    <div class="admin-section">
+                        <h4>Lista de Usuarios</h4>
+                        <div class="users-list" id="usersList"></div>
+                    </div>
+                </div>
+                
+                <!-- Administrators Tab -->
+                <div id="admins-tab" class="tab-content">
+                    <h3>Gestión de Administradores</h3>
+                    <div class="admin-section">
+                        <h4>Crear Nuevo Administrador</h4>
+                        <form id="createAdminForm">
+                            <div class="form-group">
+                                <label for="adminName">Nombre completo:</label>
+                                <input type="text" id="adminName" name="name" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="adminEmail">Correo electrónico:</label>
+                                <input type="email" id="adminEmail" name="email" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="adminPassword">Contraseña:</label>
+                                <input type="password" id="adminPassword" name="password" required minlength="6">
+                            </div>
+                            <div class="form-group">
+                                <label for="adminPasswordConfirm">Confirmar contraseña:</label>
+                                <input type="password" id="adminPasswordConfirm" name="passwordConfirm" required minlength="6">
+                            </div>
+                            <button type="submit" class="btn btn-primary">Crear Administrador</button>
+                        </form>
+                    </div>
+                    <div class="admin-section">
+                        <h4>Administradores Existentes</h4>
+                        <div class="admins-list" id="adminsList"></div>
+                    </div>
+                </div>
+                
+                <!-- Documents Tab -->
+                <div id="documents-tab" class="tab-content">
+                    <h3>Gestión de Documentos</h3>
+                    <div class="admin-section">
+                        <h4>Subir Nuevo Documento</h4>
+                        <form id="documentUploadForm" enctype="multipart/form-data">
+                            <div class="form-group">
+                                <label for="documentName">Nombre del documento:</label>
+                                <input type="text" id="documentName" name="name" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="documentDescription">Descripción:</label>
+                                <textarea id="documentDescription" name="description" rows="3"></textarea>
+                            </div>
+                            <div class="form-group">
+                                <label for="documentCategory">Categoría:</label>
+                                <select id="documentCategory" name="category" required>
+                                    <option value="">Seleccionar categoría</option>
+                                    <option value="normativas">Normativas</option>
+                                    <option value="formularios">Formularios</option>
+                                    <option value="certificados">Certificados</option>
+                                    <option value="informes">Informes</option>
+                                    <option value="otros">Otros</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="documentFile">Archivo:</label>
+                                <input type="file" id="documentFile" name="file" required accept="*/*">
+                                <small>Se aceptan todos los formatos de archivo</small>
+                            </div>
+                            <button type="submit" class="btn btn-primary">Subir Documento</button>
+                        </form>
+                    </div>
+                    <div class="admin-section">
+                        <h4>Documentos Existentes</h4>
+                        <div class="documents-list" id="documentsList"></div>
+                    </div>
+                </div>
+                
+                <!-- Notifications Tab -->
+                <div id="notifications-tab" class="tab-content">
+                    <h3>📱 Enviar Notificación</h3>
+                    
+                    <!-- Formulario Principal de Notificación -->
+                    <div class="admin-section">
+                        <form id="notificationForm">
+                            <div class="form-group">
+                                <label for="notifTitle">Título de la notificación:</label>
+                                <input type="text" id="notifTitle" name="title" placeholder="Ej: Nuevo bando municipal" required>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="notifMessage">Mensaje (opcional):</label>
+                                <textarea id="notifMessage" name="message" rows="3" placeholder="Información adicional sobre la notificación..."></textarea>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="notifType">Tipo de notificación:</label>
+                                <select id="notifType" name="type" required>
+                                    <option value="">Seleccione un tipo</option>
+                                    <option value="bando">📄 Bando Municipal</option>
+                                    <option value="noticia">📰 Noticia</option>
+                                    <option value="evento">🎉 Evento</option>
+                                    <option value="incidencia">⚠️ Incidencia</option>
+                                    <option value="cita">📅 Cita Previa</option>
+                                    <option value="emergencia">🚨 Emergencia</option>
+                                    <option value="general">ℹ️ General</option>
+                                </select>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="notifAttachment">Documento adjunto (opcional):</label>
+                                <input type="file" id="notifAttachment" name="attachment" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png">
+                                <small>Formatos permitidos: PDF, DOC, DOCX, JPG, PNG</small>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label>Destinatarios:</label>
+                                <div class="destinatarios-options">
+                                    <label class="radio-option">
+                                        <input type="radio" name="destinatarios" value="todos" checked>
+                                        <span>🌍 Todos los usuarios</span>
+                                    </label>
+                                    <label class="radio-option">
+                                        <input type="radio" name="destinatarios" value="localidades">
+                                        <span>🏘️ Localidades específicas</span>
+                                    </label>
+                                </div>
+                            </div>
+                            
+                            <div class="form-group" id="localidadesGroup" style="display: none;">
+                                <label>Seleccionar localidades:</label>
+                                <div class="localidades-checkboxes">
+                                    <label class="checkbox-option">
+                                        <input type="checkbox" name="localidades" value="Cobreros">
+                                        <span>Cobreros</span>
+                                    </label>
+                                    <label class="checkbox-option">
+                                        <input type="checkbox" name="localidades" value="Avedillo de Sanabria">
+                                        <span>Avedillo de Sanabria</span>
+                                    </label>
+                                    <label class="checkbox-option">
+                                        <input type="checkbox" name="localidades" value="Barrio de Lomba">
+                                        <span>Barrio de Lomba</span>
+                                    </label>
+                                    <label class="checkbox-option">
+                                        <input type="checkbox" name="localidades" value="Castro de Sanabria">
+                                        <span>Castro de Sanabria</span>
+                                    </label>
+                                    <label class="checkbox-option">
+                                        <input type="checkbox" name="localidades" value="Limianos">
+                                        <span>Limianos</span>
+                                    </label>
+                                    <label class="checkbox-option">
+                                        <input type="checkbox" name="localidades" value="Quintana de Sanabria">
+                                        <span>Quintana de Sanabria</span>
+                                    </label>
+                                    <label class="checkbox-option">
+                                        <input type="checkbox" name="localidades" value="Riego de Lomba">
+                                        <span>Riego de Lomba</span>
+                                    </label>
+                                    <label class="checkbox-option">
+                                        <input type="checkbox" name="localidades" value="San Martín del Terroso">
+                                        <span>San Martín del Terroso</span>
+                                    </label>
+                                    <label class="checkbox-option">
+                                        <input type="checkbox" name="localidades" value="San Miguel de Lomba">
+                                        <span>San Miguel de Lomba</span>
+                                    </label>
+                                    <label class="checkbox-option">
+                                        <input type="checkbox" name="localidades" value="San Román de Sanabria">
+                                        <span>San Román de Sanabria</span>
+                                    </label>
+                                    <label class="checkbox-option">
+                                        <input type="checkbox" name="localidades" value="Santa Colomba">
+                                        <span>Santa Colomba</span>
+                                    </label>
+                                    <label class="checkbox-option">
+                                        <input type="checkbox" name="localidades" value="Sotillo">
+                                        <span>Sotillo</span>
+                                    </label>
+                                    <label class="checkbox-option">
+                                        <input type="checkbox" name="localidades" value="Terroso">
+                                        <span>Terroso</span>
+                                    </label>
+                                </div>
+                            </div>
+                            
+                            <div class="form-actions">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-paper-plane"></i> Enviar Notificación
+                                </button>
+                                <button type="button" class="btn btn-outline" onclick="limpiarFormularioNotificacion()">
+                                    <i class="fas fa-eraser"></i> Limpiar
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                    
+                    <!-- Estadísticas y Historial -->
+                    <div class="admin-section">
+                        <h4>📊 Estadísticas</h4>
+                        <div class="stats-row">
+                            <div class="stat-item">
+                                <span class="stat-number" id="contadorUsuarios">0</span>
+                                <span class="stat-label">Usuarios activos</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-number" id="contadorNotificaciones">0</span>
+                                <span class="stat-label">Notificaciones enviadas</span>
+                            </div>
+                            <button class="btn btn-outline btn-sm" onclick="actualizarEstadisticasNotificaciones()">
+                                <i class="fas fa-sync-alt"></i> Actualizar
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="admin-section">
+                        <h4>📋 Historial de Notificaciones</h4>
+                        <div class="notifications-history" id="notificationsHistory">
+                            <!-- Se cargará dinámicamente -->
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Database Tab -->
+                <div id="database-tab" class="tab-content">
+                    <h3>Gestión de Base de Datos</h3>
+                    <div class="admin-section">
+                        <h4>Exportar Datos</h4>
+                        <p>Descargar copias de seguridad de todos los datos del sistema:</p>
+                        <div class="export-buttons">
+                            <button class="btn btn-primary" onclick="exportUsers()">
+                                <i class="fas fa-download"></i> Exportar Usuarios
+                            </button>
+                            <button class="btn btn-primary" onclick="exportAdmins()">
+                                <i class="fas fa-download"></i> Exportar Administradores
+                            </button>
+                            <button class="btn btn-primary" onclick="exportDocuments()">
+                                <i class="fas fa-download"></i> Exportar Documentos
+                            </button>
+                            <button class="btn btn-primary" onclick="exportNotifications()">
+                                <i class="fas fa-download"></i> Exportar Notificaciones
+                            </button>
+                            <button class="btn btn-success" onclick="exportAllData()">
+                                <i class="fas fa-download"></i> Exportar Todo
+                            </button>
+                        </div>
+                    </div>
+                    <div class="admin-section">
+                        <h4>Importar Datos</h4>
+                        <p>Importar datos desde archivos JSON:</p>
+                        <form id="importDataForm">
+                            <div class="form-group">
+                                <label for="importFile">Archivo JSON:</label>
+                                <input type="file" id="importFile" name="file" accept=".json" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="importType">Tipo de datos:</label>
+                                <select id="importType" name="type" required>
+                                    <option value="">Seleccionar tipo</option>
+                                    <option value="users">Usuarios</option>
+                                    <option value="admins">Administradores</option>
+                                    <option value="documents">Documentos</option>
+                                    <option value="notifications">Notificaciones</option>
+                                </select>
+                            </div>
+                            <button type="submit" class="btn btn-warning">Importar Datos</button>
+                        </form>
+                    </div>
+                    <div class="admin-section">
+                        <h4>Estadísticas del Sistema</h4>
+                        <div class="stats-grid" id="systemStats"></div>
+                    </div>
+                </div>
+                
+                <!-- Settings Tab -->
+                <div id="settings-tab" class="tab-content">
+                    <h3>Configuración</h3>
+                    
+                    <!-- Gestión de Notificaciones Públicas -->
+                    <div class="admin-section">
+                        <h4>📢 Notificaciones Públicas (Scroll del Header)</h4>
+                        <div class="public-notifications-management">
+                            <div class="notifications-controls">
+                                <button class="btn btn-primary" onclick="openNotificationEditor()">
+                                    <i class="fas fa-plus"></i> Nueva Notificación
+                                </button>
+                                <button class="btn btn-outline" onclick="refreshPublicNotifications()">
+                                    <i class="fas fa-sync-alt"></i> Actualizar
+                                </button>
+                            </div>
+                            <div class="notifications-list" id="publicNotificationsList">
+                                <!-- Las notificaciones se cargarán dinámicamente -->
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="admin-section">
+                        <h4>Escudo del Ayuntamiento</h4>
+                        <form id="logoForm">
+                            <div class="form-group">
+                                <label for="logoUpload">Subir nuevo escudo:</label>
+                                <input type="file" id="logoUpload" name="logo" accept="image/*">
+                            </div>
+                            <button type="submit" class="btn btn-primary">Actualizar Escudo</button>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Servicios Tab -->
+                <div id="servicios-tab" class="tab-content">
+                    <h3>Gestión de Servicios</h3>
+                    
+                    <!-- Configuración de Secciones -->
+                    <div class="admin-section">
+                        <h4>⚙️ Configuración de Secciones</h4>
+                        <div class="form-group">
+                            <button class="btn btn-secondary" onclick="openSeccionConfig('medical')">
+                                <i class="fas fa-edit"></i> Configurar Consultas Médicas
+                            </button>
+                            <button class="btn btn-secondary" onclick="openSeccionConfig('itv')">
+                                <i class="fas fa-edit"></i> Configurar ITV
+                            </button>
+                            <button class="btn btn-primary" onclick="openTelefonosInteresManager()">
+                                <i class="fas fa-phone"></i> Gestionar Teléfonos de Interés
+                            </button>
+                        </div>
+                        <p style="margin-top: 10px; color: #666; font-size: 0.9em;">
+                            Personaliza los títulos e iconos de cada sección
+                        </p>
+                    </div>
+                    
+                    
+                    <div class="admin-section">
+                        <h4 id="medicalSectionTitle">🏥 CONSULTORIO MÉDICO</h4>
+                        <div class="form-group">
+                            <button class="btn btn-primary" onclick="editConsultorioDocumentos()">📄 Gestionar Documentos</button>
+                            <button class="btn btn-secondary" onclick="editConsultorioFotos()">📸 Gestionar Fotos</button>
+                        </div>
+                        <div id="medicalList"></div>
+                    </div>
+                    
+                    <div class="admin-section">
+                        <h4 id="itvSectionTitle">🚗 ITV</h4>
+                        <div class="form-group">
+                            <button class="btn btn-primary" onclick="addServicio('itv')">➕ Añadir ITV</button>
+                        </div>
+                        <div id="itvList"></div>
+                    </div>
+                    
+                    <div class="admin-section">
+                        <h4 id="phoneSectionTitle">📞 Teléfonos de Interés</h4>
+                        <div class="form-group">
+                            <button class="btn btn-primary" onclick="addServicio('phone')">➕ Añadir Teléfono</button>
+                        </div>
+                        <div id="phoneList"></div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- Notification Center -->
+    <div id="notificationCenter" class="notification-center">
+        <div class="notification-header">
+            <h3>Notificaciones</h3>
+            <button class="btn btn-small" onclick="markAllAsRead()">Marcar todas como leídas</button>
+        </div>
+        <div class="notifications-list" id="notificationsList">
+            <!-- Notifications will be populated here -->
+        </div>
+        
+        <!-- Sección de notificaciones recibidas -->
+        <div class="notifications-received-section">
+            <h3>📥 Notificaciones Recibidas</h3>
+            <div class="notifications-controls">
+                <button onclick="toggleNotificationsView()" class="btn btn-secondary">
+                    <span id="notificationsToggleText">Ver recibidas</span>
+                </button>
+                <button onclick="refreshReceivedNotifications()" class="btn btn-outline">
+                    🔄 Actualizar
+                </button>
+            </div>
+            <div id="receivedNotificationsList" class="notifications-list" style="display: none;">
+                <!-- Las notificaciones recibidas se cargarán dinámicamente -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Notification Bell -->
+    <div class="notification-bell" id="notificationBell" onclick="toggleNotificationCenter()">
+        <i class="fas fa-bell"></i>
+        <span class="notification-badge" id="notificationBadge">0</span>
+    </div>
+
+    <style>
+        /* Estilos para el modal de login de administradores */
+        .admin-login-info {
+            background: #fef3c7;
+            border: 1px solid #f59e0b;
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 1.5rem;
+            text-align: center;
+        }
+        
+        .admin-login-info p {
+            margin: 0;
+            color: #92400e;
+            font-weight: 500;
+        }
+        
+        .admin-login-info i {
+            color: #f59e0b;
+            margin-right: 0.5rem;
+        }
+        
+        .admin-login-footer {
+            margin-top: 1rem;
+            padding-top: 1rem;
+            border-top: 1px solid #e5e7eb;
+            text-align: center;
+        }
+        
+        .admin-login-footer p {
+            margin: 0;
+            color: #6b7280;
+        }
+        
+        /* Estilos para botones de logout */
+        .btn-logout {
+            background: #ef4444 !important;
+            color: white !important;
+        }
+        
+        .btn-logout:hover {
+            background: #dc2626 !important;
+        }
+        
+        /* Estilos para super admin */
+        .btn-super-admin {
+            background: #f59e0b !important;
+            color: white !important;
+        }
+        
+        .btn-super-admin:hover {
+            background: #d97706 !important;
+        }
+        
+        /* Estilos para el escudo fijo */
+        .logo {
+            max-width: 160px;
+            max-height: 160px;
+            object-fit: contain;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+        
+        /* Favicon personalizado */
+        link[rel="icon"] {
+            border-radius: 4px;
+        }
+        
+        /* Botón de acceso admin en esquina superior derecha */
+        .admin-access-btn {
+            position: fixed !important;
+            top: 20px !important;
+            right: 20px !important;
+            width: 70px !important;
+            height: 70px !important;
+            border-radius: 50% !important;
+            background: #22c55e !important;
+            color: white !important;
+            border: 2px solid #16a34a !important;
+            font-size: 16px !important;
+            cursor: pointer !important;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
+            z-index: 9999 !important;
+            transition: all 0.3s ease !important;
+            display: flex !important;
+            flex-direction: column !important;
+            align-items: center !important;
+            justify-content: center !important;
+            visibility: visible !important;
+            opacity: 1 !important;
+        }
+        
+        .admin-access-btn:hover {
+            background: #16a34a;
+            transform: scale(1.1);
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+        }
+        
+        .admin-access-btn:active {
+            transform: scale(0.95);
+        }
+    </style>
+
+    <!-- Botón de acceso admin en esquina superior derecha -->
+    <button class="admin-access-btn" id="adminLoginBtn" title="Acceso Administradores">
+        <i class="fas fa-cog"></i>
+        <span style="font-size: 10px; margin-top: 2px;">ADMIN</span>
+        <span class="notification-badge" id="municipalNotificationBadge" style="display: none;">0</span>
+    </button>
+
+    <!-- Modal de Gestión de Notificaciones Públicas -->
+    <div id="publicNotificationModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="notificationModalTitle">Nueva Notificación Pública</h3>
+                <span class="close" onclick="closePublicNotificationModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form id="publicNotificationForm">
+                    <input type="hidden" id="notificationId" name="id">
+                    <div class="form-group">
+                        <label for="notificationType">Tipo de notificación:</label>
+                        <select id="notificationType" name="type" required>
+                            <option value="">Seleccione un tipo</option>
+                            <option value="info">ℹ️ Información General</option>
+                            <option value="warning">⚠️ Aviso Importante</option>
+                            <option value="closure">🚫 Cierre Temporal</option>
+                            <option value="schedule">🕒 Cambio de Horario</option>
+                            <option value="event">🎉 Evento Especial</option>
+                            <option value="emergency">🚨 Emergencia</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="notificationTitle">Título de la notificación:</label>
+                        <input type="text" id="notificationTitle" name="title" placeholder="Ej: Hoy cerrado por festivo" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="notificationMessage">Mensaje completo:</label>
+                        <textarea id="notificationMessage" name="message" rows="3" placeholder="Descripción detallada de la notificación..." required></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="notificationStartDate">Fecha de inicio:</label>
+                        <input type="date" id="notificationStartDate" name="startDate" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="notificationEndDate">Fecha de fin (opcional):</label>
+                        <input type="date" id="notificationEndDate" name="endDate">
+                    </div>
+                    <div class="form-group">
+                        <label for="notificationPriority">Prioridad:</label>
+                        <select id="notificationPriority" name="priority" required>
+                            <option value="low">Baja</option>
+                            <option value="medium" selected>Media</option>
+                            <option value="high">Alta</option>
+                            <option value="urgent">Urgente</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <div class="checkbox-group">
+                            <input type="checkbox" id="notificationActive" name="active" checked>
+                            <label for="notificationActive" class="checkbox-label">
+                                Notificación activa (visible en el scroll)
+                            </label>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline" onclick="closePublicNotificationModal()">Cancelar</button>
+                <button class="btn btn-primary" onclick="savePublicNotification()">Guardar Notificación</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Edición de Cita Previa -->
+    <div id="editAppointmentModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Editar Cita Previa</h3>
+                <span class="close" onclick="closeEditAppointmentModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form id="editAppointmentForm">
+                    <input type="hidden" id="editAppointmentId" name="id">
+                    <div class="form-group">
+                        <label for="editService">Servicio solicitado:</label>
+                        <select id="editService" name="service" required>
+                            <option value="">Seleccione un servicio</option>
+                            <option value="empadronamiento">Empadronamiento</option>
+                            <option value="certificados">Certificados</option>
+                            <option value="multas">Consulta de multas</option>
+                            <option value="otros">Otros trámites</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="editName">Nombre y apellidos:</label>
+                        <input type="text" id="editName" name="name" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="editDni">DNI:</label>
+                        <input type="text" id="editDni" name="dni" pattern="[0-9]{8}[A-Za-z]" title="Formato: 8 números seguidos de una letra" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="editEmail">Correo electrónico:</label>
+                        <input type="email" id="editEmail" name="email" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="editPhone">Teléfono:</label>
+                        <input type="tel" id="editPhone" name="phone" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="editDate">Fecha preferida:</label>
+                        <input type="date" id="editDate" name="date" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="editTime">Hora preferida:</label>
+                        <select id="editTime" name="time" required>
+                            <option value="">Seleccione una hora</option>
+                            <option value="09:00">09:00</option>
+                            <option value="10:00">10:00</option>
+                            <option value="11:00">11:00</option>
+                            <option value="12:00">12:00</option>
+                            <option value="16:00">16:00</option>
+                            <option value="17:00">17:00</option>
+                            <option value="18:00">18:00</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="editComments">Comentarios adicionales:</label>
+                        <textarea id="editComments" name="comments" rows="4"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="editStatus">Estado de la cita:</label>
+                        <select id="editStatus" name="status" required>
+                            <option value="pending">Pendiente</option>
+                            <option value="confirmed">Confirmada</option>
+                            <option value="cancelled">Cancelada</option>
+                        </select>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline" onclick="closeEditAppointmentModal()">Cancelar</button>
+                <button class="btn btn-primary" onclick="saveEditedAppointment()">Guardar Cambios</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Protección de Datos -->
+    <div id="gdprModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Política de Protección de Datos</h3>
+                <span class="close" onclick="closeGDPRModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <h4>Responsable del tratamiento</h4>
+                <p><strong>Ayuntamiento de Cobreros</strong><br>
+                Dirección: Principal, s/n - 49396 Cobreros<br>
+                Teléfono: 980 62 26 18<br>
+                Email: aytocobreros@gmail.com</p>
+
+                <h4>Finalidad del tratamiento</h4>
+                <p>Los datos personales recogidos serán utilizados exclusivamente para:</p>
+                <ul>
+                    <li>Gestionar su solicitud de cita previa</li>
+                    <li>Contactar con usted para confirmar la fecha y hora de la cita</li>
+                    <li>Realizar el seguimiento administrativo necesario</li>
+                </ul>
+
+                <h4>Legitimación</h4>
+                <p>El tratamiento de sus datos se basa en su consentimiento expreso, que puede retirar en cualquier momento.</p>
+
+                <h4>Conservación de datos</h4>
+                <p>Sus datos serán conservados durante el tiempo necesario para cumplir con la finalidad para la que fueron recogidos y, en todo caso, durante los plazos legalmente establecidos.</p>
+
+                <h4>Derechos del interesado</h4>
+                <p>Usted tiene derecho a:</p>
+                <ul>
+                    <li>Acceder a sus datos personales</li>
+                    <li>Rectificar datos inexactos</li>
+                    <li>Solicitar la supresión de sus datos</li>
+                    <li>Limitar el tratamiento</li>
+                    <li>Portabilidad de datos</li>
+                    <li>Oponerse al tratamiento</li>
+                </ul>
+
+                <h4>Contacto</h4>
+                <p>Para ejercer sus derechos o resolver cualquier duda sobre el tratamiento de sus datos, puede contactar con nosotros en: <strong>aytocobreros@gmail.com</strong></p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-primary" onclick="closeGDPRModal()">Entendido</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Servicio -->
+    <div id="servicioModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="servicioModalTitle">Editar Servicio</h3>
+                <span class="close" onclick="closeServicioModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form id="servicioForm">
+                    <input type="hidden" id="servicioId">
+                    <input type="hidden" id="servicioType">
+                    
+                    <div class="form-group">
+                        <label for="servicioName">Nombre:</label>
+                        <input type="text" id="servicioName" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="servicioDay">Día:</label>
+                        <input type="text" id="servicioDay" placeholder="Ej: Lunes a Viernes">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="servicioTime">Horario:</label>
+                        <input type="text" id="servicioTime" placeholder="Ej: 09:00-15:00">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="servicioLocation">Lugar:</label>
+                        <input type="text" id="servicioLocation" placeholder="Ej: Centro de Salud">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="servicioPhone">Teléfono:</label>
+                        <input type="tel" id="servicioPhone" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="servicioDescription">Descripción:</label>
+                        <textarea id="servicioDescription" rows="3"></textarea>
+                    </div>
+                    
+                    <div class="form-group" id="photoGroup">
+                        <label for="servicioPhoto">Fotografía:</label>
+                        <input type="file" id="servicioPhoto" accept="image/*">
+                        <div id="currentPhoto"></div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline" onclick="closeServicioModal()">Cancelar</button>
+                <button class="btn btn-primary" onclick="saveServicio()">Guardar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Genérico en Blanco -->
+    <div id="genericModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="genericModalTitle">Título del Modal</h3>
+                <span class="close" onclick="closeGenericModal()">&times;</span>
+            </div>
+            <div class="modal-body" id="genericModalBody">
+                <!-- Contenido dinámico se insertará aquí -->
+            </div>
+            <div class="modal-footer" id="genericModalFooter">
+                <button class="btn btn-outline" onclick="closeGenericModal()">Cancelar</button>
+                <button class="btn btn-primary" onclick="genericModalAction()">Aceptar</button>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- Modal Gestionar Documentos Consultorio -->
+    <div id="consultorioDocumentosModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>📄 Gestionar Documentos del Consultorio Médico</h3>
+                <span class="close" onclick="closeConsultorioDocumentosModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="documentos-section">
+                    <h4>Subir Nuevo Documento</h4>
+                    <form id="consultorioDocumentoForm" enctype="multipart/form-data">
+                        <div class="form-group">
+                            <label for="documentoTitulo">Título del documento:</label>
+                            <input type="text" id="documentoTitulo" placeholder="Ej: Horarios del Consultorio 2024" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="documentoFile">Archivo PDF:</label>
+                            <input type="file" id="documentoFile" accept=".pdf" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Subir Documento</button>
+                    </form>
+                </div>
+                <div class="documentos-section">
+                    <h4>Documentos Actuales</h4>
+                    <div id="consultorioDocumentosList">
+                        <!-- Los documentos se cargarán dinámicamente -->
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline" onclick="closeConsultorioDocumentosModal()">Cerrar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Gestionar Fotos Consultorio -->
+    <div id="consultorioFotosModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>📸 Gestionar Fotos del Consultorio</h3>
+                <span class="close" onclick="closeConsultorioFotosModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="fotos-section">
+                    <h4>Subir Nueva Foto</h4>
+                    <form id="consultorioFotoForm" enctype="multipart/form-data">
+                        <div class="form-group">
+                            <label for="fotoTitulo">Título de la foto:</label>
+                            <input type="text" id="fotoTitulo" placeholder="Ej: Consultorio Principal" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="fotoFile">Archivo de imagen:</label>
+                            <input type="file" id="fotoFile" accept="image/*" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Subir Foto</button>
+                    </form>
+                </div>
+                <div class="fotos-section">
+                    <h4>Fotos Actuales</h4>
+                    <div id="consultorioFotosList">
+                        <!-- Las fotos se cargarán dinámicamente -->
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline" onclick="closeConsultorioFotosModal()">Cerrar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para crear/editar eventos -->
+    <div id="eventModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="eventModalTitle">🎉 Nuevo Evento</h3>
+                <span class="close" onclick="closeEventModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form id="eventForm">
+                    <input type="hidden" id="eventId" name="id">
+                    <div class="form-group">
+                        <label for="eventTitle">Título del evento:</label>
+                        <input type="text" id="eventTitle" name="title" placeholder="Ej: Concierto de música clásica" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="eventDescription">Descripción:</label>
+                        <textarea id="eventDescription" name="description" rows="3" placeholder="Descripción detallada del evento..." required></textarea>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="eventDate">Fecha:</label>
+                            <input type="date" id="eventDate" name="date" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="eventTime">Hora:</label>
+                            <input type="time" id="eventTime" name="time" required>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="eventLocation">Ubicación:</label>
+                        <input type="text" id="eventLocation" name="location" placeholder="Ej: Auditorio Municipal" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="eventCategory">Categoría:</label>
+                        <select id="eventCategory" name="category" required>
+                            <option value="">Seleccione una categoría</option>
+                            <option value="cultura">🎭 Cultura</option>
+                            <option value="deporte">⚽ Deporte</option>
+                            <option value="educacion">📚 Educación</option>
+                            <option value="musica">🎵 Música</option>
+                            <option value="arte">🎨 Arte</option>
+                            <option value="teatro">🎭 Teatro</option>
+                            <option value="fiesta">🎉 Fiesta</option>
+                            <option value="conferencia">💼 Conferencia</option>
+                            <option value="otros">🔸 Otros</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="eventImage">Imagen del evento (opcional):</label>
+                        <input type="file" id="eventImage" name="image" accept=".jpg,.jpeg,.png,.gif">
+                        <small>Formatos permitidos: JPG, PNG, GIF</small>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline" onclick="closeEventModal()">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="saveEvent()">
+                    <i class="fas fa-save"></i> Guardar Evento
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para gestionar Cultura y Ocio -->
+    <div id="culturaOcioModal" class="modal">
+        <div class="modal-content" style="max-width: 1000px;">
+            <div class="modal-header">
+                <h3>🎭 Gestión de Cultura y Ocio</h3>
+                <span class="close" onclick="closeCulturaOcioModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="cultura-tabs">
+                    <button class="tab-btn active" onclick="switchCulturaTab('contenido')">📝 Contenido</button>
+                    <button class="tab-btn" onclick="switchCulturaTab('tarjetas')">🃏 Tarjetas</button>
+                    <button class="tab-btn" onclick="switchCulturaTab('eventos')">🎉 Eventos</button>
+                </div>
+                
+                <!-- Tab de Contenido -->
+                <div id="cultura-contenido-tab" class="tab-content active">
+                    <div class="form-group">
+                        <label for="culturaTitulo">Título de la sección:</label>
+                        <input type="text" id="culturaTitulo" value="Cultura y Ocio">
+                    </div>
+                    <div class="form-group">
+                        <label for="culturaDescripcion">Descripción principal:</label>
+                        <textarea id="culturaDescripcion" rows="4" placeholder="Descripción de la sección de Cultura y Ocio..."></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="culturaSubtitle">Subtítulo de eventos:</label>
+                        <input type="text" id="culturaSubtitle" value="Próximos Eventos">
+                    </div>
+                </div>
+                
+                <!-- Tab de Eventos -->
+                <div id="cultura-eventos-tab" class="tab-content">
+                    <div class="content-actions">
+                        <button class="btn btn-primary" onclick="openEventEditor()">
+                            <i class="fas fa-plus"></i> Nuevo Evento
+                        </button>
+                        <button class="btn btn-secondary" onclick="exportEvents()">
+                            <i class="fas fa-download"></i> Exportar Eventos
+                        </button>
+                    </div>
+                    <div class="content-list" id="culturaEventsList">
+                        <!-- Se cargará dinámicamente -->
+                    </div>
+                </div>
+                
+                <!-- Tab de Instalaciones -->
+                <div id="cultura-instalaciones-tab" class="tab-content">
+                    <div class="content-actions">
+                        <button class="btn btn-primary" onclick="addCulturaInstalacion()">
+                            <i class="fas fa-plus"></i> Nueva Instalación
+                        </button>
+                    </div>
+                    <div class="content-list" id="culturaInstalacionesList">
+                        <!-- Se cargará dinámicamente -->
+                    </div>
+                </div>
+                
+                <!-- Tab de Tarjetas -->
+                <div id="cultura-tarjetas-tab" class="tab-content">
+                    <div class="content-actions">
+                        <button class="btn btn-primary" onclick="addCulturaTarjeta()">
+                            <i class="fas fa-plus"></i> Nueva Tarjeta
+                        </button>
+                    </div>
+                    <div class="content-list" id="culturaTarjetasList">
+                        <!-- Se cargará dinámicamente -->
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline" onclick="closeCulturaOcioModal()">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="saveCulturaOcio()">
+                    <i class="fas fa-save"></i> Guardar Cambios
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para gestionar Teléfonos de Interés -->
+    <div id="telefonosInteresModal" class="modal">
+        <div class="modal-content" style="max-width: 1000px;">
+            <div class="modal-header">
+                <h3>📞 Gestión de Teléfonos de Interés</h3>
+                <span class="close" onclick="closeTelefonosInteresModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="telefonos-tabs">
+                    <button class="tab-btn active" onclick="switchTelefonosTab('configuracion')">⚙️ Configuración</button>
+                    <button class="tab-btn" onclick="switchTelefonosTab('elementos')">📋 Elementos</button>
+                </div>
+                
+                <!-- Tab de Configuración -->
+                <div id="telefonos-configuracion-tab" class="tab-content active">
+                    <div class="form-group">
+                        <label for="telefonosTitulo">Título de la sección:</label>
+                        <input type="text" id="telefonosTitulo" value="TELÉFONOS DE INTERÉS">
+                    </div>
+                    <div class="form-group">
+                        <label for="telefonosDescripcion">Descripción:</label>
+                        <textarea id="telefonosDescripcion" rows="3" placeholder="Descripción de la sección de teléfonos de interés..."></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="telefonosTarjetaNombre">Nombre de la tarjeta:</label>
+                        <input type="text" id="telefonosTarjetaNombre" value="Servicios">
+                    </div>
+                    <div class="form-group">
+                        <label for="telefonosTarjetaEmoji">Emoji de la tarjeta:</label>
+                        <input type="text" id="telefonosTarjetaEmoji" value="📞" maxlength="2">
+                    </div>
+                    <div class="form-group">
+                        <label for="telefonosTarjetaDescripcion">Descripción de la tarjeta:</label>
+                        <textarea id="telefonosTarjetaDescripcion" rows="2" placeholder="Descripción que aparece en la tarjeta principal..."></textarea>
+                    </div>
+                </div>
+                
+                <!-- Tab de Elementos -->
+                <div id="telefonos-elementos-tab" class="tab-content">
+                    <div class="content-actions">
+                        <button class="btn btn-primary" onclick="openTelefonoElementoEditor()">
+                            <i class="fas fa-plus"></i> Nuevo Elemento
+                        </button>
+                        <button class="btn btn-secondary" onclick="exportTelefonosInteres()">
+                            <i class="fas fa-download"></i> Exportar Configuración
+                        </button>
+                    </div>
+                    <div class="content-list" id="telefonosElementosList">
+                        <!-- Se cargará dinámicamente -->
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline" onclick="closeTelefonosInteresModal()">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="saveTelefonosInteres()">
+                    <i class="fas fa-save"></i> Guardar Cambios
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para editar elementos de teléfonos -->
+    <div id="telefonoElementoModal" class="modal">
+        <div class="modal-content" style="max-width: 800px;">
+            <div class="modal-header">
+                <h3>📞 Editar Elemento de Teléfono</h3>
+                <span class="close" onclick="closeTelefonoElementoModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="telefonoElementoNombre">Nombre del elemento:</label>
+                    <input type="text" id="telefonoElementoNombre" placeholder="Ej: Taxis, ITV, Renovación DNI">
+                </div>
+                <div class="form-group">
+                    <label for="telefonoElementoEmoji">Emoji:</label>
+                    <input type="text" id="telefonoElementoEmoji" placeholder="🚕" maxlength="2">
+                </div>
+                <div class="form-group">
+                    <label for="telefonoElementoDescripcion">Descripción:</label>
+                    <textarea id="telefonoElementoDescripcion" rows="2" placeholder="Breve descripción del servicio..."></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="telefonoElementoTipo">Tipo de elemento:</label>
+                    <select id="telefonoElementoTipo" onchange="toggleTelefonoElementoFields()">
+                        <option value="telefonos">Teléfonos múltiples</option>
+                        <option value="servicio">Información de servicio</option>
+                        <option value="documento">Documento/Foto</option>
+                    </select>
+                </div>
+                
+                <!-- Campos dinámicos según el tipo -->
+                <div id="telefonoElementoDatosContainer">
+                    <!-- Se mostrarán campos dinámicos según el tipo seleccionado -->
+                </div>
+                
+                <div class="form-group" id="telefonoElementoDocumentoGroup" style="display: none;">
+                    <label for="telefonoElementoDocumento">URL del documento:</label>
+                    <input type="url" id="telefonoElementoDocumento" placeholder="https://ejemplo.com/documento.pdf">
+                </div>
+                
+                <div class="form-group" id="telefonoElementoFotoGroup" style="display: none;">
+                    <label for="telefonoElementoFoto">URL de la foto:</label>
+                    <input type="url" id="telefonoElementoFoto" placeholder="https://ejemplo.com/foto.jpg">
+                </div>
+                
+                <div class="form-group">
+                    <label for="telefonoElementoOrden">Orden de visualización:</label>
+                    <input type="number" id="telefonoElementoOrden" value="1" min="1">
+                </div>
+                
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="telefonoElementoActivo" checked>
+                        Elemento activo
+                    </label>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline" onclick="closeTelefonoElementoModal()">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="saveTelefonoElemento()">
+                    <i class="fas fa-save"></i> Guardar Elemento
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para editar elementos de tarjetas -->
+    <div id="elementoModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="elementoModalTitle">✏️ Editar Elemento</h3>
+                <span class="close" onclick="closeElementoModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form id="elementoForm">
+                    <input type="hidden" id="elementoId" name="id">
+                    <input type="hidden" id="elementoTarjetaId" name="tarjetaId">
+                    <input type="hidden" id="elementoIndex" name="index">
+                    
+                    <div class="form-group">
+                        <label for="elementoTitulo">Título del elemento (con emoji):</label>
+                        <input type="text" id="elementoTitulo" name="titulo" placeholder="Ej: 📚 Biblioteca Municipal" required>
+                        <small>💡 Tip: Puedes usar emojis para hacer más atractivo el título</small>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="elementoDescripcion">Descripción:</label>
+                        <textarea id="elementoDescripcion" name="descripcion" rows="3" placeholder="Descripción detallada del elemento..." required></textarea>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>
+                            <input type="checkbox" id="elementoEsEnlace" name="esEnlace">
+                            Es un enlace (marcar si quieres que sea clickeable)
+                        </label>
+                    </div>
+                    
+                    <div class="form-group" id="elementoEnlaceGroup" style="display: none;">
+                        <label for="elementoEnlace">URL del enlace:</label>
+                        <input type="url" id="elementoEnlace" name="enlace" placeholder="Ej: #biblioteca o https://ejemplo.com">
+                        <small>💡 Tip: Usa #nombre para enlaces internos o URL completa para externos</small>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="elementoOrden">Orden de aparición:</label>
+                        <input type="number" id="elementoOrden" name="orden" min="1" value="1">
+                        <small>Los elementos se mostrarán en este orden dentro de la tarjeta</small>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline" onclick="closeElementoModal()">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="saveElemento()">
+                    <i class="fas fa-save"></i> Guardar Elemento
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para configurar tarjetas completas -->
+    <div id="tarjetaConfigModal" class="modal">
+        <div class="modal-content" style="max-width: 800px;">
+            <div class="modal-header">
+                <h3 id="tarjetaConfigModalTitle">🃏 Configurar Tarjeta</h3>
+                <span class="close" onclick="closeTarjetaConfigModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form id="tarjetaConfigForm">
+                    <input type="hidden" id="tarjetaConfigId" name="id">
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="tarjetaConfigTitulo">Título de la tarjeta (con emoji):</label>
+                            <input type="text" id="tarjetaConfigTitulo" name="titulo" placeholder="Ej: 🎭 Cultura y Ocio" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="tarjetaConfigIcono">Icono (clase FontAwesome):</label>
+                            <input type="text" id="tarjetaConfigIcono" name="icono" placeholder="Ej: fas fa-theater-masks" required>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="tarjetaConfigDescripcion">Descripción de la tarjeta:</label>
+                        <textarea id="tarjetaConfigDescripcion" name="descripcion" rows="2" placeholder="Breve descripción de lo que contiene esta tarjeta..." required></textarea>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="tarjetaConfigColor">Color de la tarjeta:</label>
+                            <input type="color" id="tarjetaConfigColor" name="color" value="#3b82f6">
+                        </div>
+                        <div class="form-group">
+                            <label for="tarjetaConfigOrden">Orden de aparición:</label>
+                            <input type="number" id="tarjetaConfigOrden" name="orden" min="1" value="1">
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>
+                            <input type="checkbox" id="tarjetaConfigActiva" name="activa" checked>
+                            Tarjeta activa (visible en la página)
+                        </label>
+                    </div>
+                </form>
+                
+                <div class="elementos-section">
+                    <div class="section-header">
+                        <h4>📋 Elementos de la Tarjeta</h4>
+                        <button type="button" class="btn btn-primary btn-sm" onclick="openElementoEditor()">
+                            <i class="fas fa-plus"></i> Agregar Elemento
+                        </button>
+                    </div>
+                    <div class="elementos-list" id="tarjetaElementosList">
+                        <!-- Se cargará dinámicamente -->
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline" onclick="closeTarjetaConfigModal()">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="saveTarjetaConfig()">
+                    <i class="fas fa-save"></i> Guardar Tarjeta
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/script.js"></script>
+    <script src="js/recaptcha.js"></script>
+</body> 
+
+

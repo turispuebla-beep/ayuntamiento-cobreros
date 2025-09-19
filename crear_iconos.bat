@@ -61,3 +61,4 @@ echo    Para tamaños específicos, usa Android Studio Image Asset
 echo.
 pause
 
+

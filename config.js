@@ -53,6 +53,14 @@ const CONFIG = {
         email: 'admin@ayuntamientocobreros.es',
         defaultPassword: 'admin123' // Cambiar en producción
     },
+    
+    // Administrador del ayuntamiento
+    ayuntamientoAdmin: {
+        email: 'aytocobreros@gmail.com',
+        password: 'admin123',
+        name: 'Ayuntamiento de Cobreros',
+        isDefault: true
+    },
 
     // Configuración de super administrador (TURISTEAM)
     superAdmin: {
