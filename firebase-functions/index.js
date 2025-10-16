@@ -248,6 +248,176 @@ exports.getRecaptchaStats = functions.https.onRequest(async (req, res) => {
 });
 
 /**
+ * 📱 Enviar notificaciones push masivas
+ * Endpoint: https://us-central1-turisteam-80f1b.cloudfunctions.net/sendPushNotification
+ */
+exports.sendPushNotification = functions.https.onRequest(async (req, res) => {
+    // Configurar CORS
+    res.set('Access-Control-Allow-Origin', '*');
+    res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
+    res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+
+    if (req.method === 'OPTIONS') {
+        res.status(204).send('');
+        return;
+    }
+
+    if (req.method !== 'POST') {
+        res.status(405).json({ error: 'Método no permitido' });
+        return;
+    }
+
+    try {
+        const { title, message, type, targetUsers, localities } = req.body;
+
+        // Validar parámetros
+        if (!title || !message) {
+            res.status(400).json({
+                success: false,
+                error: 'Título y mensaje son requeridos'
+            });
+            return;
+        }
+
+        console.log(`📱 Enviando notificación: "${title}"`);
+
+        // Obtener usuarios que han dado consentimiento
+        let usersQuery = admin.firestore()
+            .collection('users')
+            .where('notificationConsent', '==', true)
+            .where('fcmToken', '!=', '');
+
+        // Filtrar por localidades si se especifica
+        if (localities && localities.length > 0) {
+            usersQuery = usersQuery.where('localities', 'array-contains-any', localities);
+        }
+
+        const usersSnapshot = await usersQuery.get();
+        
+        if (usersSnapshot.empty) {
+            res.status(200).json({
+                success: true,
+                message: 'No hay usuarios con notificaciones activadas',
+                sent: 0
+            });
+            return;
+        }
+
+        const tokens = [];
+        const users = [];
+
+        usersSnapshot.forEach(doc => {
+            const userData = doc.data();
+            if (userData.fcmToken) {
+                tokens.push(userData.fcmToken);
+                users.push({
+                    id: doc.id,
+                    email: userData.email,
+                    fcmToken: userData.fcmToken
+                });
+            }
+        });
+
+        if (tokens.length === 0) {
+            res.status(200).json({
+                success: true,
+                message: 'No hay tokens FCM válidos',
+                sent: 0
+            });
+            return;
+        }
+
+        // Preparar payload de notificación
+        const payload = {
+            notification: {
+                title: title,
+                body: message,
+                icon: '/images/escudo-cobreros.png'
+            },
+            data: {
+                type: type || 'general',
+                timestamp: new Date().toISOString(),
+                source: 'ayuntamiento-cobreros'
+            },
+            webpush: {
+                notification: {
+                    icon: '/images/escudo-cobreros.png',
+                    badge: '/images/escudo-cobreros.png',
+                    requireInteraction: true
+                }
+            }
+        };
+
+        // Enviar notificaciones en lotes (máximo 500 por lote)
+        const batchSize = 500;
+        let totalSent = 0;
+        let totalFailed = 0;
+
+        for (let i = 0; i < tokens.length; i += batchSize) {
+            const batchTokens = tokens.slice(i, i + batchSize);
+            
+            try {
+                const response = await admin.messaging().sendToDevice(batchTokens, payload);
+                
+                // Contar éxitos y fallos
+                response.results.forEach((result, index) => {
+                    if (result.error) {
+                        console.error(`Error enviando a token ${batchTokens[index]}:`, result.error);
+                        totalFailed++;
+                    } else {
+                        totalSent++;
+                    }
+                });
+
+                // Guardar notificación en Firestore para cada usuario
+                const batch = admin.firestore().batch();
+                users.slice(i, i + batchSize).forEach((user, index) => {
+                    const result = response.results[index];
+                    if (!result.error) {
+                        const notificationRef = admin.firestore().collection('notifications').doc();
+                        batch.set(notificationRef, {
+                            userId: user.id,
+                            userEmail: user.email,
+                            title: title,
+                            message: message,
+                            type: type || 'general',
+                            timestamp: admin.firestore.FieldValue.serverTimestamp(),
+                            read: false,
+                            sentFrom: 'FIREBASE_FUNCTION',
+                            fcmToken: user.fcmToken,
+                            localities: localities || []
+                        });
+                    }
+                });
+                
+                await batch.commit();
+
+            } catch (error) {
+                console.error('Error enviando lote de notificaciones:', error);
+                totalFailed += batchTokens.length;
+            }
+        }
+
+        console.log(`✅ Notificación enviada: ${totalSent} exitosas, ${totalFailed} fallidas`);
+
+        res.status(200).json({
+            success: true,
+            message: 'Notificaciones enviadas',
+            sent: totalSent,
+            failed: totalFailed,
+            total: tokens.length
+        });
+
+    } catch (error) {
+        console.error('❌ Error enviando notificaciones push:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Error interno del servidor'
+        });
+    }
+});
+
+/**
  * 🧹 Limpiar logs antiguos de reCAPTCHA (ejecutar diariamente)
  * Ejecuta automáticamente cada día a las 02:00
  */

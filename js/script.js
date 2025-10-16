@@ -46,6 +46,24 @@ document.addEventListener('DOMContentLoaded', function() {
         console.log('🔄 Segunda carga de configuración de citas (seguridad)');
     }, 500);
     
+    // Verificación adicional para asegurar persistencia
+    setTimeout(() => {
+        const savedSettings = localStorage.getItem('appointmentSettings');
+        if (savedSettings) {
+            const settings = JSON.parse(savedSettings);
+            console.log('🔍 Verificación de persistencia:', settings.enabled ? 'CITA PREVIA' : 'SIN CITA PREVIA');
+            
+            // Forzar actualización de UI si es necesario
+            if (appointmentsEnabled !== settings.enabled) {
+                console.log('⚠️ Inconsistencia detectada, corrigiendo...');
+                appointmentsEnabled = settings.enabled;
+                updateAppointmentUI();
+            }
+        } else {
+            console.log('⚠️ No se encontró configuración guardada, usando valor por defecto');
+        }
+    }, 1000);
+    
     // Migrar usuarios a Firestore si es necesario
     migrateUsersToFirestore();
     
@@ -90,6 +108,9 @@ function initializeApp() {
     
     // Cargar configuración de teléfonos de interés
     loadTelefonosInteresConfig();
+    
+    // Cargar configuración de transporte
+    loadTransporteConfig();
     
     // Configurar formulario de notificaciones
     setupNotificationForm();
@@ -479,31 +500,8 @@ function loadEvents() {
     if (savedEvents) {
         events = JSON.parse(savedEvents);
     } else {
-        // Eventos por defecto
-        events = [
-            {
-                id: 1,
-                title: 'Concierto de música clásica',
-                description: 'Auditorio Municipal - 20:00h',
-                date: '2024-01-25',
-                time: '20:00',
-                location: 'Auditorio Municipal',
-                category: 'cultura',
-                createdBy: 'system',
-                createdAt: new Date().toISOString()
-            },
-            {
-                id: 2,
-                title: 'Taller de pintura para niños',
-                description: 'Centro Cultural - 17:00h',
-                date: '2024-01-28',
-                time: '17:00',
-                location: 'Centro Cultural',
-                category: 'educacion',
-                createdBy: 'system',
-                createdAt: new Date().toISOString()
-            }
-        ];
+        // Inicializar con array vacío
+        events = [];
         localStorage.setItem('events', JSON.stringify(events));
     }
 }
@@ -605,30 +603,8 @@ function loadData() {
     if (savedNews) {
         news = JSON.parse(savedNews);
     } else {
-        // Datos de ejemplo
-        news = [
-            {
-                id: 1,
-                title: 'Nueva biblioteca municipal',
-                content: 'El Ayuntamiento inaugura las nuevas instalaciones de la biblioteca municipal con horario ampliado y nuevos servicios digitales. La nueva biblioteca cuenta con más de 5,000 libros, sala de estudio, área infantil y acceso a internet gratuito.',
-                date: '2024-01-20',
-                image: 'images/noticia-1.jpg'
-            },
-            {
-                id: 2,
-                title: 'Festival de verano 2024',
-                content: 'Se abre el plazo de inscripción para participar en el Festival de Verano de Cobreros. Habrá actividades para todas las edades: conciertos, talleres, actividades deportivas y gastronomía local.',
-                date: '2024-01-18',
-                image: 'images/noticia-2.jpg'
-            },
-            {
-                id: 3,
-                title: 'Mejoras en el alumbrado público',
-                content: 'El Ayuntamiento ha completado la renovación del alumbrado público en el casco histórico, mejorando la eficiencia energética y la seguridad ciudadana.',
-                date: '2024-01-15',
-                image: 'images/noticia-3.jpg'
-            }
-        ];
+        // Inicializar con array vacío
+        news = [];
         localStorage.setItem('news', JSON.stringify(news));
     }
 
@@ -637,14 +613,8 @@ function loadData() {
     if (savedBandos) {
         bandos = JSON.parse(savedBandos);
     } else {
-        bandos = [
-            {
-                id: 1,
-                title: 'Bando de Alcaldía - Enero 2024',
-                content: 'Por medio del presente bando, se informa a todos los vecinos y vecinas de Cobreros sobre las siguientes disposiciones municipales:\n\n1. HORARIO DE RECOGIDA DE BASURA: A partir del 1 de febrero, el horario de recogida de basura se modificará. Los lunes, miércoles y viernes se recogerá la basura orgánica, y los martes y jueves la basura inorgánica.\n\n2. NUEVAS ORDENANZAS DE RUIDO: Se recuerda que el horario de silencio es de 22:00 a 08:00 horas. Se aplicarán sanciones por incumplimiento.\n\n3. APERTURA DEL NUEVO CENTRO CULTURAL: El nuevo centro cultural abrirá sus puertas el próximo 15 de febrero con una programación especial de inauguración.\n\n4. LIMPIEZA DE CALLES: Se solicita la colaboración ciudadana para mantener limpias las calles y no depositar basura fuera de los contenedores.\n\nCobreros, 15 de enero de 2024\nEl Alcalde',
-                date: '2024-01-15'
-            }
-        ];
+        // Inicializar con array vacío
+        bandos = [];
         localStorage.setItem('bandos', JSON.stringify(bandos));
     }
 
@@ -653,7 +623,7 @@ function loadData() {
     const savedUsers = localStorage.getItem('users');
     if (savedUsers) {
         try {
-            users = JSON.parse(savedUsers);
+        users = JSON.parse(savedUsers);
             console.log(`✅ ${users.length} usuarios cargados desde localStorage`);
         } catch (error) {
             console.error('❌ Error parseando usuarios guardados:', error);
@@ -1274,6 +1244,30 @@ function switchTab(tabName) {
     } else if (tabName === 'settings') {
         loadAppointmentSettings();
         loadPublicNotificationsList();
+        
+        // Verificación adicional de persistencia al abrir settings
+        setTimeout(() => {
+            const savedSettings = localStorage.getItem('appointmentSettings');
+            if (savedSettings) {
+                const settings = JSON.parse(savedSettings);
+                console.log('🔍 Verificación en settings:', settings.enabled ? 'CITA PREVIA' : 'SIN CITA PREVIA');
+                
+                // Actualizar radio buttons si es necesario
+                const enabledRadio = document.getElementById('appointmentEnabled');
+                const disabledRadio = document.getElementById('appointmentDisabled');
+                
+                if (enabledRadio && disabledRadio) {
+                    if (settings.enabled) {
+                        enabledRadio.checked = true;
+                        disabledRadio.checked = false;
+                    } else {
+                        enabledRadio.checked = false;
+                        disabledRadio.checked = true;
+                    }
+                    console.log('🔘 Radio buttons sincronizados con configuración guardada');
+                }
+            }
+        }, 100);
     } else if (tabName === 'appointments') {
         console.log('Cargando pestaña de citas previas...');
         loadAppointments();
@@ -1351,7 +1345,7 @@ function loadNewsList() {
     newsList.innerHTML = '';
     
     if (news.length === 0) {
-        newsList.innerHTML = '<p>No hay noticias publicadas.</p>';
+        newsList.innerHTML = '<p>No hay anuncios publicados.</p>';
         return;
     }
     
@@ -1912,7 +1906,7 @@ function openNewsEditor(newsId = null) {
     modal.innerHTML = `
         <div class="modal-content">
             <span class="close" onclick="this.closest('.modal').remove()">&times;</span>
-            <h2>${article ? 'Editar Noticia' : 'Nueva Noticia'}</h2>
+            <h2>${article ? 'Editar Anuncio' : 'Nuevo Anuncio'}</h2>
             <form id="newsForm">
                 <div class="form-group">
                     <label for="newsTitle">Título:</label>
@@ -1926,7 +1920,7 @@ function openNewsEditor(newsId = null) {
                     <label for="newsImage">URL de imagen:</label>
                     <input type="url" id="newsImage" name="image" value="${article ? article.image : ''}">
                 </div>
-                <button type="submit" class="btn btn-primary">${article ? 'Actualizar' : 'Crear'} Noticia</button>
+                <button type="submit" class="btn btn-primary">${article ? 'Actualizar' : 'Crear'} Anuncio</button>
             </form>
         </div>
     `;
@@ -1953,7 +1947,14 @@ function openNewsEditor(newsId = null) {
         localStorage.setItem('news', JSON.stringify(news));
         updateContent();
         modal.remove();
-        showNotification('Noticia guardada correctamente', 'success');
+        showNotification('Anuncio guardado correctamente', 'success');
+        
+        // Enviar notificación automática solo si es una noticia nueva (no edición)
+        if (!article) {
+            const titulo = `📢 Nueva Noticia Municipal - ${newsData.title}`;
+            const mensaje = `Se ha publicado una nueva noticia: "${newsData.title}". Consulte la información completa en la web del ayuntamiento.`;
+            enviarNotificacionPush(titulo, mensaje, 'noticia');
+        }
     });
 }
 
@@ -2003,6 +2004,13 @@ function openBandoEditor(bandoId = null) {
         updateContent();
         modal.remove();
         showNotification('Bando guardado correctamente', 'success');
+        
+        // Enviar notificación automática solo si es un bando nuevo (no edición)
+        if (!bando) {
+            const titulo = `📄 Nuevo Bando Municipal - ${bandoData.title}`;
+            const mensaje = `Se ha publicado un nuevo bando municipal: "${bandoData.title}". Consulte la información completa en la web del ayuntamiento.`;
+            enviarNotificacionPush(titulo, mensaje, 'bando');
+        }
     });
 }
 
@@ -2011,11 +2019,11 @@ function editNews(newsId) {
 }
 
 function deleteNews(newsId) {
-    if (confirm('¿Está seguro de que desea eliminar esta noticia?')) {
+    if (confirm('¿Está seguro de que desea eliminar este anuncio?')) {
         news = news.filter(n => n.id !== newsId);
         localStorage.setItem('news', JSON.stringify(news));
         updateContent();
-        showNotification('Noticia eliminada correctamente', 'success');
+        showNotification('Anuncio eliminado correctamente', 'success');
     }
 }
 
@@ -2152,7 +2160,7 @@ function openNewsEditor(newsId = null) {
     modal.innerHTML = `
         <div class="modal-content">
             <span class="close" onclick="this.closest('.modal').remove()">&times;</span>
-            <h2>${isEdit ? 'Editar Noticia' : 'Nueva Noticia'}</h2>
+            <h2>${isEdit ? 'Editar Anuncio' : 'Nuevo Anuncio'}</h2>
             <form id="newsForm">
                 <div class="form-group">
                     <label for="newsTitle">Título:</label>
@@ -2170,7 +2178,7 @@ function openNewsEditor(newsId = null) {
                     <label for="newsImage">URL de imagen (opcional):</label>
                     <input type="url" id="newsImage" value="${news ? news.image || '' : ''}">
                 </div>
-                <button type="submit" class="btn btn-primary">${isEdit ? 'Actualizar' : 'Crear'} Noticia</button>
+                <button type="submit" class="btn btn-primary">${isEdit ? 'Actualizar' : 'Crear'} Anuncio</button>
             </form>
         </div>
     `;
@@ -2195,9 +2203,16 @@ function openNewsEditor(newsId = null) {
         }
         
         localStorage.setItem('news', JSON.stringify(news));
-        showNotification(`Noticia ${isEdit ? 'actualizada' : 'creada'} correctamente`, 'success');
+        showNotification(`Anuncio ${isEdit ? 'actualizado' : 'creado'} correctamente`, 'success');
         modal.remove();
         loadNewsList();
+        
+        // Enviar notificación automática solo si es una noticia nueva (no edición)
+        if (!isEdit) {
+            const titulo = `📢 Nueva Noticia Municipal - ${newsData.title}`;
+            const mensaje = `Se ha publicado una nueva noticia: "${newsData.title}". Consulte la información completa en la web del ayuntamiento.`;
+            enviarNotificacionPush(titulo, mensaje, 'noticia');
+        }
     });
 }
 
@@ -2206,7 +2221,7 @@ function editNews(newsId) {
 }
 
 function deleteNews(newsId) {
-    if (!confirm('¿Está seguro de que desea eliminar esta noticia?')) {
+    if (!confirm('¿Está seguro de que desea eliminar este anuncio?')) {
         return;
     }
     
@@ -2276,6 +2291,13 @@ function openBandoEditor(bandoId = null) {
         showNotification(`Bando ${isEdit ? 'actualizado' : 'creado'} correctamente`, 'success');
         modal.remove();
         loadBandoList();
+        
+        // Enviar notificación automática solo si es un bando nuevo (no edición)
+        if (!isEdit) {
+            const titulo = `📄 Nuevo Bando Municipal - ${bandoData.title}`;
+            const mensaje = `Se ha publicado un nuevo bando municipal: "${bandoData.title}". Consulte la información completa en la web del ayuntamiento.`;
+            enviarNotificacionPush(titulo, mensaje, 'bando');
+        }
     });
 }
 
@@ -2564,79 +2586,7 @@ function getCategoryIcon(category) {
 // Variables para gestión de Cultura y Ocio
 let culturaOcioConfig = {
     titulo: 'Cultura y Ocio',
-    tarjetas: [
-        {
-            id: 1,
-            titulo: '🎭 Cultura y Ocio',
-            descripcion: 'Actividades culturales y de ocio',
-            icono: 'fas fa-theater-masks',
-            color: '#3b82f6',
-            elementos: [
-                {
-                    id: 1,
-                    titulo: '📚 Biblioteca Municipal',
-                    descripcion: 'Lunes a Viernes: 9:00-14:00 y 16:00-20:00',
-                    enlace: '#biblioteca',
-                    esEnlace: true
-                },
-                {
-                    id: 2,
-                    titulo: '🏃 Polideportivo',
-                    descripcion: 'Lunes a Domingo: 7:00-23:00',
-                    enlace: '#polideportivo',
-                    esEnlace: true
-                },
-                {
-                    id: 3,
-                    titulo: '🎨 Centro Cultural',
-                    descripcion: 'Lunes a Viernes: 10:00-14:00 y 16:00-21:00',
-                    enlace: '#centro-cultural',
-                    esEnlace: true
-                },
-                {
-                    id: 4,
-                    titulo: '🎵 Talleres Musicales',
-                    descripcion: 'Clases de música para todas las edades',
-                    enlace: '#talleres-musicales',
-                    esEnlace: true
-                }
-            ],
-            orden: 1,
-            activa: true
-        },
-        {
-            id: 2,
-            titulo: '🎉 Próximos Eventos',
-            descripcion: 'Eventos y actividades programadas',
-            icono: 'fas fa-calendar-alt',
-            color: '#10b981',
-            elementos: [
-                {
-                    id: 1,
-                    titulo: '🎼 Concierto de música clásica',
-                    descripcion: 'Auditorio Municipal - 20:00h',
-                    enlace: '#concierto-clasica',
-                    esEnlace: false
-                },
-                {
-                    id: 2,
-                    titulo: '🎨 Taller de pintura para niños',
-                    descripcion: 'Centro Cultural - 17:00h',
-                    enlace: '#taller-pintura',
-                    esEnlace: false
-                },
-                {
-                    id: 3,
-                    titulo: '📖 Club de lectura',
-                    descripcion: 'Biblioteca Municipal - 19:00h',
-                    enlace: '#club-lectura',
-                    esEnlace: false
-                }
-            ],
-            orden: 2,
-            activa: true
-        }
-    ]
+    tarjetas: []
 };
 
 // Funciones para gestionar Cultura y Ocio
@@ -3697,8 +3647,8 @@ function loadAppointmentSettings() {
     
     if (savedSettings) {
         try {
-            const settings = JSON.parse(savedSettings);
-            appointmentsEnabled = settings.enabled;
+        const settings = JSON.parse(savedSettings);
+        appointmentsEnabled = settings.enabled;
             console.log('✅ Configuración cargada desde localStorage:', appointmentsEnabled ? 'CITA PREVIA' : 'SIN CITA PREVIA');
         } catch (error) {
             console.error('❌ Error parseando configuración guardada:', error);
@@ -3801,37 +3751,76 @@ function updateAppointmentMode() {
         return;
     }
     
+    // Verificar que los radio buttons existen
+    if (!enabledRadio || !disabledRadio) {
+        console.error('❌ Error: Radio buttons no encontrados');
+        showNotification('Error: No se pudieron encontrar los controles de configuración', 'error');
+        return;
+    }
+    
     appointmentsEnabled = enabledRadio.checked;
     
     // Guardar configuración con múltiple seguridad
     const settings = {
         enabled: appointmentsEnabled,
-        updatedBy: currentUser.email,
-        updatedAt: new Date().toISOString()
+        updatedBy: currentUser ? currentUser.email : 'admin',
+        updatedAt: new Date().toISOString(),
+        version: '1.0'
     };
     
     // Guardar múltiples veces para asegurar persistencia
-    localStorage.setItem('appointmentSettings', JSON.stringify(settings));
-    
-    // Verificar que se guardó correctamente
-    setTimeout(() => {
-        const verification = localStorage.getItem('appointmentSettings');
-        if (verification) {
-            const verifySettings = JSON.parse(verification);
-            if (verifySettings.enabled !== appointmentsEnabled) {
-                console.error('❌ Error: configuración no se guardó correctamente, reintentando...');
+    try {
+        localStorage.setItem('appointmentSettings', JSON.stringify(settings));
+        console.log('💾 Configuración guardada en localStorage');
+        
+        // Verificación inmediata
+        const immediateCheck = localStorage.getItem('appointmentSettings');
+        if (immediateCheck) {
+            const immediateSettings = JSON.parse(immediateCheck);
+            if (immediateSettings.enabled !== appointmentsEnabled) {
+                console.error('❌ Error inmediato: configuración no coincide, reintentando...');
                 localStorage.setItem('appointmentSettings', JSON.stringify(settings));
-            } else {
-                console.log('✅ Configuración guardada y verificada correctamente');
             }
         }
-    }, 100);
+        
+        // Verificación con delay
+        setTimeout(() => {
+            const verification = localStorage.getItem('appointmentSettings');
+            if (verification) {
+                const verifySettings = JSON.parse(verification);
+                if (verifySettings.enabled !== appointmentsEnabled) {
+                    console.error('❌ Error: configuración no se guardó correctamente, reintentando...');
+                    localStorage.setItem('appointmentSettings', JSON.stringify(settings));
+                } else {
+                    console.log('✅ Configuración guardada y verificada correctamente');
+                }
+            } else {
+                console.error('❌ Error: No se encontró configuración guardada, reintentando...');
+                localStorage.setItem('appointmentSettings', JSON.stringify(settings));
+            }
+        }, 100);
+        
+        // Verificación adicional con más delay
+        setTimeout(() => {
+            const finalCheck = localStorage.getItem('appointmentSettings');
+            if (finalCheck) {
+                const finalSettings = JSON.parse(finalCheck);
+                console.log('🔍 Verificación final:', finalSettings.enabled ? 'CITA PREVIA' : 'SIN CITA PREVIA');
+            }
+        }, 500);
+        
+    } catch (error) {
+        console.error('❌ Error guardando en localStorage:', error);
+        showNotification('Error al guardar la configuración', 'error');
+        return;
+    }
     
-    // Actualizar interfaz
+    // Actualizar interfaz inmediatamente
     updateAppointmentUI();
     
-    // Segunda actualización por seguridad
+    // Actualizaciones adicionales por seguridad
     setTimeout(updateAppointmentUI, 200);
+    setTimeout(updateAppointmentUI, 500);
     
     showNotification(`Sistema de citas previas ${appointmentsEnabled ? 'activado' : 'desactivado'}`, 'success');
     console.log('💾 Configuración guardada:', appointmentsEnabled ? 'CITA PREVIA' : 'SIN CITA PREVIA');
@@ -5042,7 +5031,21 @@ let seccionesConfig = {
         icon: '📞',
         description: 'Servicios importantes de la zona',
         isActive: true
+    },
+    transporte: {
+        title: 'LÍNEAS DE AUTOBÚS Y TREN',
+        icon: '🚌',
+        description: 'Horarios y rutas de transporte público',
+        isActive: true
     }
+};
+
+// Configuración de líneas de transporte
+let transporteConfig = {
+    titulo: 'LÍNEAS DE AUTOBÚS Y TREN',
+    icono: '🚌',
+    descripcion: 'Horarios y rutas de transporte público',
+    lineas: []
 };
 
 // Cargar configuración de secciones
@@ -5061,9 +5064,22 @@ function loadTelefonosInteresConfig() {
     }
 }
 
+// Cargar configuración de transporte
+function loadTransporteConfig() {
+    const saved = localStorage.getItem('transporteConfig');
+    if (saved) {
+        transporteConfig = JSON.parse(saved);
+    }
+}
+
 // Guardar configuración de teléfonos de interés
 function saveTelefonosInteresConfig() {
     localStorage.setItem('telefonosInteresConfig', JSON.stringify(telefonosInteresConfig));
+}
+
+// Guardar configuración de transporte
+function saveTransporteConfig() {
+    localStorage.setItem('transporteConfig', JSON.stringify(transporteConfig));
 }
 
 // Cargar servicios
@@ -5366,6 +5382,42 @@ function renderServicios() {
     html += '</div>';
     html += '</div>';
     
+    // LÍNEAS DE AUTOBÚS Y TREN
+    html += `<div class="admin-section"><h3>${seccionesConfig.transporte.icon} ${seccionesConfig.transporte.title}</h3>`;
+    html += '<div class="transporte-lines">';
+    
+    if (transporteConfig.lineas.length > 0) {
+        html += '<div class="transporte-lines-list">';
+        
+        transporteConfig.lineas
+            .filter(linea => linea.isActive)
+            .sort((a, b) => a.orden - b.orden)
+            .forEach(linea => {
+                html += `
+                    <div class="transporte-linea" onclick="toggleLineaExpansion(${linea.id})">
+                        <div class="transporte-linea-header">
+                            <span class="transporte-emoji">${linea.emoji}</span>
+                            <div class="transporte-details">
+                                <h4>${linea.nombre}</h4>
+                                <p>${linea.descripcion}</p>
+                            </div>
+                            <span class="transporte-expand-icon" id="lineaExpandIcon${linea.id}">▼</span>
+                        </div>
+                        <div class="transporte-linea-content" id="lineaContent${linea.id}" style="display: none;">
+                            ${renderTransporteLineaContent(linea)}
+                        </div>
+                    </div>
+                `;
+            });
+        
+        html += '</div>';
+    } else {
+        html += '<p class="no-content">No hay líneas de transporte configuradas</p>';
+    }
+    
+    html += '</div>';
+    html += '</div>';
+    
     html += '</div>';
     container.innerHTML = html;
 }
@@ -5402,6 +5454,484 @@ function toggleTelefonoExpansion() {
     } else {
         content.style.display = 'none';
         icon.textContent = '▼';
+    }
+}
+
+// Funciones para manejar la expansión de líneas de transporte
+function toggleLineaExpansion(lineaId) {
+    const content = document.getElementById(`lineaContent${lineaId}`);
+    const icon = document.getElementById(`lineaExpandIcon${lineaId}`);
+    
+    if (content.style.display === 'none') {
+        content.style.display = 'block';
+        icon.textContent = '▲';
+    } else {
+        content.style.display = 'none';
+        icon.textContent = '▼';
+    }
+}
+
+// Renderizar contenido de línea de transporte
+function renderTransporteLineaContent(linea) {
+    let html = '<div class="transporte-linea-info">';
+    
+    // Información básica
+    if (linea.horarios && linea.horarios.length > 0) {
+        html += '<div class="transporte-section"><h5>🕐 Horarios</h5>';
+        linea.horarios.forEach(horario => {
+            html += `<p><strong>${horario.dia}:</strong> ${horario.hora}</p>`;
+        });
+        html += '</div>';
+    }
+    
+    if (linea.rutas && linea.rutas.length > 0) {
+        html += '<div class="transporte-section"><h5>🗺️ Rutas</h5>';
+        linea.rutas.forEach(ruta => {
+            html += `<p><strong>${ruta.origen}</strong> → <strong>${ruta.destino}</strong></p>`;
+        });
+        html += '</div>';
+    }
+    
+    if (linea.contacto) {
+        html += '<div class="transporte-section"><h5>📞 Contacto</h5>';
+        html += `<p><strong>Teléfono:</strong> <a href="tel:${linea.contacto.telefono}">${linea.contacto.telefono}</a></p>`;
+        if (linea.contacto.web) {
+            html += `<p><strong>Web:</strong> <a href="${linea.contacto.web}" target="_blank">${linea.contacto.web}</a></p>`;
+        }
+        html += '</div>';
+    }
+    
+    // Documentos y fotos
+    html += '<div class="transporte-section"><h5>📄 Documentos</h5>';
+    if (linea.documentos && linea.documentos.length > 0) {
+        linea.documentos.forEach((doc, index) => {
+            html += `<div class="documento-item">
+                <a href="${doc.url}" target="_blank" class="btn btn-outline btn-small">
+                    <i class="fas fa-file-pdf"></i> ${doc.nombre}
+                </a>
+            </div>`;
+        });
+    } else {
+        html += '<p class="no-content">No hay documentos disponibles</p>';
+    }
+    html += '</div>';
+    
+    html += '<div class="transporte-section"><h5>📸 Imágenes</h5>';
+    if (linea.fotos && linea.fotos.length > 0) {
+        linea.fotos.forEach((foto, index) => {
+            html += `<div class="foto-item">
+                <img src="${foto.url}" alt="${foto.nombre}" style="width: 100%; max-width: 300px; height: auto; border-radius: 8px; margin: 0.5rem 0; cursor: pointer;" onclick="viewTransportePhoto('${foto.url}', '${foto.nombre}')">
+                <p><small>${foto.nombre}</small></p>
+            </div>`;
+        });
+    } else {
+        html += '<p class="no-content">No hay imágenes disponibles</p>';
+    }
+    html += '</div>';
+    
+    html += '</div>';
+    return html;
+}
+
+// Ver foto de transporte
+function viewTransportePhoto(url, nombre) {
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.style.display = 'block';
+    modal.innerHTML = `
+        <div class="modal-content" style="max-width: 90%; max-height: 90%;">
+            <span class="close" onclick="this.closest('.modal').remove()">&times;</span>
+            <h3>${nombre}</h3>
+            <img src="${url}" alt="${nombre}" style="width: 100%; height: auto; border-radius: 8px;">
+        </div>
+    `;
+    document.body.appendChild(modal);
+}
+
+// Abrir gestor de transporte
+function openTransporteManager() {
+    loadTransporteConfig();
+    openModal('transporteModal');
+    loadTransporteLinesList();
+}
+
+// Cerrar gestor de transporte
+function closeTransporteModal() {
+    closeModal('transporteModal');
+}
+
+// Cargar lista de líneas de transporte en el modal
+function loadTransporteLinesList() {
+    const linesList = document.getElementById('transporteLinesList');
+    if (!linesList) return;
+    
+    linesList.innerHTML = '';
+    
+    if (transporteConfig.lineas.length === 0) {
+        linesList.innerHTML = '<p>No hay líneas de transporte configuradas.</p>';
+        return;
+    }
+    
+    transporteConfig.lineas.forEach(linea => {
+        const lineItem = document.createElement('div');
+        lineItem.className = 'content-item';
+        lineItem.style.cssText = 'border: 1px solid #e5e7eb; border-radius: 8px; padding: 1rem; margin-bottom: 1rem; background: #f9fafb;';
+        
+        lineItem.innerHTML = `
+            <div style="display: flex; justify-content: space-between; align-items: start;">
+                <div style="flex: 1;">
+                    <h4>${linea.emoji} ${linea.nombre}</h4>
+                    <p>${linea.descripcion}</p>
+                    <p><small>Orden: ${linea.orden} | ${linea.isActive ? 'Activa' : 'Inactiva'}</small></p>
+                </div>
+                <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+                    <button class="btn btn-primary btn-small" onclick="editTransporteLinea(${linea.id})">
+                        <i class="fas fa-edit"></i> Editar
+                    </button>
+                    <button class="btn btn-danger btn-small" onclick="deleteTransporteLinea(${linea.id})">
+                        <i class="fas fa-trash"></i> Eliminar
+                    </button>
+                </div>
+            </div>
+        `;
+        linesList.appendChild(lineItem);
+    });
+}
+
+// Añadir nueva línea de transporte
+function addTransporteLinea() {
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.style.display = 'block';
+    modal.innerHTML = `
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>🚌 Añadir Nueva Línea de Transporte</h3>
+                <span class="close" onclick="this.closest('.modal').remove()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form id="addTransporteLineaForm">
+                    <div class="form-group">
+                        <label for="lineaEmoji">Emoji:</label>
+                        <input type="text" id="lineaEmoji" value="🚌" maxlength="2" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="lineaNombre">Nombre de la línea:</label>
+                        <input type="text" id="lineaNombre" placeholder="Ej: Línea 1 - Cobreros a Puebla" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="lineaDescripcion">Descripción:</label>
+                        <textarea id="lineaDescripcion" placeholder="Descripción de la línea de transporte" rows="3"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="lineaOrden">Orden de visualización:</label>
+                        <input type="number" id="lineaOrden" value="1" min="1" required>
+                    </div>
+                    <div class="form-group">
+                        <label>
+                            <input type="checkbox" id="lineaActiva" checked>
+                            Línea activa
+                        </label>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-outline" onclick="this.closest('.modal').remove()">Cancelar</button>
+                        <button type="submit" class="btn btn-primary">Guardar Línea</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+    
+    // Configurar el formulario
+    document.getElementById('addTransporteLineaForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        saveTransporteLinea();
+        modal.remove();
+    });
+}
+
+// Guardar línea de transporte
+function saveTransporteLinea() {
+    const nuevaLinea = {
+        id: Date.now(),
+        emoji: document.getElementById('lineaEmoji').value,
+        nombre: document.getElementById('lineaNombre').value,
+        descripcion: document.getElementById('lineaDescripcion').value,
+        orden: parseInt(document.getElementById('lineaOrden').value),
+        isActive: document.getElementById('lineaActiva').checked,
+        horarios: [],
+        rutas: [],
+        contacto: null,
+        documentos: [],
+        fotos: []
+    };
+    
+    transporteConfig.lineas.push(nuevaLinea);
+    saveTransporteConfig();
+    loadTransporteLinesList();
+    renderServicios();
+    showNotification('Línea de transporte añadida correctamente', 'success');
+}
+
+// Editar línea de transporte
+function editTransporteLinea(lineaId) {
+    const linea = transporteConfig.lineas.find(l => l.id === lineaId);
+    if (!linea) return;
+    
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.style.display = 'block';
+    modal.innerHTML = `
+        <div class="modal-content" style="max-width: 90%; max-height: 90%; overflow-y: auto;">
+            <div class="modal-header">
+                <h3>✏️ Editar Línea de Transporte</h3>
+                <span class="close" onclick="this.closest('.modal').remove()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form id="editTransporteLineaForm">
+                    <div class="form-group">
+                        <label for="editLineaEmoji">Emoji:</label>
+                        <input type="text" id="editLineaEmoji" value="${linea.emoji}" maxlength="2" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="editLineaNombre">Nombre de la línea:</label>
+                        <input type="text" id="editLineaNombre" value="${linea.nombre}" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="editLineaDescripcion">Descripción:</label>
+                        <textarea id="editLineaDescripcion" rows="3">${linea.descripcion || ''}</textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="editLineaOrden">Orden de visualización:</label>
+                        <input type="number" id="editLineaOrden" value="${linea.orden}" min="1" required>
+                    </div>
+                    <div class="form-group">
+                        <label>
+                            <input type="checkbox" id="editLineaActiva" ${linea.isActive ? 'checked' : ''}>
+                            Línea activa
+                        </label>
+                    </div>
+                    
+                    <div class="form-group">
+                        <h4>📄 Documentos</h4>
+                        <div id="editLineaDocumentos">
+                            ${renderEditLineaDocumentos(linea.documentos || [])}
+                        </div>
+                        <button type="button" class="btn btn-outline btn-small" onclick="addDocumentoToLinea(${lineaId})">
+                            <i class="fas fa-plus"></i> Añadir Documento
+                        </button>
+                    </div>
+                    
+                    <div class="form-group">
+                        <h4>📸 Imágenes</h4>
+                        <div id="editLineaFotos">
+                            ${renderEditLineaFotos(linea.fotos || [])}
+                        </div>
+                        <button type="button" class="btn btn-outline btn-small" onclick="addFotoToLinea(${lineaId})">
+                            <i class="fas fa-plus"></i> Añadir Imagen
+                        </button>
+                    </div>
+                    
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-outline" onclick="this.closest('.modal').remove()">Cancelar</button>
+                        <button type="submit" class="btn btn-primary">Guardar Cambios</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+    
+    // Configurar el formulario
+    document.getElementById('editTransporteLineaForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        updateTransporteLinea(lineaId);
+        modal.remove();
+    });
+}
+
+// Actualizar línea de transporte
+function updateTransporteLinea(lineaId) {
+    const linea = transporteConfig.lineas.find(l => l.id === lineaId);
+    if (!linea) return;
+    
+    linea.emoji = document.getElementById('editLineaEmoji').value;
+    linea.nombre = document.getElementById('editLineaNombre').value;
+    linea.descripcion = document.getElementById('editLineaDescripcion').value;
+    linea.orden = parseInt(document.getElementById('editLineaOrden').value);
+    linea.isActive = document.getElementById('editLineaActiva').checked;
+    
+    saveTransporteConfig();
+    loadTransporteLinesList();
+    renderServicios();
+    showNotification('Línea de transporte actualizada correctamente', 'success');
+}
+
+// Eliminar línea de transporte
+function deleteTransporteLinea(lineaId) {
+    if (confirm('¿Estás seguro de que quieres eliminar esta línea de transporte?')) {
+        transporteConfig.lineas = transporteConfig.lineas.filter(l => l.id !== lineaId);
+        saveTransporteConfig();
+        loadTransporteLinesList();
+        renderServicios();
+        showNotification('Línea de transporte eliminada correctamente', 'success');
+    }
+}
+
+// Renderizar documentos para edición
+function renderEditLineaDocumentos(documentos) {
+    if (documentos.length === 0) {
+        return '<p class="no-content">No hay documentos</p>';
+    }
+    
+    return documentos.map((doc, index) => `
+        <div class="documento-edit-item" style="display: flex; align-items: center; gap: 1rem; margin: 0.5rem 0; padding: 0.5rem; border: 1px solid #e5e7eb; border-radius: 4px;">
+            <input type="text" value="${doc.nombre}" onchange="updateDocumentoNombre(${index}, this.value)" placeholder="Nombre del documento" style="flex: 1;">
+            <input type="url" value="${doc.url}" onchange="updateDocumentoUrl(${index}, this.value)" placeholder="URL del documento" style="flex: 2;">
+            <button type="button" class="btn btn-danger btn-small" onclick="removeDocumentoFromLinea(${index})">
+                <i class="fas fa-trash"></i>
+            </button>
+        </div>
+    `).join('');
+}
+
+// Renderizar fotos para edición
+function renderEditLineaFotos(fotos) {
+    if (fotos.length === 0) {
+        return '<p class="no-content">No hay imágenes</p>';
+    }
+    
+    return fotos.map((foto, index) => `
+        <div class="foto-edit-item" style="display: flex; align-items: center; gap: 1rem; margin: 0.5rem 0; padding: 0.5rem; border: 1px solid #e5e7eb; border-radius: 4px;">
+            <img src="${foto.url}" alt="${foto.nombre}" style="width: 50px; height: 50px; object-fit: cover; border-radius: 4px;">
+            <input type="text" value="${foto.nombre}" onchange="updateFotoNombre(${index}, this.value)" placeholder="Nombre de la imagen" style="flex: 1;">
+            <input type="url" value="${foto.url}" onchange="updateFotoUrl(${index}, this.value)" placeholder="URL de la imagen" style="flex: 2;">
+            <button type="button" class="btn btn-danger btn-small" onclick="removeFotoFromLinea(${index})">
+                <i class="fas fa-trash"></i>
+            </button>
+        </div>
+    `).join('');
+}
+
+// Funciones auxiliares para gestionar documentos y fotos
+function addDocumentoToLinea(lineaId) {
+    const linea = transporteConfig.lineas.find(l => l.id === lineaId);
+    if (!linea) return;
+    
+    if (!linea.documentos) linea.documentos = [];
+    
+    linea.documentos.push({
+        nombre: 'Nuevo documento',
+        url: ''
+    });
+    
+    // Actualizar la vista
+    const documentosDiv = document.getElementById('editLineaDocumentos');
+    if (documentosDiv) {
+        documentosDiv.innerHTML = renderEditLineaDocumentos(linea.documentos);
+    }
+}
+
+function addFotoToLinea(lineaId) {
+    const linea = transporteConfig.lineas.find(l => l.id === lineaId);
+    if (!linea) return;
+    
+    if (!linea.fotos) linea.fotos = [];
+    
+    linea.fotos.push({
+        nombre: 'Nueva imagen',
+        url: ''
+    });
+    
+    // Actualizar la vista
+    const fotosDiv = document.getElementById('editLineaFotos');
+    if (fotosDiv) {
+        fotosDiv.innerHTML = renderEditLineaFotos(linea.fotos);
+    }
+}
+
+function updateDocumentoNombre(index, nombre) {
+    // Esta función se llamará desde el HTML generado dinámicamente
+    // Necesitamos encontrar la línea actual siendo editada
+    const modal = document.querySelector('.modal:not([style*="display: none"])');
+    if (modal) {
+        const form = modal.querySelector('#editTransporteLineaForm');
+        if (form) {
+            // Buscar la línea por el contexto del modal
+            // Por simplicidad, actualizaremos todas las líneas que tengan documentos
+            transporteConfig.lineas.forEach(linea => {
+                if (linea.documentos && linea.documentos[index]) {
+                    linea.documentos[index].nombre = nombre;
+                }
+            });
+        }
+    }
+}
+
+function updateDocumentoUrl(index, url) {
+    transporteConfig.lineas.forEach(linea => {
+        if (linea.documentos && linea.documentos[index]) {
+            linea.documentos[index].url = url;
+        }
+    });
+}
+
+function updateFotoNombre(index, nombre) {
+    transporteConfig.lineas.forEach(linea => {
+        if (linea.fotos && linea.fotos[index]) {
+            linea.fotos[index].nombre = nombre;
+        }
+    });
+}
+
+function updateFotoUrl(index, url) {
+    transporteConfig.lineas.forEach(linea => {
+        if (linea.fotos && linea.fotos[index]) {
+            linea.fotos[index].url = url;
+        }
+    });
+}
+
+function removeDocumentoFromLinea(index) {
+    transporteConfig.lineas.forEach(linea => {
+        if (linea.documentos && linea.documentos[index]) {
+            linea.documentos.splice(index, 1);
+        }
+    });
+    
+    // Actualizar la vista
+    const modal = document.querySelector('.modal:not([style*="display: none"])');
+    if (modal) {
+        const documentosDiv = modal.querySelector('#editLineaDocumentos');
+        if (documentosDiv) {
+            // Buscar la línea actual
+            const linea = transporteConfig.lineas.find(l => l.documentos && l.documentos.length > 0);
+            if (linea) {
+                documentosDiv.innerHTML = renderEditLineaDocumentos(linea.documentos);
+            }
+        }
+    }
+}
+
+function removeFotoFromLinea(index) {
+    transporteConfig.lineas.forEach(linea => {
+        if (linea.fotos && linea.fotos[index]) {
+            linea.fotos.splice(index, 1);
+        }
+    });
+    
+    // Actualizar la vista
+    const modal = document.querySelector('.modal:not([style*="display: none"])');
+    if (modal) {
+        const fotosDiv = modal.querySelector('#editLineaFotos');
+        if (fotosDiv) {
+            // Buscar la línea actual
+            const linea = transporteConfig.lineas.find(l => l.fotos && l.fotos.length > 0);
+            if (linea) {
+                fotosDiv.innerHTML = renderEditLineaFotos(linea.fotos);
+            }
+        }
     }
 }
 
@@ -5751,6 +6281,10 @@ function loadServiciosAdmin() {
     updateSectionTitles();
     loadServiciosList('medical');
     loadServiciosList('itv');
+    loadConsultorioList();
+    loadItvList();
+    loadTelefonosElementosList();
+    loadTransporteLinesList();
     actualizarEstadisticasNotificaciones();
 }
 
@@ -7158,6 +7692,26 @@ async function enviarNotificacionPushConLocalidades(titulo, mensaje, tipo = 'gen
 
 // Función original para compatibilidad (envía a todos)
 async function enviarNotificacionPush(titulo, mensaje, tipo = 'general') {
+    // Intentar usar Firebase si está disponible
+    if (window.firebase && window.firebase.functions) {
+        try {
+            const sendPushNotification = window.firebase.functions().httpsCallable('sendPushNotification');
+            const result = await sendPushNotification({
+                title: titulo,
+                message: mensaje,
+                type: tipo,
+                localities: []
+            });
+            
+            console.log('✅ Notificación enviada via Firebase:', result.data);
+            showNotification(`Notificación enviada a ${result.data.sent} usuarios`, 'success');
+            return result.data;
+        } catch (error) {
+            console.error('❌ Error enviando via Firebase, usando método local:', error);
+        }
+    }
+    
+    // Fallback al método local
     return await enviarNotificacionPushConLocalidades(titulo, mensaje, tipo, 'todos', []);
 }
 
@@ -7626,6 +8180,791 @@ function crearSeccionDescargaAPK(config) {
     }
 }
 
+// ===== FUNCIONES DE ADMINISTRACIÓN PARA DATOS Y ENLACES =====
 
+// Cargar lista del consultorio médico
+function loadConsultorioList() {
+    const container = document.getElementById('consultorioList');
+    if (!container) return;
+    
+    container.innerHTML = '';
+    
+    if (consultorioConfig.documentos.length === 0 && consultorioConfig.fotos.length === 0) {
+        container.innerHTML = '<p>No hay contenido disponible para el consultorio médico.</p>';
+        return;
+    }
+    
+    let html = '<div class="content-items">';
+    
+    // Mostrar documentos
+    if (consultorioConfig.documentos.length > 0) {
+        html += '<div class="content-item"><h5>📋 Documentos:</h5><ul>';
+        consultorioConfig.documentos.forEach((doc, index) => {
+            html += `<li>${doc.nombre} <button class="btn btn-danger btn-small" onclick="deleteConsultorioDocument(${index})">Eliminar</button></li>`;
+        });
+        html += '</ul></div>';
+    }
+    
+    // Mostrar fotos
+    if (consultorioConfig.fotos.length > 0) {
+        html += '<div class="content-item"><h5>📸 Fotos:</h5><ul>';
+        consultorioConfig.fotos.forEach((foto, index) => {
+            html += `<li>${foto.nombre} <button class="btn btn-danger btn-small" onclick="deleteConsultorioFoto(${index})">Eliminar</button></li>`;
+        });
+        html += '</ul></div>';
+    }
+    
+    html += '</div>';
+    container.innerHTML = html;
+}
+
+// Cargar lista de ITV
+function loadItvList() {
+    const container = document.getElementById('itvList');
+    if (!container) return;
+    
+    container.innerHTML = '';
+    
+    if (consultorioConfig.documentos.length === 0 && consultorioConfig.fotos.length === 0) {
+        container.innerHTML = '<p>No hay contenido disponible para ITV.</p>';
+        return;
+    }
+    
+    let html = '<div class="content-items">';
+    
+    // Mostrar documentos
+    if (consultorioConfig.documentos.length > 0) {
+        html += '<div class="content-item"><h5>📋 Documentos:</h5><ul>';
+        consultorioConfig.documentos.forEach((doc, index) => {
+            html += `<li>${doc.nombre} <button class="btn btn-danger btn-small" onclick="deleteConsultorioDocument(${index})">Eliminar</button></li>`;
+        });
+        html += '</ul></div>';
+    }
+    
+    // Mostrar fotos
+    if (consultorioConfig.fotos.length > 0) {
+        html += '<div class="content-item"><h5>📸 Fotos:</h5><ul>';
+        consultorioConfig.fotos.forEach((foto, index) => {
+            html += `<li>${foto.nombre} <button class="btn btn-danger btn-small" onclick="deleteConsultorioFoto(${index})">Eliminar</button></li>`;
+        });
+        html += '</ul></div>';
+    }
+    
+    html += '</div>';
+    container.innerHTML = html;
+}
+
+// Abrir modal del consultorio médico
+function openConsultorioModal() {
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.style.display = 'block';
+    modal.innerHTML = `
+        <div class="modal-content">
+            <span class="close" onclick="this.closest('.modal').remove()">&times;</span>
+            <h2>🏥 Editar Consultorio Médico</h2>
+            <div class="modal-tabs">
+                <button class="tab-btn active" onclick="showConsultorioTab('documentos')">📋 Documentos</button>
+                <button class="tab-btn" onclick="showConsultorioTab('fotos')">📸 Fotos</button>
+            </div>
+            <div id="consultorioDocumentosTab" class="tab-content active">
+                <h3>Documentos del Consultorio</h3>
+                <div class="content-actions">
+                    <button class="btn btn-primary" onclick="openConsultorioDocumentModal()">
+                        <i class="fas fa-plus"></i> Añadir Documento
+                    </button>
+                </div>
+                <div id="consultorioDocumentosList"></div>
+            </div>
+            <div id="consultorioFotosTab" class="tab-content">
+                <h3>Fotos del Consultorio</h3>
+                <div class="content-actions">
+                    <button class="btn btn-primary" onclick="openConsultorioFotoModal()">
+                        <i class="fas fa-plus"></i> Añadir Foto
+                    </button>
+                </div>
+                <div id="consultorioFotosList"></div>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+    
+    loadConsultorioDocumentosInModal();
+    loadConsultorioFotosInModal();
+}
+
+// Abrir modal de ITV
+function openItvModal() {
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.style.display = 'block';
+    modal.innerHTML = `
+        <div class="modal-content">
+            <span class="close" onclick="this.closest('.modal').remove()">&times;</span>
+            <h2>🚗 Editar ITV - Puebla de Sanabria</h2>
+            <div class="modal-tabs">
+                <button class="tab-btn active" onclick="showItvTab('documentos')">📋 Documentos</button>
+                <button class="tab-btn" onclick="showItvTab('fotos')">📸 Fotos</button>
+            </div>
+            <div id="itvDocumentosTab" class="tab-content active">
+                <h3>Documentos de ITV</h3>
+                <div class="content-actions">
+                    <button class="btn btn-primary" onclick="openItvDocumentModal()">
+                        <i class="fas fa-plus"></i> Añadir Documento
+                    </button>
+                </div>
+                <div id="itvDocumentosList"></div>
+            </div>
+            <div id="itvFotosTab" class="tab-content">
+                <h3>Fotos de ITV</h3>
+                <div class="content-actions">
+                    <button class="btn btn-primary" onclick="openItvFotoModal()">
+                        <i class="fas fa-plus"></i> Añadir Foto
+                    </button>
+                </div>
+                <div id="itvFotosList"></div>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+    
+    loadItvDocumentosInModal();
+    loadItvFotosInModal();
+}
+
+// Mostrar pestaña del consultorio
+function showConsultorioTab(tabName) {
+    // Ocultar todas las pestañas
+    document.querySelectorAll('#consultorioDocumentosTab, #consultorioFotosTab').forEach(tab => {
+        tab.classList.remove('active');
+    });
+    
+    // Desactivar todos los botones
+    document.querySelectorAll('.modal .tab-btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    
+    // Mostrar la pestaña seleccionada
+    document.getElementById('consultorio' + tabName.charAt(0).toUpperCase() + tabName.slice(1) + 'Tab').classList.add('active');
+    
+    // Activar el botón correspondiente
+    event.target.classList.add('active');
+}
+
+// Mostrar pestaña de ITV
+function showItvTab(tabName) {
+    // Ocultar todas las pestañas
+    document.querySelectorAll('#itvDocumentosTab, #itvFotosTab').forEach(tab => {
+        tab.classList.remove('active');
+    });
+    
+    // Desactivar todos los botones
+    document.querySelectorAll('.modal .tab-btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    
+    // Mostrar la pestaña seleccionada
+    document.getElementById('itv' + tabName.charAt(0).toUpperCase() + tabName.slice(1) + 'Tab').classList.add('active');
+    
+    // Activar el botón correspondiente
+    event.target.classList.add('active');
+}
+
+// Cargar documentos del consultorio en el modal
+function loadConsultorioDocumentosInModal() {
+    const container = document.getElementById('consultorioDocumentosList');
+    if (!container) return;
+    
+    container.innerHTML = '';
+    
+    if (consultorioConfig.documentos.length === 0) {
+        container.innerHTML = '<p>No hay documentos disponibles.</p>';
+        return;
+    }
+    
+    consultorioConfig.documentos.forEach((doc, index) => {
+        const docItem = document.createElement('div');
+        docItem.className = 'content-item';
+        docItem.innerHTML = `
+            <div style="display: flex; justify-content: space-between; align-items: center; padding: 1rem; border: 1px solid #e5e7eb; border-radius: 8px; margin-bottom: 1rem;">
+                <div>
+                    <h5>${doc.nombre}</h5>
+                    <p>${doc.descripcion || 'Sin descripción'}</p>
+                    <a href="${doc.url}" target="_blank" class="btn btn-outline btn-small">Ver Documento</a>
+                </div>
+                <button class="btn btn-danger btn-small" onclick="deleteConsultorioDocument(${index})">
+                    <i class="fas fa-trash"></i> Eliminar
+                </button>
+            </div>
+        `;
+        container.appendChild(docItem);
+    });
+}
+
+// Cargar fotos del consultorio en el modal
+function loadConsultorioFotosInModal() {
+    const container = document.getElementById('consultorioFotosList');
+    if (!container) return;
+    
+    container.innerHTML = '';
+    
+    if (consultorioConfig.fotos.length === 0) {
+        container.innerHTML = '<p>No hay fotos disponibles.</p>';
+        return;
+    }
+    
+    consultorioConfig.fotos.forEach((foto, index) => {
+        const fotoItem = document.createElement('div');
+        fotoItem.className = 'content-item';
+        fotoItem.innerHTML = `
+            <div style="display: flex; justify-content: space-between; align-items: center; padding: 1rem; border: 1px solid #e5e7eb; border-radius: 8px; margin-bottom: 1rem;">
+                <div>
+                    <h5>${foto.nombre}</h5>
+                    <p>${foto.descripcion || 'Sin descripción'}</p>
+                    <img src="${foto.url}" alt="${foto.nombre}" style="width: 100px; height: 100px; object-fit: cover; border-radius: 4px;">
+                </div>
+                <button class="btn btn-danger btn-small" onclick="deleteConsultorioFoto(${index})">
+                    <i class="fas fa-trash"></i> Eliminar
+                </button>
+            </div>
+        `;
+        container.appendChild(fotoItem);
+    });
+}
+
+// Cargar documentos de ITV en el modal
+function loadItvDocumentosInModal() {
+    const container = document.getElementById('itvDocumentosList');
+    if (!container) return;
+    
+    container.innerHTML = '';
+    
+    if (consultorioConfig.documentos.length === 0) {
+        container.innerHTML = '<p>No hay documentos disponibles.</p>';
+        return;
+    }
+    
+    consultorioConfig.documentos.forEach((doc, index) => {
+        const docItem = document.createElement('div');
+        docItem.className = 'content-item';
+        docItem.innerHTML = `
+            <div style="display: flex; justify-content: space-between; align-items: center; padding: 1rem; border: 1px solid #e5e7eb; border-radius: 8px; margin-bottom: 1rem;">
+                <div>
+                    <h5>${doc.nombre}</h5>
+                    <p>${doc.descripcion || 'Sin descripción'}</p>
+                    <a href="${doc.url}" target="_blank" class="btn btn-outline btn-small">Ver Documento</a>
+                </div>
+                <button class="btn btn-danger btn-small" onclick="deleteConsultorioDocument(${index})">
+                    <i class="fas fa-trash"></i> Eliminar
+                </button>
+            </div>
+        `;
+        container.appendChild(docItem);
+    });
+}
+
+// Cargar fotos de ITV en el modal
+function loadItvFotosInModal() {
+    const container = document.getElementById('itvFotosList');
+    if (!container) return;
+    
+    container.innerHTML = '';
+    
+    if (consultorioConfig.fotos.length === 0) {
+        container.innerHTML = '<p>No hay fotos disponibles.</p>';
+        return;
+    }
+    
+    consultorioConfig.fotos.forEach((foto, index) => {
+        const fotoItem = document.createElement('div');
+        fotoItem.className = 'content-item';
+        fotoItem.innerHTML = `
+            <div style="display: flex; justify-content: space-between; align-items: center; padding: 1rem; border: 1px solid #e5e7eb; border-radius: 8px; margin-bottom: 1rem;">
+                <div>
+                    <h5>${foto.nombre}</h5>
+                    <p>${foto.descripcion || 'Sin descripción'}</p>
+                    <img src="${foto.url}" alt="${foto.nombre}" style="width: 100px; height: 100px; object-fit: cover; border-radius: 4px;">
+                </div>
+                <button class="btn btn-danger btn-small" onclick="deleteConsultorioFoto(${index})">
+                    <i class="fas fa-trash"></i> Eliminar
+                </button>
+            </div>
+        `;
+        container.appendChild(fotoItem);
+    });
+}
+
+// Abrir modal para añadir documento del consultorio
+function openConsultorioDocumentModal() {
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.style.display = 'block';
+    modal.innerHTML = `
+        <div class="modal-content">
+            <span class="close" onclick="this.closest('.modal').remove()">&times;</span>
+            <h2>📋 Añadir Documento del Consultorio</h2>
+            <form id="consultorioDocumentForm" enctype="multipart/form-data">
+                <div class="form-group">
+                    <label for="docNombre">Nombre del documento:</label>
+                    <input type="text" id="docNombre" required>
+                </div>
+                <div class="form-group">
+                    <label for="docDescripcion">Descripción:</label>
+                    <textarea id="docDescripcion" rows="3"></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="docFile">Subir archivo (PDF, JPG, PNG):</label>
+                    <input type="file" id="docFile" accept=".pdf,.jpg,.jpeg,.png" onchange="handleFileUpload('docFile', 'docUrl')">
+                </div>
+                <div class="form-group">
+                    <label for="docUrl">O URL del documento:</label>
+                    <input type="url" id="docUrl" placeholder="https://ejemplo.com/documento.pdf">
+                </div>
+                <div class="form-group">
+                    <small>Puedes subir un archivo o proporcionar una URL. Si subes un archivo, se usará automáticamente.</small>
+                </div>
+                <button type="submit" class="btn btn-primary">Añadir Documento</button>
+            </form>
+        </div>
+    `;
+    document.body.appendChild(modal);
+    
+    document.getElementById('consultorioDocumentForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const fileInput = document.getElementById('docFile');
+        const urlInput = document.getElementById('docUrl');
+        
+        let documentUrl = urlInput.value;
+        
+        // Si se subió un archivo, crear una URL local
+        if (fileInput.files.length > 0) {
+            const file = fileInput.files[0];
+            documentUrl = URL.createObjectURL(file);
+        }
+        
+        if (!documentUrl) {
+            showNotification('Debes subir un archivo o proporcionar una URL', 'error');
+            return;
+        }
+        
+        const nuevoDocumento = {
+            nombre: document.getElementById('docNombre').value,
+            descripcion: document.getElementById('docDescripcion').value,
+            url: documentUrl,
+            fileName: fileInput.files.length > 0 ? fileInput.files[0].name : null
+        };
+        
+        consultorioConfig.documentos.push(nuevoDocumento);
+        saveConsultorioConfig();
+        loadConsultorioDocumentosInModal();
+        loadConsultorioList();
+        renderServicios();
+        
+        modal.remove();
+        showNotification('Documento añadido correctamente', 'success');
+    });
+}
+
+// Abrir modal para añadir foto del consultorio
+function openConsultorioFotoModal() {
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.style.display = 'block';
+    modal.innerHTML = `
+        <div class="modal-content">
+            <span class="close" onclick="this.closest('.modal').remove()">&times;</span>
+            <h2>📸 Añadir Foto del Consultorio</h2>
+            <form id="consultorioFotoForm" enctype="multipart/form-data">
+                <div class="form-group">
+                    <label for="fotoNombre">Nombre de la foto:</label>
+                    <input type="text" id="fotoNombre" required>
+                </div>
+                <div class="form-group">
+                    <label for="fotoDescripcion">Descripción:</label>
+                    <textarea id="fotoDescripcion" rows="3"></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="fotoFile">Subir imagen (JPG, PNG, GIF):</label>
+                    <input type="file" id="fotoFile" accept=".jpg,.jpeg,.png,.gif" onchange="handleFileUpload('fotoFile', 'fotoUrl')">
+                </div>
+                <div class="form-group">
+                    <label for="fotoUrl">O URL de la imagen:</label>
+                    <input type="url" id="fotoUrl" placeholder="https://ejemplo.com/imagen.jpg">
+                </div>
+                <div class="form-group">
+                    <small>Puedes subir una imagen o proporcionar una URL. Si subes un archivo, se usará automáticamente.</small>
+                </div>
+                <button type="submit" class="btn btn-primary">Añadir Foto</button>
+            </form>
+        </div>
+    `;
+    document.body.appendChild(modal);
+    
+    document.getElementById('consultorioFotoForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const fileInput = document.getElementById('fotoFile');
+        const urlInput = document.getElementById('fotoUrl');
+        
+        let fotoUrl = urlInput.value;
+        
+        // Si se subió un archivo, crear una URL local
+        if (fileInput.files.length > 0) {
+            const file = fileInput.files[0];
+            fotoUrl = URL.createObjectURL(file);
+        }
+        
+        if (!fotoUrl) {
+            showNotification('Debes subir una imagen o proporcionar una URL', 'error');
+            return;
+        }
+        
+        const nuevaFoto = {
+            nombre: document.getElementById('fotoNombre').value,
+            descripcion: document.getElementById('fotoDescripcion').value,
+            url: fotoUrl,
+            fileName: fileInput.files.length > 0 ? fileInput.files[0].name : null
+        };
+        
+        consultorioConfig.fotos.push(nuevaFoto);
+        saveConsultorioConfig();
+        loadConsultorioFotosInModal();
+        loadConsultorioList();
+        renderServicios();
+        
+        modal.remove();
+        showNotification('Foto añadida correctamente', 'success');
+    });
+}
+
+// Abrir modal para añadir documento de ITV
+function openItvDocumentModal() {
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.style.display = 'block';
+    modal.innerHTML = `
+        <div class="modal-content">
+            <span class="close" onclick="this.closest('.modal').remove()">&times;</span>
+            <h2>📋 Añadir Documento de ITV</h2>
+            <form id="itvDocumentForm" enctype="multipart/form-data">
+                <div class="form-group">
+                    <label for="itvDocNombre">Nombre del documento:</label>
+                    <input type="text" id="itvDocNombre" required>
+                </div>
+                <div class="form-group">
+                    <label for="itvDocDescripcion">Descripción:</label>
+                    <textarea id="itvDocDescripcion" rows="3"></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="itvDocFile">Subir archivo (PDF, JPG, PNG):</label>
+                    <input type="file" id="itvDocFile" accept=".pdf,.jpg,.jpeg,.png" onchange="handleFileUpload('itvDocFile', 'itvDocUrl')">
+                </div>
+                <div class="form-group">
+                    <label for="itvDocUrl">O URL del documento:</label>
+                    <input type="url" id="itvDocUrl" placeholder="https://ejemplo.com/documento.pdf">
+                </div>
+                <div class="form-group">
+                    <small>Puedes subir un archivo o proporcionar una URL. Si subes un archivo, se usará automáticamente.</small>
+                </div>
+                <button type="submit" class="btn btn-primary">Añadir Documento</button>
+            </form>
+        </div>
+    `;
+    document.body.appendChild(modal);
+    
+    document.getElementById('itvDocumentForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const fileInput = document.getElementById('itvDocFile');
+        const urlInput = document.getElementById('itvDocUrl');
+        
+        let documentUrl = urlInput.value;
+        
+        // Si se subió un archivo, crear una URL local
+        if (fileInput.files.length > 0) {
+            const file = fileInput.files[0];
+            documentUrl = URL.createObjectURL(file);
+        }
+        
+        if (!documentUrl) {
+            showNotification('Debes subir un archivo o proporcionar una URL', 'error');
+            return;
+        }
+        
+        const nuevoDocumento = {
+            nombre: document.getElementById('itvDocNombre').value,
+            descripcion: document.getElementById('itvDocDescripcion').value,
+            url: documentUrl,
+            fileName: fileInput.files.length > 0 ? fileInput.files[0].name : null
+        };
+        
+        consultorioConfig.documentos.push(nuevoDocumento);
+        saveConsultorioConfig();
+        loadItvDocumentosInModal();
+        loadItvList();
+        renderServicios();
+        
+        modal.remove();
+        showNotification('Documento añadido correctamente', 'success');
+    });
+}
+
+// Abrir modal para añadir foto de ITV
+function openItvFotoModal() {
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.style.display = 'block';
+    modal.innerHTML = `
+        <div class="modal-content">
+            <span class="close" onclick="this.closest('.modal').remove()">&times;</span>
+            <h2>📸 Añadir Foto de ITV</h2>
+            <form id="itvFotoForm" enctype="multipart/form-data">
+                <div class="form-group">
+                    <label for="itvFotoNombre">Nombre de la foto:</label>
+                    <input type="text" id="itvFotoNombre" required>
+                </div>
+                <div class="form-group">
+                    <label for="itvFotoDescripcion">Descripción:</label>
+                    <textarea id="itvFotoDescripcion" rows="3"></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="itvFotoFile">Subir imagen (JPG, PNG, GIF):</label>
+                    <input type="file" id="itvFotoFile" accept=".jpg,.jpeg,.png,.gif" onchange="handleFileUpload('itvFotoFile', 'itvFotoUrl')">
+                </div>
+                <div class="form-group">
+                    <label for="itvFotoUrl">O URL de la imagen:</label>
+                    <input type="url" id="itvFotoUrl" placeholder="https://ejemplo.com/imagen.jpg">
+                </div>
+                <div class="form-group">
+                    <small>Puedes subir una imagen o proporcionar una URL. Si subes un archivo, se usará automáticamente.</small>
+                </div>
+                <button type="submit" class="btn btn-primary">Añadir Foto</button>
+            </form>
+        </div>
+    `;
+    document.body.appendChild(modal);
+    
+    document.getElementById('itvFotoForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const fileInput = document.getElementById('itvFotoFile');
+        const urlInput = document.getElementById('itvFotoUrl');
+        
+        let fotoUrl = urlInput.value;
+        
+        // Si se subió un archivo, crear una URL local
+        if (fileInput.files.length > 0) {
+            const file = fileInput.files[0];
+            fotoUrl = URL.createObjectURL(file);
+        }
+        
+        if (!fotoUrl) {
+            showNotification('Debes subir una imagen o proporcionar una URL', 'error');
+            return;
+        }
+        
+        const nuevaFoto = {
+            nombre: document.getElementById('itvFotoNombre').value,
+            descripcion: document.getElementById('itvFotoDescripcion').value,
+            url: fotoUrl,
+            fileName: fileInput.files.length > 0 ? fileInput.files[0].name : null
+        };
+        
+        consultorioConfig.fotos.push(nuevaFoto);
+        saveConsultorioConfig();
+        loadItvFotosInModal();
+        loadItvList();
+        renderServicios();
+        
+        modal.remove();
+        showNotification('Foto añadida correctamente', 'success');
+    });
+}
+
+// Función para manejar la subida de archivos
+function handleFileUpload(fileInputId, urlInputId) {
+    const fileInput = document.getElementById(fileInputId);
+    const urlInput = document.getElementById(urlInputId);
+    
+    if (fileInput.files.length > 0) {
+        const file = fileInput.files[0];
+        const fileUrl = URL.createObjectURL(file);
+        urlInput.value = fileUrl;
+        urlInput.disabled = true;
+        urlInput.style.backgroundColor = '#f0f0f0';
+    } else {
+        urlInput.disabled = false;
+        urlInput.style.backgroundColor = '';
+    }
+}
+
+// Hacer funcional el botón "Editar Configuración" de Teléfonos de Interés
+function openTelefonosInteresModal() {
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.style.display = 'block';
+    modal.innerHTML = `
+        <div class="modal-content">
+            <span class="close" onclick="this.closest('.modal').remove()">&times;</span>
+            <h2>📞 Editar Configuración de Teléfonos de Interés</h2>
+            <form id="telefonosInteresConfigForm">
+                <div class="form-group">
+                    <label for="telefonosTitulo">Título de la sección:</label>
+                    <input type="text" id="telefonosTitulo" value="${telefonosInteresConfig.titulo}" required>
+                </div>
+                <div class="form-group">
+                    <label for="telefonosIcono">Icono:</label>
+                    <input type="text" id="telefonosIcono" value="${telefonosInteresConfig.icono}" maxlength="2">
+                </div>
+                <div class="form-group">
+                    <label for="telefonosDescripcion">Descripción:</label>
+                    <textarea id="telefonosDescripcion" rows="3">${telefonosInteresConfig.descripcion}</textarea>
+                </div>
+                <div class="form-group">
+                    <label for="telefonosTarjetaNombre">Nombre de la tarjeta:</label>
+                    <input type="text" id="telefonosTarjetaNombre" value="${telefonosInteresConfig.tarjeta.nombre}">
+                </div>
+                <div class="form-group">
+                    <label for="telefonosTarjetaEmoji">Emoji de la tarjeta:</label>
+                    <input type="text" id="telefonosTarjetaEmoji" value="${telefonosInteresConfig.tarjeta.emoji}" maxlength="2">
+                </div>
+                <div class="form-group">
+                    <label for="telefonosTarjetaDescripcion">Descripción de la tarjeta:</label>
+                    <textarea id="telefonosTarjetaDescripcion" rows="3">${telefonosInteresConfig.tarjeta.descripcion}</textarea>
+                </div>
+                <button type="submit" class="btn btn-primary">Guardar Configuración</button>
+            </form>
+        </div>
+    `;
+    document.body.appendChild(modal);
+    
+    document.getElementById('telefonosInteresConfigForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        telefonosInteresConfig.titulo = document.getElementById('telefonosTitulo').value;
+        telefonosInteresConfig.icono = document.getElementById('telefonosIcono').value;
+        telefonosInteresConfig.descripcion = document.getElementById('telefonosDescripcion').value;
+        telefonosInteresConfig.tarjeta.nombre = document.getElementById('telefonosTarjetaNombre').value;
+        telefonosInteresConfig.tarjeta.emoji = document.getElementById('telefonosTarjetaEmoji').value;
+        telefonosInteresConfig.tarjeta.descripcion = document.getElementById('telefonosTarjetaDescripcion').value;
+        
+        saveTelefonosInteresConfig();
+        loadTelefonosElementosList();
+        renderServicios();
+        
+        modal.remove();
+        showNotification('Configuración de Teléfonos de Interés guardada correctamente', 'success');
+    });
+}
+
+// Hacer funcional el botón "Nuevo Elemento" de Teléfonos de Interés
+function openTelefonoElementoModal() {
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.style.display = 'block';
+    modal.innerHTML = `
+        <div class="modal-content">
+            <span class="close" onclick="this.closest('.modal').remove()">&times;</span>
+            <h2>📞 Nuevo Elemento de Teléfonos de Interés</h2>
+            <form id="telefonoElementoForm">
+                <div class="form-group">
+                    <label for="elementoNombre">Nombre del elemento:</label>
+                    <input type="text" id="elementoNombre" required>
+                </div>
+                <div class="form-group">
+                    <label for="elementoEmoji">Emoji:</label>
+                    <input type="text" id="elementoEmoji" maxlength="2" required>
+                </div>
+                <div class="form-group">
+                    <label for="elementoDescripcion">Descripción:</label>
+                    <textarea id="elementoDescripcion" rows="3"></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="elementoTipo">Tipo:</label>
+                    <select id="elementoTipo" required>
+                        <option value="telefonos">📞 Teléfonos</option>
+                        <option value="servicio">🏢 Servicio</option>
+                        <option value="informacion">ℹ️ Información</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="elementoOrden">Orden de visualización:</label>
+                    <input type="number" id="elementoOrden" value="${telefonosInteresConfig.tarjeta.elementos.length + 1}" min="1">
+                </div>
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="elementoActivo" checked> Elemento activo
+                    </label>
+                </div>
+                <div class="form-group">
+                    <label>Datos del elemento:</label>
+                    <div id="elementoDatosContainer">
+                        <div class="dato-item">
+                            <input type="text" placeholder="Nombre del dato" class="dato-nombre">
+                            <input type="text" placeholder="Valor del dato" class="dato-valor">
+                            <button type="button" onclick="removeDatoItem(this)" class="btn btn-danger btn-small">Eliminar</button>
+                        </div>
+                    </div>
+                    <button type="button" onclick="addDatoItem()" class="btn btn-secondary btn-small">Añadir Dato</button>
+                </div>
+                <button type="submit" class="btn btn-primary">Crear Elemento</button>
+            </form>
+        </div>
+    `;
+    document.body.appendChild(modal);
+    
+    document.getElementById('telefonoElementoForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const datos = [];
+        document.querySelectorAll('#elementoDatosContainer .dato-item').forEach(item => {
+            const nombre = item.querySelector('.dato-nombre').value;
+            const valor = item.querySelector('.dato-valor').value;
+            if (nombre && valor) {
+                datos.push({ nombre, valor });
+            }
+        });
+        
+        const nuevoElemento = {
+            id: Date.now(),
+            nombre: document.getElementById('elementoNombre').value,
+            emoji: document.getElementById('elementoEmoji').value,
+            descripcion: document.getElementById('elementoDescripcion').value,
+            tipo: document.getElementById('elementoTipo').value,
+            datos: datos,
+            documento: null,
+            foto: null,
+            orden: parseInt(document.getElementById('elementoOrden').value),
+            isActive: document.getElementById('elementoActivo').checked
+        };
+        
+        telefonosInteresConfig.tarjeta.elementos.push(nuevoElemento);
+        saveTelefonosInteresConfig();
+        loadTelefonosElementosList();
+        renderServicios();
+        
+        modal.remove();
+        showNotification('Elemento de teléfono creado correctamente', 'success');
+    });
+}
+
+// Función para añadir un nuevo dato al elemento
+function addDatoItem() {
+    const container = document.getElementById('elementoDatosContainer');
+    const newItem = document.createElement('div');
+    newItem.className = 'dato-item';
+    newItem.innerHTML = `
+        <input type="text" placeholder="Nombre del dato" class="dato-nombre">
+        <input type="text" placeholder="Valor del dato" class="dato-valor">
+        <button type="button" onclick="removeDatoItem(this)" class="btn btn-danger btn-small">Eliminar</button>
+    `;
+    container.appendChild(newItem);
+}
+
+// Función para eliminar un dato del elemento
+function removeDatoItem(button) {
+    button.parentElement.remove();
+}
 
  

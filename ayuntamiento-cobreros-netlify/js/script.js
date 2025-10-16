@@ -456,31 +456,8 @@ function loadEvents() {
     if (savedEvents) {
         events = JSON.parse(savedEvents);
     } else {
-        // Eventos por defecto
-        events = [
-            {
-                id: 1,
-                title: 'Concierto de música clásica',
-                description: 'Auditorio Municipal - 20:00h',
-                date: '2024-01-25',
-                time: '20:00',
-                location: 'Auditorio Municipal',
-                category: 'cultura',
-                createdBy: 'system',
-                createdAt: new Date().toISOString()
-            },
-            {
-                id: 2,
-                title: 'Taller de pintura para niños',
-                description: 'Centro Cultural - 17:00h',
-                date: '2024-01-28',
-                time: '17:00',
-                location: 'Centro Cultural',
-                category: 'educacion',
-                createdBy: 'system',
-                createdAt: new Date().toISOString()
-            }
-        ];
+        // Inicializar con array vacío
+        events = [];
         localStorage.setItem('events', JSON.stringify(events));
     }
 }
@@ -582,30 +559,8 @@ function loadData() {
     if (savedNews) {
         news = JSON.parse(savedNews);
     } else {
-        // Datos de ejemplo
-        news = [
-            {
-                id: 1,
-                title: 'Nueva biblioteca municipal',
-                content: 'El Ayuntamiento inaugura las nuevas instalaciones de la biblioteca municipal con horario ampliado y nuevos servicios digitales. La nueva biblioteca cuenta con más de 5,000 libros, sala de estudio, área infantil y acceso a internet gratuito.',
-                date: '2024-01-20',
-                image: 'images/noticia-1.jpg'
-            },
-            {
-                id: 2,
-                title: 'Festival de verano 2024',
-                content: 'Se abre el plazo de inscripción para participar en el Festival de Verano de Cobreros. Habrá actividades para todas las edades: conciertos, talleres, actividades deportivas y gastronomía local.',
-                date: '2024-01-18',
-                image: 'images/noticia-2.jpg'
-            },
-            {
-                id: 3,
-                title: 'Mejoras en el alumbrado público',
-                content: 'El Ayuntamiento ha completado la renovación del alumbrado público en el casco histórico, mejorando la eficiencia energética y la seguridad ciudadana.',
-                date: '2024-01-15',
-                image: 'images/noticia-3.jpg'
-            }
-        ];
+        // Inicializar con array vacío
+        news = [];
         localStorage.setItem('news', JSON.stringify(news));
     }
 
@@ -614,14 +569,8 @@ function loadData() {
     if (savedBandos) {
         bandos = JSON.parse(savedBandos);
     } else {
-        bandos = [
-            {
-                id: 1,
-                title: 'Bando de Alcaldía - Enero 2024',
-                content: 'Por medio del presente bando, se informa a todos los vecinos y vecinas de Cobreros sobre las siguientes disposiciones municipales:\n\n1. HORARIO DE RECOGIDA DE BASURA: A partir del 1 de febrero, el horario de recogida de basura se modificará. Los lunes, miércoles y viernes se recogerá la basura orgánica, y los martes y jueves la basura inorgánica.\n\n2. NUEVAS ORDENANZAS DE RUIDO: Se recuerda que el horario de silencio es de 22:00 a 08:00 horas. Se aplicarán sanciones por incumplimiento.\n\n3. APERTURA DEL NUEVO CENTRO CULTURAL: El nuevo centro cultural abrirá sus puertas el próximo 15 de febrero con una programación especial de inauguración.\n\n4. LIMPIEZA DE CALLES: Se solicita la colaboración ciudadana para mantener limpias las calles y no depositar basura fuera de los contenedores.\n\nCobreros, 15 de enero de 2024\nEl Alcalde',
-                date: '2024-01-15'
-            }
-        ];
+        // Inicializar con array vacío
+        bandos = [];
         localStorage.setItem('bandos', JSON.stringify(bandos));
     }
 

@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Limpiar Datos de Ejemplo</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #1e3a8a;
+            text-align: center;
+        }
+        .info {
+            background: #e0f2fe;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+            border-left: 4px solid #0288d1;
+        }
+        .warning {
+            background: #fff3cd;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+            border-left: 4px solid #ffc107;
+        }
+        button {
+            background: #dc3545;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px;
+        }
+        button:hover {
+            background: #c82333;
+        }
+        .success {
+            background: #d4edda;
+            color: #155724;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+            border-left: 4px solid #28a745;
+        }
+        .data-list {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+        .data-item {
+            padding: 5px 0;
+            border-bottom: 1px solid #dee2e6;
+        }
+        .data-item:last-child {
+            border-bottom: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧹 Limpiar Datos de Ejemplo</h1>
+        
+        <div class="info">
+            <h3>📋 Información</h3>
+            <p>Esta herramienta eliminará todos los datos de ejemplo (bandos, noticias, eventos, cultura y ocio) del localStorage del navegador.</p>
+        </div>
+        
+        <div class="warning">
+            <h3>⚠️ Advertencia</h3>
+            <p><strong>Esta acción no se puede deshacer.</strong> Se eliminarán permanentemente todos los datos de ejemplo almacenados en el navegador.</p>
+        </div>
+        
+        <div id="currentData" class="data-list">
+            <h3>📊 Datos actuales en localStorage:</h3>
+            <div id="dataList"></div>
+        </div>
+        
+        <div style="text-align: center;">
+            <button onclick="limpiarDatos()">🗑️ Limpiar Datos de Ejemplo</button>
+            <button onclick="recargarPagina()">🔄 Recargar Página</button>
+        </div>
+        
+        <div id="resultado"></div>
+    </div>
+
+    <script>
+        // Mostrar datos actuales
+        function mostrarDatosActuales() {
+            const dataList = document.getElementById('dataList');
+            const keys = ['news', 'bandos', 'events', 'culturaOcioConfig'];
+            let html = '';
+            
+            keys.forEach(key => {
+                const data = localStorage.getItem(key);
+                if (data) {
+                    try {
+                        const parsed = JSON.parse(data);
+                        const count = Array.isArray(parsed) ? parsed.length : (parsed.tarjetas ? parsed.tarjetas.length : 1);
+                        html += `<div class="data-item"><strong>${key}:</strong> ${count} elemento(s) encontrado(s)</div>`;
+                    } catch (e) {
+                        html += `<div class="data-item"><strong>${key}:</strong> Datos encontrados (formato no válido)</div>`;
+                    }
+                } else {
+                    html += `<div class="data-item"><strong>${key}:</strong> No hay datos</div>`;
+                }
+            });
+            
+            dataList.innerHTML = html;
+        }
+        
+        // Limpiar datos de ejemplo
+        function limpiarDatos() {
+            const resultado = document.getElementById('resultado');
+            let limpiados = [];
+            
+            // Limpiar noticias
+            const news = localStorage.getItem('news');
+            if (news) {
+                try {
+                    const parsed = JSON.parse(news);
+                    if (Array.isArray(parsed) && parsed.length > 0) {
+                        localStorage.setItem('news', JSON.stringify([]));
+                        limpiados.push(`Noticias: ${parsed.length} elemento(s) eliminado(s)`);
+                    }
+                } catch (e) {
+                    localStorage.removeItem('news');
+                    limpiados.push('Noticias: datos eliminados');
+                }
+            }
+            
+            // Limpiar bandos
+            const bandos = localStorage.getItem('bandos');
+            if (bandos) {
+                try {
+                    const parsed = JSON.parse(bandos);
+                    if (Array.isArray(parsed) && parsed.length > 0) {
+                        localStorage.setItem('bandos', JSON.stringify([]));
+                        limpiados.push(`Bandos: ${parsed.length} elemento(s) eliminado(s)`);
+                    }
+                } catch (e) {
+                    localStorage.removeItem('bandos');
+                    limpiados.push('Bandos: datos eliminados');
+                }
+            }
+            
+            // Limpiar eventos
+            const events = localStorage.getItem('events');
+            if (events) {
+                try {
+                    const parsed = JSON.parse(events);
+                    if (Array.isArray(parsed) && parsed.length > 0) {
+                        localStorage.setItem('events', JSON.stringify([]));
+                        limpiados.push(`Eventos: ${parsed.length} elemento(s) eliminado(s)`);
+                    }
+                } catch (e) {
+                    localStorage.removeItem('events');
+                    limpiados.push('Eventos: datos eliminados');
+                }
+            }
+            
+            // Limpiar cultura y ocio
+            const cultura = localStorage.getItem('culturaOcioConfig');
+            if (cultura) {
+                try {
+                    const parsed = JSON.parse(cultura);
+                    if (parsed.tarjetas && parsed.tarjetas.length > 0) {
+                        parsed.tarjetas = [];
+                        localStorage.setItem('culturaOcioConfig', JSON.stringify(parsed));
+                        limpiados.push('Cultura y Ocio: tarjetas eliminadas');
+                    }
+                } catch (e) {
+                    localStorage.removeItem('culturaOcioConfig');
+                    limpiados.push('Cultura y Ocio: datos eliminados');
+                }
+            }
+            
+            if (limpiados.length > 0) {
+                resultado.innerHTML = `
+                    <div class="success">
+                        <h3>✅ Datos limpiados exitosamente</h3>
+                        <ul>
+                            ${limpiados.map(item => `<li>${item}</li>`).join('')}
+                        </ul>
+                        <p><strong>Los datos de ejemplo han sido eliminados del localStorage.</strong></p>
+                    </div>
+                `;
+            } else {
+                resultado.innerHTML = `
+                    <div class="info">
+                        <h3>ℹ️ No hay datos de ejemplo</h3>
+                        <p>No se encontraron datos de ejemplo para limpiar en el localStorage.</p>
+                    </div>
+                `;
+            }
+            
+            // Actualizar la lista de datos actuales
+            mostrarDatosActuales();
+        }
+        
+        // Recargar página
+        function recargarPagina() {
+            window.location.href = 'index.html';
+        }
+        
+        // Mostrar datos actuales al cargar la página
+        mostrarDatosActuales();
+    </script>
+</body>
+</html>
+
