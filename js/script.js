@@ -8224,18 +8224,35 @@ function renderAccordionSection(sectionId, items) {
     const container = document.getElementById(`${sectionId}Items`);
     if (!container) return;
     
+    if (items.length === 0) {
+        container.innerHTML = '<p style="text-align: center; color: #6c757d; padding: 20px;">No hay elementos en esta sección</p>';
+        return;
+    }
+    
     container.innerHTML = items.map(item => `
         <div class="accordion-item-card">
             ${item.image ? `<img src="${item.image}" alt="${item.title}" class="item-image" onerror="this.style.display='none'">` : ''}
             <h4>${item.title}</h4>
             <p>${item.description}</p>
-            <div class="item-links">
-                ${item.links.map(link => `
-                    <a href="${link.url}" class="item-link ${link.type}" target="_blank">
-                        ${link.text}
+            ${item.links && item.links.length > 0 ? `
+                <div class="item-links">
+                    ${item.links.map(link => `
+                        <a href="${link.url}" class="item-link ${link.type || 'normal'}" 
+                           ${link.type === 'external' ? 'target="_blank"' : ''}
+                           onclick="handleCulturaLink('${link.type || 'normal'}', '${link.url}', '${item.id}')">
+                            ${link.text}
+                        </a>
+                    `).join('')}
+                </div>
+            ` : ''}
+            ${item.externalLink ? `
+                <div class="item-links">
+                    <a href="${item.externalLink}" class="item-link external" target="_blank"
+                       onclick="handleCulturaLink('external', '${item.externalLink}', '${item.id}')">
+                        🌐 Ver más información
                     </a>
-                `).join('')}
-            </div>
+                </div>
+            ` : ''}
         </div>
     `).join('');
 }
@@ -10734,6 +10751,229 @@ function removeDatoItem(button) {
 
 // ===== FUNCIONES DE GESTIÓN DE CULTURA Y OCIO =====
 
+// Función para manejar enlaces de cultura y ocio
+function handleCulturaLink(type, url, itemId) {
+    console.log(`🔗 Enlace de cultura clickeado: ${type} - ${url}`);
+    
+    switch(type) {
+        case 'pdf':
+            // Abrir PDF en nueva ventana
+            window.open(url, '_blank');
+            break;
+        case 'external':
+            // Abrir enlace externo en nueva ventana
+            window.open(url, '_blank');
+            break;
+        case 'normal':
+            // Enlaces normales (pueden ser internos o externos)
+            if (url.startsWith('http')) {
+                window.open(url, '_blank');
+            } else {
+                // Enlace interno - podría abrir un modal o navegar
+                handleInternalCulturaLink(url, itemId);
+            }
+            break;
+        default:
+            // Por defecto, abrir en nueva ventana
+            window.open(url, '_blank');
+    }
+    
+    // Registrar estadística de clic
+    recordCulturaLinkClick(itemId, type, url);
+}
+
+// Función para manejar enlaces internos de cultura
+function handleInternalCulturaLink(url, itemId) {
+    console.log(`🔗 Enlace interno: ${url} para elemento ${itemId}`);
+    
+    // Manejar enlaces específicos
+    switch(url) {
+        case 'guia-setas':
+        case 'guia_setas':
+            openGuiaSetas();
+            break;
+        case 'calendario-recoleccion':
+        case 'calendario_recoleccion':
+            openCalendarioRecoleccion();
+            break;
+        case 'mapa-rutas':
+        case 'mapa_rutas':
+            openMapaRutas();
+            break;
+        case 'eventos-calendario':
+        case 'eventos_calendario':
+            openCalendarioEventos();
+            break;
+        default:
+            // Por defecto, mostrar notificación
+            showNotification(`Enlace interno: ${url}`, 'info');
+    }
+}
+
+// Función para registrar estadísticas de clics en enlaces
+function recordCulturaLinkClick(itemId, type, url) {
+    try {
+        const stats = JSON.parse(localStorage.getItem('culturaLinkStats') || '{}');
+        const key = `${itemId}_${type}_${url}`;
+        stats[key] = (stats[key] || 0) + 1;
+        stats[`${itemId}_total`] = (stats[`${itemId}_total`] || 0) + 1;
+        localStorage.setItem('culturaLinkStats', JSON.stringify(stats));
+        
+        console.log(`📊 Estadística registrada: ${key} = ${stats[key]}`);
+    } catch (error) {
+        console.error('Error registrando estadística:', error);
+    }
+}
+
+// Función para abrir guía de setas
+function openGuiaSetas() {
+    // Crear modal con información de setas
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.style.display = 'block';
+    modal.innerHTML = `
+        <div class="modal-content" style="max-width: 800px;">
+            <div class="modal-header">
+                <h3>🍄 Guía de Setas de Cobreros</h3>
+                <span class="close" onclick="this.closest('.modal').remove()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="setas-guide">
+                    <h4>📋 Especies Comunes en la Zona</h4>
+                    <div class="setas-grid">
+                        <div class="seta-item">
+                            <h5>🍄 Boletus edulis (Boleto)</h5>
+                            <p><strong>Época:</strong> Otoño (Septiembre-Noviembre)</p>
+                            <p><strong>Hábitat:</strong> Bosques de robles y castaños</p>
+                            <p><strong>Identificación:</strong> Sombrero marrón, pie grueso, poros blancos</p>
+                        </div>
+                        <div class="seta-item">
+                            <h5>🍄 Lactarius deliciosus (Níscalo)</h5>
+                            <p><strong>Época:</strong> Otoño (Octubre-Diciembre)</p>
+                            <p><strong>Hábitat:</strong> Pinares</p>
+                            <p><strong>Identificación:</strong> Sombrero naranja, látex naranja</p>
+                        </div>
+                        <div class="seta-item">
+                            <h5>🍄 Cantharellus cibarius (Rebozuelo)</h5>
+                            <p><strong>Época:</strong> Verano-Otoño</p>
+                            <p><strong>Hábitat:</strong> Bosques húmedos</p>
+                            <p><strong>Identificación:</strong> Color amarillo dorado, forma de embudo</p>
+                        </div>
+                        <div class="seta-item">
+                            <h5>🍄 Amanita caesarea (Oronja)</h5>
+                            <p><strong>Época:</strong> Verano-Otoño</p>
+                            <p><strong>Hábitat:</strong> Bosques de encinas</p>
+                            <p><strong>Identificación:</strong> Sombrero naranja, pie amarillo</p>
+                        </div>
+                    </div>
+                    
+                    <h4>⚠️ Precauciones Importantes</h4>
+                    <ul>
+                        <li>Nunca consumir setas sin identificación segura</li>
+                        <li>Consultar con expertos micólogos</li>
+                        <li>Recoger solo ejemplares en buen estado</li>
+                        <li>Usar cesta de mimbre para esporar</li>
+                        <li>No arrancar, cortar por el pie</li>
+                    </ul>
+                    
+                    <h4>📞 Contactos de Emergencia</h4>
+                    <p><strong>Centro de Interpretación Micológico de Ungilde:</strong> 980 123 456</p>
+                    <p><strong>Guardia Civil:</strong> 062</p>
+                    <p><strong>Emergencias Sanitarias:</strong> 112</p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-primary" onclick="this.closest('.modal').remove()">Cerrar</button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+}
+
+// Función para abrir calendario de recolección
+function openCalendarioRecoleccion() {
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.style.display = 'block';
+    modal.innerHTML = `
+        <div class="modal-content" style="max-width: 900px;">
+            <div class="modal-header">
+                <h3>🗓️ Calendario de Recolección - Cobreros</h3>
+                <span class="close" onclick="this.closest('.modal').remove()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="calendario-recoleccion">
+                    <div class="mes-grid">
+                        <div class="mes-item">
+                            <h4>🌱 Marzo - Abril</h4>
+                            <ul>
+                                <li>Colmenillas (Morchella)</li>
+                                <li>Senderuelas (Marasmius oreades)</li>
+                                <li>Perrechicos (Calocybe gambosa)</li>
+                            </ul>
+                        </div>
+                        <div class="mes-item">
+                            <h4>🌿 Mayo - Junio</h4>
+                            <ul>
+                                <li>Rebozuelos (Cantharellus)</li>
+                                <li>Boletos de verano</li>
+                                <li>Parasoles (Macrolepiota)</li>
+                            </ul>
+                        </div>
+                        <div class="mes-item">
+                            <h4>☀️ Julio - Agosto</h4>
+                            <ul>
+                                <li>Boletos de verano</li>
+                                <li>Rebozuelos</li>
+                                <li>Oronjas (Amanita caesarea)</li>
+                            </ul>
+                        </div>
+                        <div class="mes-item">
+                            <h4>🍂 Septiembre - Octubre</h4>
+                            <ul>
+                                <li>Boletus edulis</li>
+                                <li>Níscalos (Lactarius)</li>
+                                <li>Rebozuelos</li>
+                                <li>Parasoles</li>
+                            </ul>
+                        </div>
+                        <div class="mes-item">
+                            <h4>🍁 Noviembre - Diciembre</h4>
+                            <ul>
+                                <li>Níscalos tardíos</li>
+                                <li>Boletos de invierno</li>
+                                <li>Pleurotus (setas de ostra)</li>
+                            </ul>
+                        </div>
+                        <div class="mes-item">
+                            <h4>❄️ Enero - Febrero</h4>
+                            <ul>
+                                <li>Pleurotus</li>
+                                <li>Flammulina (setas de invierno)</li>
+                                <li>Boletos de invierno</li>
+                            </ul>
+                        </div>
+                    </div>
+                    
+                    <div class="consejos-recoleccion">
+                        <h4>💡 Consejos de Recolección</h4>
+                        <ul>
+                            <li><strong>Mejor momento:</strong> Después de lluvias, por la mañana temprano</li>
+                            <li><strong>Equipamiento:</strong> Cesta, navaja, guía de campo</li>
+                            <li><strong>Conservación:</strong> Limpiar y procesar el mismo día</li>
+                            <li><strong>Lugares:</strong> Bosques húmedos, zonas sombrías</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-primary" onclick="this.closest('.modal').remove()">Cerrar</button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+}
+
 // Variables globales para gestión de cultura y ocio
 let culturaOcioData = {
     naturaleza: [],
@@ -11025,6 +11265,130 @@ function saveCulturaOcio() {
     setTimeout(() => {
         backupContentToFirestore();
     }, 1000);
+}
+
+// Función para abrir mapa de rutas
+function openMapaRutas() {
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.style.display = 'block';
+    modal.innerHTML = `
+        <div class="modal-content" style="max-width: 1000px;">
+            <div class="modal-header">
+                <h3>🗺️ Mapa de Rutas de Senderismo - Cobreros</h3>
+                <span class="close" onclick="this.closest('.modal').remove()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="rutas-map">
+                    <h4>🥾 Rutas Principales</h4>
+                    <div class="rutas-grid">
+                        <div class="ruta-item">
+                            <h5>🌊 Cascadas de Sotillo</h5>
+                            <p><strong>Distancia:</strong> 8 km (ida y vuelta)</p>
+                            <p><strong>Dificultad:</strong> Media</p>
+                            <p><strong>Duración:</strong> 3-4 horas</p>
+                            <p><strong>Punto de inicio:</strong> Centro de Cobreros</p>
+                        </div>
+                        <div class="ruta-item">
+                            <h5>🌊 Cascadas de Aguas Cernidas</h5>
+                            <p><strong>Distancia:</strong> 12 km (ida y vuelta)</p>
+                            <p><strong>Dificultad:</strong> Media-Alta</p>
+                            <p><strong>Duración:</strong> 4-5 horas</p>
+                            <p><strong>Punto de inicio:</strong> Terroso</p>
+                        </div>
+                        <div class="ruta-item">
+                            <h5>🏔️ Lago de Sanabria</h5>
+                            <p><strong>Distancia:</strong> 15 km (ida y vuelta)</p>
+                            <p><strong>Dificultad:</strong> Media</p>
+                            <p><strong>Duración:</strong> 5-6 horas</p>
+                            <p><strong>Punto de inicio:</strong> Puebla de Sanabria</p>
+                        </div>
+                        <div class="ruta-item">
+                            <h5>🌲 Ruta del Tejedelo</h5>
+                            <p><strong>Distancia:</strong> 10 km (ida y vuelta)</p>
+                            <p><strong>Dificultad:</strong> Media</p>
+                            <p><strong>Duración:</strong> 4 horas</p>
+                            <p><strong>Punto de inicio:</strong> Requejo</p>
+                        </div>
+                    </div>
+                    
+                    <h4>📋 Consejos para Senderismo</h4>
+                    <ul>
+                        <li>Llevar agua y comida suficiente</li>
+                        <li>Usar calzado adecuado y ropa cómoda</li>
+                        <li>Informar del itinerario a familiares</li>
+                        <li>Respetar el medio ambiente</li>
+                        <li>No salir solo en rutas de dificultad alta</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-primary" onclick="this.closest('.modal').remove()">Cerrar</button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+}
+
+// Función para abrir calendario de eventos
+function openCalendarioEventos() {
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.style.display = 'block';
+    modal.innerHTML = `
+        <div class="modal-content" style="max-width: 1000px;">
+            <div class="modal-header">
+                <h3>🎪 Calendario de Eventos - Cobreros</h3>
+                <span class="close" onclick="this.closest('.modal').remove()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="eventos-calendario">
+                    <h4>📅 Eventos Anuales</h4>
+                    <div class="eventos-grid">
+                        <div class="evento-item">
+                            <h5>🎉 Fiestas Patronales</h5>
+                            <p><strong>Fecha:</strong> 15-17 de Agosto</p>
+                            <p><strong>Actividades:</strong> Procesión, verbenas, actividades infantiles</p>
+                        </div>
+                        <div class="evento-item">
+                            <h5>🍂 Fiesta de la Castaña</h5>
+                            <p><strong>Fecha:</strong> Último domingo de Octubre</p>
+                            <p><strong>Actividades:</strong> Recolección, degustación, música tradicional</p>
+                        </div>
+                        <div class="evento-item">
+                            <h5>🍄 Jornadas Micológicas</h5>
+                            <p><strong>Fecha:</strong> Noviembre</p>
+                            <p><strong>Actividades:</strong> Salidas guiadas, charlas, degustación</p>
+                        </div>
+                        <div class="evento-item">
+                            <h5>🎭 Festival de Teatro Rural</h5>
+                            <p><strong>Fecha:</strong> Julio</p>
+                            <p><strong>Actividades:</strong> Obras de teatro, talleres, exposiciones</p>
+                        </div>
+                        <div class="evento-item">
+                            <h5>🏃‍♂️ Marcha Popular</h5>
+                            <p><strong>Fecha:</strong> Mayo</p>
+                            <p><strong>Actividades:</strong> Rutas de senderismo, actividades deportivas</p>
+                        </div>
+                        <div class="evento-item">
+                            <h5>🎵 Festival de Música Tradicional</h5>
+                            <p><strong>Fecha:</strong> Septiembre</p>
+                            <p><strong>Actividades:</strong> Conciertos, talleres de instrumentos</p>
+                        </div>
+                    </div>
+                    
+                    <h4>📞 Información de Eventos</h4>
+                    <p><strong>Ayuntamiento de Cobreros:</strong> 980 123 456</p>
+                    <p><strong>Email:</strong> info@ayuntamientocobreros.com</p>
+                    <p><strong>Web:</strong> www.ayuntamientocobreros.com</p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-primary" onclick="this.closest('.modal').remove()">Cerrar</button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
 }
 
  
