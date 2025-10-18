@@ -47,6 +47,11 @@ document.addEventListener('DOMContentLoaded', function() {
     // Asegurar persistencia completa
     ensureCompletePersistence();
     
+    // Configurar editor de texto enriquecido
+    setTimeout(() => {
+        setupRichEditor();
+    }, 1000);
+    
     // Cargar configuración de citas previas (CRÍTICO - SIEMPRE PRIMERO)
     loadAppointmentSettings();
     
@@ -534,11 +539,10 @@ function closeDesktopInfo() {
     const desktopInfoElement = document.getElementById('desktopAppInfo');
     
     if (desktopInfoElement) {
-        // Ocultar con animación
-        desktopInfoElement.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
-        desktopInfoElement.style.opacity = '0';
-        desktopInfoElement.style.transform = 'translateY(-10px)';
+        // Añadir clase de animación de salida
+        desktopInfoElement.classList.add('closing');
         
+        // Ocultar después de la animación
         setTimeout(() => {
             desktopInfoElement.style.display = 'none';
             // Guardar que el usuario cerró el mensaje
@@ -1626,9 +1630,17 @@ function handleNotification(e) {
     e.preventDefault();
     const formData = new FormData(e.target);
     const title = formData.get('title');
-    const message = formData.get('message');
+    
+    // Obtener mensaje del editor de texto enriquecido
+    const message = getRichEditorContent();
     const type = formData.get('type');
     const attachmentFile = formData.get('attachment');
+
+    // Validar que el mensaje no esté vacío
+    if (!message || message.trim() === '' || message === '<div><br></div>' || message === '<br>') {
+        showNotification('Por favor, escribe un mensaje para la notificación', 'error');
+        return;
+    }
 
     let attachment = null;
     if (attachmentFile && attachmentFile.size > 0) {
@@ -1644,7 +1656,16 @@ function handleNotification(e) {
 
     sendNotificationToUsers(title, message, type, attachment);
     showNotification('Notificación enviada correctamente', 'success');
+    
+    // Limpiar formulario y editor
     e.target.reset();
+    clearRichEditor();
+    
+    // Limpiar vista previa
+    const preview = document.getElementById('messagePreview');
+    if (preview) {
+        preview.innerHTML = '<em style="color: #6c757d;">Vista previa del mensaje...</em>';
+    }
 }
 
 // Enviar notificación a usuarios
@@ -5165,7 +5186,7 @@ function openNotificationEditor(notificationId = null) {
             document.getElementById('notificationId').value = notification.id;
             document.getElementById('notificationType').value = notification.type;
             document.getElementById('notificationTitle').value = notification.title;
-            document.getElementById('notificationMessage').value = notification.message;
+            setRichEditorContent(notification.message);
             document.getElementById('notificationStartDate').value = notification.startDate;
             document.getElementById('notificationEndDate').value = notification.endDate || '';
             document.getElementById('notificationPriority').value = notification.priority;
@@ -7690,6 +7711,207 @@ function updateSectionTitles() {
     }
 }
 
+// ===== EDITOR DE TEXTO ENRIQUECIDO =====
+
+// Formatear texto en el editor
+function formatText(command, value = null) {
+    const editor = document.getElementById('notificationMessage');
+    
+    if (!editor) {
+        console.error('Editor no encontrado');
+        return;
+    }
+    
+    // Asegurar que el editor tenga foco
+    editor.focus();
+    
+    try {
+        if (value) {
+            document.execCommand(command, false, value);
+        } else {
+            document.execCommand(command, false, null);
+        }
+        
+        // Actualizar vista previa
+        updateMessagePreview();
+        
+        // Actualizar estado de botones
+        updateToolbarButtons();
+        
+        console.log(`✅ Formato aplicado: ${command}${value ? ' = ' + value : ''}`);
+        
+    } catch (error) {
+        console.error('❌ Error aplicando formato:', error);
+    }
+}
+
+// Limpiar formato del texto
+function clearFormatting() {
+    const editor = document.getElementById('notificationMessage');
+    
+    if (!editor) {
+        console.error('Editor no encontrado');
+        return;
+    }
+    
+    try {
+        // Seleccionar todo el contenido
+        const range = document.createRange();
+        range.selectNodeContents(editor);
+        const selection = window.getSelection();
+        selection.removeAllRanges();
+        selection.addRange(range);
+        
+        // Limpiar formato
+        document.execCommand('removeFormat', false, null);
+        
+        // Limpiar selección
+        selection.removeAllRanges();
+        
+        // Actualizar vista previa
+        updateMessagePreview();
+        
+        // Actualizar estado de botones
+        updateToolbarButtons();
+        
+        console.log('✅ Formato limpiado');
+        
+    } catch (error) {
+        console.error('❌ Error limpiando formato:', error);
+    }
+}
+
+// Actualizar vista previa del mensaje
+function updateMessagePreview() {
+    const editor = document.getElementById('notificationMessage');
+    const preview = document.getElementById('messagePreview');
+    
+    if (!editor || !preview) {
+        return;
+    }
+    
+    // Copiar contenido HTML al preview
+    preview.innerHTML = editor.innerHTML;
+    
+    // Si está vacío, mostrar placeholder
+    if (!editor.textContent.trim()) {
+        preview.innerHTML = '<em style="color: #6c757d;">Vista previa del mensaje...</em>';
+    }
+}
+
+// Actualizar estado de botones de la barra de herramientas
+function updateToolbarButtons() {
+    const editor = document.getElementById('notificationMessage');
+    
+    if (!editor) {
+        return;
+    }
+    
+    // Verificar estado de formato
+    const isBold = document.queryCommandState('bold');
+    const isItalic = document.queryCommandState('italic');
+    const isUnderline = document.queryCommandState('underline');
+    
+    // Actualizar botones
+    updateButtonState('bold', isBold);
+    updateButtonState('italic', isItalic);
+    updateButtonState('underline', isUnderline);
+}
+
+// Actualizar estado de un botón
+function updateButtonState(command, isActive) {
+    const buttons = document.querySelectorAll(`[onclick*="${command}"]`);
+    buttons.forEach(button => {
+        if (isActive) {
+            button.classList.add('active');
+        } else {
+            button.classList.remove('active');
+        }
+    });
+}
+
+// Configurar eventos del editor
+function setupRichEditor() {
+    const editor = document.getElementById('notificationMessage');
+    
+    if (!editor) {
+        return;
+    }
+    
+    // Evento de entrada de texto
+    editor.addEventListener('input', function() {
+        updateMessagePreview();
+        updateToolbarButtons();
+    });
+    
+    // Evento de selección
+    editor.addEventListener('mouseup', function() {
+        updateToolbarButtons();
+    });
+    
+    // Evento de teclado
+    editor.addEventListener('keyup', function() {
+        updateToolbarButtons();
+    });
+    
+    // Evento de foco
+    editor.addEventListener('focus', function() {
+        updateToolbarButtons();
+    });
+    
+    // Prevenir pegado de HTML no deseado
+    editor.addEventListener('paste', function(e) {
+        e.preventDefault();
+        
+        // Obtener texto plano
+        const text = (e.clipboardData || window.clipboardData).getData('text/plain');
+        
+        // Insertar texto plano
+        document.execCommand('insertText', false, text);
+        
+        updateMessagePreview();
+    });
+    
+    console.log('✅ Editor de texto enriquecido configurado');
+}
+
+// Obtener contenido HTML del editor
+function getRichEditorContent() {
+    const editor = document.getElementById('notificationMessage');
+    
+    if (!editor) {
+        return '';
+    }
+    
+    return editor.innerHTML;
+}
+
+// Establecer contenido HTML en el editor
+function setRichEditorContent(html) {
+    const editor = document.getElementById('notificationMessage');
+    
+    if (!editor) {
+        return;
+    }
+    
+    editor.innerHTML = html;
+    updateMessagePreview();
+    updateToolbarButtons();
+}
+
+// Limpiar editor
+function clearRichEditor() {
+    const editor = document.getElementById('notificationMessage');
+    
+    if (!editor) {
+        return;
+    }
+    
+    editor.innerHTML = '';
+    updateMessagePreview();
+    updateToolbarButtons();
+}
+
 // ===== SISTEMA DE PERSISTENCIA COMPLETA =====
 
 // Asegurar persistencia completa de todos los datos
@@ -8990,7 +9212,9 @@ function setupNotificationForm() {
 // Enviar notificación desde el formulario
 function enviarNotificacionDesdeFormulario() {
     const titulo = document.getElementById('notifTitle').value.trim();
-    const mensaje = document.getElementById('notifMessage').value.trim();
+    
+    // Obtener mensaje del editor de texto enriquecido
+    const mensaje = getRichEditorContent();
     const tipo = document.getElementById('notifType').value;
     const archivo = document.getElementById('notifAttachment').files[0];
     const destinatarios = document.querySelector('input[name="destinatarios"]:checked').value;
@@ -8998,6 +9222,12 @@ function enviarNotificacionDesdeFormulario() {
     // Validaciones
     if (!titulo) {
         alert('Por favor, ingrese un título para la notificación.');
+        return;
+    }
+    
+    // Validar que el mensaje no esté vacío
+    if (!mensaje || mensaje.trim() === '' || mensaje === '<div><br></div>' || mensaje === '<br>') {
+        alert('Por favor, escribe un mensaje para la notificación.');
         return;
     }
     
@@ -9034,6 +9264,15 @@ function limpiarFormularioNotificacion() {
     document.getElementById('notificationForm').reset();
     document.getElementById('localidadesGroup').style.display = 'none';
     document.querySelector('input[name="destinatarios"][value="todos"]').checked = true;
+    
+    // Limpiar editor de texto enriquecido
+    clearRichEditor();
+    
+    // Limpiar vista previa
+    const preview = document.getElementById('messagePreview');
+    if (preview) {
+        preview.innerHTML = '<em style="color: #6c757d;">Vista previa del mensaje...</em>';
+    }
 }
 
 // Abrir modal para enviar notificación personalizada

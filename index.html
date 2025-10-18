@@ -126,26 +126,6 @@
                 </div>
             </div>
 
-            <!-- Información específica para desktop -->
-            <div class="desktop-info desktop-only" id="desktopAppInfo">
-                <button class="close-desktop-info" onclick="closeDesktopInfo()" title="Cerrar">×</button>
-                <h3>📱 App COBREROS para Móvil</h3>
-                <p><strong>Regístrate y entra en www.ayuntamientocobreros.com desde tu móvil</strong> y podrás descargarte la app para recibir notificaciones oficiales del ayuntamiento.</p>
-                <div class="desktop-info-steps">
-                    <div class="step">
-                        <span class="step-number">1</span>
-                        <span>Accede desde tu móvil a www.ayuntamientocobreros.com</span>
-                    </div>
-                    <div class="step">
-                        <span class="step-number">2</span>
-                        <span>Regístrate en el portal municipal</span>
-                    </div>
-                    <div class="step">
-                        <span class="step-number">3</span>
-                        <span>Descarga la app COBREROS para notificaciones</span>
-                    </div>
-                </div>
-            </div>
                 <nav class="main-nav">
                     <ul>
                         <li><a href="#inicio" class="nav-link active" data-icon="home">🏠 Inicio</a></li>
@@ -1480,26 +1460,44 @@
             max-width: 800px;
         }
         
-        .device-desktop .desktop-info {
-            background: #f8f9fa;
-            border-left: 4px solid #007bff;
-            padding: 20px;
-            margin: 20px 0;
-            border-radius: 0 8px 8px 0;
-            position: relative;
+        /* Mensaje flotante para desktop */
+        .floating-desktop-info {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 400px;
+            background: linear-gradient(135deg, #007bff, #0056b3);
+            color: white;
+            border-radius: 12px;
+            box-shadow: 0 8px 25px rgba(0, 123, 255, 0.3);
+            z-index: 1000;
+            animation: slideInCenter 0.5s ease-out;
+            border: 1px solid rgba(255, 255, 255, 0.2);
         }
 
-        .close-desktop-info {
+        @keyframes slideInCenter {
+            from {
+                transform: translate(-50%, -50%) scale(0.8);
+                opacity: 0;
+            }
+            to {
+                transform: translate(-50%, -50%) scale(1);
+                opacity: 1;
+            }
+        }
+
+        .close-floating-info {
             position: absolute;
-            top: 10px;
-            right: 15px;
-            background: none;
+            top: 8px;
+            right: 8px;
+            background: rgba(255, 255, 255, 0.2);
             border: none;
-            font-size: 24px;
-            color: #6c757d;
+            color: white;
+            font-size: 18px;
             cursor: pointer;
-            width: 30px;
-            height: 30px;
+            width: 24px;
+            height: 24px;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -1507,64 +1505,43 @@
             transition: all 0.3s ease;
         }
 
-        .close-desktop-info:hover {
-            background: #e9ecef;
-            color: #495057;
+        .close-floating-info:hover {
+            background: rgba(255, 255, 255, 0.3);
             transform: scale(1.1);
         }
 
-        .desktop-info h3 {
-            color: #2c3e50;
-            margin-bottom: 15px;
-            font-size: 1.3rem;
+        .floating-content {
+            padding: 20px 24px 20px 20px;
+            text-align: center;
         }
 
-        .desktop-info p {
-            color: #34495e;
-            margin-bottom: 20px;
+        .floating-content h4 {
+            margin: 0 0 12px 0;
             font-size: 1.1rem;
-            line-height: 1.5;
+            font-weight: 600;
         }
 
-        .desktop-info-steps {
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-        }
-
-        .step {
-            display: flex;
-            align-items: center;
-            gap: 15px;
-            padding: 12px;
-            background: white;
-            border-radius: 8px;
-            border: 1px solid #e1e5e9;
-            transition: all 0.3s ease;
-        }
-
-        .step:hover {
-            box-shadow: 0 2px 8px rgba(0, 123, 255, 0.1);
-            border-color: #007bff;
-        }
-
-        .step-number {
-            background: #007bff;
-            color: white;
-            width: 30px;
-            height: 30px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: bold;
+        .floating-content p {
+            margin: 0;
             font-size: 0.9rem;
-            flex-shrink: 0;
+            line-height: 1.5;
+            opacity: 0.9;
         }
 
-        .step span:last-child {
-            color: #2c3e50;
-            font-weight: 500;
+        /* Animación de salida */
+        .floating-desktop-info.closing {
+            animation: slideOutCenter 0.3s ease-in forwards;
+        }
+
+        @keyframes slideOutCenter {
+            from {
+                transform: translate(-50%, -50%) scale(1);
+                opacity: 1;
+            }
+            to {
+                transform: translate(-50%, -50%) scale(0.8);
+                opacity: 0;
+            }
         }
         
         /* Optimizaciones para touch */
@@ -1591,6 +1568,156 @@
         .device-mobile .desktop-only,
         .device-tablet .desktop-only {
             display: none !important;
+        }
+
+        /* ===== EDITOR DE TEXTO ENRIQUECIDO ===== */
+        
+        .editor-toolbar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            padding: 10px;
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-bottom: none;
+            border-radius: 8px 8px 0 0;
+            align-items: center;
+        }
+        
+        .toolbar-group {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            padding: 0 8px;
+            border-right: 1px solid #dee2e6;
+        }
+        
+        .toolbar-group:last-child {
+            border-right: none;
+        }
+        
+        .toolbar-btn {
+            background: white;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 6px 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            color: #495057;
+        }
+        
+        .toolbar-btn:hover {
+            background: #e9ecef;
+            border-color: #adb5bd;
+        }
+        
+        .toolbar-btn.active {
+            background: #007bff;
+            color: white;
+            border-color: #007bff;
+        }
+        
+        .toolbar-select {
+            background: white;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 6px 8px;
+            font-size: 0.9rem;
+            cursor: pointer;
+        }
+        
+        .toolbar-color {
+            width: 30px;
+            height: 30px;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            cursor: pointer;
+            background: none;
+        }
+        
+        .rich-editor {
+            min-height: 120px;
+            padding: 15px;
+            border: 1px solid #dee2e6;
+            border-top: none;
+            border-radius: 0 0 8px 8px;
+            background: white;
+            font-family: inherit;
+            font-size: 14px;
+            line-height: 1.5;
+            outline: none;
+            overflow-y: auto;
+        }
+        
+        .rich-editor:focus {
+            border-color: #007bff;
+            box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+        }
+        
+        .rich-editor:empty:before {
+            content: attr(placeholder);
+            color: #6c757d;
+            font-style: italic;
+        }
+        
+        .preview-section {
+            margin-top: 15px;
+            padding: 15px;
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+        }
+        
+        .preview-section h4 {
+            margin: 0 0 10px 0;
+            color: #495057;
+            font-size: 0.9rem;
+            font-weight: 600;
+        }
+        
+        .message-preview {
+            min-height: 60px;
+            padding: 10px;
+            background: white;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+        
+        /* Estilos para el contenido del editor */
+        .rich-editor b, .rich-editor strong {
+            font-weight: bold;
+        }
+        
+        .rich-editor i, .rich-editor em {
+            font-style: italic;
+        }
+        
+        .rich-editor u {
+            text-decoration: underline;
+        }
+        
+        /* Responsive para móvil */
+        .device-mobile .editor-toolbar {
+            flex-direction: column;
+            align-items: stretch;
+        }
+        
+        .device-mobile .toolbar-group {
+            justify-content: center;
+            border-right: none;
+            border-bottom: 1px solid #dee2e6;
+            padding: 8px 0;
+        }
+        
+        .device-mobile .toolbar-group:last-child {
+            border-bottom: none;
+        }
+        
+        .device-mobile .rich-editor {
+            min-height: 100px;
+            font-size: 16px; /* Evita zoom en iOS */
         }
     </style>
 
@@ -1629,7 +1756,64 @@
                     </div>
                     <div class="form-group">
                         <label for="notificationMessage">Mensaje completo:</label>
-                        <textarea id="notificationMessage" name="message" rows="3" placeholder="Descripción detallada de la notificación..." required></textarea>
+                        
+                        <!-- Barra de herramientas del editor -->
+                        <div class="editor-toolbar">
+                            <div class="toolbar-group">
+                                <button type="button" class="toolbar-btn" onclick="formatText('bold')" title="Negrita">
+                                    <i class="fas fa-bold"></i>
+                                </button>
+                                <button type="button" class="toolbar-btn" onclick="formatText('italic')" title="Cursiva">
+                                    <i class="fas fa-italic"></i>
+                                </button>
+                                <button type="button" class="toolbar-btn" onclick="formatText('underline')" title="Subrayado">
+                                    <i class="fas fa-underline"></i>
+                                </button>
+                            </div>
+                            
+                            <div class="toolbar-group">
+                                <select class="toolbar-select" onchange="formatText('fontSize', this.value)" title="Tamaño de letra">
+                                    <option value="">Tamaño</option>
+                                    <option value="12px">Pequeño</option>
+                                    <option value="14px">Normal</option>
+                                    <option value="16px">Mediano</option>
+                                    <option value="18px">Grande</option>
+                                    <option value="20px">Muy Grande</option>
+                                </select>
+                            </div>
+                            
+                            <div class="toolbar-group">
+                                <input type="color" class="toolbar-color" id="textColor" onchange="formatText('foreColor', this.value)" title="Color del texto">
+                                <input type="color" class="toolbar-color" id="bgColor" onchange="formatText('backColor', this.value)" title="Color de fondo">
+                            </div>
+                            
+                            <div class="toolbar-group">
+                                <button type="button" class="toolbar-btn" onclick="formatText('justifyLeft')" title="Alinear izquierda">
+                                    <i class="fas fa-align-left"></i>
+                                </button>
+                                <button type="button" class="toolbar-btn" onclick="formatText('justifyCenter')" title="Centrar">
+                                    <i class="fas fa-align-center"></i>
+                                </button>
+                                <button type="button" class="toolbar-btn" onclick="formatText('justifyRight')" title="Alinear derecha">
+                                    <i class="fas fa-align-right"></i>
+                                </button>
+                            </div>
+                            
+                            <div class="toolbar-group">
+                                <button type="button" class="toolbar-btn" onclick="clearFormatting()" title="Limpiar formato">
+                                    <i class="fas fa-remove-format"></i>
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- Editor de texto enriquecido -->
+                        <div id="notificationMessage" class="rich-editor" contenteditable="true" placeholder="Escribe tu mensaje aquí..."></div>
+                        
+                        <!-- Vista previa -->
+                        <div class="preview-section">
+                            <h4>Vista previa:</h4>
+                            <div id="messagePreview" class="message-preview"></div>
+                        </div>
                     </div>
                     <div class="form-group">
                         <label for="notificationStartDate">Fecha de inicio:</label>
@@ -2334,6 +2518,15 @@
                 
                 <div id="transporteLinesList"></div>
             </div>
+        </div>
+    </div>
+
+    <!-- Mensaje flotante para desktop -->
+    <div class="floating-desktop-info desktop-only" id="desktopAppInfo">
+        <button class="close-floating-info" onclick="closeDesktopInfo()" title="Cerrar">×</button>
+        <div class="floating-content">
+            <h4>📱 App COBREROS</h4>
+            <p>Regístrate desde tu móvil y descarga la app para notificaciones oficiales</p>
         </div>
     </div>
 
