@@ -7939,7 +7939,15 @@ function toggleAccordion(sectionId) {
 
 // Cargar contenido inicial de Cobreros
 function loadCobrerosContent() {
-    const cobrerosData = {
+    // Cargar datos desde localStorage si existen
+    const savedData = localStorage.getItem('culturaOcioData');
+    if (savedData) {
+        culturaOcioData = JSON.parse(savedData);
+    }
+    
+    // Si no hay datos guardados, usar datos por defecto
+    if (!savedData || Object.values(culturaOcioData).every(section => section.length === 0)) {
+        const cobrerosData = {
         naturaleza: [
             {
                 title: "🌊 Cascadas de Sotillo",
@@ -8196,9 +8204,16 @@ function loadCobrerosContent() {
         ]
     };
     
+        // Asignar datos por defecto
+        culturaOcioData = cobrerosData;
+        
+        // Guardar datos por defecto en localStorage
+        localStorage.setItem('culturaOcioData', JSON.stringify(culturaOcioData));
+    }
+    
     // Renderizar cada sección
-    Object.keys(cobrerosData).forEach(section => {
-        renderAccordionSection(section, cobrerosData[section]);
+    Object.keys(culturaOcioData).forEach(section => {
+        renderAccordionSection(section, culturaOcioData[section]);
     });
     
     console.log('✅ Contenido de Cobreros cargado');
@@ -10715,6 +10730,301 @@ function addDatoItem() {
 // Función para eliminar un dato del elemento
 function removeDatoItem(button) {
     button.parentElement.remove();
+}
+
+// ===== FUNCIONES DE GESTIÓN DE CULTURA Y OCIO =====
+
+// Variables globales para gestión de cultura y ocio
+let culturaOcioData = {
+    naturaleza: [],
+    patrimonio: [],
+    gastronomia: [],
+    eventos: [],
+    cercanos: []
+};
+
+// Función para abrir el editor de elementos de cultura y ocio
+function openCulturaItemEditor(section, itemId = null) {
+    const modal = document.getElementById('culturaItemModal');
+    const modalTitle = document.getElementById('culturaItemModalTitle');
+    const form = document.getElementById('culturaItemForm');
+    
+    // Limpiar formulario
+    form.reset();
+    
+    // Configurar modal según sección
+    const sectionNames = {
+        'naturaleza': 'Naturaleza y Senderismo',
+        'patrimonio': 'Patrimonio y Arte',
+        'gastronomia': 'Recolección y Gastronomía',
+        'eventos': 'Eventos y Tradiciones',
+        'cercanos': 'Sitios Cercanos de Interés'
+    };
+    
+    modalTitle.textContent = itemId ? 
+        `Editar ${sectionNames[section]}` : 
+        `Nuevo Elemento - ${sectionNames[section]}`;
+    
+    // Configurar campos ocultos
+    document.getElementById('culturaItemSection').value = section;
+    document.getElementById('culturaItemId').value = itemId || '';
+    
+    // Si es edición, cargar datos existentes
+    if (itemId) {
+        const item = culturaOcioData[section].find(i => i.id === itemId);
+        if (item) {
+            document.getElementById('culturaItemTitle').value = item.title || '';
+            document.getElementById('culturaItemDescription').value = item.description || '';
+            document.getElementById('culturaItemImage').value = item.image || '';
+            document.getElementById('culturaItemLinks').value = item.links ? item.links.map(link => `${link.text}|${link.url}`).join('\n') : '';
+            document.getElementById('culturaItemExternalLink').value = item.externalLink || '';
+            document.getElementById('culturaItemOrder').value = item.order || 1;
+        }
+    }
+    
+    modal.style.display = 'block';
+}
+
+// Función para cerrar el modal de elementos
+function closeCulturaItemModal() {
+    document.getElementById('culturaItemModal').style.display = 'none';
+}
+
+// Función para guardar elemento de cultura y ocio
+function saveCulturaItem() {
+    const section = document.getElementById('culturaItemSection').value;
+    const itemId = document.getElementById('culturaItemId').value;
+    const title = document.getElementById('culturaItemTitle').value.trim();
+    const description = document.getElementById('culturaItemDescription').value.trim();
+    const image = document.getElementById('culturaItemImage').value.trim();
+    const linksText = document.getElementById('culturaItemLinks').value.trim();
+    const externalLink = document.getElementById('culturaItemExternalLink').value.trim();
+    const order = parseInt(document.getElementById('culturaItemOrder').value) || 1;
+    
+    // Validaciones
+    if (!title || !description) {
+        showNotification('Por favor, complete todos los campos obligatorios', 'error');
+        return;
+    }
+    
+    // Procesar enlaces
+    const links = [];
+    if (linksText) {
+        const linkLines = linksText.split('\n');
+        linkLines.forEach(line => {
+            const parts = line.split('|');
+            if (parts.length === 2) {
+                links.push({
+                    text: parts[0].trim(),
+                    url: parts[1].trim()
+                });
+            }
+        });
+    }
+    
+    // Crear objeto del elemento
+    const item = {
+        id: itemId || generateId(),
+        title: title,
+        description: description,
+        image: image,
+        links: links,
+        externalLink: externalLink,
+        order: order,
+        createdAt: itemId ? culturaOcioData[section].find(i => i.id === itemId)?.createdAt || new Date() : new Date(),
+        updatedAt: new Date()
+    };
+    
+    // Guardar en la sección correspondiente
+    if (itemId) {
+        // Editar elemento existente
+        const index = culturaOcioData[section].findIndex(i => i.id === itemId);
+        if (index !== -1) {
+            culturaOcioData[section][index] = item;
+        }
+    } else {
+        // Añadir nuevo elemento
+        culturaOcioData[section].push(item);
+    }
+    
+    // Ordenar por orden
+    culturaOcioData[section].sort((a, b) => a.order - b.order);
+    
+    // Guardar en localStorage
+    localStorage.setItem('culturaOcioData', JSON.stringify(culturaOcioData));
+    
+    // Actualizar vista
+    loadCulturaOcioAdmin();
+    renderAccordionSection(section, document.getElementById(`${section}Items`));
+    
+    // Cerrar modal
+    closeCulturaItemModal();
+    
+    showNotification('Elemento guardado correctamente', 'success');
+    
+    // Backup automático
+    setTimeout(() => {
+        backupContentToFirestore();
+    }, 1000);
+}
+
+// Función para eliminar elemento de cultura y ocio
+function deleteCulturaItem(section, itemId) {
+    if (confirm('¿Está seguro de que desea eliminar este elemento?')) {
+        culturaOcioData[section] = culturaOcioData[section].filter(item => item.id !== itemId);
+        
+        // Guardar en localStorage
+        localStorage.setItem('culturaOcioData', JSON.stringify(culturaOcioData));
+        
+        // Actualizar vista
+        loadCulturaOcioAdmin();
+        renderAccordionSection(section, document.getElementById(`${section}Items`));
+        
+        showNotification('Elemento eliminado correctamente', 'success');
+        
+        // Backup automático
+        setTimeout(() => {
+            backupContentToFirestore();
+        }, 1000);
+    }
+}
+
+// Función para cargar la gestión administrativa de cultura y ocio
+function loadCulturaOcioAdmin() {
+    // Cargar datos desde localStorage
+    const savedData = localStorage.getItem('culturaOcioData');
+    if (savedData) {
+        culturaOcioData = JSON.parse(savedData);
+    }
+    
+    // Renderizar cada sección
+    const sections = ['naturaleza', 'patrimonio', 'gastronomia', 'eventos', 'cercanos'];
+    sections.forEach(section => {
+        const listElement = document.getElementById(`${section}AdminList`);
+        if (listElement) {
+            renderCulturaAdminSection(section, listElement);
+        }
+    });
+}
+
+// Función para renderizar sección administrativa
+function renderCulturaAdminSection(section, container) {
+    const items = culturaOcioData[section] || [];
+    
+    if (items.length === 0) {
+        container.innerHTML = '<p style="text-align: center; color: #6c757d; padding: 20px;">No hay elementos en esta sección</p>';
+        return;
+    }
+    
+    container.innerHTML = items.map(item => `
+        <div class="admin-item-card">
+            <div class="admin-item-content">
+                <h4>${item.title}</h4>
+                <p>${item.description.substring(0, 100)}${item.description.length > 100 ? '...' : ''}</p>
+                <div class="admin-item-meta">
+                    <span class="badge badge-info">Orden: ${item.order}</span>
+                    ${item.image ? '<span class="badge badge-success">Con imagen</span>' : ''}
+                    ${item.links && item.links.length > 0 ? `<span class="badge badge-warning">${item.links.length} enlaces</span>` : ''}
+                    ${item.externalLink ? '<span class="badge badge-primary">Enlace externo</span>' : ''}
+                </div>
+            </div>
+            <div class="admin-item-actions">
+                <button class="btn btn-sm btn-primary" onclick="openCulturaItemEditor('${section}', '${item.id}')">
+                    <i class="fas fa-edit"></i> Editar
+                </button>
+                <button class="btn btn-sm btn-danger" onclick="deleteCulturaItem('${section}', '${item.id}')">
+                    <i class="fas fa-trash"></i> Eliminar
+                </button>
+            </div>
+        </div>
+    `).join('');
+}
+
+// Función para exportar sección de cultura y ocio
+function exportCulturaSection(section) {
+    const data = culturaOcioData[section] || [];
+    const dataStr = JSON.stringify(data, null, 2);
+    const dataBlob = new Blob([dataStr], {type: 'application/json'});
+    
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(dataBlob);
+    link.download = `cultura-ocio-${section}-${new Date().toISOString().split('T')[0]}.json`;
+    link.click();
+    
+    showNotification(`Sección ${section} exportada correctamente`, 'success');
+}
+
+// Función para cambiar pestañas en el modal de cultura y ocio
+function switchCulturaTab(tabName) {
+    // Ocultar todas las pestañas
+    const tabs = document.querySelectorAll('#culturaOcioModal .tab-content');
+    tabs.forEach(tab => tab.classList.remove('active'));
+    
+    // Desactivar todos los botones
+    const buttons = document.querySelectorAll('#culturaOcioModal .tab-btn');
+    buttons.forEach(btn => btn.classList.remove('active'));
+    
+    // Mostrar pestaña seleccionada
+    const selectedTab = document.getElementById(`cultura-${tabName}-tab`);
+    if (selectedTab) {
+        selectedTab.classList.add('active');
+    }
+    
+    // Activar botón seleccionado
+    const selectedButton = document.querySelector(`#culturaOcioModal .tab-btn[onclick="switchCulturaTab('${tabName}')"]`);
+    if (selectedButton) {
+        selectedButton.classList.add('active');
+    }
+    
+    // Cargar datos si es necesario
+    if (tabName !== 'contenido') {
+        loadCulturaOcioAdmin();
+    }
+}
+
+// Función para abrir el gestor de cultura y ocio
+function openCulturaOcioManager() {
+    const modal = document.getElementById('culturaOcioModal');
+    modal.style.display = 'block';
+    
+    // Cargar datos
+    loadCulturaOcioAdmin();
+}
+
+// Función para cerrar el modal de cultura y ocio
+function closeCulturaOcioModal() {
+    document.getElementById('culturaOcioModal').style.display = 'none';
+}
+
+// Función para guardar configuración de cultura y ocio
+function saveCulturaOcio() {
+    const titulo = document.getElementById('culturaTitulo').value;
+    const descripcion = document.getElementById('culturaDescripcion').value;
+    const subtitle = document.getElementById('culturaSubtitle').value;
+    
+    // Guardar configuración
+    const config = {
+        titulo: titulo,
+        descripcion: descripcion,
+        subtitle: subtitle,
+        updatedAt: new Date()
+    };
+    
+    localStorage.setItem('culturaOcioConfig', JSON.stringify(config));
+    
+    // Actualizar título en la página
+    const sectionTitle = document.querySelector('#cultura-ocio h2');
+    if (sectionTitle) {
+        sectionTitle.textContent = titulo;
+    }
+    
+    showNotification('Configuración guardada correctamente', 'success');
+    closeCulturaOcioModal();
+    
+    // Backup automático
+    setTimeout(() => {
+        backupContentToFirestore();
+    }, 1000);
 }
 
  

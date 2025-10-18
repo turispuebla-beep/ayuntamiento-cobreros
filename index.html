@@ -1946,6 +1946,78 @@
         .device-mobile .accordion-item-card {
             padding: 15px;
         }
+        
+        /* Estilos para gestión administrativa de Cultura y Ocio */
+        .admin-item-card {
+            background: #fff;
+            border: 1px solid #e0e0e0;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 15px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            transition: all 0.3s ease;
+        }
+        
+        .admin-item-card:hover {
+            box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+            transform: translateY(-2px);
+        }
+        
+        .admin-item-content h4 {
+            margin: 0 0 10px 0;
+            color: #2c3e50;
+            font-size: 1.2em;
+        }
+        
+        .admin-item-content p {
+            margin: 0 0 15px 0;
+            color: #6c757d;
+            line-height: 1.5;
+        }
+        
+        .admin-item-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 15px;
+        }
+        
+        .badge {
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 0.8em;
+            font-weight: 500;
+        }
+        
+        .badge-info {
+            background: #17a2b8;
+            color: white;
+        }
+        
+        .badge-success {
+            background: #28a745;
+            color: white;
+        }
+        
+        .badge-warning {
+            background: #ffc107;
+            color: #212529;
+        }
+        
+        .badge-primary {
+            background: #007bff;
+            color: white;
+        }
+        
+        .admin-item-actions {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .btn-sm {
+            padding: 6px 12px;
+            font-size: 0.875em;
+        }
     </style>
 
     <!-- Botón de acceso admin en esquina superior derecha -->
@@ -2415,8 +2487,11 @@
             <div class="modal-body">
                 <div class="cultura-tabs">
                     <button class="tab-btn active" onclick="switchCulturaTab('contenido')">📝 Contenido</button>
-                    <button class="tab-btn" onclick="switchCulturaTab('tarjetas')">🃏 Tarjetas</button>
-                    <button class="tab-btn" onclick="switchCulturaTab('eventos')">🎉 Eventos</button>
+                    <button class="tab-btn" onclick="switchCulturaTab('naturaleza')">🥾 Naturaleza</button>
+                    <button class="tab-btn" onclick="switchCulturaTab('patrimonio')">🏛️ Patrimonio</button>
+                    <button class="tab-btn" onclick="switchCulturaTab('gastronomia')">🍄 Gastronomía</button>
+                    <button class="tab-btn" onclick="switchCulturaTab('eventos')">🎪 Eventos</button>
+                    <button class="tab-btn" onclick="switchCulturaTab('cercanos')">🗺️ Sitios Cercanos</button>
                 </div>
                 
                 <!-- Tab de Contenido -->
@@ -2435,17 +2510,77 @@
                     </div>
                 </div>
                 
+                <!-- Tab de Naturaleza -->
+                <div id="cultura-naturaleza-tab" class="tab-content">
+                    <div class="content-actions">
+                        <button class="btn btn-primary" onclick="openCulturaItemEditor('naturaleza')">
+                            <i class="fas fa-plus"></i> Nuevo Elemento
+                        </button>
+                        <button class="btn btn-secondary" onclick="exportCulturaSection('naturaleza')">
+                            <i class="fas fa-download"></i> Exportar
+                        </button>
+                    </div>
+                    <div class="content-list" id="naturalezaAdminList">
+                        <!-- Se cargará dinámicamente -->
+                    </div>
+                </div>
+                
+                <!-- Tab de Patrimonio -->
+                <div id="cultura-patrimonio-tab" class="tab-content">
+                    <div class="content-actions">
+                        <button class="btn btn-primary" onclick="openCulturaItemEditor('patrimonio')">
+                            <i class="fas fa-plus"></i> Nuevo Elemento
+                        </button>
+                        <button class="btn btn-secondary" onclick="exportCulturaSection('patrimonio')">
+                            <i class="fas fa-download"></i> Exportar
+                        </button>
+                    </div>
+                    <div class="content-list" id="patrimonioAdminList">
+                        <!-- Se cargará dinámicamente -->
+                    </div>
+                </div>
+                
+                <!-- Tab de Gastronomía -->
+                <div id="cultura-gastronomia-tab" class="tab-content">
+                    <div class="content-actions">
+                        <button class="btn btn-primary" onclick="openCulturaItemEditor('gastronomia')">
+                            <i class="fas fa-plus"></i> Nuevo Elemento
+                        </button>
+                        <button class="btn btn-secondary" onclick="exportCulturaSection('gastronomia')">
+                            <i class="fas fa-download"></i> Exportar
+                        </button>
+                    </div>
+                    <div class="content-list" id="gastronomiaAdminList">
+                        <!-- Se cargará dinámicamente -->
+                    </div>
+                </div>
+                
                 <!-- Tab de Eventos -->
                 <div id="cultura-eventos-tab" class="tab-content">
                     <div class="content-actions">
-                        <button class="btn btn-primary" onclick="openEventEditor()">
-                            <i class="fas fa-plus"></i> Nuevo Evento
+                        <button class="btn btn-primary" onclick="openCulturaItemEditor('eventos')">
+                            <i class="fas fa-plus"></i> Nuevo Elemento
                         </button>
-                        <button class="btn btn-secondary" onclick="exportEvents()">
-                            <i class="fas fa-download"></i> Exportar Eventos
+                        <button class="btn btn-secondary" onclick="exportCulturaSection('eventos')">
+                            <i class="fas fa-download"></i> Exportar
                         </button>
                     </div>
-                    <div class="content-list" id="culturaEventsList">
+                    <div class="content-list" id="eventosAdminList">
+                        <!-- Se cargará dinámicamente -->
+                    </div>
+                </div>
+                
+                <!-- Tab de Sitios Cercanos -->
+                <div id="cultura-cercanos-tab" class="tab-content">
+                    <div class="content-actions">
+                        <button class="btn btn-primary" onclick="openCulturaItemEditor('cercanos')">
+                            <i class="fas fa-plus"></i> Nuevo Elemento
+                        </button>
+                        <button class="btn btn-secondary" onclick="exportCulturaSection('cercanos')">
+                            <i class="fas fa-download"></i> Exportar
+                        </button>
+                    </div>
+                    <div class="content-list" id="cercanosAdminList">
                         <!-- Se cargará dinámicamente -->
                     </div>
                 </div>
@@ -2478,6 +2613,64 @@
                 <button type="button" class="btn btn-outline" onclick="closeCulturaOcioModal()">Cancelar</button>
                 <button type="button" class="btn btn-primary" onclick="saveCulturaOcio()">
                     <i class="fas fa-save"></i> Guardar Cambios
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para editar elementos de Cultura y Ocio -->
+    <div id="culturaItemModal" class="modal">
+        <div class="modal-content" style="max-width: 800px;">
+            <div class="modal-header">
+                <h3 id="culturaItemModalTitle">Editar Elemento</h3>
+                <span class="close" onclick="closeCulturaItemModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form id="culturaItemForm">
+                    <input type="hidden" id="culturaItemId">
+                    <input type="hidden" id="culturaItemSection">
+                    
+                    <div class="form-group">
+                        <label for="culturaItemTitle">Título:</label>
+                        <input type="text" id="culturaItemTitle" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="culturaItemDescription">Descripción:</label>
+                        <textarea id="culturaItemDescription" rows="4" required></textarea>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="culturaItemImage">Imagen (URL o archivo):</label>
+                        <input type="text" id="culturaItemImage" placeholder="URL de imagen o subir archivo">
+                        <input type="file" id="culturaItemImageFile" accept="image/*" style="margin-top: 5px;">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="culturaItemLinks">Enlaces (uno por línea, formato: texto|url):</label>
+                        <textarea id="culturaItemLinks" rows="3" placeholder="Ejemplo: Ver más información|https://ejemplo.com"></textarea>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="culturaItemDocument">Documento (PDF/JPG):</label>
+                        <input type="file" id="culturaItemDocument" accept=".pdf,.jpg,.jpeg,.png">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="culturaItemExternalLink">Enlace externo:</label>
+                        <input type="url" id="culturaItemExternalLink" placeholder="https://ejemplo.com">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="culturaItemOrder">Orden de visualización:</label>
+                        <input type="number" id="culturaItemOrder" min="1" value="1">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline" onclick="closeCulturaItemModal()">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="saveCulturaItem()">
+                    <i class="fas fa-save"></i> Guardar
                 </button>
             </div>
         </div>
