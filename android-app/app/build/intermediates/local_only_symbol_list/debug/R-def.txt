@@ -25,7 +25,6 @@ drawable escudo_cobreros
 drawable ic_attachment
 drawable ic_error
 drawable ic_escudo_cobreros
-drawable ic_loading
 drawable spinner_background
 drawable type_badge
 id adminButton

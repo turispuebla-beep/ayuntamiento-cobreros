@@ -124,6 +124,28 @@
                         <p>Datos y Enlaces de Interés</p>
                     </div>
                 </div>
+            </div>
+
+            <!-- Información específica para desktop -->
+            <div class="desktop-info desktop-only" id="desktopAppInfo">
+                <button class="close-desktop-info" onclick="closeDesktopInfo()" title="Cerrar">×</button>
+                <h3>📱 App COBREROS para Móvil</h3>
+                <p><strong>Regístrate y entra en www.ayuntamientocobreros.com desde tu móvil</strong> y podrás descargarte la app para recibir notificaciones oficiales del ayuntamiento.</p>
+                <div class="desktop-info-steps">
+                    <div class="step">
+                        <span class="step-number">1</span>
+                        <span>Accede desde tu móvil a www.ayuntamientocobreros.com</span>
+                    </div>
+                    <div class="step">
+                        <span class="step-number">2</span>
+                        <span>Regístrate en el portal municipal</span>
+                    </div>
+                    <div class="step">
+                        <span class="step-number">3</span>
+                        <span>Descarga la app COBREROS para notificaciones</span>
+                    </div>
+                </div>
+            </div>
                 <nav class="main-nav">
                     <ul>
                         <li><a href="#inicio" class="nav-link active" data-icon="home">🏠 Inicio</a></li>
@@ -591,6 +613,7 @@
                 <button class="tab-btn" data-tab="documents">Documentos</button>
                 <button class="tab-btn" data-tab="notifications">Notificaciones</button>
                 <button class="tab-btn" data-tab="database">Base de Datos</button>
+                <button class="tab-btn" data-tab="backup">Backup & Persistencia</button>
                 <button class="tab-btn" data-tab="settings">Configuración</button>
                 <button class="tab-btn" data-tab="servicios">Datos y Enlaces</button>
             </div>
@@ -1048,6 +1071,80 @@
                     </div>
                 </div>
                 
+                <!-- Backup Tab -->
+                <div id="backup-tab" class="tab-content">
+                    <h3>🔐 Backup & Persistencia de Datos</h3>
+                    
+                    <!-- Backup Automático a Firestore -->
+                    <div class="admin-section">
+                        <h4>☁️ Backup Automático a Firestore</h4>
+                        <p>Gestionar copias de seguridad automáticas en la nube:</p>
+                        <div class="backup-buttons">
+                            <button class="btn btn-info" onclick="backupContentToFirestore()">
+                                <i class="fas fa-cloud-upload-alt"></i> Backup Contenido (Bandos, Noticias, Eventos)
+                            </button>
+                            <button class="btn btn-secondary" onclick="backupLocalStorageToFirestore()">
+                                <i class="fas fa-save"></i> Backup Completo localStorage
+                            </button>
+                            <button class="btn btn-warning" onclick="restoreContentFromFirestore()">
+                                <i class="fas fa-cloud-download-alt"></i> Restaurar desde Firestore
+                            </button>
+                        </div>
+                        <div class="backup-status">
+                            <p><strong>Estado:</strong> <span id="firebaseStatus">Verificando conexión...</span></p>
+                            <p><strong>Último backup:</strong> <span id="lastBackupTime">No disponible</span></p>
+                        </div>
+                    </div>
+                    
+                    <!-- Exportar/Importar Datos -->
+                    <div class="admin-section">
+                        <h4>📁 Exportar/Importar Datos</h4>
+                        <p>Crear copias de seguridad locales y restaurar datos:</p>
+                        <div class="export-import-buttons">
+                            <button class="btn btn-success" onclick="exportDataAsJSON()">
+                                <i class="fas fa-download"></i> Exportar Todo (JSON)
+                            </button>
+                            <button class="btn btn-primary" onclick="document.getElementById('importBackupFile').click()">
+                                <i class="fas fa-upload"></i> Importar Backup (JSON)
+                            </button>
+                            <input type="file" id="importBackupFile" accept=".json" style="display: none;" onchange="importDataFromJSON(this.files[0])">
+                        </div>
+                    </div>
+                    
+                    <!-- Verificación y Reparación -->
+                    <div class="admin-section">
+                        <h4>🔧 Verificación y Reparación</h4>
+                        <p>Verificar integridad de datos y reparar problemas:</p>
+                        <div class="repair-buttons">
+                            <button class="btn btn-info" onclick="verifyDataIntegrity()">
+                                <i class="fas fa-check-circle"></i> Verificar Integridad de Datos
+                            </button>
+                            <button class="btn btn-warning" onclick="repairCorruptedData()">
+                                <i class="fas fa-wrench"></i> Reparar Datos Corruptos
+                            </button>
+                            <button class="btn btn-danger" onclick="clearAllData()">
+                                <i class="fas fa-trash"></i> Limpiar Todos los Datos
+                            </button>
+                        </div>
+                        <div class="integrity-status">
+                            <p><strong>Estado de integridad:</strong> <span id="integrityStatus">No verificado</span></p>
+                        </div>
+                    </div>
+                    
+                    <!-- Información del Sistema -->
+                    <div class="admin-section">
+                        <h4>📊 Información del Sistema</h4>
+                        <div class="system-info">
+                            <p><strong>Versión:</strong> 1.0</p>
+                            <p><strong>Última verificación:</strong> <span id="lastIntegrityCheck">Nunca</span></p>
+                            <p><strong>Total bandos:</strong> <span id="totalBandos">0</span></p>
+                            <p><strong>Total noticias:</strong> <span id="totalNoticias">0</span></p>
+                            <p><strong>Total eventos:</strong> <span id="totalEventos">0</span></p>
+                            <p><strong>Total usuarios:</strong> <span id="totalUsuarios">0</span></p>
+                        </div>
+                    </div>
+                </div>
+                
                 <!-- Settings Tab -->
                 <div id="settings-tab" class="tab-content">
                     <h3>Configuración</h3>
@@ -1322,6 +1419,178 @@
         
         .admin-access-btn:active {
             transform: scale(0.95);
+        }
+
+        /* ===== ESTILOS ESPECÍFICOS POR DISPOSITIVO ===== */
+        
+        /* Estilos para móvil */
+        .device-mobile .container {
+            padding: 10px;
+        }
+        
+        .device-mobile .card {
+            margin-bottom: 15px;
+            padding: 15px;
+        }
+        
+        .device-mobile .admin-panel {
+            width: 95%;
+            max-width: none;
+        }
+        
+        .device-mobile .tab-content {
+            padding: 15px;
+        }
+        
+        .device-mobile .form-group input,
+        .device-mobile .form-group textarea,
+        .device-mobile .form-group select {
+            font-size: 16px; /* Evita zoom en iOS */
+        }
+        
+        /* Estilos para tablet */
+        .device-tablet .container {
+            padding: 20px;
+            max-width: 800px;
+        }
+        
+        .device-tablet .card {
+            margin-bottom: 20px;
+            padding: 20px;
+        }
+        
+        .device-tablet .admin-panel {
+            width: 80%;
+            max-width: 600px;
+        }
+        
+        /* Estilos para desktop */
+        .device-desktop .container {
+            padding: 30px;
+            max-width: 1200px;
+        }
+        
+        .device-desktop .card {
+            margin-bottom: 25px;
+            padding: 25px;
+        }
+        
+        .device-desktop .admin-panel {
+            width: 70%;
+            max-width: 800px;
+        }
+        
+        .device-desktop .desktop-info {
+            background: #f8f9fa;
+            border-left: 4px solid #007bff;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 0 8px 8px 0;
+            position: relative;
+        }
+
+        .close-desktop-info {
+            position: absolute;
+            top: 10px;
+            right: 15px;
+            background: none;
+            border: none;
+            font-size: 24px;
+            color: #6c757d;
+            cursor: pointer;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            transition: all 0.3s ease;
+        }
+
+        .close-desktop-info:hover {
+            background: #e9ecef;
+            color: #495057;
+            transform: scale(1.1);
+        }
+
+        .desktop-info h3 {
+            color: #2c3e50;
+            margin-bottom: 15px;
+            font-size: 1.3rem;
+        }
+
+        .desktop-info p {
+            color: #34495e;
+            margin-bottom: 20px;
+            font-size: 1.1rem;
+            line-height: 1.5;
+        }
+
+        .desktop-info-steps {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .step {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            padding: 12px;
+            background: white;
+            border-radius: 8px;
+            border: 1px solid #e1e5e9;
+            transition: all 0.3s ease;
+        }
+
+        .step:hover {
+            box-shadow: 0 2px 8px rgba(0, 123, 255, 0.1);
+            border-color: #007bff;
+        }
+
+        .step-number {
+            background: #007bff;
+            color: white;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 0.9rem;
+            flex-shrink: 0;
+        }
+
+        .step span:last-child {
+            color: #2c3e50;
+            font-weight: 500;
+        }
+        
+        /* Optimizaciones para touch */
+        .touch-optimized button,
+        .touch-optimized .btn {
+            min-height: 44px;
+            min-width: 44px;
+        }
+        
+        .touch-optimized .card {
+            cursor: pointer;
+        }
+        
+        /* Ocultar elementos en móvil */
+        .device-mobile .desktop-only {
+            display: none !important;
+        }
+        
+        /* Mostrar elementos solo en desktop */
+        .desktop-only {
+            display: block;
+        }
+        
+        .device-mobile .desktop-only,
+        .device-tablet .desktop-only {
+            display: none !important;
         }
     </style>
 

@@ -39,6 +39,31 @@ document.addEventListener('DOMContentLoaded', function() {
     // Migrar usuarios a Firestore si es necesario
     migrateUsersToFirestore();
     
+    // Verificar integridad de datos
+    setTimeout(() => {
+        const isDataValid = verifyDataIntegrity();
+        if (!isDataValid) {
+            console.log('⚠️ Problemas de integridad detectados, reparando...');
+            repairCorruptedData();
+        }
+    }, 500);
+    
+    // Intentar restaurar desde Firestore si no hay datos locales
+    setTimeout(() => {
+        if ((bandos.length === 0 && news.length === 0) || 
+            localStorage.getItem('restoreFromFirestore') === 'true') {
+            console.log('🔄 Intentando restaurar desde Firestore...');
+            restoreContentFromFirestore();
+        }
+    }, 1500);
+    
+    // Backup automático inicial
+    setTimeout(() => {
+        if (window.firebase && window.firebase.firestore()) {
+            backupContentToFirestore();
+        }
+    }, 3000);
+    
     // Inicializar PWA
     initializePWA();
 });
@@ -5966,6 +5991,447 @@ function updateSectionTitles() {
     }
     if (phoneTitle) {
         phoneTitle.textContent = `${seccionesConfig.phone.icon} ${seccionesConfig.phone.title}`;
+    }
+}
+
+// ===== SISTEMA DE BACKUP Y PERSISTENCIA MEJORADA =====
+
+// Backup automático de bandos y noticias a Firestore
+async function backupContentToFirestore() {
+    try {
+        if (!window.firebase || !window.firebase.firestore()) {
+            console.log('⚠️ Firebase no disponible para backup');
+            return;
+        }
+
+        const db = window.firebase.firestore();
+        
+        // Backup de bandos
+        const bandosData = {
+            bandos: bandos,
+            lastBackup: new Date(),
+            totalCount: bandos.length,
+            source: 'WEB_BACKUP'
+        };
+        
+        await db.collection('backups').doc('bandos').set(bandosData);
+        console.log('✅ Backup de bandos completado');
+        
+        // Backup de noticias
+        const newsData = {
+            news: news,
+            lastBackup: new Date(),
+            totalCount: news.length,
+            source: 'WEB_BACKUP'
+        };
+        
+        await db.collection('backups').doc('noticias').set(newsData);
+        console.log('✅ Backup de noticias completado');
+        
+        // Backup de eventos
+        const eventsData = {
+            events: events,
+            lastBackup: new Date(),
+            totalCount: events.length,
+            source: 'WEB_BACKUP'
+        };
+        
+        await db.collection('backups').doc('eventos').set(eventsData);
+        console.log('✅ Backup de eventos completado');
+        
+        // Backup de configuraciones
+        const configData = {
+            appointmentsEnabled: appointmentsEnabled,
+            culturaOcioConfig: localStorage.getItem('culturaOcioConfig') ? JSON.parse(localStorage.getItem('culturaOcioConfig')) : {},
+            lastBackup: new Date(),
+            source: 'WEB_BACKUP'
+        };
+        
+        await db.collection('backups').doc('configuraciones').set(configData);
+        console.log('✅ Backup de configuraciones completado');
+        
+    } catch (error) {
+        console.error('❌ Error en backup automático:', error);
+    }
+}
+
+// Restaurar contenido desde Firestore
+async function restoreContentFromFirestore() {
+    try {
+        if (!window.firebase || !window.firebase.firestore()) {
+            console.log('⚠️ Firebase no disponible para restauración');
+            return;
+        }
+
+        const db = window.firebase.firestore();
+        
+        // Restaurar bandos
+        const bandosSnapshot = await db.collection('backups').doc('bandos').get();
+        if (bandosSnapshot.exists) {
+            const bandosData = bandosSnapshot.data();
+            if (bandosData.bandos && bandosData.bandos.length > 0) {
+                bandos = bandosData.bandos;
+                localStorage.setItem('bandos', JSON.stringify(bandos));
+                console.log('✅ Bandos restaurados desde Firestore');
+            }
+        }
+        
+        // Restaurar noticias
+        const newsSnapshot = await db.collection('backups').doc('noticias').get();
+        if (newsSnapshot.exists) {
+            const newsData = newsSnapshot.data();
+            if (newsData.news && newsData.news.length > 0) {
+                news = newsData.news;
+                localStorage.setItem('news', JSON.stringify(news));
+                console.log('✅ Noticias restauradas desde Firestore');
+            }
+        }
+        
+        // Restaurar eventos
+        const eventsSnapshot = await db.collection('backups').doc('eventos').get();
+        if (eventsSnapshot.exists) {
+            const eventsData = eventsSnapshot.data();
+            if (eventsData.events && eventsData.events.length > 0) {
+                events = eventsData.events;
+                localStorage.setItem('events', JSON.stringify(events));
+                console.log('✅ Eventos restaurados desde Firestore');
+            }
+        }
+        
+        // Restaurar configuraciones
+        const configSnapshot = await db.collection('backups').doc('configuraciones').get();
+        if (configSnapshot.exists) {
+            const configData = configSnapshot.data();
+            if (configData.appointmentsEnabled !== undefined) {
+                appointmentsEnabled = configData.appointmentsEnabled;
+                localStorage.setItem('appointmentSettings', JSON.stringify({ enabled: appointmentsEnabled }));
+                console.log('✅ Configuraciones restauradas desde Firestore');
+            }
+        }
+        
+        // Actualizar contenido
+        updateContent();
+        updateCulturaOcioSection();
+        
+    } catch (error) {
+        console.error('❌ Error restaurando desde Firestore:', error);
+    }
+}
+
+// Backup completo de localStorage
+async function backupLocalStorageToFirestore() {
+    try {
+        if (!window.firebase || !window.firebase.firestore()) {
+            console.log('⚠️ Firebase no disponible para backup completo');
+            return;
+        }
+
+        const db = window.firebase.firestore();
+        const backupData = {};
+        
+        // Recopilar todos los datos importantes
+        const keysToBackup = [
+            'users', 'bandos', 'news', 'events', 'notifications', 
+            'administrators', 'documents', 'quickAccess', 'publicNotifications',
+            'appointmentSettings', 'culturaOcioConfig'
+        ];
+        
+        keysToBackup.forEach(key => {
+            const data = localStorage.getItem(key);
+            if (data) {
+                backupData[key] = JSON.parse(data);
+            }
+        });
+        
+        // Añadir metadatos del backup
+        backupData.metadata = {
+            timestamp: new Date(),
+            userAgent: navigator.userAgent,
+            totalKeys: Object.keys(backupData).length,
+            source: 'COMPLETE_BACKUP'
+        };
+        
+        // Guardar backup completo
+        await db.collection('backups').doc('localStorage_completo').set(backupData);
+        console.log('✅ Backup completo de localStorage realizado');
+        
+        return true;
+        
+    } catch (error) {
+        console.error('❌ Error en backup completo:', error);
+        return false;
+    }
+}
+
+// Exportar datos como JSON
+function exportDataAsJSON() {
+    try {
+        const exportData = {
+            bandos: bandos,
+            news: news,
+            events: events,
+            users: users,
+            administrators: JSON.parse(localStorage.getItem('administrators') || '[]'),
+            documents: JSON.parse(localStorage.getItem('documents') || '[]'),
+            quickAccess: JSON.parse(localStorage.getItem('quickAccess') || '[]'),
+            notifications: notifications,
+            appointmentsEnabled: appointmentsEnabled,
+            culturaOcioConfig: JSON.parse(localStorage.getItem('culturaOcioConfig') || '{}'),
+            exportDate: new Date().toISOString(),
+            version: '1.0'
+        };
+        
+        const dataStr = JSON.stringify(exportData, null, 2);
+        const dataBlob = new Blob([dataStr], {type: 'application/json'});
+        
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(dataBlob);
+        link.download = `ayuntamiento_cobreros_backup_${new Date().toISOString().split('T')[0]}.json`;
+        link.click();
+        
+        console.log('✅ Datos exportados correctamente');
+        showNotification('Datos exportados correctamente', 'success');
+        
+    } catch (error) {
+        console.error('❌ Error exportando datos:', error);
+        showNotification('Error al exportar datos', 'error');
+    }
+}
+
+// Importar datos desde JSON
+function importDataFromJSON(file) {
+    const reader = new FileReader();
+    
+    reader.onload = function(e) {
+        try {
+            const importData = JSON.parse(e.target.result);
+            
+            // Validar estructura
+            if (!importData.version || !importData.exportDate) {
+                throw new Error('Archivo no válido');
+            }
+            
+            // Importar datos
+            if (importData.bandos) {
+                bandos = importData.bandos;
+                localStorage.setItem('bandos', JSON.stringify(bandos));
+            }
+            
+            if (importData.news) {
+                news = importData.news;
+                localStorage.setItem('news', JSON.stringify(news));
+            }
+            
+            if (importData.events) {
+                events = importData.events;
+                localStorage.setItem('events', JSON.stringify(events));
+            }
+            
+            if (importData.users) {
+                users = importData.users;
+                localStorage.setItem('users', JSON.stringify(users));
+            }
+            
+            if (importData.administrators) {
+                localStorage.setItem('administrators', JSON.stringify(importData.administrators));
+            }
+            
+            if (importData.documents) {
+                localStorage.setItem('documents', JSON.stringify(importData.documents));
+            }
+            
+            if (importData.quickAccess) {
+                localStorage.setItem('quickAccess', JSON.stringify(importData.quickAccess));
+            }
+            
+            if (importData.appointmentsEnabled !== undefined) {
+                appointmentsEnabled = importData.appointmentsEnabled;
+                localStorage.setItem('appointmentSettings', JSON.stringify({ enabled: appointmentsEnabled }));
+            }
+            
+            if (importData.culturaOcioConfig) {
+                localStorage.setItem('culturaOcioConfig', JSON.stringify(importData.culturaOcioConfig));
+            }
+            
+            // Actualizar contenido
+            updateContent();
+            updateCulturaOcioSection();
+            loadAdministrators();
+            loadDocuments();
+            loadEvents();
+            loadQuickAccess();
+            
+            console.log('✅ Datos importados correctamente');
+            showNotification('Datos importados correctamente', 'success');
+            
+            // Hacer backup automático después de la importación
+            setTimeout(() => {
+                backupContentToFirestore();
+            }, 1000);
+            
+        } catch (error) {
+            console.error('❌ Error importando datos:', error);
+            showNotification('Error al importar datos: ' + error.message, 'error');
+        }
+    };
+    
+    reader.readAsText(file);
+}
+
+// Verificar integridad de datos
+function verifyDataIntegrity() {
+    const issues = [];
+    
+    try {
+        // Verificar bandos
+        if (!Array.isArray(bandos)) {
+            issues.push('Bandos: formato incorrecto');
+        }
+        
+        // Verificar noticias
+        if (!Array.isArray(news)) {
+            issues.push('Noticias: formato incorrecto');
+        }
+        
+        // Verificar usuarios
+        if (!Array.isArray(users)) {
+            issues.push('Usuarios: formato incorrecto');
+        }
+        
+        // Verificar eventos
+        if (!Array.isArray(events)) {
+            issues.push('Eventos: formato incorrecto');
+        }
+        
+        // Verificar configuraciones críticas
+        const appointmentSettings = localStorage.getItem('appointmentSettings');
+        if (appointmentSettings) {
+            try {
+                JSON.parse(appointmentSettings);
+            } catch (e) {
+                issues.push('Configuración de citas: formato incorrecto');
+            }
+        }
+        
+        if (issues.length === 0) {
+            console.log('✅ Integridad de datos verificada correctamente');
+            return true;
+        } else {
+            console.warn('⚠️ Problemas de integridad detectados:', issues);
+            
+            // Actualizar UI con problemas detectados
+            const integrityStatusEl = document.getElementById('integrityStatus');
+            if (integrityStatusEl) {
+                integrityStatusEl.textContent = `⚠️ ${issues.length} problema(s) detectado(s)`;
+                integrityStatusEl.style.color = 'orange';
+                integrityStatusEl.title = issues.join(', ');
+            }
+            
+            return false;
+        }
+        
+    } catch (error) {
+        console.error('❌ Error verificando integridad:', error);
+        return false;
+    }
+}
+
+// Reparar datos corruptos
+function repairCorruptedData() {
+    try {
+        console.log('🔧 Iniciando reparación de datos...');
+        
+        // Reparar arrays si están corruptos
+        if (!Array.isArray(bandos)) {
+            bandos = [];
+            localStorage.setItem('bandos', JSON.stringify(bandos));
+            console.log('✅ Bandos reparados');
+        }
+        
+        if (!Array.isArray(news)) {
+            news = [];
+            localStorage.setItem('news', JSON.stringify(news));
+            console.log('✅ Noticias reparadas');
+        }
+        
+        if (!Array.isArray(users)) {
+            users = [];
+            localStorage.setItem('users', JSON.stringify(users));
+            console.log('✅ Usuarios reparados');
+        }
+        
+        if (!Array.isArray(events)) {
+            events = [];
+            localStorage.setItem('events', JSON.stringify(events));
+            console.log('✅ Eventos reparados');
+        }
+        
+        // Reparar configuraciones
+        if (!appointmentSettings || typeof appointmentsEnabled !== 'boolean') {
+            appointmentsEnabled = true;
+            localStorage.setItem('appointmentSettings', JSON.stringify({ enabled: true }));
+            console.log('✅ Configuración de citas reparada');
+        }
+        
+        console.log('✅ Reparación completada');
+        showNotification('Datos reparados correctamente', 'success');
+        
+        // Actualizar contenido
+        updateContent();
+        updateCulturaOcioSection();
+        
+        // Actualizar información del sistema
+        updateSystemInfo();
+        
+    } catch (error) {
+        console.error('❌ Error reparando datos:', error);
+        showNotification('Error reparando datos', 'error');
+    }
+}
+
+// Actualizar información del sistema en la pestaña de backup
+function updateSystemInfo() {
+    try {
+        // Actualizar contadores
+        const totalBandosEl = document.getElementById('totalBandos');
+        const totalNoticiasEl = document.getElementById('totalNoticias');
+        const totalEventosEl = document.getElementById('totalEventos');
+        const totalUsuariosEl = document.getElementById('totalUsuarios');
+        const lastIntegrityCheckEl = document.getElementById('lastIntegrityCheck');
+        
+        if (totalBandosEl) totalBandosEl.textContent = bandos.length;
+        if (totalNoticiasEl) totalNoticiasEl.textContent = news.length;
+        if (totalEventosEl) totalEventosEl.textContent = events.length;
+        if (totalUsuariosEl) totalUsuariosEl.textContent = users.length;
+        if (lastIntegrityCheckEl) lastIntegrityCheckEl.textContent = new Date().toLocaleString();
+        
+        // Verificar estado de Firebase
+        const firebaseStatusEl = document.getElementById('firebaseStatus');
+        if (firebaseStatusEl) {
+            if (window.firebase && window.firebase.firestore()) {
+                firebaseStatusEl.textContent = '✅ Conectado';
+                firebaseStatusEl.style.color = 'green';
+            } else {
+                firebaseStatusEl.textContent = '❌ No disponible';
+                firebaseStatusEl.style.color = 'red';
+            }
+        }
+        
+        // Actualizar estado de integridad
+        const integrityStatusEl = document.getElementById('integrityStatus');
+        if (integrityStatusEl) {
+            const isIntegrity = verifyDataIntegrity();
+            if (isIntegrity) {
+                integrityStatusEl.textContent = '✅ Datos íntegros';
+                integrityStatusEl.style.color = 'green';
+            } else {
+                integrityStatusEl.textContent = '⚠️ Problemas detectados';
+                integrityStatusEl.style.color = 'orange';
+            }
+        }
+        
+    } catch (error) {
+        console.error('❌ Error actualizando información del sistema:', error);
     }
 }
 

@@ -5,28 +5,28 @@
 5    android:versionName="1.0" >
 6
 7    <uses-sdk
-8        android:minSdkVersion="24"
+8        android:minSdkVersion="21"
 9        android:targetSdkVersion="34" />
 10
 11    <!-- Permisos necesarios -->
 12    <uses-permission android:name="android.permission.INTERNET" />
-12-->C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:6:5-67
-12-->C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:6:22-64
+12-->C:\Users\marsa\Desktop\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:6:5-67
+12-->C:\Users\marsa\Desktop\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:6:22-64
 13    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
-13-->C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:7:5-79
-13-->C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:7:22-76
+13-->C:\Users\marsa\Desktop\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:7:5-79
+13-->C:\Users\marsa\Desktop\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:7:22-76
 14    <uses-permission android:name="android.permission.WAKE_LOCK" />
-14-->C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:8:5-68
-14-->C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:8:22-65
+14-->C:\Users\marsa\Desktop\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:8:5-68
+14-->C:\Users\marsa\Desktop\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:8:22-65
 15    <uses-permission android:name="android.permission.VIBRATE" />
-15-->C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:9:5-66
-15-->C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:9:22-63
+15-->C:\Users\marsa\Desktop\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:9:5-66
+15-->C:\Users\marsa\Desktop\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:9:22-63
 16    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
-16-->C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:10:5-81
-16-->C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:10:22-78
+16-->C:\Users\marsa\Desktop\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:10:5-81
+16-->C:\Users\marsa\Desktop\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:10:22-78
 17    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
-17-->C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:11:5-77
-17-->C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:11:22-74
+17-->C:\Users\marsa\Desktop\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:11:5-77
+17-->C:\Users\marsa\Desktop\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:11:22-74
 18
 19    <!-- Required by older versions of Google Play services to create IID tokens -->
 20    <uses-permission android:name="com.google.android.c2dm.permission.RECEIVE" />
@@ -57,123 +57,123 @@
 30-->[androidx.core:core:1.9.0] C:\Users\marsa\.gradle\caches\transforms-3\412053de3272e2648543d87a9cf3d9e7\transformed\core-1.9.0\AndroidManifest.xml:26:22-94
 31
 32    <application
-32-->C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:13:5-84:19
+32-->C:\Users\marsa\Desktop\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:13:5-84:19
 33        android:allowBackup="true"
-33-->C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:14:9-35
+33-->C:\Users\marsa\Desktop\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:14:9-35
 34        android:appComponentFactory="androidx.core.app.CoreComponentFactory"
 34-->[androidx.core:core:1.9.0] C:\Users\marsa\.gradle\caches\transforms-3\412053de3272e2648543d87a9cf3d9e7\transformed\core-1.9.0\AndroidManifest.xml:28:18-86
 35        android:dataExtractionRules="@xml/data_extraction_rules"
-35-->C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:15:9-65
+35-->C:\Users\marsa\Desktop\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:15:9-65
 36        android:debuggable="true"
-37        android:extractNativeLibs="false"
+37        android:extractNativeLibs="true"
 38        android:fullBackupContent="@xml/backup_rules"
-38-->C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:16:9-54
+38-->C:\Users\marsa\Desktop\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:16:9-54
 39        android:icon="@mipmap/ic_launcher"
-39-->C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:17:9-43
+39-->C:\Users\marsa\Desktop\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:17:9-43
 40        android:label="@string/app_name"
-40-->C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:18:9-41
+40-->C:\Users\marsa\Desktop\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:18:9-41
 41        android:roundIcon="@mipmap/ic_launcher_round"
-41-->C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:19:9-54
+41-->C:\Users\marsa\Desktop\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:19:9-54
 42        android:supportsRtl="true"
-42-->C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:20:9-35
+42-->C:\Users\marsa\Desktop\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:20:9-35
 43        android:theme="@style/Theme.AyuntamientoCobreros" >
-43-->C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:21:9-58
+43-->C:\Users\marsa\Desktop\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:21:9-58
 44
 45        <!-- Actividad principal -->
 46        <activity
-46-->C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:25:9-33:20
+46-->C:\Users\marsa\Desktop\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:25:9-33:20
 47            android:name="com.turisteam.ayuntamientocobreros.MainActivity"
-47-->C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:26:13-41
+47-->C:\Users\marsa\Desktop\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:26:13-41
 48            android:exported="true"
-48-->C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:27:13-36
+48-->C:\Users\marsa\Desktop\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:27:13-36
 49            android:theme="@style/Theme.AyuntamientoCobreros" >
-49-->C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:28:13-62
+49-->C:\Users\marsa\Desktop\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:28:13-62
 50            <intent-filter>
-50-->C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:29:13-32:29
+50-->C:\Users\marsa\Desktop\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:29:13-32:29
 51                <action android:name="android.intent.action.MAIN" />
-51-->C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:30:17-69
-51-->C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:30:25-66
+51-->C:\Users\marsa\Desktop\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:30:17-69
+51-->C:\Users\marsa\Desktop\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:30:25-66
 52
 53                <category android:name="android.intent.category.LAUNCHER" />
-53-->C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:31:17-77
-53-->C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:31:27-74
+53-->C:\Users\marsa\Desktop\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:31:17-77
+53-->C:\Users\marsa\Desktop\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:31:27-74
 54            </intent-filter>
 55        </activity>
 56
 57        <!-- Actividades de la aplicación -->
 58        <!-- Actividades de la aplicación -->
 59        <activity
-59-->C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:37:9-39:40
+59-->C:\Users\marsa\Desktop\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:37:9-39:40
 60            android:name="com.turisteam.ayuntamientocobreros.RegisterActivity"
-60-->C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:38:13-45
+60-->C:\Users\marsa\Desktop\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:38:13-45
 61            android:exported="false" />
-61-->C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:39:13-37
+61-->C:\Users\marsa\Desktop\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:39:13-37
 62        <activity
-62-->C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:41:9-43:40
+62-->C:\Users\marsa\Desktop\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:41:9-43:40
 63            android:name="com.turisteam.ayuntamientocobreros.AdminLoginActivity"
-63-->C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:42:13-47
+63-->C:\Users\marsa\Desktop\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:42:13-47
 64            android:exported="false" />
-64-->C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:43:13-37
+64-->C:\Users\marsa\Desktop\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:43:13-37
 65        <activity
-65-->C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:45:9-47:40
+65-->C:\Users\marsa\Desktop\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:45:9-47:40
 66            android:name="com.turisteam.ayuntamientocobreros.AdminPanelActivity"
-66-->C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:46:13-47
+66-->C:\Users\marsa\Desktop\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:46:13-47
 67            android:exported="false" />
-67-->C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:47:13-37
+67-->C:\Users\marsa\Desktop\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:47:13-37
 68        <activity
-68-->C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:49:9-51:40
+68-->C:\Users\marsa\Desktop\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:49:9-51:40
 69            android:name="com.turisteam.ayuntamientocobreros.NotificationManagerActivity"
-69-->C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:50:13-56
+69-->C:\Users\marsa\Desktop\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:50:13-56
 70            android:exported="false" />
-70-->C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:51:13-37
+70-->C:\Users\marsa\Desktop\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:51:13-37
 71        <activity
-71-->C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:53:9-55:40
+71-->C:\Users\marsa\Desktop\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:53:9-55:40
 72            android:name="com.turisteam.ayuntamientocobreros.NotificationDetailActivity"
-72-->C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:54:13-55
+72-->C:\Users\marsa\Desktop\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:54:13-55
 73            android:exported="false" />
-73-->C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:55:13-37
+73-->C:\Users\marsa\Desktop\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:55:13-37
 74        <activity
-74-->C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:57:9-59:40
+74-->C:\Users\marsa\Desktop\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:57:9-59:40
 75            android:name="com.turisteam.ayuntamientocobreros.UserDashboardActivity"
-75-->C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:58:13-50
+75-->C:\Users\marsa\Desktop\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:58:13-50
 76            android:exported="false" />
-76-->C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:59:13-37
+76-->C:\Users\marsa\Desktop\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:59:13-37
 77
 78        <!-- Servicio de Firebase Cloud Messaging -->
 79        <service
-79-->C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:62:9-68:19
+79-->C:\Users\marsa\Desktop\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:62:9-68:19
 80            android:name="com.turisteam.ayuntamientocobreros.MyFirebaseMessagingService"
-80-->C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:63:13-55
+80-->C:\Users\marsa\Desktop\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:63:13-55
 81            android:exported="false" >
-81-->C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:64:13-37
+81-->C:\Users\marsa\Desktop\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:64:13-37
 82            <intent-filter>
-82-->C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:65:13-67:29
+82-->C:\Users\marsa\Desktop\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:65:13-67:29
 83                <action android:name="com.google.firebase.MESSAGING_EVENT" />
-83-->C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:66:17-78
-83-->C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:66:25-75
+83-->C:\Users\marsa\Desktop\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:66:17-78
+83-->C:\Users\marsa\Desktop\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:66:25-75
 84            </intent-filter>
 85        </service>
 86
 87        <!-- Servicio de Sincronización -->
 88        <service
-88-->C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:71:9-73:40
+88-->C:\Users\marsa\Desktop\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:71:9-73:40
 89            android:name="com.turisteam.ayuntamientocobreros.SyncService"
-89-->C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:72:13-40
+89-->C:\Users\marsa\Desktop\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:72:13-40
 90            android:exported="false" />
-90-->C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:73:13-37
+90-->C:\Users\marsa\Desktop\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:73:13-37
 91
 92        <!-- Receptor de notificaciones -->
 93        <receiver
-93-->C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:76:9-82:20
+93-->C:\Users\marsa\Desktop\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:76:9-82:20
 94            android:name="com.turisteam.ayuntamientocobreros.NotificationReceiver"
-94-->C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:77:13-49
+94-->C:\Users\marsa\Desktop\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:77:13-49
 95            android:exported="false" >
-95-->C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:78:13-37
+95-->C:\Users\marsa\Desktop\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:78:13-37
 96            <intent-filter>
-96-->C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:79:13-81:29
+96-->C:\Users\marsa\Desktop\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:79:13-81:29
 97                <action android:name="android.intent.action.BOOT_COMPLETED" />
-97-->C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:80:17-79
-97-->C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:80:25-76
+97-->C:\Users\marsa\Desktop\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:80:17-79
+97-->C:\Users\marsa\Desktop\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:80:25-76
 98            </intent-filter>
 99        </receiver>
 100
@@ -383,10 +383,10 @@
 208            android:exported="false" >
 208-->[com.google.firebase:firebase-messaging:23.4.0] C:\Users\marsa\.gradle\caches\transforms-3\b5e7a7dbc88dc8362ad8f6ea81abf5a0\transformed\firebase-messaging-23.4.0\AndroidManifest.xml:49:13-37
 209            <intent-filter android:priority="-500" >
-209-->C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:65:13-67:29
+209-->C:\Users\marsa\Desktop\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:65:13-67:29
 210                <action android:name="com.google.firebase.MESSAGING_EVENT" />
-210-->C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:66:17-78
-210-->C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:66:25-75
+210-->C:\Users\marsa\Desktop\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:66:17-78
+210-->C:\Users\marsa\Desktop\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:66:25-75
 211            </intent-filter>
 212        </service>
 213

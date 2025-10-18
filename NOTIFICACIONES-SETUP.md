@@ -302,3 +302,4 @@ curl https://us-central1-turisteam-80f1b.cloudfunctions.net/getRecaptchaStats
 - **Panel de administración completo**
 
 **¡El sistema de notificaciones está listo para funcionar tanto localmente como con Firebase!** 🚀📱
+

@@ -119,7 +119,7 @@ public class NotificationDetailActivity extends AppCompatActivity {
             // Cargar imagen desde Firebase Storage o URL
             Glide.with(this)
                 .load(imageUrl)
-                .placeholder(R.drawable.ic_loading)
+                .placeholder(R.drawable.ic_escudo_cobreros)
                 .error(R.drawable.ic_error)
                 .into(attachmentImageView);
         } catch (Exception e) {

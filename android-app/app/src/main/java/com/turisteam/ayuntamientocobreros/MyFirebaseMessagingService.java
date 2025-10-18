@@ -137,7 +137,7 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
             return android.graphics.BitmapFactory.decodeResource(getResources(), R.drawable.escudo_cobreros, options);
         } catch (Exception e) {
             // Si no se puede cargar el escudo, usar un icono por defecto
-            return android.graphics.BitmapFactory.decodeResource(getResources(), R.drawable.ic_launcher);
+            return android.graphics.BitmapFactory.decodeResource(getResources(), R.drawable.ic_escudo_cobreros);
         }
     }
     

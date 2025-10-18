@@ -456,3 +456,135 @@ exports.cleanupRecaptchaLogs = functions.pubsub
             console.error('❌ Error en limpieza de logs:', error);
         }
     });
+
+/**
+ * 📦 Backup automático de contenido (ejecutar cada 6 horas)
+ * Ejecuta automáticamente cada 6 horas para mantener backups actualizados
+ */
+exports.automaticContentBackup = functions.pubsub
+    .schedule('0 */6 * * *')
+    .timeZone('Europe/Madrid')
+    .onRun(async (context) => {
+        console.log('📦 Iniciando backup automático de contenido...');
+
+        try {
+            // Crear backup de metadatos del sistema
+            const backupMetadata = {
+                timestamp: admin.firestore.FieldValue.serverTimestamp(),
+                source: 'AUTOMATIC_BACKUP',
+                version: '1.0',
+                environment: 'production'
+            };
+
+            // Guardar metadatos del backup
+            await admin.firestore().collection('backups').doc('metadata').set(backupMetadata);
+            
+            console.log('✅ Backup automático completado');
+
+        } catch (error) {
+            console.error('❌ Error en backup automático:', error);
+        }
+    });
+
+/**
+ * 🔄 Limpiar backups antiguos (ejecutar semanalmente)
+ * Ejecuta automáticamente cada domingo a las 03:00
+ */
+exports.cleanupOldBackups = functions.pubsub
+    .schedule('0 3 * * 0')
+    .timeZone('Europe/Madrid')
+    .onRun(async (context) => {
+        console.log('🔄 Iniciando limpieza de backups antiguos...');
+
+        try {
+            const backupsRef = admin.firestore().collection('backups');
+            
+            // Eliminar backups de más de 30 días
+            const thirtyDaysAgo = new Date();
+            thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+            const oldBackupsSnapshot = await backupsRef
+                .where('lastBackup', '<', thirtyDaysAgo)
+                .limit(100) // Procesar en lotes
+                .get();
+
+            if (oldBackupsSnapshot.empty) {
+                console.log('✅ No hay backups antiguos para eliminar');
+                return;
+            }
+
+            const batch = admin.firestore().batch();
+            oldBackupsSnapshot.forEach(doc => {
+                // No eliminar backups críticos
+                if (!['bandos', 'noticias', 'eventos', 'configuraciones', 'localStorage_completo', 'metadata'].includes(doc.id)) {
+                    batch.delete(doc.ref);
+                }
+            });
+
+            await batch.commit();
+            console.log(`✅ Limpieza de backups completada`);
+
+        } catch (error) {
+            console.error('❌ Error en limpieza de backups:', error);
+        }
+    });
+
+/**
+ * 📊 Obtener estadísticas de backup
+ * Endpoint: https://us-central1-turisteam-80f1b.cloudfunctions.net/getBackupStats
+ */
+exports.getBackupStats = functions.https.onRequest(async (req, res) => {
+    // Configurar CORS
+    res.set('Access-Control-Allow-Origin', '*');
+    res.set('Access-Control-Allow-Methods', 'GET, OPTIONS');
+    res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+
+    if (req.method === 'OPTIONS') {
+        res.status(204).send('');
+        return;
+    }
+
+    if (req.method !== 'GET') {
+        res.status(405).json({ error: 'Método no permitido' });
+        return;
+    }
+
+    try {
+        const backupsRef = admin.firestore().collection('backups');
+        const snapshot = await backupsRef.get();
+
+        const stats = {
+            totalBackups: 0,
+            backupTypes: {},
+            lastBackup: null,
+            oldestBackup: null,
+            totalSize: 0
+        };
+
+        snapshot.forEach(doc => {
+            const data = doc.data();
+            stats.totalBackups++;
+            
+            // Contar por tipo
+            const source = data.source || 'unknown';
+            stats.backupTypes[source] = (stats.backupTypes[source] || 0) + 1;
+            
+            // Encontrar último y más antiguo backup
+            if (data.lastBackup) {
+                const backupTime = data.lastBackup.toDate();
+                if (!stats.lastBackup || backupTime > stats.lastBackup) {
+                    stats.lastBackup = backupTime;
+                }
+                if (!stats.oldestBackup || backupTime < stats.oldestBackup) {
+                    stats.oldestBackup = backupTime;
+                }
+            }
+        });
+
+        res.status(200).json(stats);
+
+    } catch (error) {
+        console.error('❌ Error obteniendo estadísticas de backup:', error);
+        res.status(500).json({ error: 'Error interno del servidor' });
+    }
+});

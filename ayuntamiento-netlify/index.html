@@ -591,6 +591,7 @@
                 <button class="tab-btn" data-tab="documents">Documentos</button>
                 <button class="tab-btn" data-tab="notifications">Notificaciones</button>
                 <button class="tab-btn" data-tab="database">Base de Datos</button>
+                <button class="tab-btn" data-tab="backup">Backup & Persistencia</button>
                 <button class="tab-btn" data-tab="settings">Configuración</button>
                 <button class="tab-btn" data-tab="servicios">Servicios</button>
             </div>
@@ -1045,6 +1046,80 @@
                     <div class="admin-section">
                         <h4>Estadísticas del Sistema</h4>
                         <div class="stats-grid" id="systemStats"></div>
+                    </div>
+                </div>
+                
+                <!-- Backup Tab -->
+                <div id="backup-tab" class="tab-content">
+                    <h3>🔐 Backup & Persistencia de Datos</h3>
+                    
+                    <!-- Backup Automático a Firestore -->
+                    <div class="admin-section">
+                        <h4>☁️ Backup Automático a Firestore</h4>
+                        <p>Gestionar copias de seguridad automáticas en la nube:</p>
+                        <div class="backup-buttons">
+                            <button class="btn btn-info" onclick="backupContentToFirestore()">
+                                <i class="fas fa-cloud-upload-alt"></i> Backup Contenido (Bandos, Noticias, Eventos)
+                            </button>
+                            <button class="btn btn-secondary" onclick="backupLocalStorageToFirestore()">
+                                <i class="fas fa-save"></i> Backup Completo localStorage
+                            </button>
+                            <button class="btn btn-warning" onclick="restoreContentFromFirestore()">
+                                <i class="fas fa-cloud-download-alt"></i> Restaurar desde Firestore
+                            </button>
+                        </div>
+                        <div class="backup-status">
+                            <p><strong>Estado:</strong> <span id="firebaseStatus">Verificando conexión...</span></p>
+                            <p><strong>Último backup:</strong> <span id="lastBackupTime">No disponible</span></p>
+                        </div>
+                    </div>
+                    
+                    <!-- Exportar/Importar Datos -->
+                    <div class="admin-section">
+                        <h4>📁 Exportar/Importar Datos</h4>
+                        <p>Crear copias de seguridad locales y restaurar datos:</p>
+                        <div class="export-import-buttons">
+                            <button class="btn btn-success" onclick="exportDataAsJSON()">
+                                <i class="fas fa-download"></i> Exportar Todo (JSON)
+                            </button>
+                            <button class="btn btn-primary" onclick="document.getElementById('importBackupFile').click()">
+                                <i class="fas fa-upload"></i> Importar Backup (JSON)
+                            </button>
+                            <input type="file" id="importBackupFile" accept=".json" style="display: none;" onchange="importDataFromJSON(this.files[0])">
+                        </div>
+                    </div>
+                    
+                    <!-- Verificación y Reparación -->
+                    <div class="admin-section">
+                        <h4>🔧 Verificación y Reparación</h4>
+                        <p>Verificar integridad de datos y reparar problemas:</p>
+                        <div class="repair-buttons">
+                            <button class="btn btn-info" onclick="verifyDataIntegrity()">
+                                <i class="fas fa-check-circle"></i> Verificar Integridad de Datos
+                            </button>
+                            <button class="btn btn-warning" onclick="repairCorruptedData()">
+                                <i class="fas fa-wrench"></i> Reparar Datos Corruptos
+                            </button>
+                            <button class="btn btn-danger" onclick="clearAllData()">
+                                <i class="fas fa-trash"></i> Limpiar Todos los Datos
+                            </button>
+                        </div>
+                        <div class="integrity-status">
+                            <p><strong>Estado de integridad:</strong> <span id="integrityStatus">No verificado</span></p>
+                        </div>
+                    </div>
+                    
+                    <!-- Información del Sistema -->
+                    <div class="admin-section">
+                        <h4>📊 Información del Sistema</h4>
+                        <div class="system-info">
+                            <p><strong>Versión:</strong> 1.0</p>
+                            <p><strong>Última verificación:</strong> <span id="lastIntegrityCheck">Nunca</span></p>
+                            <p><strong>Total bandos:</strong> <span id="totalBandos">0</span></p>
+                            <p><strong>Total noticias:</strong> <span id="totalNoticias">0</span></p>
+                            <p><strong>Total eventos:</strong> <span id="totalEventos">0</span></p>
+                            <p><strong>Total usuarios:</strong> <span id="totalUsuarios">0</span></p>
+                        </div>
                     </div>
                 </div>
                 

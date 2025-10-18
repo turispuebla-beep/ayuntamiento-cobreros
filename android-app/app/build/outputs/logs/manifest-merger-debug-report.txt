@@ -1,9 +1,9 @@
 -- Merging decision tree log ---
 manifest
-ADDED from C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:2:1-86:12
-INJECTED from C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:2:1-86:12
-INJECTED from C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:2:1-86:12
-INJECTED from C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:2:1-86:12
+ADDED from C:\Users\marsa\Desktop\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:2:1-86:12
+INJECTED from C:\Users\marsa\Desktop\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:2:1-86:12
+INJECTED from C:\Users\marsa\Desktop\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:2:1-86:12
+INJECTED from C:\Users\marsa\Desktop\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:2:1-86:12
 MERGED from [com.google.android.material:material:1.10.0] C:\Users\marsa\.gradle\caches\transforms-3\f25922657e124331905feeb0e8243802\transformed\material-1.10.0\AndroidManifest.xml:17:1-24:12
 MERGED from [androidx.constraintlayout:constraintlayout:2.1.4] C:\Users\marsa\.gradle\caches\transforms-3\51e46e85deaa1d2084ddfded39561ff6\transformed\constraintlayout-2.1.4\AndroidManifest.xml:2:1-11:12
 MERGED from [androidx.appcompat:appcompat-resources:1.6.1] C:\Users\marsa\.gradle\caches\transforms-3\a94195d614c3aebae928b454fcacd7b8\transformed\appcompat-resources-1.6.1\AndroidManifest.xml:17:1-22:12
@@ -14,6 +14,7 @@ MERGED from [com.google.firebase:firebase-messaging:23.4.0] C:\Users\marsa\.grad
 MERGED from [com.google.firebase:firebase-analytics:21.5.0] C:\Users\marsa\.gradle\caches\transforms-3\cd8fe52de0cfe9effd09ce618eb5fafe\transformed\firebase-analytics-21.5.0\AndroidManifest.xml:2:1-9:12
 MERGED from [com.google.firebase:firebase-storage:20.3.0] C:\Users\marsa\.gradle\caches\transforms-3\239335c851be86169b5ae058b4f40b56\transformed\firebase-storage-20.3.0\AndroidManifest.xml:15:1-39:12
 MERGED from [com.google.android.gms:play-services-auth:20.7.0] C:\Users\marsa\.gradle\caches\transforms-3\e90f8910aac63ccc8f57712506b166c1\transformed\play-services-auth-20.7.0\AndroidManifest.xml:17:1-40:12
+MERGED from [com.google.android.gms:play-services-safetynet:18.0.1] C:\Users\marsa\.gradle\caches\transforms-3\f46e6d47e40013eba06afe7c4a5581b9\transformed\play-services-safetynet-18.0.1\AndroidManifest.xml:17:1-24:12
 MERGED from [com.github.bumptech.glide:glide:4.16.0] C:\Users\marsa\.gradle\caches\transforms-3\39f1464887aa700effd9eb1712826756\transformed\glide-4.16.0\AndroidManifest.xml:2:1-9:12
 MERGED from [com.google.firebase:firebase-appcheck:17.1.1] C:\Users\marsa\.gradle\caches\transforms-3\80dfa722e3d8142bf49b1f569aa10a8f\transformed\firebase-appcheck-17.1.1\AndroidManifest.xml:15:1-34:12
 MERGED from [com.google.firebase:firebase-datatransport:18.1.7] C:\Users\marsa\.gradle\caches\transforms-3\770931ed3421c7ee7a9188d469253fea\transformed\firebase-datatransport-18.1.7\AndroidManifest.xml:15:1-33:12
@@ -93,17 +94,17 @@ MERGED from [androidx.annotation:annotation-experimental:1.3.0] C:\Users\marsa\.
 MERGED from [io.grpc:grpc-android:1.52.1] C:\Users\marsa\.gradle\caches\transforms-3\1a0ba54302010623fc13096e5af046a0\transformed\grpc-android-1.52.1\AndroidManifest.xml:2:1-11:12
 MERGED from [com.google.firebase:protolite-well-known-types:18.0.0] C:\Users\marsa\.gradle\caches\transforms-3\8bf788dec29430faa88305362f0ad689\transformed\protolite-well-known-types-18.0.0\AndroidManifest.xml:2:1-11:12
 	package
-		INJECTED from C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml
+		INJECTED from C:\Users\marsa\Desktop\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml
 	android:versionName
-		INJECTED from C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml
+		INJECTED from C:\Users\marsa\Desktop\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml
 	xmlns:tools
-		ADDED from C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:3:5-51
+		ADDED from C:\Users\marsa\Desktop\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:3:5-51
 	android:versionCode
-		INJECTED from C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml
+		INJECTED from C:\Users\marsa\Desktop\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml
 	xmlns:android
-		ADDED from C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:2:11-69
+		ADDED from C:\Users\marsa\Desktop\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:2:11-69
 uses-permission#android.permission.INTERNET
-ADDED from C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:6:5-67
+ADDED from C:\Users\marsa\Desktop\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:6:5-67
 MERGED from [com.google.firebase:firebase-auth:22.3.0] C:\Users\marsa\.gradle\caches\transforms-3\86748d16eae8eeb12bc61e76b70cf552\transformed\firebase-auth-22.3.0\AndroidManifest.xml:25:5-67
 MERGED from [com.google.firebase:firebase-auth:22.3.0] C:\Users\marsa\.gradle\caches\transforms-3\86748d16eae8eeb12bc61e76b70cf552\transformed\firebase-auth-22.3.0\AndroidManifest.xml:25:5-67
 MERGED from [com.google.firebase:firebase-firestore:24.10.0] C:\Users\marsa\.gradle\caches\transforms-3\5078c2639d0ae2acc823dc4af1609335\transformed\firebase-firestore-24.10.0\AndroidManifest.xml:11:5-67
@@ -127,9 +128,9 @@ MERGED from [com.google.android.gms:play-services-measurement-impl:21.5.0] C:\Us
 MERGED from [com.google.android.gms:play-services-measurement-sdk-api:21.5.0] C:\Users\marsa\.gradle\caches\transforms-3\3920ed2b9fcc4ed9328ea995298e7123\transformed\play-services-measurement-sdk-api-21.5.0\AndroidManifest.xml:23:5-67
 MERGED from [com.google.android.gms:play-services-measurement-sdk-api:21.5.0] C:\Users\marsa\.gradle\caches\transforms-3\3920ed2b9fcc4ed9328ea995298e7123\transformed\play-services-measurement-sdk-api-21.5.0\AndroidManifest.xml:23:5-67
 	android:name
-		ADDED from C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:6:22-64
+		ADDED from C:\Users\marsa\Desktop\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:6:22-64
 uses-permission#android.permission.ACCESS_NETWORK_STATE
-ADDED from C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:7:5-79
+ADDED from C:\Users\marsa\Desktop\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:7:5-79
 MERGED from [com.google.firebase:firebase-auth:22.3.0] C:\Users\marsa\.gradle\caches\transforms-3\86748d16eae8eeb12bc61e76b70cf552\transformed\firebase-auth-22.3.0\AndroidManifest.xml:26:5-79
 MERGED from [com.google.firebase:firebase-auth:22.3.0] C:\Users\marsa\.gradle\caches\transforms-3\86748d16eae8eeb12bc61e76b70cf552\transformed\firebase-auth-22.3.0\AndroidManifest.xml:26:5-79
 MERGED from [com.google.firebase:firebase-firestore:24.10.0] C:\Users\marsa\.gradle\caches\transforms-3\5078c2639d0ae2acc823dc4af1609335\transformed\firebase-firestore-24.10.0\AndroidManifest.xml:10:5-79
@@ -159,9 +160,9 @@ MERGED from [com.google.android.gms:play-services-measurement-sdk-api:21.5.0] C:
 MERGED from [io.grpc:grpc-android:1.52.1] C:\Users\marsa\.gradle\caches\transforms-3\1a0ba54302010623fc13096e5af046a0\transformed\grpc-android-1.52.1\AndroidManifest.xml:9:5-79
 MERGED from [io.grpc:grpc-android:1.52.1] C:\Users\marsa\.gradle\caches\transforms-3\1a0ba54302010623fc13096e5af046a0\transformed\grpc-android-1.52.1\AndroidManifest.xml:9:5-79
 	android:name
-		ADDED from C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:7:22-76
+		ADDED from C:\Users\marsa\Desktop\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:7:22-76
 uses-permission#android.permission.WAKE_LOCK
-ADDED from C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:8:5-68
+ADDED from C:\Users\marsa\Desktop\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:8:5-68
 MERGED from [com.google.firebase:firebase-messaging:23.4.0] C:\Users\marsa\.gradle\caches\transforms-3\b5e7a7dbc88dc8362ad8f6ea81abf5a0\transformed\firebase-messaging-23.4.0\AndroidManifest.xml:24:5-68
 MERGED from [com.google.firebase:firebase-messaging:23.4.0] C:\Users\marsa\.gradle\caches\transforms-3\b5e7a7dbc88dc8362ad8f6ea81abf5a0\transformed\firebase-messaging-23.4.0\AndroidManifest.xml:24:5-68
 MERGED from [com.google.android.gms:play-services-measurement-api:21.5.0] C:\Users\marsa\.gradle\caches\transforms-3\f050b984cb27720c90d461bcea2442bb\transformed\play-services-measurement-api-21.5.0\AndroidManifest.xml:24:5-68
@@ -175,24 +176,24 @@ MERGED from [com.google.android.gms:play-services-measurement-impl:21.5.0] C:\Us
 MERGED from [com.google.android.gms:play-services-measurement-sdk-api:21.5.0] C:\Users\marsa\.gradle\caches\transforms-3\3920ed2b9fcc4ed9328ea995298e7123\transformed\play-services-measurement-sdk-api-21.5.0\AndroidManifest.xml:25:5-68
 MERGED from [com.google.android.gms:play-services-measurement-sdk-api:21.5.0] C:\Users\marsa\.gradle\caches\transforms-3\3920ed2b9fcc4ed9328ea995298e7123\transformed\play-services-measurement-sdk-api-21.5.0\AndroidManifest.xml:25:5-68
 	android:name
-		ADDED from C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:8:22-65
+		ADDED from C:\Users\marsa\Desktop\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:8:22-65
 uses-permission#android.permission.VIBRATE
-ADDED from C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:9:5-66
+ADDED from C:\Users\marsa\Desktop\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:9:5-66
 	android:name
-		ADDED from C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:9:22-63
+		ADDED from C:\Users\marsa\Desktop\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:9:22-63
 uses-permission#android.permission.RECEIVE_BOOT_COMPLETED
-ADDED from C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:10:5-81
+ADDED from C:\Users\marsa\Desktop\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:10:5-81
 	android:name
-		ADDED from C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:10:22-78
+		ADDED from C:\Users\marsa\Desktop\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:10:22-78
 uses-permission#android.permission.POST_NOTIFICATIONS
-ADDED from C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:11:5-77
+ADDED from C:\Users\marsa\Desktop\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:11:5-77
 MERGED from [com.google.firebase:firebase-messaging:23.4.0] C:\Users\marsa\.gradle\caches\transforms-3\b5e7a7dbc88dc8362ad8f6ea81abf5a0\transformed\firebase-messaging-23.4.0\AndroidManifest.xml:23:5-77
 MERGED from [com.google.firebase:firebase-messaging:23.4.0] C:\Users\marsa\.gradle\caches\transforms-3\b5e7a7dbc88dc8362ad8f6ea81abf5a0\transformed\firebase-messaging-23.4.0\AndroidManifest.xml:23:5-77
 	android:name
-		ADDED from C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:11:22-74
+		ADDED from C:\Users\marsa\Desktop\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:11:22-74
 application
-ADDED from C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:13:5-84:19
-INJECTED from C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:13:5-84:19
+ADDED from C:\Users\marsa\Desktop\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:13:5-84:19
+INJECTED from C:\Users\marsa\Desktop\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:13:5-84:19
 MERGED from [com.google.android.material:material:1.10.0] C:\Users\marsa\.gradle\caches\transforms-3\f25922657e124331905feeb0e8243802\transformed\material-1.10.0\AndroidManifest.xml:22:5-20
 MERGED from [com.google.android.material:material:1.10.0] C:\Users\marsa\.gradle\caches\transforms-3\f25922657e124331905feeb0e8243802\transformed\material-1.10.0\AndroidManifest.xml:22:5-20
 MERGED from [androidx.constraintlayout:constraintlayout:2.1.4] C:\Users\marsa\.gradle\caches\transforms-3\51e46e85deaa1d2084ddfded39561ff6\transformed\constraintlayout-2.1.4\AndroidManifest.xml:9:5-20
@@ -209,6 +210,8 @@ MERGED from [com.google.firebase:firebase-storage:20.3.0] C:\Users\marsa\.gradle
 MERGED from [com.google.firebase:firebase-storage:20.3.0] C:\Users\marsa\.gradle\caches\transforms-3\239335c851be86169b5ae058b4f40b56\transformed\firebase-storage-20.3.0\AndroidManifest.xml:26:5-37:19
 MERGED from [com.google.android.gms:play-services-auth:20.7.0] C:\Users\marsa\.gradle\caches\transforms-3\e90f8910aac63ccc8f57712506b166c1\transformed\play-services-auth-20.7.0\AndroidManifest.xml:22:5-38:19
 MERGED from [com.google.android.gms:play-services-auth:20.7.0] C:\Users\marsa\.gradle\caches\transforms-3\e90f8910aac63ccc8f57712506b166c1\transformed\play-services-auth-20.7.0\AndroidManifest.xml:22:5-38:19
+MERGED from [com.google.android.gms:play-services-safetynet:18.0.1] C:\Users\marsa\.gradle\caches\transforms-3\f46e6d47e40013eba06afe7c4a5581b9\transformed\play-services-safetynet-18.0.1\AndroidManifest.xml:22:5-20
+MERGED from [com.google.android.gms:play-services-safetynet:18.0.1] C:\Users\marsa\.gradle\caches\transforms-3\f46e6d47e40013eba06afe7c4a5581b9\transformed\play-services-safetynet-18.0.1\AndroidManifest.xml:22:5-20
 MERGED from [com.google.firebase:firebase-appcheck:17.1.1] C:\Users\marsa\.gradle\caches\transforms-3\80dfa722e3d8142bf49b1f569aa10a8f\transformed\firebase-appcheck-17.1.1\AndroidManifest.xml:21:5-32:19
 MERGED from [com.google.firebase:firebase-appcheck:17.1.1] C:\Users\marsa\.gradle\caches\transforms-3\80dfa722e3d8142bf49b1f569aa10a8f\transformed\firebase-appcheck-17.1.1\AndroidManifest.xml:21:5-32:19
 MERGED from [com.google.firebase:firebase-datatransport:18.1.7] C:\Users\marsa\.gradle\caches\transforms-3\770931ed3421c7ee7a9188d469253fea\transformed\firebase-datatransport-18.1.7\AndroidManifest.xml:23:5-31:19
@@ -270,115 +273,115 @@ MERGED from [androidx.startup:startup-runtime:1.1.1] C:\Users\marsa\.gradle\cach
 MERGED from [androidx.versionedparcelable:versionedparcelable:1.1.1] C:\Users\marsa\.gradle\caches\transforms-3\9476c00c9ba457d14216bb91c77b937a\transformed\versionedparcelable-1.1.1\AndroidManifest.xml:24:5-25:19
 MERGED from [androidx.versionedparcelable:versionedparcelable:1.1.1] C:\Users\marsa\.gradle\caches\transforms-3\9476c00c9ba457d14216bb91c77b937a\transformed\versionedparcelable-1.1.1\AndroidManifest.xml:24:5-25:19
 	android:extractNativeLibs
-		INJECTED from C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml
+		INJECTED from C:\Users\marsa\Desktop\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml
 	android:appComponentFactory
 		ADDED from [androidx.core:core:1.9.0] C:\Users\marsa\.gradle\caches\transforms-3\412053de3272e2648543d87a9cf3d9e7\transformed\core-1.9.0\AndroidManifest.xml:28:18-86
 	android:supportsRtl
-		ADDED from C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:20:9-35
+		ADDED from C:\Users\marsa\Desktop\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:20:9-35
 	android:label
-		ADDED from C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:18:9-41
+		ADDED from C:\Users\marsa\Desktop\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:18:9-41
 	android:fullBackupContent
-		ADDED from C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:16:9-54
+		ADDED from C:\Users\marsa\Desktop\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:16:9-54
 	android:roundIcon
-		ADDED from C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:19:9-54
+		ADDED from C:\Users\marsa\Desktop\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:19:9-54
 	tools:targetApi
-		ADDED from C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:22:9-29
+		ADDED from C:\Users\marsa\Desktop\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:22:9-29
 	android:icon
-		ADDED from C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:17:9-43
+		ADDED from C:\Users\marsa\Desktop\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:17:9-43
 	android:allowBackup
-		ADDED from C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:14:9-35
+		ADDED from C:\Users\marsa\Desktop\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:14:9-35
 	android:theme
-		ADDED from C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:21:9-58
+		ADDED from C:\Users\marsa\Desktop\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:21:9-58
 	android:dataExtractionRules
-		ADDED from C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:15:9-65
+		ADDED from C:\Users\marsa\Desktop\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:15:9-65
 activity#com.turisteam.ayuntamientocobreros.MainActivity
-ADDED from C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:25:9-33:20
+ADDED from C:\Users\marsa\Desktop\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:25:9-33:20
 	android:exported
-		ADDED from C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:27:13-36
+		ADDED from C:\Users\marsa\Desktop\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:27:13-36
 	android:theme
-		ADDED from C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:28:13-62
+		ADDED from C:\Users\marsa\Desktop\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:28:13-62
 	android:name
-		ADDED from C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:26:13-41
+		ADDED from C:\Users\marsa\Desktop\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:26:13-41
 intent-filter#action:name:android.intent.action.MAIN+category:name:android.intent.category.LAUNCHER
-ADDED from C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:29:13-32:29
+ADDED from C:\Users\marsa\Desktop\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:29:13-32:29
 action#android.intent.action.MAIN
-ADDED from C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:30:17-69
+ADDED from C:\Users\marsa\Desktop\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:30:17-69
 	android:name
-		ADDED from C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:30:25-66
+		ADDED from C:\Users\marsa\Desktop\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:30:25-66
 category#android.intent.category.LAUNCHER
-ADDED from C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:31:17-77
+ADDED from C:\Users\marsa\Desktop\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:31:17-77
 	android:name
-		ADDED from C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:31:27-74
+		ADDED from C:\Users\marsa\Desktop\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:31:27-74
 activity#com.turisteam.ayuntamientocobreros.RegisterActivity
-ADDED from C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:37:9-39:40
+ADDED from C:\Users\marsa\Desktop\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:37:9-39:40
 	android:exported
-		ADDED from C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:39:13-37
+		ADDED from C:\Users\marsa\Desktop\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:39:13-37
 	android:name
-		ADDED from C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:38:13-45
+		ADDED from C:\Users\marsa\Desktop\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:38:13-45
 activity#com.turisteam.ayuntamientocobreros.AdminLoginActivity
-ADDED from C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:41:9-43:40
+ADDED from C:\Users\marsa\Desktop\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:41:9-43:40
 	android:exported
-		ADDED from C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:43:13-37
+		ADDED from C:\Users\marsa\Desktop\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:43:13-37
 	android:name
-		ADDED from C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:42:13-47
+		ADDED from C:\Users\marsa\Desktop\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:42:13-47
 activity#com.turisteam.ayuntamientocobreros.AdminPanelActivity
-ADDED from C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:45:9-47:40
+ADDED from C:\Users\marsa\Desktop\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:45:9-47:40
 	android:exported
-		ADDED from C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:47:13-37
+		ADDED from C:\Users\marsa\Desktop\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:47:13-37
 	android:name
-		ADDED from C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:46:13-47
+		ADDED from C:\Users\marsa\Desktop\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:46:13-47
 activity#com.turisteam.ayuntamientocobreros.NotificationManagerActivity
-ADDED from C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:49:9-51:40
+ADDED from C:\Users\marsa\Desktop\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:49:9-51:40
 	android:exported
-		ADDED from C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:51:13-37
+		ADDED from C:\Users\marsa\Desktop\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:51:13-37
 	android:name
-		ADDED from C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:50:13-56
+		ADDED from C:\Users\marsa\Desktop\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:50:13-56
 activity#com.turisteam.ayuntamientocobreros.NotificationDetailActivity
-ADDED from C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:53:9-55:40
+ADDED from C:\Users\marsa\Desktop\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:53:9-55:40
 	android:exported
-		ADDED from C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:55:13-37
+		ADDED from C:\Users\marsa\Desktop\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:55:13-37
 	android:name
-		ADDED from C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:54:13-55
+		ADDED from C:\Users\marsa\Desktop\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:54:13-55
 activity#com.turisteam.ayuntamientocobreros.UserDashboardActivity
-ADDED from C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:57:9-59:40
+ADDED from C:\Users\marsa\Desktop\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:57:9-59:40
 	android:exported
-		ADDED from C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:59:13-37
+		ADDED from C:\Users\marsa\Desktop\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:59:13-37
 	android:name
-		ADDED from C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:58:13-50
+		ADDED from C:\Users\marsa\Desktop\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:58:13-50
 service#com.turisteam.ayuntamientocobreros.MyFirebaseMessagingService
-ADDED from C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:62:9-68:19
+ADDED from C:\Users\marsa\Desktop\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:62:9-68:19
 	android:exported
-		ADDED from C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:64:13-37
+		ADDED from C:\Users\marsa\Desktop\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:64:13-37
 	android:name
-		ADDED from C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:63:13-55
+		ADDED from C:\Users\marsa\Desktop\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:63:13-55
 intent-filter#action:name:com.google.firebase.MESSAGING_EVENT
-ADDED from C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:65:13-67:29
+ADDED from C:\Users\marsa\Desktop\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:65:13-67:29
 action#com.google.firebase.MESSAGING_EVENT
-ADDED from C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:66:17-78
+ADDED from C:\Users\marsa\Desktop\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:66:17-78
 	android:name
-		ADDED from C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:66:25-75
+		ADDED from C:\Users\marsa\Desktop\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:66:25-75
 service#com.turisteam.ayuntamientocobreros.SyncService
-ADDED from C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:71:9-73:40
+ADDED from C:\Users\marsa\Desktop\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:71:9-73:40
 	android:exported
-		ADDED from C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:73:13-37
+		ADDED from C:\Users\marsa\Desktop\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:73:13-37
 	android:name
-		ADDED from C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:72:13-40
+		ADDED from C:\Users\marsa\Desktop\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:72:13-40
 receiver#com.turisteam.ayuntamientocobreros.NotificationReceiver
-ADDED from C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:76:9-82:20
+ADDED from C:\Users\marsa\Desktop\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:76:9-82:20
 	android:exported
-		ADDED from C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:78:13-37
+		ADDED from C:\Users\marsa\Desktop\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:78:13-37
 	android:name
-		ADDED from C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:77:13-49
+		ADDED from C:\Users\marsa\Desktop\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:77:13-49
 intent-filter#action:name:android.intent.action.BOOT_COMPLETED
-ADDED from C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:79:13-81:29
+ADDED from C:\Users\marsa\Desktop\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:79:13-81:29
 action#android.intent.action.BOOT_COMPLETED
-ADDED from C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:80:17-79
+ADDED from C:\Users\marsa\Desktop\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:80:17-79
 	android:name
-		ADDED from C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:80:25-76
+		ADDED from C:\Users\marsa\Desktop\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml:80:25-76
 uses-sdk
-INJECTED from C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml reason: use-sdk injection requested
-INJECTED from C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml
-INJECTED from C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml
+INJECTED from C:\Users\marsa\Desktop\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml reason: use-sdk injection requested
+INJECTED from C:\Users\marsa\Desktop\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml
+INJECTED from C:\Users\marsa\Desktop\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml
 MERGED from [com.google.android.material:material:1.10.0] C:\Users\marsa\.gradle\caches\transforms-3\f25922657e124331905feeb0e8243802\transformed\material-1.10.0\AndroidManifest.xml:20:5-44
 MERGED from [com.google.android.material:material:1.10.0] C:\Users\marsa\.gradle\caches\transforms-3\f25922657e124331905feeb0e8243802\transformed\material-1.10.0\AndroidManifest.xml:20:5-44
 MERGED from [androidx.constraintlayout:constraintlayout:2.1.4] C:\Users\marsa\.gradle\caches\transforms-3\51e46e85deaa1d2084ddfded39561ff6\transformed\constraintlayout-2.1.4\AndroidManifest.xml:5:5-7:41
@@ -399,6 +402,8 @@ MERGED from [com.google.firebase:firebase-storage:20.3.0] C:\Users\marsa\.gradle
 MERGED from [com.google.firebase:firebase-storage:20.3.0] C:\Users\marsa\.gradle\caches\transforms-3\239335c851be86169b5ae058b4f40b56\transformed\firebase-storage-20.3.0\AndroidManifest.xml:19:5-44
 MERGED from [com.google.android.gms:play-services-auth:20.7.0] C:\Users\marsa\.gradle\caches\transforms-3\e90f8910aac63ccc8f57712506b166c1\transformed\play-services-auth-20.7.0\AndroidManifest.xml:20:5-44
 MERGED from [com.google.android.gms:play-services-auth:20.7.0] C:\Users\marsa\.gradle\caches\transforms-3\e90f8910aac63ccc8f57712506b166c1\transformed\play-services-auth-20.7.0\AndroidManifest.xml:20:5-44
+MERGED from [com.google.android.gms:play-services-safetynet:18.0.1] C:\Users\marsa\.gradle\caches\transforms-3\f46e6d47e40013eba06afe7c4a5581b9\transformed\play-services-safetynet-18.0.1\AndroidManifest.xml:20:5-44
+MERGED from [com.google.android.gms:play-services-safetynet:18.0.1] C:\Users\marsa\.gradle\caches\transforms-3\f46e6d47e40013eba06afe7c4a5581b9\transformed\play-services-safetynet-18.0.1\AndroidManifest.xml:20:5-44
 MERGED from [com.github.bumptech.glide:glide:4.16.0] C:\Users\marsa\.gradle\caches\transforms-3\39f1464887aa700effd9eb1712826756\transformed\glide-4.16.0\AndroidManifest.xml:5:5-7:41
 MERGED from [com.github.bumptech.glide:glide:4.16.0] C:\Users\marsa\.gradle\caches\transforms-3\39f1464887aa700effd9eb1712826756\transformed\glide-4.16.0\AndroidManifest.xml:5:5-7:41
 MERGED from [com.google.firebase:firebase-appcheck:17.1.1] C:\Users\marsa\.gradle\caches\transforms-3\80dfa722e3d8142bf49b1f569aa10a8f\transformed\firebase-appcheck-17.1.1\AndroidManifest.xml:18:5-44
@@ -558,9 +563,9 @@ MERGED from [com.google.firebase:protolite-well-known-types:18.0.0] C:\Users\mar
 	tools:overrideLibrary
 		ADDED from [com.google.firebase:firebase-auth:22.3.0] C:\Users\marsa\.gradle\caches\transforms-3\86748d16eae8eeb12bc61e76b70cf552\transformed\firebase-auth-22.3.0\AndroidManifest.xml:23:9-61
 	android:targetSdkVersion
-		INJECTED from C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml
+		INJECTED from C:\Users\marsa\Desktop\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml
 	android:minSdkVersion
-		INJECTED from C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml
+		INJECTED from C:\Users\marsa\Desktop\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\AndroidManifest.xml
 activity#com.google.firebase.auth.internal.GenericIdpActivity
 ADDED from [com.google.firebase:firebase-auth:22.3.0] C:\Users\marsa\.gradle\caches\transforms-3\86748d16eae8eeb12bc61e76b70cf552\transformed\firebase-auth-22.3.0\AndroidManifest.xml:29:9-46:20
 	android:excludeFromRecents

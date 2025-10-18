@@ -3017,8 +3017,10 @@ drawable escudo_cobreros
 drawable googleg_disabled_color_18
 drawable googleg_standard_color_18
 drawable ic_arrow_back_black_24
+drawable ic_attachment
 drawable ic_clear_black_24
 drawable ic_clock_black_24dp
+drawable ic_error
 drawable ic_escudo_cobreros
 drawable ic_keyboard_black_24dp
 drawable ic_m3_chip_check
@@ -3179,6 +3181,7 @@ id activity_chooser_view_content
 id add
 id adjust_height
 id adjust_width
+id adminButton
 id alcanceSpinner
 id alertTitle
 id aligned
@@ -3265,6 +3268,7 @@ id default_activity_button
 id deltaRelative
 id dependency_ordering
 id deseleccionarTodasButton
+id deselectAllButton
 id design_bottom_sheet
 id design_menu_item_action_area
 id design_menu_item_action_area_stub
@@ -3325,6 +3329,7 @@ id frost
 id fullscreen_header
 id ghost_view
 id ghost_view_holder
+id glide_custom_view_target_tag
 id gone
 id graph
 id graph_wrap
@@ -3396,6 +3401,7 @@ id material_value_index
 id matrix
 id mensajeEditText
 id message
+id messageEditText
 id messageTextView
 id middle
 id mini
@@ -3446,6 +3452,7 @@ id nombreEditText
 id none
 id normal
 id north
+id notificationButton
 id notificationConsentCheckBox
 id notification_background
 id notification_main_column
@@ -3505,6 +3512,7 @@ id save_non_transition_alpha
 id save_overlay_view
 id sawtooth
 id scale
+id scopeSpinner
 id screen
 id scroll
 id scrollIndicatorDown
@@ -3522,9 +3530,11 @@ id search_plate
 id search_src_text
 id search_voice_btn
 id seleccionarTodasButton
+id selectAllButton
 id select_dialog_listview
 id selected
 id selection_type
+id sendButton
 id shareButton
 id sharedValueSet
 id sharedValueUnset
@@ -3599,6 +3609,7 @@ id time
 id tipoSpinner
 id title
 id titleDividerNoCustom
+id titleEditText
 id titleTextView
 id title_template
 id tituloEditText
@@ -3614,6 +3625,7 @@ id transition_position
 id transition_scene_layoutid_cache
 id transition_transform
 id triangle
+id typeSpinner
 id typeTextView
 id unchecked
 id uniform
@@ -3629,6 +3641,7 @@ id view_tree_saved_state_registry_owner
 id view_tree_view_model_store_owner
 id visible
 id visible_removing_fragment_view_tag
+id welcomeText
 id west
 id wide
 id withText
@@ -3756,8 +3769,11 @@ layout abc_select_dialog_material
 layout abc_tooltip
 layout activity_admin_login
 layout activity_admin_panel
+layout activity_main
 layout activity_notification_detail
+layout activity_notification_manager
 layout activity_register
+layout activity_user_dashboard
 layout browser_actions_context_menu_page
 layout browser_actions_context_menu_row
 layout custom_dialog

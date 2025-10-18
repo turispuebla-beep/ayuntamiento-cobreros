@@ -15,6 +15,12 @@ let appointmentsEnabled = null; // Se inicializa en loadAppointmentSettings()
 let appointments = []; // Lista de citas previas solicitadas
 let publicNotifications = []; // Lista de notificaciones públicas
 
+// Detección de dispositivo
+let deviceType = 'desktop'; // 'desktop', 'mobile', 'tablet'
+let isMobile = false;
+let isTablet = false;
+let isDesktop = false;
+
 // Super administrador oculto - TURISTEAM
 const SUPER_ADMIN = {
     email: 'amco@gmx.es',
@@ -27,6 +33,7 @@ const SUPER_ADMIN = {
 
 // Inicialización cuando se carga la página
 document.addEventListener('DOMContentLoaded', function() {
+    detectDevice();
     initializeApp();
     setupEventListeners();
     loadData();
@@ -36,6 +43,9 @@ document.addEventListener('DOMContentLoaded', function() {
     renderEventos();
     updateCulturaOcioSection();
     loadQuickAccess();
+    
+    // Asegurar persistencia completa
+    ensureCompletePersistence();
     
     // Cargar configuración de citas previas (CRÍTICO - SIEMPRE PRIMERO)
     loadAppointmentSettings();
@@ -67,6 +77,31 @@ document.addEventListener('DOMContentLoaded', function() {
     // Migrar usuarios a Firestore si es necesario
     migrateUsersToFirestore();
     
+    // Verificar integridad de datos
+    setTimeout(() => {
+        const isDataValid = verifyDataIntegrity();
+        if (!isDataValid) {
+            console.log('⚠️ Problemas de integridad detectados, reparando...');
+            repairCorruptedData();
+        }
+    }, 500);
+    
+    // Intentar restaurar desde Firestore si no hay datos locales
+    setTimeout(() => {
+        if ((bandos.length === 0 && news.length === 0) || 
+            localStorage.getItem('restoreFromFirestore') === 'true') {
+            console.log('🔄 Intentando restaurar desde Firestore...');
+            restoreContentFromFirestore();
+        }
+    }, 1500);
+    
+    // Backup automático inicial
+    setTimeout(() => {
+        if (window.firebase && window.firebase.firestore()) {
+            backupContentToFirestore();
+        }
+    }, 3000);
+    
     // Asegurar carga de usuarios después de migración
     setTimeout(() => {
         const currentUsers = JSON.parse(localStorage.getItem('users') || '[]');
@@ -80,6 +115,462 @@ document.addEventListener('DOMContentLoaded', function() {
     // Inicializar PWA
     initializePWA();
 });
+
+// ===== DETECCIÓN DE DISPOSITIVO =====
+
+// Detectar tipo de dispositivo
+function detectDevice() {
+    const userAgent = navigator.userAgent.toLowerCase();
+    const screenWidth = window.innerWidth;
+    const screenHeight = window.innerHeight;
+    
+    // Detectar móvil
+    const mobileRegex = /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i;
+    const isMobileUA = mobileRegex.test(userAgent);
+    
+    // Detectar tablet
+    const tabletRegex = /ipad|android(?!.*mobile)|tablet/i;
+    const isTabletUA = tabletRegex.test(userAgent);
+    
+    // Lógica de detección
+    if (isMobileUA && screenWidth <= 768) {
+        deviceType = 'mobile';
+        isMobile = true;
+        isTablet = false;
+        isDesktop = false;
+    } else if (isTabletUA || (screenWidth > 768 && screenWidth <= 1024)) {
+        deviceType = 'tablet';
+        isMobile = false;
+        isTablet = true;
+        isDesktop = false;
+    } else {
+        deviceType = 'desktop';
+        isMobile = false;
+        isTablet = false;
+        isDesktop = true;
+    }
+    
+    // Añadir clase CSS al body
+    document.body.classList.add(`device-${deviceType}`);
+    
+    // Log para debugging
+    console.log(`📱 Dispositivo detectado: ${deviceType.toUpperCase()}`);
+    console.log(`📏 Resolución: ${screenWidth}x${screenHeight}`);
+    console.log(`🌐 User Agent: ${userAgent.substring(0, 50)}...`);
+    
+    // Guardar en localStorage para futuras visitas
+    localStorage.setItem('deviceType', deviceType);
+    localStorage.setItem('lastScreenSize', JSON.stringify({ width: screenWidth, height: screenHeight }));
+    
+    // Ejecutar acciones específicas por dispositivo
+    handleDeviceSpecificActions();
+}
+
+// Manejar acciones específicas por dispositivo
+function handleDeviceSpecificActions() {
+    if (isMobile) {
+        // Acciones para móvil
+        console.log('📱 Configurando experiencia móvil...');
+        
+        // Optimizar para touch
+        document.body.classList.add('touch-optimized');
+        
+        // Verificar estado de la app y mostrar mensajes apropiados
+        setTimeout(() => {
+            checkMobileAppStatus();
+        }, 2000);
+        
+    } else if (isTablet) {
+        // Acciones para tablet
+        console.log('📱 Configurando experiencia tablet...');
+        document.body.classList.add('tablet-optimized');
+        
+    } else {
+        // Acciones para desktop
+        console.log('🖥️ Configurando experiencia desktop...');
+        document.body.classList.add('desktop-optimized');
+        
+        // Mostrar información adicional en desktop
+        showDesktopFeatures();
+    }
+}
+
+// ===== SISTEMA MÓVIL PARA APP DE NOTIFICACIONES =====
+
+// Verificar estado de la app en móvil
+function checkMobileAppStatus() {
+    const currentUser = localStorage.getItem('currentUser');
+    const appInstalled = localStorage.getItem('cobrerosAppInstalled');
+    const appDismissed = localStorage.getItem('cobrerosAppDismissed');
+    
+    console.log('📱 Verificando estado de app móvil:', {
+        user: !!currentUser,
+        installed: !!appInstalled,
+        dismissed: !!appDismissed
+    });
+    
+    // Si la app ya está instalada o el mensaje fue descartado, no mostrar nada
+    if (appInstalled || appDismissed) {
+        console.log('📱 App ya instalada o mensaje descartado');
+        return;
+    }
+    
+    // Si hay usuario registrado, mostrar mensaje de descarga
+    if (currentUser) {
+        showMobileAppDownloadMessage();
+    } else {
+        // Si no hay usuario, mostrar mensaje de registro + descarga
+        showMobileRegistrationMessage();
+    }
+}
+
+// Mostrar mensaje de registro para usuarios no registrados
+function showMobileRegistrationMessage() {
+    const message = document.createElement('div');
+    message.className = 'mobile-registration-message';
+    message.innerHTML = `
+        <div class="mobile-message-content">
+            <button class="mobile-close-btn" onclick="dismissMobileMessage()" title="Cerrar">×</button>
+            <img src="images/escudo-cobreros.png" alt="Escudo Cobreros" class="mobile-logo">
+            <div class="mobile-message-text">
+                <h3>📱 App COBREROS</h3>
+                <p><strong>Regístrate y descarga nuestra app</strong> para recibir notificaciones oficiales del ayuntamiento</p>
+                <div class="mobile-buttons">
+                    <button onclick="openRegistration()" class="btn btn-primary">Registrarse</button>
+                    <button onclick="dismissMobileMessage()" class="btn btn-secondary">Ahora no</button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    addMobileMessageStyles();
+    document.body.appendChild(message);
+    
+    // Auto-dismiss después de 15 segundos
+    setTimeout(() => {
+        if (message.parentNode) {
+            dismissMobileMessage();
+        }
+    }, 15000);
+}
+
+// Mostrar mensaje de descarga para usuarios registrados
+function showMobileAppDownloadMessage() {
+    const message = document.createElement('div');
+    message.className = 'mobile-download-message';
+    message.innerHTML = `
+        <div class="mobile-message-content">
+            <button class="mobile-close-btn" onclick="dismissMobileMessage()" title="Cerrar">×</button>
+            <img src="images/escudo-cobreros.png" alt="Escudo Cobreros" class="mobile-logo">
+            <div class="mobile-message-text">
+                <h3>📱 Descarga App COBREROS</h3>
+                <p>Descarga nuestra app para recibir notificaciones oficiales directamente en tu móvil</p>
+                <div class="mobile-buttons">
+                    <button onclick="downloadMobileApp()" class="btn btn-primary">Descargar App</button>
+                    <button onclick="dismissMobileMessage()" class="btn btn-secondary">Ahora no</button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    addMobileMessageStyles();
+    document.body.appendChild(message);
+    
+    // Auto-dismiss después de 12 segundos
+    setTimeout(() => {
+        if (message.parentNode) {
+            dismissMobileMessage();
+        }
+    }, 12000);
+}
+
+// Añadir estilos para mensajes móviles
+function addMobileMessageStyles() {
+    if (document.getElementById('mobile-message-styles')) return;
+    
+    const style = document.createElement('style');
+    style.id = 'mobile-message-styles';
+    style.textContent = `
+        .mobile-registration-message,
+        .mobile-download-message {
+            position: fixed;
+            bottom: 20px;
+            left: 15px;
+            right: 15px;
+            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+            color: white;
+            border-radius: 20px;
+            padding: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+            z-index: 1000;
+            animation: mobileSlideUp 0.4s ease-out;
+        }
+        
+        .mobile-message-content {
+            display: flex;
+            align-items: flex-start;
+            gap: 15px;
+            position: relative;
+        }
+        
+        .mobile-close-btn {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            color: white;
+            font-size: 20px;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+        
+        .mobile-close-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: scale(1.1);
+        }
+        
+        .mobile-logo {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: white;
+            padding: 8px;
+            flex-shrink: 0;
+        }
+        
+        .mobile-message-text {
+            flex: 1;
+        }
+        
+        .mobile-message-text h3 {
+            margin: 0 0 8px 0;
+            font-size: 1.2rem;
+            font-weight: 700;
+        }
+        
+        .mobile-message-text p {
+            margin: 0 0 15px 0;
+            font-size: 0.95rem;
+            line-height: 1.4;
+            opacity: 0.95;
+        }
+        
+        .mobile-buttons {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        
+        .mobile-buttons .btn {
+            padding: 12px 20px;
+            border: none;
+            border-radius: 12px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            flex: 1;
+            min-width: 120px;
+        }
+        
+        .mobile-buttons .btn-primary {
+            background: #3498db;
+            color: white;
+        }
+        
+        .mobile-buttons .btn-primary:hover {
+            background: #2980b9;
+            transform: translateY(-2px);
+        }
+        
+        .mobile-buttons .btn-secondary {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+        
+        .mobile-buttons .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+        
+        @keyframes mobileSlideUp {
+            from { 
+                transform: translateY(100%); 
+                opacity: 0; 
+            }
+            to { 
+                transform: translateY(0); 
+                opacity: 1; 
+            }
+        }
+    `;
+    
+    document.head.appendChild(style);
+}
+
+// Abrir registro
+function openRegistration() {
+    // Simular click en el botón de registro
+    const registerBtn = document.querySelector('[onclick*="openModal.*registerModal"]');
+    if (registerBtn) {
+        registerBtn.click();
+    } else {
+        // Fallback: mostrar modal de registro
+        showNotification('Por favor, regístrate para acceder a todas las funcionalidades', 'info');
+    }
+    dismissMobileMessage();
+}
+
+// Descargar app móvil
+function downloadMobileApp() {
+    const userAgent = navigator.userAgent.toLowerCase();
+    const isIOS = /iphone|ipad|ipod/.test(userAgent);
+    const isAndroid = /android/.test(userAgent);
+    
+    if (isIOS) {
+        // Para iOS, abrir en Safari
+        const safariUrl = '/notification-app/';
+        window.open(safariUrl, '_blank');
+        showNotification('📱 Abriendo app en Safari. Añade a pantalla de inicio para instalarla.', 'info');
+    } else if (isAndroid) {
+        // Para Android, abrir PWA
+        const androidUrl = '/notification-app/';
+        window.open(androidUrl, '_blank');
+        showNotification('📱 Abriendo app. Instala desde el menú del navegador.', 'info');
+    } else {
+        // Fallback
+        window.open('/notification-app/', '_blank');
+    }
+    
+    // Marcar como instalada después de un tiempo
+    setTimeout(() => {
+        localStorage.setItem('cobrerosAppInstalled', 'true');
+        console.log('📱 App marcada como instalada');
+    }, 5000);
+    
+    dismissMobileMessage();
+}
+
+// Descartar mensaje móvil
+function dismissMobileMessage() {
+    // Asegurar que las animaciones de salida estén disponibles
+    addMobileExitAnimation();
+    
+    const messages = document.querySelectorAll('.mobile-registration-message, .mobile-download-message');
+    messages.forEach(message => {
+        message.style.animation = 'mobileSlideDown 0.3s ease-in';
+        setTimeout(() => {
+            if (message.parentNode) {
+                message.remove();
+            }
+        }, 300);
+    });
+    
+    // Marcar como descartado
+    localStorage.setItem('cobrerosAppDismissed', 'true');
+    console.log('📱 Mensaje móvil descartado');
+}
+
+// Añadir animación de salida
+function addMobileExitAnimation() {
+    if (document.getElementById('mobile-exit-styles')) return;
+    
+    const style = document.createElement('style');
+    style.id = 'mobile-exit-styles';
+    style.textContent = `
+        @keyframes mobileSlideDown {
+            from { 
+                transform: translateY(0); 
+                opacity: 1; 
+            }
+            to { 
+                transform: translateY(100%); 
+                opacity: 0; 
+            }
+        }
+    `;
+    
+    document.head.appendChild(style);
+}
+
+// Mostrar características específicas de desktop
+function showDesktopFeatures() {
+    // Añadir información adicional para usuarios de desktop
+    console.log('🖥️ Mostrando características de desktop...');
+    
+    // Verificar si debe mostrar el mensaje de la app
+    checkDesktopAppMessage();
+}
+
+// Verificar si debe mostrar el mensaje de la app en desktop
+function checkDesktopAppMessage() {
+    // Verificar si el usuario ya está registrado
+    const currentUser = localStorage.getItem('currentUser');
+    const desktopInfoClosed = localStorage.getItem('desktopAppInfoClosed');
+    
+    const desktopInfoElement = document.getElementById('desktopAppInfo');
+    
+    if (desktopInfoElement) {
+        // Si el usuario está registrado o ya cerró el mensaje, ocultarlo
+        if (currentUser || desktopInfoClosed) {
+            desktopInfoElement.style.display = 'none';
+            console.log('🖥️ Mensaje de app oculto - usuario registrado o mensaje cerrado');
+        } else {
+            desktopInfoElement.style.display = 'block';
+            console.log('🖥️ Mostrando mensaje de app para usuario no registrado');
+        }
+    }
+}
+
+// Cerrar el mensaje de la app en desktop
+function closeDesktopInfo() {
+    const desktopInfoElement = document.getElementById('desktopAppInfo');
+    
+    if (desktopInfoElement) {
+        // Ocultar con animación
+        desktopInfoElement.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+        desktopInfoElement.style.opacity = '0';
+        desktopInfoElement.style.transform = 'translateY(-10px)';
+        
+        setTimeout(() => {
+            desktopInfoElement.style.display = 'none';
+            // Guardar que el usuario cerró el mensaje
+            localStorage.setItem('desktopAppInfoClosed', 'true');
+            console.log('🖥️ Mensaje de app cerrado por el usuario');
+        }, 300);
+    }
+}
+
+// Ocultar mensaje de app cuando el usuario se registra
+function hideDesktopAppMessage() {
+    const desktopInfoElement = document.getElementById('desktopAppInfo');
+    
+    if (desktopInfoElement && isDesktop) {
+        desktopInfoElement.style.display = 'none';
+        console.log('🖥️ Mensaje de app oculto - usuario registrado');
+    }
+}
+
+// Obtener información del dispositivo
+function getDeviceInfo() {
+    return {
+        type: deviceType,
+        isMobile: isMobile,
+        isTablet: isTablet,
+        isDesktop: isDesktop,
+        screenWidth: window.innerWidth,
+        screenHeight: window.innerHeight,
+        userAgent: navigator.userAgent,
+        timestamp: new Date().toISOString()
+    };
+}
 
 // Inicializar la aplicación
 function initializeApp() {
@@ -775,6 +1266,16 @@ function handleLogin(e) {
         updateUserInterface();
         closeModal('loginModal');
         showNotification(`Bienvenido, ${user.name}`, 'success');
+        
+        // Ocultar mensaje de app en desktop si el usuario se registra
+        hideDesktopAppMessage();
+        
+        // Verificar estado de app móvil después del registro
+        if (isMobile) {
+            setTimeout(() => {
+                checkMobileAppStatus();
+            }, 1000);
+        }
     } else {
         showNotification('Credenciales incorrectas', 'error');
     }
@@ -803,6 +1304,9 @@ function handleAdminLogin(e) {
         updateUserInterface();
         closeModal('adminLoginModal');
         showNotification('Sesión de administrador iniciada correctamente', 'success');
+        
+        // Ocultar mensaje de app en desktop
+        hideDesktopAppMessage();
         return;
     }
 
@@ -820,6 +1324,9 @@ function handleAdminLogin(e) {
         updateUserInterface();
         closeModal('adminLoginModal');
         showNotification('Sesión de administrador iniciada - Ayuntamiento de Cobreros', 'success');
+        
+        // Ocultar mensaje de app en desktop
+        hideDesktopAppMessage();
         return;
     }
 
@@ -839,6 +1346,9 @@ function handleAdminLogin(e) {
         updateUserInterface();
         closeModal('adminLoginModal');
         showNotification(`Sesión de administrador iniciada - ${admin.name}`, 'success');
+        
+        // Ocultar mensaje de app en desktop
+        hideDesktopAppMessage();
     } else {
         showNotification('Credenciales de administrador incorrectas', 'error');
     }
@@ -1949,11 +2459,19 @@ function openNewsEditor(newsId = null) {
         modal.remove();
         showNotification('Anuncio guardado correctamente', 'success');
         
+        // Backup automático a Firestore
+        setTimeout(() => {
+            backupContentToFirestore();
+        }, 1000);
+        
         // Enviar notificación automática solo si es una noticia nueva (no edición)
         if (!article) {
             const titulo = `📢 Nueva Noticia Municipal - ${newsData.title}`;
             const mensaje = `Se ha publicado una nueva noticia: "${newsData.title}". Consulte la información completa en la web del ayuntamiento.`;
             enviarNotificacionPush(titulo, mensaje, 'noticia');
+            
+            // Guardar en colección de notificaciones para la app móvil
+            guardarNotificacionApp(titulo, mensaje, 'noticia', newsData.documentUrl);
         }
     });
 }
@@ -2005,11 +2523,19 @@ function openBandoEditor(bandoId = null) {
         modal.remove();
         showNotification('Bando guardado correctamente', 'success');
         
+        // Backup automático a Firestore
+        setTimeout(() => {
+            backupContentToFirestore();
+        }, 1000);
+        
         // Enviar notificación automática solo si es un bando nuevo (no edición)
         if (!bando) {
             const titulo = `📄 Nuevo Bando Municipal - ${bandoData.title}`;
             const mensaje = `Se ha publicado un nuevo bando municipal: "${bandoData.title}". Consulte la información completa en la web del ayuntamiento.`;
             enviarNotificacionPush(titulo, mensaje, 'bando');
+            
+            // Guardar en colección de notificaciones para la app móvil
+            guardarNotificacionApp(titulo, mensaje, 'bando', bandoData.documentUrl);
         }
     });
 }
@@ -2207,6 +2733,11 @@ function openNewsEditor(newsId = null) {
         modal.remove();
         loadNewsList();
         
+        // Backup automático a Firestore
+        setTimeout(() => {
+            backupContentToFirestore();
+        }, 1000);
+        
         // Enviar notificación automática solo si es una noticia nueva (no edición)
         if (!isEdit) {
             const titulo = `📢 Nueva Noticia Municipal - ${newsData.title}`;
@@ -2237,6 +2768,11 @@ function deleteNews(newsId) {
     
     showNotification(`Noticia "${newsItem.title}" eliminada correctamente`, 'success');
     loadNewsList();
+    
+    // Backup automático a Firestore
+    setTimeout(() => {
+        backupContentToFirestore();
+    }, 1000);
 }
 
 // Funciones de gestión de bandos
@@ -2292,6 +2828,11 @@ function openBandoEditor(bandoId = null) {
         modal.remove();
         loadBandoList();
         
+        // Backup automático a Firestore
+        setTimeout(() => {
+            backupContentToFirestore();
+        }, 1000);
+        
         // Enviar notificación automática solo si es un bando nuevo (no edición)
         if (!isEdit) {
             const titulo = `📄 Nuevo Bando Municipal - ${bandoData.title}`;
@@ -2322,6 +2863,11 @@ function deleteBando(bandoId) {
     
     showNotification(`Bando "${bandoItem.title}" eliminado correctamente`, 'success');
     loadBandoList();
+    
+    // Backup automático a Firestore
+    setTimeout(() => {
+        backupContentToFirestore();
+    }, 1000);
 }
 
 // Funciones de exportación de datos
@@ -4796,6 +5342,9 @@ function login() {
         localStorage.setItem('isAdmin', 'true');
         localStorage.setItem('isSuperAdmin', 'true');
         updateUserInterface();
+        
+        // Ocultar mensaje de app en desktop
+        hideDesktopAppMessage();
         closeModal('loginModal');
         showNotification('Sesión de administrador iniciada correctamente', 'success');
         return;
@@ -4810,6 +5359,9 @@ function login() {
         localStorage.setItem('isAdmin', isAdmin.toString());
         updateUserInterface();
         closeModal('loginModal');
+        
+        // Ocultar mensaje de app en desktop
+        hideDesktopAppMessage();
         showNotification('Inicio de sesión exitoso', 'success');
     } else {
         alert('Credenciales incorrectas.');
@@ -4939,6 +5491,11 @@ function openAdminPanel() {
     loadSystemStats();
     loadAppointmentSettings();
     loadPublicNotificationsList();
+    
+    // Actualizar información del sistema para la pestaña de backup
+    setTimeout(() => {
+        updateSystemInfo();
+    }, 500);
 }
 
 // Cerrar panel de administración
@@ -7130,6 +7687,647 @@ function updateSectionTitles() {
     }
     if (itvTitle) {
         itvTitle.textContent = `${seccionesConfig.itv.icon} ${seccionesConfig.itv.title}`;
+    }
+}
+
+// ===== SISTEMA DE PERSISTENCIA COMPLETA =====
+
+// Asegurar persistencia completa de todos los datos
+async function ensureCompletePersistence() {
+    try {
+        console.log('🔄 Verificando persistencia completa...');
+        
+        // 1. Verificar y migrar usuarios a Firestore si es necesario
+        await migrateUsersToFirestore();
+        
+        // 2. Sincronizar datos locales con Firestore
+        await syncLocalDataToFirestore();
+        
+        // 3. Verificar integridad de datos
+        const isDataValid = verifyDataIntegrity();
+        if (!isDataValid) {
+            console.log('⚠️ Reparando datos corruptos...');
+            repairCorruptedData();
+        }
+        
+        // 4. Backup automático inicial
+        setTimeout(() => {
+            if (window.firebase && window.firebase.firestore()) {
+                backupContentToFirestore();
+            }
+        }, 2000);
+        
+        // 5. Configurar sincronización automática
+        setupAutomaticSync();
+        
+        console.log('✅ Persistencia completa verificada');
+        
+    } catch (error) {
+        console.error('❌ Error en persistencia completa:', error);
+    }
+}
+
+// Sincronizar datos locales con Firestore
+async function syncLocalDataToFirestore() {
+    try {
+        if (!window.firebase || !window.firebase.firestore()) {
+            console.log('⚠️ Firebase no disponible para sincronización');
+            return;
+        }
+
+        const db = window.firebase.firestore();
+        
+        // Sincronizar bandos
+        if (bandos.length > 0) {
+            await db.collection('bandos').doc('data').set({
+                bandos: bandos,
+                lastUpdate: new Date(),
+                source: 'WEB_SYNC'
+            });
+            console.log('✅ Bandos sincronizados con Firestore');
+        }
+        
+        // Sincronizar noticias
+        if (news.length > 0) {
+            await db.collection('noticias').doc('data').set({
+                news: news,
+                lastUpdate: new Date(),
+                source: 'WEB_SYNC'
+            });
+            console.log('✅ Noticias sincronizadas con Firestore');
+        }
+        
+        // Sincronizar eventos
+        if (events.length > 0) {
+            await db.collection('eventos').doc('data').set({
+                events: events,
+                lastUpdate: new Date(),
+                source: 'WEB_SYNC'
+            });
+            console.log('✅ Eventos sincronizados con Firestore');
+        }
+        
+        // Sincronizar configuraciones
+        const configData = {
+            culturaOcioConfig: localStorage.getItem('culturaOcioConfig'),
+            appointmentSettings: localStorage.getItem('appointmentSettings'),
+            lastUpdate: new Date(),
+            source: 'WEB_SYNC'
+        };
+        
+        await db.collection('configuraciones').doc('data').set(configData);
+        console.log('✅ Configuraciones sincronizadas con Firestore');
+        
+    } catch (error) {
+        console.error('❌ Error sincronizando con Firestore:', error);
+    }
+}
+
+// Configurar sincronización automática
+function setupAutomaticSync() {
+    // Sincronizar cada 5 minutos
+    setInterval(async () => {
+        if (window.firebase && window.firebase.firestore()) {
+            try {
+                await syncLocalDataToFirestore();
+                console.log('🔄 Sincronización automática completada');
+            } catch (error) {
+                console.error('❌ Error en sincronización automática:', error);
+            }
+        }
+    }, 5 * 60 * 1000); // 5 minutos
+    
+    // Sincronizar al cerrar la ventana
+    window.addEventListener('beforeunload', async () => {
+        if (window.firebase && window.firebase.firestore()) {
+            try {
+                await syncLocalDataToFirestore();
+                console.log('🔄 Sincronización al cerrar completada');
+            } catch (error) {
+                console.error('❌ Error en sincronización al cerrar:', error);
+            }
+        }
+    });
+}
+
+// ===== SISTEMA DE NOTIFICACIONES PARA APP MÓVIL =====
+
+// Guardar notificación en la colección para la app móvil
+async function guardarNotificacionApp(titulo, mensaje, tipo, documentUrl = null, targetPueblos = []) {
+    try {
+        if (!window.firebase || !window.firebase.firestore()) {
+            console.log('⚠️ Firebase no disponible para guardar notificación de app');
+            return;
+        }
+
+        const db = window.firebase.firestore();
+        
+        const notificationData = {
+            title: titulo,
+            message: mensaje,
+            type: tipo,
+            documentUrl: documentUrl,
+            targetPueblos: targetPueblos,
+            timestamp: new Date(),
+            read: false,
+            sentFrom: 'WEB_AYUNTAMIENTO'
+        };
+        
+        await db.collection('notifications').add(notificationData);
+        console.log('✅ Notificación guardada para app móvil');
+        
+    } catch (error) {
+        console.error('❌ Error guardando notificación para app:', error);
+    }
+}
+
+// ===== SISTEMA DE BACKUP Y PERSISTENCIA MEJORADA =====
+
+// Backup automático de bandos y noticias a Firestore
+async function backupContentToFirestore() {
+    try {
+        if (!window.firebase || !window.firebase.firestore()) {
+            console.log('⚠️ Firebase no disponible para backup');
+            return;
+        }
+
+        const db = window.firebase.firestore();
+        
+        // Backup de bandos
+        const bandosData = {
+            bandos: bandos,
+            lastBackup: new Date(),
+            totalCount: bandos.length,
+            source: 'WEB_BACKUP'
+        };
+        
+        await db.collection('backups').doc('bandos').set(bandosData);
+        console.log('✅ Backup de bandos completado');
+        
+        // Backup de noticias
+        const newsData = {
+            news: news,
+            lastBackup: new Date(),
+            totalCount: news.length,
+            source: 'WEB_BACKUP'
+        };
+        
+        await db.collection('backups').doc('noticias').set(newsData);
+        console.log('✅ Backup de noticias completado');
+        
+        // Backup de eventos
+        const eventsData = {
+            events: events,
+            lastBackup: new Date(),
+            totalCount: events.length,
+            source: 'WEB_BACKUP'
+        };
+        
+        await db.collection('backups').doc('eventos').set(eventsData);
+        console.log('✅ Backup de eventos completado');
+        
+        // Backup de configuraciones
+        const configData = {
+            appointmentsEnabled: appointmentsEnabled,
+            culturaOcioConfig: localStorage.getItem('culturaOcioConfig') ? JSON.parse(localStorage.getItem('culturaOcioConfig')) : {},
+            lastBackup: new Date(),
+            source: 'WEB_BACKUP'
+        };
+        
+        await db.collection('backups').doc('configuraciones').set(configData);
+        console.log('✅ Backup de configuraciones completado');
+        
+    } catch (error) {
+        console.error('❌ Error en backup automático:', error);
+    }
+}
+
+// Restaurar contenido desde Firestore
+async function restoreContentFromFirestore() {
+    try {
+        if (!window.firebase || !window.firebase.firestore()) {
+            console.log('⚠️ Firebase no disponible para restauración');
+            return;
+        }
+
+        const db = window.firebase.firestore();
+        
+        // Restaurar bandos
+        const bandosSnapshot = await db.collection('backups').doc('bandos').get();
+        if (bandosSnapshot.exists) {
+            const bandosData = bandosSnapshot.data();
+            if (bandosData.bandos && bandosData.bandos.length > 0) {
+                bandos = bandosData.bandos;
+                localStorage.setItem('bandos', JSON.stringify(bandos));
+                console.log('✅ Bandos restaurados desde Firestore');
+            }
+        }
+        
+        // Restaurar noticias
+        const newsSnapshot = await db.collection('backups').doc('noticias').get();
+        if (newsSnapshot.exists) {
+            const newsData = newsSnapshot.data();
+            if (newsData.news && newsData.news.length > 0) {
+                news = newsData.news;
+                localStorage.setItem('news', JSON.stringify(news));
+                console.log('✅ Noticias restauradas desde Firestore');
+            }
+        }
+        
+        // Restaurar eventos
+        const eventsSnapshot = await db.collection('backups').doc('eventos').get();
+        if (eventsSnapshot.exists) {
+            const eventsData = eventsSnapshot.data();
+            if (eventsData.events && eventsData.events.length > 0) {
+                events = eventsData.events;
+                localStorage.setItem('events', JSON.stringify(events));
+                console.log('✅ Eventos restaurados desde Firestore');
+            }
+        }
+        
+        // Restaurar configuraciones
+        const configSnapshot = await db.collection('backups').doc('configuraciones').get();
+        if (configSnapshot.exists) {
+            const configData = configSnapshot.data();
+            if (configData.appointmentsEnabled !== undefined) {
+                appointmentsEnabled = configData.appointmentsEnabled;
+                localStorage.setItem('appointmentSettings', JSON.stringify({ enabled: appointmentsEnabled }));
+                console.log('✅ Configuraciones restauradas desde Firestore');
+            }
+        }
+        
+        // Actualizar contenido
+        updateContent();
+        updateCulturaOcioSection();
+        
+    } catch (error) {
+        console.error('❌ Error restaurando desde Firestore:', error);
+    }
+}
+
+// Backup completo de localStorage
+async function backupLocalStorageToFirestore() {
+    try {
+        if (!window.firebase || !window.firebase.firestore()) {
+            console.log('⚠️ Firebase no disponible para backup completo');
+            return;
+        }
+
+        const db = window.firebase.firestore();
+        const backupData = {};
+        
+        // Recopilar todos los datos importantes
+        const keysToBackup = [
+            'users', 'bandos', 'news', 'events', 'notifications', 
+            'administrators', 'documents', 'quickAccess', 'publicNotifications',
+            'appointmentSettings', 'culturaOcioConfig'
+        ];
+        
+        keysToBackup.forEach(key => {
+            const data = localStorage.getItem(key);
+            if (data) {
+                backupData[key] = JSON.parse(data);
+            }
+        });
+        
+        // Añadir metadatos del backup
+        backupData.metadata = {
+            timestamp: new Date(),
+            userAgent: navigator.userAgent,
+            totalKeys: Object.keys(backupData).length,
+            source: 'COMPLETE_BACKUP'
+        };
+        
+        // Guardar backup completo
+        await db.collection('backups').doc('localStorage_completo').set(backupData);
+        console.log('✅ Backup completo de localStorage realizado');
+        
+        return true;
+        
+    } catch (error) {
+        console.error('❌ Error en backup completo:', error);
+        return false;
+    }
+}
+
+// Exportar datos como JSON
+function exportDataAsJSON() {
+    try {
+        const exportData = {
+            bandos: bandos,
+            news: news,
+            events: events,
+            users: users,
+            administrators: JSON.parse(localStorage.getItem('administrators') || '[]'),
+            documents: JSON.parse(localStorage.getItem('documents') || '[]'),
+            quickAccess: JSON.parse(localStorage.getItem('quickAccess') || '[]'),
+            notifications: notifications,
+            appointmentsEnabled: appointmentsEnabled,
+            culturaOcioConfig: JSON.parse(localStorage.getItem('culturaOcioConfig') || '{}'),
+            exportDate: new Date().toISOString(),
+            version: '1.0'
+        };
+        
+        const dataStr = JSON.stringify(exportData, null, 2);
+        const dataBlob = new Blob([dataStr], {type: 'application/json'});
+        
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(dataBlob);
+        link.download = `ayuntamiento_cobreros_backup_${new Date().toISOString().split('T')[0]}.json`;
+        link.click();
+        
+        console.log('✅ Datos exportados correctamente');
+        showNotification('Datos exportados correctamente', 'success');
+        
+    } catch (error) {
+        console.error('❌ Error exportando datos:', error);
+        showNotification('Error al exportar datos', 'error');
+    }
+}
+
+// Importar datos desde JSON
+function importDataFromJSON(file) {
+    const reader = new FileReader();
+    
+    reader.onload = function(e) {
+        try {
+            const importData = JSON.parse(e.target.result);
+            
+            // Validar estructura
+            if (!importData.version || !importData.exportDate) {
+                throw new Error('Archivo no válido');
+            }
+            
+            // Importar datos
+            if (importData.bandos) {
+                bandos = importData.bandos;
+                localStorage.setItem('bandos', JSON.stringify(bandos));
+            }
+            
+            if (importData.news) {
+                news = importData.news;
+                localStorage.setItem('news', JSON.stringify(news));
+            }
+            
+            if (importData.events) {
+                events = importData.events;
+                localStorage.setItem('events', JSON.stringify(events));
+            }
+            
+            if (importData.users) {
+                users = importData.users;
+                localStorage.setItem('users', JSON.stringify(users));
+            }
+            
+            if (importData.administrators) {
+                localStorage.setItem('administrators', JSON.stringify(importData.administrators));
+            }
+            
+            if (importData.documents) {
+                localStorage.setItem('documents', JSON.stringify(importData.documents));
+            }
+            
+            if (importData.quickAccess) {
+                localStorage.setItem('quickAccess', JSON.stringify(importData.quickAccess));
+            }
+            
+            if (importData.appointmentsEnabled !== undefined) {
+                appointmentsEnabled = importData.appointmentsEnabled;
+                localStorage.setItem('appointmentSettings', JSON.stringify({ enabled: appointmentsEnabled }));
+            }
+            
+            if (importData.culturaOcioConfig) {
+                localStorage.setItem('culturaOcioConfig', JSON.stringify(importData.culturaOcioConfig));
+            }
+            
+            // Actualizar contenido
+            updateContent();
+            updateCulturaOcioSection();
+            loadAdministrators();
+            loadDocuments();
+            loadEvents();
+            loadQuickAccess();
+            
+            console.log('✅ Datos importados correctamente');
+            showNotification('Datos importados correctamente', 'success');
+            
+            // Hacer backup automático después de la importación
+            setTimeout(() => {
+                backupContentToFirestore();
+            }, 1000);
+            
+        } catch (error) {
+            console.error('❌ Error importando datos:', error);
+            showNotification('Error al importar datos: ' + error.message, 'error');
+        }
+    };
+    
+    reader.readAsText(file);
+}
+
+// Verificar integridad de datos
+function verifyDataIntegrity() {
+    const issues = [];
+    
+    try {
+        // Verificar bandos
+        if (!Array.isArray(bandos)) {
+            issues.push('Bandos: formato incorrecto');
+        }
+        
+        // Verificar noticias
+        if (!Array.isArray(news)) {
+            issues.push('Noticias: formato incorrecto');
+        }
+        
+        // Verificar usuarios
+        if (!Array.isArray(users)) {
+            issues.push('Usuarios: formato incorrecto');
+        }
+        
+        // Verificar eventos
+        if (!Array.isArray(events)) {
+            issues.push('Eventos: formato incorrecto');
+        }
+        
+        // Verificar configuraciones críticas
+        const appointmentSettings = localStorage.getItem('appointmentSettings');
+        if (appointmentSettings) {
+            try {
+                JSON.parse(appointmentSettings);
+            } catch (e) {
+                issues.push('Configuración de citas: formato incorrecto');
+            }
+        }
+        
+        if (issues.length === 0) {
+            console.log('✅ Integridad de datos verificada correctamente');
+            return true;
+        } else {
+            console.warn('⚠️ Problemas de integridad detectados:', issues);
+            return false;
+        }
+        
+    } catch (error) {
+        console.error('❌ Error verificando integridad:', error);
+        return false;
+    }
+}
+
+// Reparar datos corruptos
+function repairCorruptedData() {
+    try {
+        console.log('🔧 Iniciando reparación de datos...');
+        
+        // Reparar arrays si están corruptos
+        if (!Array.isArray(bandos)) {
+            bandos = [];
+            localStorage.setItem('bandos', JSON.stringify(bandos));
+            console.log('✅ Bandos reparados');
+        }
+        
+        if (!Array.isArray(news)) {
+            news = [];
+            localStorage.setItem('news', JSON.stringify(news));
+            console.log('✅ Noticias reparadas');
+        }
+        
+        if (!Array.isArray(users)) {
+            users = [];
+            localStorage.setItem('users', JSON.stringify(users));
+            console.log('✅ Usuarios reparados');
+        }
+        
+        if (!Array.isArray(events)) {
+            events = [];
+            localStorage.setItem('events', JSON.stringify(events));
+            console.log('✅ Eventos reparados');
+        }
+        
+        // Reparar configuraciones
+        if (!appointmentSettings || typeof appointmentsEnabled !== 'boolean') {
+            appointmentsEnabled = true;
+            localStorage.setItem('appointmentSettings', JSON.stringify({ enabled: true }));
+            console.log('✅ Configuración de citas reparada');
+        }
+        
+        console.log('✅ Reparación completada');
+        showNotification('Datos reparados correctamente', 'success');
+        
+        // Actualizar contenido
+        updateContent();
+        updateCulturaOcioSection();
+        
+        // Actualizar información del sistema
+        updateSystemInfo();
+        
+    } catch (error) {
+        console.error('❌ Error reparando datos:', error);
+        showNotification('Error reparando datos', 'error');
+    }
+}
+
+// Actualizar información del sistema en la pestaña de backup
+function updateSystemInfo() {
+    try {
+        // Actualizar contadores
+        const totalBandosEl = document.getElementById('totalBandos');
+        const totalNoticiasEl = document.getElementById('totalNoticias');
+        const totalEventosEl = document.getElementById('totalEventos');
+        const totalUsuariosEl = document.getElementById('totalUsuarios');
+        const lastIntegrityCheckEl = document.getElementById('lastIntegrityCheck');
+        
+        if (totalBandosEl) totalBandosEl.textContent = bandos.length;
+        if (totalNoticiasEl) totalNoticiasEl.textContent = news.length;
+        if (totalEventosEl) totalEventosEl.textContent = events.length;
+        if (totalUsuariosEl) totalUsuariosEl.textContent = users.length;
+        if (lastIntegrityCheckEl) lastIntegrityCheckEl.textContent = new Date().toLocaleString();
+        
+        // Verificar estado de Firebase
+        const firebaseStatusEl = document.getElementById('firebaseStatus');
+        if (firebaseStatusEl) {
+            if (window.firebase && window.firebase.firestore()) {
+                firebaseStatusEl.textContent = '✅ Conectado';
+                firebaseStatusEl.style.color = 'green';
+            } else {
+                firebaseStatusEl.textContent = '❌ No disponible';
+                firebaseStatusEl.style.color = 'red';
+            }
+        }
+        
+        // Actualizar estado de integridad
+        const integrityStatusEl = document.getElementById('integrityStatus');
+        if (integrityStatusEl) {
+            const isIntegrity = verifyDataIntegrity();
+            if (isIntegrity) {
+                integrityStatusEl.textContent = '✅ Datos íntegros';
+                integrityStatusEl.style.color = 'green';
+            } else {
+                integrityStatusEl.textContent = '⚠️ Problemas detectados';
+                integrityStatusEl.style.color = 'orange';
+            }
+        }
+        
+    } catch (error) {
+        console.error('❌ Error actualizando información del sistema:', error);
+    }
+}
+
+// Verificar integridad de datos (versión mejorada para UI)
+function verifyDataIntegrity() {
+    const issues = [];
+    
+    try {
+        // Verificar bandos
+        if (!Array.isArray(bandos)) {
+            issues.push('Bandos: formato incorrecto');
+        }
+        
+        // Verificar noticias
+        if (!Array.isArray(news)) {
+            issues.push('Noticias: formato incorrecto');
+        }
+        
+        // Verificar usuarios
+        if (!Array.isArray(users)) {
+            issues.push('Usuarios: formato incorrecto');
+        }
+        
+        // Verificar eventos
+        if (!Array.isArray(events)) {
+            issues.push('Eventos: formato incorrecto');
+        }
+        
+        // Verificar configuraciones críticas
+        const appointmentSettings = localStorage.getItem('appointmentSettings');
+        if (appointmentSettings) {
+            try {
+                JSON.parse(appointmentSettings);
+            } catch (e) {
+                issues.push('Configuración de citas: formato incorrecto');
+            }
+        }
+        
+        if (issues.length === 0) {
+            console.log('✅ Integridad de datos verificada correctamente');
+            return true;
+        } else {
+            console.warn('⚠️ Problemas de integridad detectados:', issues);
+            
+            // Actualizar UI con problemas detectados
+            const integrityStatusEl = document.getElementById('integrityStatus');
+            if (integrityStatusEl) {
+                integrityStatusEl.textContent = `⚠️ ${issues.length} problema(s) detectado(s)`;
+                integrityStatusEl.style.color = 'orange';
+                integrityStatusEl.title = issues.join(', ');
+            }
+            
+            return false;
+        }
+        
+    } catch (error) {
+        console.error('❌ Error verificando integridad:', error);
+        return false;
     }
 }
 

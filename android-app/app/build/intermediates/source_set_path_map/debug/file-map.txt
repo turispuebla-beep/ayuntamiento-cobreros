@@ -35,11 +35,11 @@ com.turisteam.ayuntamientocobreros.app-play-services-measurement-api-21.5.0-33 C
 com.turisteam.ayuntamientocobreros.app-material-1.10.0-34 C:\Users\marsa\.gradle\caches\transforms-3\f25922657e124331905feeb0e8243802\transformed\material-1.10.0\res
 com.turisteam.ayuntamientocobreros.app-emoji2-views-helper-1.2.0-35 C:\Users\marsa\.gradle\caches\transforms-3\f6486bc8b8deb544a0c4d944777c2894\transformed\emoji2-views-helper-1.2.0\res
 com.turisteam.ayuntamientocobreros.app-lifecycle-livedata-core-2.6.1-36 C:\Users\marsa\.gradle\caches\transforms-3\fde358fb0df003635420c58d20370bf2\transformed\lifecycle-livedata-core-2.6.1\res
-com.turisteam.ayuntamientocobreros.app-google-services-37 C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\build\generated\res\google-services\debug
-com.turisteam.ayuntamientocobreros.app-pngs-38 C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\build\generated\res\pngs\debug
-com.turisteam.ayuntamientocobreros.app-resValues-39 C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\build\generated\res\resValues\debug
-com.turisteam.ayuntamientocobreros.app-packageDebugResources-40 C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\build\intermediates\incremental\debug\packageDebugResources\merged.dir
-com.turisteam.ayuntamientocobreros.app-packageDebugResources-41 C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\build\intermediates\incremental\debug\packageDebugResources\stripped.dir
-com.turisteam.ayuntamientocobreros.app-merged_res-42 C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\build\intermediates\merged_res\debug
-com.turisteam.ayuntamientocobreros.app-debug-43 C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\debug\res
-com.turisteam.ayuntamientocobreros.app-main-44 C:\Users\marsa\AndroidStudioProjects\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\res
+com.turisteam.ayuntamientocobreros.app-google-services-37 C:\Users\marsa\Desktop\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\build\generated\res\google-services\debug
+com.turisteam.ayuntamientocobreros.app-pngs-38 C:\Users\marsa\Desktop\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\build\generated\res\pngs\debug
+com.turisteam.ayuntamientocobreros.app-resValues-39 C:\Users\marsa\Desktop\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\build\generated\res\resValues\debug
+com.turisteam.ayuntamientocobreros.app-packageDebugResources-40 C:\Users\marsa\Desktop\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\build\intermediates\incremental\debug\packageDebugResources\merged.dir
+com.turisteam.ayuntamientocobreros.app-packageDebugResources-41 C:\Users\marsa\Desktop\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\build\intermediates\incremental\debug\packageDebugResources\stripped.dir
+com.turisteam.ayuntamientocobreros.app-merged_res-42 C:\Users\marsa\Desktop\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\build\intermediates\merged_res\debug
+com.turisteam.ayuntamientocobreros.app-debug-43 C:\Users\marsa\Desktop\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\debug\res
+com.turisteam.ayuntamientocobreros.app-main-44 C:\Users\marsa\Desktop\TU AYUNTAMIENTO\ayuntamiento-cobreros\android-app\app\src\main\res

@@ -117,3 +117,4 @@ if __name__ == "__main__":
         print("💡 Asegúrate de que 'escudo cobreros.png' esté en el escritorio")
 
 
+
