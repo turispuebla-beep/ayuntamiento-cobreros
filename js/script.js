@@ -52,6 +52,11 @@ document.addEventListener('DOMContentLoaded', function() {
         setupRichEditor();
     }, 1000);
     
+    // Cargar contenido de Cobreros
+    setTimeout(() => {
+        loadCobrerosContent();
+    }, 1500);
+    
     // Cargar configuración de citas previas (CRÍTICO - SIEMPRE PRIMERO)
     loadAppointmentSettings();
     
@@ -7910,6 +7915,314 @@ function clearRichEditor() {
     editor.innerHTML = '';
     updateMessagePreview();
     updateToolbarButtons();
+}
+
+// ===== SISTEMA DE ACORDEÓN DESPLEGABLE =====
+
+// Función para alternar el acordeón
+function toggleAccordion(sectionId) {
+    const accordionItem = document.querySelector(`#${sectionId}-content`).closest('.accordion-item');
+    const isActive = accordionItem.classList.contains('active');
+    
+    // Cerrar todos los acordeones
+    document.querySelectorAll('.accordion-item').forEach(item => {
+        item.classList.remove('active');
+    });
+    
+    // Abrir el seleccionado si no estaba activo
+    if (!isActive) {
+        accordionItem.classList.add('active');
+    }
+    
+    console.log(`📂 Acordeón ${sectionId} ${isActive ? 'cerrado' : 'abierto'}`);
+}
+
+// Cargar contenido inicial de Cobreros
+function loadCobrerosContent() {
+    const cobrerosData = {
+        naturaleza: [
+            {
+                title: "🌊 Cascadas de Sotillo",
+                description: "Una de las rutas más populares con cascadas de agua cristalina en un entorno boscoso. Dificultad media, duración 2-3 horas.",
+                image: "images/cascadas-sotillo.jpg",
+                links: [
+                    { text: "📋 Guía de Ruta", url: "#", type: "pdf" },
+                    { text: "🗺️ Mapa Interactivo", url: "#", type: "external" }
+                ]
+            },
+            {
+                title: "🏞️ Lago de Sanabria",
+                description: "El lago glaciar más grande de España. Superficie de 368 hectáreas y hasta 53 metros de profundidad. Ideal para baño y kayak.",
+                image: "images/lago-sanabria.jpg",
+                links: [
+                    { text: "📋 Información Turística", url: "#", type: "pdf" },
+                    { text: "🏊 Actividades Acuáticas", url: "#", type: "external" }
+                ]
+            },
+            {
+                title: "🥾 Ruta de las Cascadas de Ribadelago",
+                description: "Cerca del famoso Lago de Sanabria, múltiples saltos de agua en una ruta circular muy recomendada.",
+                image: "images/cascadas-ribadelago.jpg",
+                links: [
+                    { text: "📋 Guía Completa", url: "#", type: "pdf" },
+                    { text: "📸 Galería de Fotos", url: "#", type: "external" }
+                ]
+            },
+            {
+                title: "🌲 Laguna de los Peces",
+                description: "Laguna de origen glaciar con acceso desde Cobreros. Ideal para familias y senderistas principiantes.",
+                image: "images/laguna-peces.jpg",
+                links: [
+                    { text: "📋 Ruta Familiar", url: "#", type: "pdf" },
+                    { text: "🗺️ Acceso y Parking", url: "#", type: "external" }
+                ]
+            },
+            {
+                title: "🌊 Cascadas de Aguas Cernidas",
+                description: "Una de las cascadas más impresionantes de Sanabria. Ruta desde Terroso: 4-5 km ida, dificultad media-alta. Cascada escalonada de 20-25 metros de altura en entorno boscoso de roble y castaño.",
+                image: "images/cascadas-aguas-cernidas.jpg",
+                links: [
+                    { text: "📋 Ruta desde Terroso", url: "#", type: "pdf" },
+                    { text: "🗺️ Mapa de Acceso", url: "#", type: "external" },
+                    { text: "📸 Galería de Fotos", url: "#", type: "external" }
+                ]
+            }
+        ],
+        patrimonio: [
+            {
+                title: "⛪ Iglesia de San Martín",
+                description: "Iglesia del siglo XVI con arquitectura tradicional sanabresa. Destaca su retablo barroco y campanario de piedra.",
+                image: "images/iglesia-san-martin.jpg",
+                links: [
+                    { text: "📋 Historia Detallada", url: "#", type: "pdf" },
+                    { text: "🕒 Horarios de Visita", url: "#", type: "external" }
+                ]
+            },
+            {
+                title: "🌉 Puentes Medievales",
+                description: "Varios puentes de piedra medievales que cruzan los arroyos de la zona, testimonio de la arquitectura tradicional.",
+                image: "images/puentes-medievales.jpg",
+                links: [
+                    { text: "📋 Ruta de Puentes", url: "#", type: "pdf" },
+                    { text: "📸 Galería Histórica", url: "#", type: "external" }
+                ]
+            },
+            {
+                title: "🏭 Molinos de Agua",
+                description: "Molinos tradicionales restaurados que muestran la importancia del agua en la vida rural de Cobreros.",
+                image: "images/molinos-agua.jpg",
+                links: [
+                    { text: "📋 Historia de los Molinos", url: "#", type: "pdf" },
+                    { text: "🔧 Proceso de Restauración", url: "#", type: "external" }
+                ]
+            },
+            {
+                title: "🏘️ Arquitectura Tradicional",
+                description: "Casas de piedra con tejados de pizarra, balconadas de madera y corrales que caracterizan la arquitectura sanabresa.",
+                image: "images/arquitectura-tradicional.jpg",
+                links: [
+                    { text: "📋 Guía Arquitectónica", url: "#", type: "pdf" },
+                    { text: "🏠 Ruta de Casas Históricas", url: "#", type: "external" }
+                ]
+            }
+        ],
+        gastronomia: [
+            {
+                title: "🍄 Recolección de Setas",
+                description: "Cobreros es famoso por sus setas. Temporada de otoño con especies como boletus, níscalos y setas de cardo.",
+                image: "images/setas-cobreros.jpg",
+                links: [
+                    { text: "📋 Guía de Setas", url: "#", type: "pdf" },
+                    { text: "🗓️ Calendario de Recolección", url: "#", type: "external" }
+                ]
+            },
+            {
+                title: "🌰 Castañas de Sanabria",
+                description: "Las castañas de la zona son especialmente apreciadas. Temporada de recolección en octubre y noviembre.",
+                image: "images/castanas-sanabria.jpg",
+                links: [
+                    { text: "📋 Recetas Tradicionales", url: "#", type: "pdf" },
+                    { text: "🌰 Fiesta de la Castaña", url: "#", type: "external" }
+                ]
+            },
+            {
+                title: "🧀 Quesos Artesanales",
+                description: "Quesos de cabra y oveja elaborados de forma tradicional en las granjas locales de la comarca.",
+                image: "images/quesos-artesanales.jpg",
+                links: [
+                    { text: "📋 Variedades de Queso", url: "#", type: "pdf" },
+                    { text: "🏪 Productores Locales", url: "#", type: "external" }
+                ]
+            },
+            {
+                title: "🍷 Vinos de la Tierra",
+                description: "Vinos locales de la denominación de origen que acompañan perfectamente la gastronomía de montaña.",
+                image: "images/vinos-tierra.jpg",
+                links: [
+                    { text: "📋 Cata de Vinos", url: "#", type: "pdf" },
+                    { text: "🍷 Bodegas de la Zona", url: "#", type: "external" }
+                ]
+            }
+        ],
+        eventos: [
+            {
+                title: "🎭 Fiestas Patronales",
+                description: "Fiestas en honor a San Martín con procesiones, verbenas y actividades tradicionales en noviembre.",
+                image: "images/fiestas-patronales.jpg",
+                links: [
+                    { text: "📋 Programa de Fiestas", url: "#", type: "pdf" },
+                    { text: "📅 Calendario de Eventos", url: "#", type: "external" }
+                ]
+            },
+            {
+                title: "🌰 Fiesta de la Castaña",
+                description: "Celebración otoñal con degustación de castañas asadas, música tradicional y actividades familiares.",
+                image: "images/fiesta-castana.jpg",
+                links: [
+                    { text: "📋 Actividades", url: "#", type: "pdf" },
+                    { text: "🍂 Tradiciones Otoñales", url: "#", type: "external" }
+                ]
+            },
+            {
+                title: "🥾 Jornadas de Senderismo",
+                description: "Rutas guiadas organizadas por el ayuntamiento para descubrir los rincones más bellos de Cobreros.",
+                image: "images/jornadas-senderismo.jpg",
+                links: [
+                    { text: "📋 Rutas Programadas", url: "#", type: "pdf" },
+                    { text: "👥 Inscripciones", url: "#", type: "external" }
+                ]
+            },
+            {
+                title: "🎨 Mercado Artesanal",
+                description: "Mercado de productos locales, artesanía y gastronomía tradicional que se celebra en verano.",
+                image: "images/mercado-artesanal.jpg",
+                links: [
+                    { text: "📋 Artesanos Participantes", url: "#", type: "pdf" },
+                    { text: "🛍️ Productos Locales", url: "#", type: "external" }
+                ]
+            }
+        ],
+        cercanos: [
+            {
+                title: "🏰 Puebla de Sanabria",
+                description: "Villa medieval con castillo del siglo XV, iglesias históricas y monasterio. Conjunto histórico-artístico de gran belleza arquitectónica. Destaca su castillo de los Condes de Benavente y la iglesia de Nuestra Señora del Azogue.",
+                image: "images/puebla-sanabria.jpg",
+                links: [
+                    { text: "📋 Guía Turística", url: "#", type: "pdf" },
+                    { text: "🏰 Historia del Castillo", url: "#", type: "external" },
+                    { text: "⛪ Iglesias y Monasterio", url: "#", type: "external" }
+                ]
+            },
+            {
+                title: "🎭 Museo de Gigantes y Cabezudos",
+                description: "Museo dedicado a la tradición de los gigantes y cabezudos de Puebla de Sanabria. Exposición de figuras tradicionales, trajes históricos y documentación sobre las fiestas populares. Ubicado en el casco histórico de la villa.",
+                image: "images/museo-gigantes-cabezudos.jpg",
+                links: [
+                    { text: "📋 Historia de la Tradición", url: "#", type: "pdf" },
+                    { text: "🎭 Colección de Figuras", url: "#", type: "external" },
+                    { text: "📅 Horarios de Visita", url: "#", type: "external" }
+                ]
+            },
+            {
+                title: "🍄 Centro de Interpretación Micológico de Ungilde",
+                description: "Centro especializado en la micología de la zona de Sanabria. Exposiciones sobre setas comestibles y tóxicas, talleres de identificación, rutas micológicas guiadas y actividades educativas sobre el mundo de los hongos.",
+                image: "images/centro-micologico-ungilde.jpg",
+                links: [
+                    { text: "📋 Guía de Setas de la Zona", url: "#", type: "pdf" },
+                    { text: "🍄 Talleres de Identificación", url: "#", type: "external" },
+                    { text: "🥾 Rutas Micológicas", url: "#", type: "external" }
+                ]
+            },
+            {
+                title: "🌉 Mercado del Puente",
+                description: "Mercado tradicional que se celebra en el Puente de Sanabria todos los lunes del año. Se vende artesanía, frutas y verduras, utensilios para la casa, ropa y calzado. Mercado semanal con productos locales y tradicionales de la comarca.",
+                image: "images/mercado-puente.jpg",
+                links: [
+                    { text: "📋 Calendario de Mercados", url: "#", type: "pdf" },
+                    { text: "🛍️ Productos Locales", url: "#", type: "external" },
+                    { text: "📅 Próximas Fechas", url: "#", type: "external" }
+                ]
+            },
+            {
+                title: "🏞️ Casa del Parque Natural del Lago de Sanabria y Sierras Segundera y de Porto",
+                description: "Centro de interpretación del Parque Natural del Lago de Sanabria y Sierras Segundera y de Porto. Exposiciones sobre la geología, flora y fauna del parque. Información sobre rutas y actividades. Ubicada en San Martín de Castañeda.",
+                image: "images/casa-parque-natural.jpg",
+                links: [
+                    { text: "📋 Horarios y Visitas", url: "#", type: "pdf" },
+                    { text: "🌿 Exposiciones", url: "#", type: "external" },
+                    { text: "🗺️ Información del Parque", url: "#", type: "external" }
+                ]
+            },
+            {
+                title: "🐺 Centro del Lobo Ibérico",
+                description: "Centro de interpretación del lobo ibérico en Robledo de Sanabria. Observación de lobos en semi-libertad, exposiciones educativas y actividades de sensibilización sobre la conservación de esta especie emblemática.",
+                image: "images/centro-lobo-iberico.jpg",
+                links: [
+                    { text: "📋 Horarios y Tarifas", url: "#", type: "pdf" },
+                    { text: "🐺 Actividades Educativas", url: "#", type: "external" },
+                    { text: "📅 Reservas", url: "#", type: "external" }
+                ]
+            },
+            {
+                title: "🏛️ Monasterio de San Martín de Castañeda",
+                description: "Monasterio cisterciense del siglo X con vistas espectaculares al Lago de Sanabria. Arquitectura románica y gótica. Centro de interpretación del parque natural y punto de partida de rutas de senderismo.",
+                image: "images/monasterio-san-martin.jpg",
+                links: [
+                    { text: "📋 Historia del Monasterio", url: "#", type: "pdf" },
+                    { text: "⛪ Arquitectura Religiosa", url: "#", type: "external" },
+                    { text: "🥾 Rutas desde el Monasterio", url: "#", type: "external" }
+                ]
+            },
+            {
+                title: "🌊 La Alcobilla de Rábano",
+                description: "Pueblo tradicional de Sanabria con arquitectura típica de la zona. Casas de piedra, tejados de pizarra y balconadas de madera. Entorno natural privilegiado y tranquilidad rural auténtica.",
+                image: "images/alcobilla-rabano.jpg",
+                links: [
+                    { text: "📋 Arquitectura Tradicional", url: "#", type: "pdf" },
+                    { text: "🏘️ Casas Históricas", url: "#", type: "external" },
+                    { text: "🌿 Entorno Natural", url: "#", type: "external" }
+                ]
+            },
+            {
+                title: "🌲 Ruta del Tejedelo desde Requejo",
+                description: "Ruta de senderismo que parte desde Requejo hacia el bosque de tejos milenarios del Tejedelo. Bosque único en España con tejos de más de 1000 años. Dificultad media, duración 4-5 horas.",
+                image: "images/ruta-tejedelo.jpg",
+                links: [
+                    { text: "📋 Guía de la Ruta", url: "#", type: "pdf" },
+                    { text: "🌲 Bosque de Tejos", url: "#", type: "external" },
+                    { text: "🗺️ Mapa de Acceso", url: "#", type: "external" }
+                ]
+            }
+        ]
+    };
+    
+    // Renderizar cada sección
+    Object.keys(cobrerosData).forEach(section => {
+        renderAccordionSection(section, cobrerosData[section]);
+    });
+    
+    console.log('✅ Contenido de Cobreros cargado');
+}
+
+// Renderizar una sección del acordeón
+function renderAccordionSection(sectionId, items) {
+    const container = document.getElementById(`${sectionId}Items`);
+    if (!container) return;
+    
+    container.innerHTML = items.map(item => `
+        <div class="accordion-item-card">
+            ${item.image ? `<img src="${item.image}" alt="${item.title}" class="item-image" onerror="this.style.display='none'">` : ''}
+            <h4>${item.title}</h4>
+            <p>${item.description}</p>
+            <div class="item-links">
+                ${item.links.map(link => `
+                    <a href="${link.url}" class="item-link ${link.type}" target="_blank">
+                        ${link.text}
+                    </a>
+                `).join('')}
+            </div>
+        </div>
+    `).join('');
 }
 
 // ===== SISTEMA DE PERSISTENCIA COMPLETA =====
