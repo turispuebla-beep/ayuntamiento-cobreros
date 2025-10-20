@@ -1277,7 +1277,7 @@ function handleLogin(e) {
         showNotification(`Bienvenido, ${user.name}`, 'success');
         
         // Ocultar mensaje de app en desktop si el usuario se registra
-        hideDesktopAppMessage();
+        // hideDesktopAppMessage();
         
         // Verificar estado de app móvil después del registro
         if (isMobile) {
@@ -1315,12 +1315,12 @@ function handleAdminLogin(e) {
             team: SUPER_ADMIN.team
         };
         localStorage.setItem('currentUser', JSON.stringify(currentUser));
-        // updateUserInterface();
-        // closeModal('adminLoginModal');
+        updateUserInterface();
+        closeModal('adminLoginModal');
         showNotification('Sesión de administrador iniciada correctamente', 'success');
         
         // Ocultar mensaje de app en desktop
-        hideDesktopAppMessage();
+        // hideDesktopAppMessage();
         return;
     }
 
@@ -1336,12 +1336,12 @@ function handleAdminLogin(e) {
             isDefault: true
         };
         localStorage.setItem('currentUser', JSON.stringify(currentUser));
-        // updateUserInterface();
-        // closeModal('adminLoginModal');
+        updateUserInterface();
+        closeModal('adminLoginModal');
         showNotification('Sesión de administrador iniciada - Ayuntamiento de Cobreros', 'success');
         
         // Ocultar mensaje de app en desktop
-        hideDesktopAppMessage();
+        // hideDesktopAppMessage();
         return;
     }
 
@@ -1359,12 +1359,12 @@ function handleAdminLogin(e) {
         isAdmin = true;
         localStorage.setItem('currentUser', JSON.stringify(currentUser));
         localStorage.setItem('isAdmin', 'true');
-        // updateUserInterface();
-        // closeModal('adminLoginModal');
+        updateUserInterface();
+        closeModal('adminLoginModal');
         showNotification(`Sesión de administrador iniciada - ${admin.name}`, 'success');
         
         // Ocultar mensaje de app en desktop
-        hideDesktopAppMessage();
+        // hideDesktopAppMessage();
         return;
     }
     
@@ -5385,7 +5385,7 @@ function login() {
         updateUserInterface();
         
         // Ocultar mensaje de app en desktop
-        hideDesktopAppMessage();
+        // hideDesktopAppMessage();
         closeModal('loginModal');
         showNotification('Sesión de administrador iniciada correctamente', 'success');
         return;
@@ -5402,7 +5402,7 @@ function login() {
         closeModal('loginModal');
         
         // Ocultar mensaje de app en desktop
-        hideDesktopAppMessage();
+        // hideDesktopAppMessage();
         showNotification('Inicio de sesión exitoso', 'success');
     } else {
         alert('Credenciales incorrectas.');
