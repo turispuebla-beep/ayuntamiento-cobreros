@@ -1293,11 +1293,13 @@ function handleLogin(e) {
 // Manejar login de administradores
 function handleAdminLogin(e) {
     e.preventDefault();
-    const formData = new FormData(e.target);
-    const email = formData.get('email');
-    const password = formData.get('password');
     
-    console.log('🔐 Intentando login admin con:', { email, password: '***' });
+    try {
+        const formData = new FormData(e.target);
+        const email = formData.get('email');
+        const password = formData.get('password');
+        
+        console.log('🔐 Intentando login admin con:', { email, password: '***' });
 
     // Verificar credenciales de super admin (TURISTEAM)
     if (email === SUPER_ADMIN.email && password === SUPER_ADMIN.password) {
@@ -1313,8 +1315,8 @@ function handleAdminLogin(e) {
             team: SUPER_ADMIN.team
         };
         localStorage.setItem('currentUser', JSON.stringify(currentUser));
-        updateUserInterface();
-        closeModal('adminLoginModal');
+        // updateUserInterface();
+        // closeModal('adminLoginModal');
         showNotification('Sesión de administrador iniciada correctamente', 'success');
         
         // Ocultar mensaje de app en desktop
@@ -1334,8 +1336,8 @@ function handleAdminLogin(e) {
             isDefault: true
         };
         localStorage.setItem('currentUser', JSON.stringify(currentUser));
-        updateUserInterface();
-        closeModal('adminLoginModal');
+        // updateUserInterface();
+        // closeModal('adminLoginModal');
         showNotification('Sesión de administrador iniciada - Ayuntamiento de Cobreros', 'success');
         
         // Ocultar mensaje de app en desktop
@@ -1357,8 +1359,8 @@ function handleAdminLogin(e) {
         isAdmin = true;
         localStorage.setItem('currentUser', JSON.stringify(currentUser));
         localStorage.setItem('isAdmin', 'true');
-        updateUserInterface();
-        closeModal('adminLoginModal');
+        // updateUserInterface();
+        // closeModal('adminLoginModal');
         showNotification(`Sesión de administrador iniciada - ${admin.name}`, 'success');
         
         // Ocultar mensaje de app en desktop
@@ -1369,6 +1371,11 @@ function handleAdminLogin(e) {
     // Si llegamos aquí, las credenciales son incorrectas
     console.log('❌ Credenciales incorrectas');
     showNotification('Credenciales de administrador incorrectas', 'error');
+    
+    } catch (error) {
+        console.error('❌ Error en handleAdminLogin:', error);
+        showNotification('Error interno del sistema. Inténtalo de nuevo.', 'error');
+    }
 }
 
 // Manejar registro
