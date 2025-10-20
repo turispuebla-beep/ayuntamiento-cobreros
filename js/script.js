@@ -31,6 +31,187 @@ const SUPER_ADMIN = {
     team: 'TURISTEAM'
 };
 
+// ===== SISTEMA DE PERSISTENCIA COMPLETO =====
+
+// Sincronizar datos locales con Firestore
+async function syncLocalDataToFirestore() {
+    try {
+        if (!window.firebase || !window.firebase.firestore()) {
+            console.log('⚠️ Firebase no disponible para sincronización');
+            return;
+        }
+
+        const db = window.firebase.firestore();
+        
+        // Sincronizar usuarios
+        if (users.length > 0) {
+            await db.collection('users').doc('all_users').set({
+                users: users,
+                lastSync: new Date(),
+                totalUsers: users.length
+            });
+            console.log('✅ Usuarios sincronizados con Firestore');
+        }
+
+        // Sincronizar bandos
+        if (bandos.length > 0) {
+            await db.collection('content').doc('bandos').set({
+                bandos: bandos,
+                lastSync: new Date(),
+                totalBandos: bandos.length
+            });
+            console.log('✅ Bandos sincronizados con Firestore');
+        }
+
+        // Sincronizar noticias
+        if (news.length > 0) {
+            await db.collection('content').doc('noticias').set({
+                news: news,
+                lastSync: new Date(),
+                totalNews: news.length
+            });
+            console.log('✅ Noticias sincronizadas con Firestore');
+        }
+
+        // Sincronizar eventos
+        if (events.length > 0) {
+            await db.collection('content').doc('eventos').set({
+                events: events,
+                lastSync: new Date(),
+                totalEvents: events.length
+            });
+            console.log('✅ Eventos sincronizados con Firestore');
+        }
+
+        // Sincronizar configuración de citas
+        const appointmentSettings = {
+            enabled: appointmentsEnabled,
+            lastSync: new Date()
+        };
+        await db.collection('settings').doc('appointments').set(appointmentSettings);
+        console.log('✅ Configuración de citas sincronizada con Firestore');
+
+        // Sincronizar configuración de cultura y ocio
+        const culturaData = localStorage.getItem('culturaOcioData');
+        if (culturaData) {
+            await db.collection('content').doc('cultura_ocio').set({
+                data: JSON.parse(culturaData),
+                lastSync: new Date()
+            });
+            console.log('✅ Cultura y Ocio sincronizado con Firestore');
+        }
+
+    } catch (error) {
+        console.error('❌ Error sincronizando con Firestore:', error);
+    }
+}
+
+// Restaurar datos desde Firestore
+async function restoreDataFromFirestore() {
+    try {
+        if (!window.firebase || !window.firebase.firestore()) {
+            console.log('⚠️ Firebase no disponible para restauración');
+            return;
+        }
+
+        const db = window.firebase.firestore();
+        
+        // Restaurar usuarios
+        const usersDoc = await db.collection('users').doc('all_users').get();
+        if (usersDoc.exists && usersDoc.data().users) {
+            users = usersDoc.data().users;
+            localStorage.setItem('users', JSON.stringify(users));
+            console.log('✅ Usuarios restaurados desde Firestore');
+        }
+
+        // Restaurar bandos
+        const bandosDoc = await db.collection('content').doc('bandos').get();
+        if (bandosDoc.exists && bandosDoc.data().bandos) {
+            bandos = bandosDoc.data().bandos;
+            localStorage.setItem('bandos', JSON.stringify(bandos));
+            console.log('✅ Bandos restaurados desde Firestore');
+        }
+
+        // Restaurar noticias
+        const newsDoc = await db.collection('content').doc('noticias').get();
+        if (newsDoc.exists && newsDoc.data().news) {
+            news = newsDoc.data().news;
+            localStorage.setItem('news', JSON.stringify(news));
+            console.log('✅ Noticias restauradas desde Firestore');
+        }
+
+        // Restaurar eventos
+        const eventsDoc = await db.collection('content').doc('eventos').get();
+        if (eventsDoc.exists && eventsDoc.data().events) {
+            events = eventsDoc.data().events;
+            localStorage.setItem('events', JSON.stringify(events));
+            console.log('✅ Eventos restaurados desde Firestore');
+        }
+
+        // Restaurar configuración de citas
+        const appointmentsDoc = await db.collection('settings').doc('appointments').get();
+        if (appointmentsDoc.exists) {
+            appointmentsEnabled = appointmentsDoc.data().enabled;
+            localStorage.setItem('appointmentSettings', JSON.stringify({ enabled: appointmentsEnabled }));
+            console.log('✅ Configuración de citas restaurada desde Firestore');
+        }
+
+        // Restaurar cultura y ocio
+        const culturaDoc = await db.collection('content').doc('cultura_ocio').get();
+        if (culturaDoc.exists && culturaDoc.data().data) {
+            localStorage.setItem('culturaOcioData', JSON.stringify(culturaDoc.data().data));
+            console.log('✅ Cultura y Ocio restaurado desde Firestore');
+        }
+
+    } catch (error) {
+        console.error('❌ Error restaurando desde Firestore:', error);
+    }
+}
+
+// Configurar sincronización automática
+function setupAutomaticSync() {
+    // Sincronizar cada 5 minutos
+    setInterval(() => {
+        syncLocalDataToFirestore();
+    }, 5 * 60 * 1000);
+
+    // Sincronizar antes de cerrar la página
+    window.addEventListener('beforeunload', () => {
+        syncLocalDataToFirestore();
+    });
+
+    // Sincronizar cuando la página se vuelve visible
+    document.addEventListener('visibilitychange', () => {
+        if (!document.hidden) {
+            syncLocalDataToFirestore();
+        }
+    });
+
+    console.log('✅ Sincronización automática configurada');
+}
+
+// Asegurar persistencia completa
+async function ensureCompletePersistence() {
+    try {
+        console.log('🔄 Verificando persistencia completa...');
+        
+        // Intentar restaurar desde Firestore si no hay datos locales
+        if (users.length === 0 || bandos.length === 0) {
+            await restoreDataFromFirestore();
+        }
+
+        // Configurar sincronización automática
+        setupAutomaticSync();
+
+        // Sincronizar datos actuales
+        await syncLocalDataToFirestore();
+
+        console.log('✅ Persistencia completa verificada');
+    } catch (error) {
+        console.error('❌ Error en persistencia completa:', error);
+    }
+}
+
 // Inicialización cuando se carga la página
 document.addEventListener('DOMContentLoaded', function() {
     detectDevice();
@@ -42,10 +223,13 @@ document.addEventListener('DOMContentLoaded', function() {
     loadEvents();
     renderEventos();
     updateCulturaOcioSection();
+    
     loadQuickAccess();
     
     // Asegurar persistencia completa
-    ensureCompletePersistence();
+    setTimeout(() => {
+        ensureCompletePersistence();
+    }, 2000);
     
     // Configurar editor de texto enriquecido
     setTimeout(() => {
@@ -1412,6 +1596,13 @@ async function handleRegister(e) {
         return;
     }
 
+    // Obtener pueblos de notificaciones (si están disponibles)
+    const selectedPueblos = [];
+    const puebloCheckboxes = document.querySelectorAll('input[name="pueblos"]:checked');
+    puebloCheckboxes.forEach(checkbox => {
+        selectedPueblos.push(checkbox.value);
+    });
+
     // Crear nuevo usuario
     const newUser = {
         id: Date.now(),
@@ -1421,6 +1612,7 @@ async function handleRegister(e) {
         password, // En una aplicación real, esto debería estar hasheado
         consent: true,
         notificationConsent: true, // Consentimiento específico para notificaciones
+        pueblos: selectedPueblos, // Pueblos de interés para notificaciones
         consentDate: new Date().toISOString(),
         registeredAt: new Date().toISOString()
     };
@@ -1430,6 +1622,11 @@ async function handleRegister(e) {
     // Guardar con múltiple seguridad
     console.log('💾 Guardando usuario registrado:', newUser.email);
     localStorage.setItem('users', JSON.stringify(users));
+    
+    // Sincronizar con Firebase
+    setTimeout(() => {
+        syncLocalDataToFirestore();
+    }, 1000);
     
     // Verificar que se guardó correctamente
     setTimeout(() => {
@@ -4412,6 +4609,11 @@ function updateAppointmentMode() {
     
     showNotification(`Sistema de citas previas ${appointmentsEnabled ? 'activado' : 'desactivado'}`, 'success');
     console.log('💾 Configuración guardada:', appointmentsEnabled ? 'CITA PREVIA' : 'SIN CITA PREVIA');
+    
+    // Sincronizar con Firebase
+    setTimeout(() => {
+        syncLocalDataToFirestore();
+    }, 1000);
 }
 
 // Función para validar DNI
