@@ -6190,7 +6190,7 @@ function addTransporteLinea() {
         <div class="modal-content">
             <div class="modal-header">
                 <h3>🚌 Añadir Nueva Línea de Transporte</h3>
-                <span class="close" onclick="this.closest('.modal').remove()">&times;</span>
+                <span class="close" onclick="closeModalWithScroll(this)">&times;</span>
             </div>
             <div class="modal-body">
                 <form id="addTransporteLineaForm">
@@ -6269,7 +6269,7 @@ function editTransporteLinea(lineaId) {
         <div class="modal-content" style="max-width: 90%; max-height: 90%; overflow-y: auto;">
             <div class="modal-header">
                 <h3>✏️ Editar Línea de Transporte</h3>
-                <span class="close" onclick="this.closest('.modal').remove()">&times;</span>
+                <span class="close" onclick="closeModalWithScroll(this)">&times;</span>
             </div>
             <div class="modal-body">
                 <form id="editTransporteLineaForm">
@@ -7932,6 +7932,12 @@ function toggleAccordion(sectionId) {
     // Abrir el seleccionado si no estaba activo
     if (!isActive) {
         accordionItem.classList.add('active');
+        
+        // Cargar el contenido específico de la sección
+        const container = document.getElementById(`${sectionId}Items`);
+        if (container && culturaOcioData[sectionId]) {
+            renderAccordionSection(sectionId, culturaOcioData[sectionId]);
+        }
     }
     
     console.log(`📂 Acordeón ${sectionId} ${isActive ? 'cerrado' : 'abierto'}`);
@@ -7972,8 +7978,7 @@ function loadCobrerosContent() {
                 description: "Cerca del famoso Lago de Sanabria, múltiples saltos de agua en una ruta circular muy recomendada.",
                 image: "images/cascadas-ribadelago.jpg",
                 links: [
-                    { text: "📋 Guía Completa", url: "#", type: "pdf" },
-                    { text: "📸 Galería de Fotos", url: "#", type: "external" }
+                    { text: "📋 Guía Completa", url: "#", type: "pdf" }
                 ]
             },
             {
@@ -8037,7 +8042,7 @@ function loadCobrerosContent() {
         gastronomia: [
             {
                 title: "🍄 Recolección de Setas",
-                description: "Cobreros es famoso por sus setas. Temporada de otoño con especies como boletus, níscalos y setas de cardo.",
+                description: "Cobreros es famoso por sus setas. Temporada de otoño con especies como boletus, cucurril y un sin fin de especies de gran valor culinario.",
                 image: "images/setas-cobreros.jpg",
                 links: [
                     { text: "📋 Guía de Setas", url: "#", type: "pdf" },
@@ -8054,12 +8059,12 @@ function loadCobrerosContent() {
                 ]
             },
             {
-                title: "🧀 Quesos Artesanales",
-                description: "Quesos de cabra y oveja elaborados de forma tradicional en las granjas locales de la comarca.",
-                image: "images/quesos-artesanales.jpg",
+                title: "🌰 Habones de Sanabria",
+                description: "Legumbre autóctona de gran calidad, cultivada tradicionalmente en la comarca de Sanabria. Base de la gastronomía local.",
+                image: "images/habones-sanabria.jpg",
                 links: [
-                    { text: "📋 Variedades de Queso", url: "#", type: "pdf" },
-                    { text: "🏪 Productores Locales", url: "#", type: "external" }
+                    { text: "📋 Recetas Tradicionales", url: "#", type: "pdf" },
+                    { text: "🌾 Cultivo y Tradición", url: "#", type: "external" }
                 ]
             },
             {
@@ -8068,7 +8073,7 @@ function loadCobrerosContent() {
                 image: "images/vinos-tierra.jpg",
                 links: [
                     { text: "📋 Cata de Vinos", url: "#", type: "pdf" },
-                    { text: "🍷 Bodegas de la Zona", url: "#", type: "external" }
+                    { text: "🥩 Carne de Ternera Sanabresa", url: "#", type: "external" }
                 ]
             }
         ],
@@ -8105,8 +8110,7 @@ function loadCobrerosContent() {
                 description: "Mercado de productos locales, artesanía y gastronomía tradicional que se celebra en verano.",
                 image: "images/mercado-artesanal.jpg",
                 links: [
-                    { text: "📋 Artesanos Participantes", url: "#", type: "pdf" },
-                    { text: "🛍️ Productos Locales", url: "#", type: "external" }
+                    { text: "📋 Artesanos Participantes", url: "#", type: "pdf" }
                 ]
             }
         ],
@@ -10835,7 +10839,7 @@ function openGuiaSetas() {
         <div class="modal-content" style="max-width: 800px;">
             <div class="modal-header">
                 <h3>🍄 Guía de Setas de Cobreros</h3>
-                <span class="close" onclick="this.closest('.modal').remove()">&times;</span>
+                <span class="close" onclick="closeModalWithScroll(this)">&times;</span>
             </div>
             <div class="modal-body">
                 <div class="setas-guide">
@@ -10888,6 +10892,29 @@ function openGuiaSetas() {
         </div>
     `;
     document.body.appendChild(modal);
+    
+    // Prevenir scroll automático y posicionar modal en la parte superior
+    setTimeout(() => {
+        // Evitar que la página haga scroll automático
+        document.body.style.overflow = 'hidden';
+        
+        // Hacer scroll de la página al inicio
+        window.scrollTo(0, 0);
+        
+        // Posicionar el modal en la parte superior de la ventana
+        modal.style.position = 'fixed';
+        modal.style.top = '0';
+        modal.style.left = '0';
+        modal.style.width = '100%';
+        modal.style.height = '100%';
+        modal.style.zIndex = '1000';
+        
+        // Hacer scroll al inicio del contenido del modal
+        const modalContent = modal.querySelector('.modal-content');
+        if (modalContent) {
+            modalContent.scrollTop = 0;
+        }
+    }, 50);
 }
 
 // Función para abrir calendario de recolección
@@ -10899,7 +10926,7 @@ function openCalendarioRecoleccion() {
         <div class="modal-content" style="max-width: 900px;">
             <div class="modal-header">
                 <h3>🗓️ Calendario de Recolección - Cobreros</h3>
-                <span class="close" onclick="this.closest('.modal').remove()">&times;</span>
+                <span class="close" onclick="closeModalWithScroll(this)">&times;</span>
             </div>
             <div class="modal-body">
                 <div class="calendario-recoleccion">
@@ -10972,6 +10999,29 @@ function openCalendarioRecoleccion() {
         </div>
     `;
     document.body.appendChild(modal);
+    
+    // Prevenir scroll automático y posicionar modal en la parte superior
+    setTimeout(() => {
+        // Evitar que la página haga scroll automático
+        document.body.style.overflow = 'hidden';
+        
+        // Hacer scroll de la página al inicio
+        window.scrollTo(0, 0);
+        
+        // Posicionar el modal en la parte superior de la ventana
+        modal.style.position = 'fixed';
+        modal.style.top = '0';
+        modal.style.left = '0';
+        modal.style.width = '100%';
+        modal.style.height = '100%';
+        modal.style.zIndex = '1000';
+        
+        // Hacer scroll al inicio del contenido del modal
+        const modalContent = modal.querySelector('.modal-content');
+        if (modalContent) {
+            modalContent.scrollTop = 0;
+        }
+    }, 50);
 }
 
 // Variables globales para gestión de cultura y ocio
@@ -11276,7 +11326,7 @@ function openMapaRutas() {
         <div class="modal-content" style="max-width: 1000px;">
             <div class="modal-header">
                 <h3>🗺️ Mapa de Rutas de Senderismo - Cobreros</h3>
-                <span class="close" onclick="this.closest('.modal').remove()">&times;</span>
+                <span class="close" onclick="closeModalWithScroll(this)">&times;</span>
             </div>
             <div class="modal-body">
                 <div class="rutas-map">
@@ -11328,6 +11378,29 @@ function openMapaRutas() {
         </div>
     `;
     document.body.appendChild(modal);
+    
+    // Prevenir scroll automático y posicionar modal en la parte superior
+    setTimeout(() => {
+        // Evitar que la página haga scroll automático
+        document.body.style.overflow = 'hidden';
+        
+        // Hacer scroll de la página al inicio
+        window.scrollTo(0, 0);
+        
+        // Posicionar el modal en la parte superior de la ventana
+        modal.style.position = 'fixed';
+        modal.style.top = '0';
+        modal.style.left = '0';
+        modal.style.width = '100%';
+        modal.style.height = '100%';
+        modal.style.zIndex = '1000';
+        
+        // Hacer scroll al inicio del contenido del modal
+        const modalContent = modal.querySelector('.modal-content');
+        if (modalContent) {
+            modalContent.scrollTop = 0;
+        }
+    }, 50);
 }
 
 // Función para abrir calendario de eventos
@@ -11339,7 +11412,7 @@ function openCalendarioEventos() {
         <div class="modal-content" style="max-width: 1000px;">
             <div class="modal-header">
                 <h3>🎪 Calendario de Eventos - Cobreros</h3>
-                <span class="close" onclick="this.closest('.modal').remove()">&times;</span>
+                <span class="close" onclick="closeModalWithScroll(this)">&times;</span>
             </div>
             <div class="modal-body">
                 <div class="eventos-calendario">
@@ -11389,6 +11462,29 @@ function openCalendarioEventos() {
         </div>
     `;
     document.body.appendChild(modal);
+    
+    // Prevenir scroll automático y posicionar modal en la parte superior
+    setTimeout(() => {
+        // Evitar que la página haga scroll automático
+        document.body.style.overflow = 'hidden';
+        
+        // Hacer scroll de la página al inicio
+        window.scrollTo(0, 0);
+        
+        // Posicionar el modal en la parte superior de la ventana
+        modal.style.position = 'fixed';
+        modal.style.top = '0';
+        modal.style.left = '0';
+        modal.style.width = '100%';
+        modal.style.height = '100%';
+        modal.style.zIndex = '1000';
+        
+        // Hacer scroll al inicio del contenido del modal
+        const modalContent = modal.querySelector('.modal-content');
+        if (modalContent) {
+            modalContent.scrollTop = 0;
+        }
+    }, 50);
 }
 
  
