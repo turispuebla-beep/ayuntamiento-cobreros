@@ -1296,9 +1296,12 @@ function handleAdminLogin(e) {
     const formData = new FormData(e.target);
     const email = formData.get('email');
     const password = formData.get('password');
+    
+    console.log('🔐 Intentando login admin con:', { email, password: '***' });
 
     // Verificar credenciales de super admin (TURISTEAM)
     if (email === SUPER_ADMIN.email && password === SUPER_ADMIN.password) {
+        console.log('✅ Login super admin exitoso');
         isSuperAdmin = true;
         isAdmin = true;
         localStorage.setItem('isSuperAdmin', 'true');
@@ -1321,6 +1324,7 @@ function handleAdminLogin(e) {
 
     // Verificar credenciales del administrador del ayuntamiento
     if (email === 'aytocobreros@gmail.com' && password === 'admin123') {
+        console.log('✅ Login admin ayuntamiento exitoso');
         isAdmin = true;
         localStorage.setItem('isAdmin', 'true');
         currentUser = { 
@@ -1343,6 +1347,7 @@ function handleAdminLogin(e) {
     const admin = administrators.find(admin => admin.email === email && admin.password === password && admin.isActive);
     
     if (admin) {
+        console.log('✅ Login admin creado exitoso:', admin.name);
         currentUser = { 
             email: admin.email, 
             name: admin.name,
@@ -1358,9 +1363,12 @@ function handleAdminLogin(e) {
         
         // Ocultar mensaje de app en desktop
         hideDesktopAppMessage();
-    } else {
-        showNotification('Credenciales de administrador incorrectas', 'error');
+        return;
     }
+    
+    // Si llegamos aquí, las credenciales son incorrectas
+    console.log('❌ Credenciales incorrectas');
+    showNotification('Credenciales de administrador incorrectas', 'error');
 }
 
 // Manejar registro
@@ -5489,13 +5497,18 @@ function logout() {
         document.body.style.overflow = 'auto';
     }
     
-    updateUserInterface();
+    // Cerrar modal de login de admin si está abierto
+    const adminLoginModal = document.getElementById('adminLoginModal');
+    if (adminLoginModal && adminLoginModal.style.display === 'block') {
+        adminLoginModal.style.display = 'none';
+    }
+    
     showNotification('Sesión cerrada correctamente', 'success');
     
-    // Refrescar la página después de un breve delay para mostrar la notificación
+    // Refrescar la página inmediatamente para evitar que se abra el modal de login
     setTimeout(() => {
         window.location.reload();
-    }, 1500);
+    }, 1000);
 }
 
 // Abrir panel de administración
