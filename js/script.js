@@ -1277,7 +1277,7 @@ function handleLogin(e) {
         showNotification(`Bienvenido, ${user.name}`, 'success');
         
         // Ocultar mensaje de app en desktop si el usuario se registra
-        // hideDesktopAppMessage();
+        hideDesktopAppMessage();
         
         // Verificar estado de app móvil después del registro
         if (isMobile) {
@@ -1320,7 +1320,7 @@ function handleAdminLogin(e) {
         showNotification('Sesión de administrador iniciada correctamente', 'success');
         
         // Ocultar mensaje de app en desktop
-        // hideDesktopAppMessage();
+        hideDesktopAppMessage();
         return;
     }
 
@@ -1341,7 +1341,7 @@ function handleAdminLogin(e) {
         showNotification('Sesión de administrador iniciada - Ayuntamiento de Cobreros', 'success');
         
         // Ocultar mensaje de app en desktop
-        // hideDesktopAppMessage();
+        hideDesktopAppMessage();
         return;
     }
 
@@ -1364,7 +1364,7 @@ function handleAdminLogin(e) {
         showNotification(`Sesión de administrador iniciada - ${admin.name}`, 'success');
         
         // Ocultar mensaje de app en desktop
-        // hideDesktopAppMessage();
+        hideDesktopAppMessage();
         return;
     }
     
@@ -1374,7 +1374,8 @@ function handleAdminLogin(e) {
     
     } catch (error) {
         console.error('❌ Error en handleAdminLogin:', error);
-        showNotification('Error interno del sistema. Inténtalo de nuevo.', 'error');
+        console.error('❌ Stack trace:', error.stack);
+        showNotification(`Error: ${error.message}`, 'error');
     }
 }
 
@@ -5385,7 +5386,7 @@ function login() {
         updateUserInterface();
         
         // Ocultar mensaje de app en desktop
-        // hideDesktopAppMessage();
+        hideDesktopAppMessage();
         closeModal('loginModal');
         showNotification('Sesión de administrador iniciada correctamente', 'success');
         return;
@@ -5402,7 +5403,7 @@ function login() {
         closeModal('loginModal');
         
         // Ocultar mensaje de app en desktop
-        // hideDesktopAppMessage();
+        hideDesktopAppMessage();
         showNotification('Inicio de sesión exitoso', 'success');
     } else {
         alert('Credenciales incorrectas.');
