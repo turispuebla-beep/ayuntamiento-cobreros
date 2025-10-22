@@ -212,3 +212,5 @@ El sistema del Ayuntamiento de Cobreros está diseñado para ser **completamente
 
 **El sistema está listo para producción y garantiza que todos los datos sean persistentes y sincronizados entre la web y la app móvil.**
 
+
+

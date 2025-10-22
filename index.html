@@ -317,23 +317,8 @@
         <section id="documentos" class="content-section">
             <div class="container">
                 <h2>Documentos y Formularios</h2>
-                <div class="documents-grid">
-                    <div class="document-category">
-                        <h3>Formularios</h3>
-                        <ul class="document-list">
-                            <li><a href="https://cobreros.sedelectronica.es/catalog/t/15fabacb-83b1-47d1-b435-508245672051" target="_blank" class="document-link"><i class="fas fa-download"></i> Licencia de obras</a></li>
-                            <li><a href="https://cobreros.sedelectronica.es/catalog/t/d120f65c-c936-4a95-bd50-e7ae970ca149" target="_blank" class="document-link"><i class="fas fa-download"></i> Solicitud de empadronamiento</a></li>
-                            <li><a href="https://cobreros.sedelectronica.es/catalog/t/1c74bc66-8b69-4f3c-8183-d3591f0504ed" target="_blank" class="document-link"><i class="fas fa-download"></i> Certificado de empadronamiento</a></li>
-                            <li><a href="https://cobreros.sedelectronica.es/?x=YNOk4QU4OCH1VkP5PEIUePAoMJMUn8b-T88O9vfrVKUeSihv2bENIqzWyk461HpKudzhAdFOWwE9q4qefF-Mxi32kuWV4orZqsZxo8GjkR0m9UsFMZJrvtQI8cQXwqOE5h8yPgI9lbLQB86*ZKIMyz9hPheu1upkL85pK64JPLMMHjMYAS8uiKjtaeB2Hr*mQ8UtWDh77MXQZ4v-fH9CQw" target="_blank" class="document-link"><i class="fas fa-download"></i> Instancia General</a></li>
-                        </ul>
-                    </div>
-                    <div class="document-category">
-                        <h3>Normativas</h3>
-                        <ul class="document-list">
-                            <li><a href="#" class="document-link"><i class="fas fa-download"></i> Ordenanzas municipales</a></li>
-                            <li><a href="https://cobreros.sedelectronica.es/catalog/t/96514574-aca1-40e1-a800-e06485e6d016" target="_blank" class="document-link"><i class="fas fa-download"></i> Planeamiento General (Modificación)</a></li>
-                        </ul>
-                    </div>
+                <div class="documents-grid" id="documentsGrid">
+                    <!-- Se llenará dinámicamente desde el panel de administración -->
                 </div>
             </div>
         </section>
@@ -643,7 +628,7 @@
     </div>
 
     <!-- Admin Panel Modal -->
-    <div id="adminModal" class="modal admin-modal">
+    <div id="adminModal" class="modal admin-modal" style="display: none;">
         <div class="modal-content admin-content">
             <!-- Botón de cerrar sesión flotante -->
             <button class="logout-floating-btn" onclick="logout()" title="Cerrar Sesión">
@@ -1094,23 +1079,59 @@
                     </div>
                     <div class="admin-section">
                         <h4>Importar Datos</h4>
-                        <p>Importar datos desde archivos JSON:</p>
+                        <p>Importar datos desde archivos compatibles:</p>
+                        <div style="background: #f8f9fa; padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">
+                            <h5 style="margin: 0 0 0.5rem 0; color: #495057;">📁 Formatos Soportados:</h5>
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0.5rem; font-size: 0.9rem;">
+                                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                    <span style="color: #28a745;">✅</span>
+                                    <strong>JSON</strong> - Datos estructurados
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                    <span style="color: #28a745;">✅</span>
+                                    <strong>Excel</strong> - .xlsx, .xls
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                    <span style="color: #28a745;">✅</span>
+                                    <strong>Word</strong> - .doc, .docx
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                    <span style="color: #28a745;">✅</span>
+                                    <strong>Texto</strong> - .txt estructurado
+                                </div>
+                            </div>
+                        </div>
                         <form id="importDataForm">
                             <div class="form-group">
-                                <label for="importFile">Archivo JSON:</label>
-                                <input type="file" id="importFile" name="file" accept=".json" required>
+                                <label for="importFile">Seleccionar Archivo:</label>
+                                <input type="file" id="importFile" name="file" accept=".json,.xlsx,.xls,.doc,.docx,.txt" onchange="handleFileSelect(event)">
+                                <small style="color: #6c757d; display: block; margin-top: 0.25rem;">
+                                    Formatos: JSON, Excel (.xlsx, .xls), Word (.doc, .docx), Texto (.txt)
+                                </small>
                             </div>
                             <div class="form-group">
                                 <label for="importType">Tipo de datos:</label>
                                 <select id="importType" name="type" required>
                                     <option value="">Seleccionar tipo</option>
-                                    <option value="users">Usuarios</option>
-                                    <option value="admins">Administradores</option>
-                                    <option value="documents">Documentos</option>
-                                    <option value="notifications">Notificaciones</option>
+                                    <option value="usuarios">👥 Usuarios</option>
+                                    <option value="administradores">👨‍💼 Administradores</option>
+                                    <option value="documentos">📄 Documentos</option>
+                                    <option value="notificaciones">📢 Notificaciones</option>
+                                    <option value="backup-completo">💾 Backup Completo</option>
                                 </select>
                             </div>
-                            <button type="submit" class="btn btn-warning">Importar Datos</button>
+                            <div class="form-group">
+                                <label for="importData">Datos a Importar (opcional - se llena automáticamente al seleccionar archivo):</label>
+                                <textarea id="importData" rows="8" placeholder="Los datos se cargarán automáticamente al seleccionar un archivo, o puede pegar datos JSON aquí manualmente..."></textarea>
+                            </div>
+                            <div class="form-group">
+                                <button type="button" class="btn btn-warning" onclick="importData()">
+                                    <i class="fas fa-upload"></i> Importar Datos
+                                </button>
+                                <button type="button" class="btn btn-secondary" onclick="clearImportForm()">
+                                    <i class="fas fa-trash"></i> Limpiar
+                                </button>
+                            </div>
                         </form>
                     </div>
                     <div class="admin-section">
@@ -1149,13 +1170,20 @@
                         <h4>📁 Exportar/Importar Datos</h4>
                         <p>Crear copias de seguridad locales y restaurar datos:</p>
                         <div class="export-import-buttons">
-                            <button class="btn btn-success" onclick="exportDataAsJSON()">
-                                <i class="fas fa-download"></i> Exportar Todo (JSON)
+                            <button class="btn btn-success" onclick="showExportModal()">
+                                <i class="fas fa-download"></i> Exportar Datos
                             </button>
-                            <button class="btn btn-primary" onclick="document.getElementById('importBackupFile').click()">
-                                <i class="fas fa-upload"></i> Importar Backup (JSON)
+                            <button class="btn btn-primary" onclick="showImportModal()">
+                                <i class="fas fa-upload"></i> Importar Datos
                             </button>
-                            <input type="file" id="importBackupFile" accept=".json" style="display: none;" onchange="importDataFromJSON(this.files[0])">
+                        </div>
+                        <div class="export-formats">
+                            <small class="text-muted">
+                                <strong>Formatos soportados:</strong><br>
+                                📄 <strong>JSON:</strong> Copia completa del sistema<br>
+                                📊 <strong>Excel/CSV:</strong> Datos en formato de hoja de cálculo<br>
+                                📝 <strong>Documento:</strong> Reporte legible en texto plano
+                            </small>
                         </div>
                     </div>
                     
@@ -1327,6 +1355,31 @@
                             <button class="btn btn-primary" onclick="addServicio('phone')">➕ Añadir Teléfono</button>
                         </div>
                         <div id="phoneList"></div>
+                    </div>
+                </div>
+
+                <!-- Cultura y Ocio Tab -->
+                <div id="cultura-ocio-tab" class="tab-content">
+                    <h3>🎭 Gestión de Cultura y Ocio</h3>
+                    <div class="admin-section">
+                        <h4>Acciones Generales</h4>
+                        <div class="content-actions">
+                            <button class="btn btn-primary" onclick="openCulturaOcioManager()">
+                                <i class="fas fa-plus"></i> Gestionar Sección Completa
+                            </button>
+                            <button class="btn btn-secondary" onclick="exportCulturaOcioCompleto()">
+                                <i class="fas fa-download"></i> Exportar Todo
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="admin-section">
+                        <h4>Contenido Actual</h4>
+                        <div class="culture-sections-list" id="cultureSectionsList">
+                            <p style="text-align: center; color: #666; padding: 2rem;">
+                                Cargando contenido de cultura y ocio...
+                            </p>
+                        </div>
                     </div>
                 </div>
 
@@ -3039,6 +3092,8 @@
         </div>
     </div>
 
+    <!-- Librería para exportación a Excel -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="js/script.js"></script>
     <!-- <script src="js/recaptcha.js"></script> -->
 </body> 

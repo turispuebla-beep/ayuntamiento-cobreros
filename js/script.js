@@ -184,10 +184,33 @@ function setupAutomaticSync() {
     document.addEventListener('visibilitychange', () => {
         if (!document.hidden) {
             syncLocalDataToFirestore();
+            // CERRAR PANEL DE ADMIN AL VOLVER VISIBLE LA PÁGINA
+            const adminModal = document.getElementById('adminModal');
+            if (adminModal && adminModal.style.display === 'block') {
+                console.log('🔒 Cerrando panel de admin al volver visible la página');
+                adminModal.style.display = 'none';
+                document.body.style.overflow = 'auto';
+            }
         }
     });
 
     console.log('✅ Sincronización automática configurada');
+}
+
+// Función para forzar cierre del panel de administración
+function forceCloseAdminPanel() {
+    const adminModal = document.getElementById('adminModal');
+    if (adminModal) {
+        console.log('🔒 Forzando cierre del panel de administración');
+        adminModal.style.display = 'none';
+        document.body.style.overflow = 'auto';
+        
+        // Limpiar timeout de sesión si existe
+        if (adminSessionTimeout) {
+            clearTimeout(adminSessionTimeout);
+            adminSessionTimeout = null;
+        }
+    }
 }
 
 // Asegurar persistencia completa
@@ -214,6 +237,9 @@ async function ensureCompletePersistence() {
 
 // Inicialización cuando se carga la página
 document.addEventListener('DOMContentLoaded', function() {
+    // CERRAR PANEL DE ADMIN INMEDIATAMENTE AL CARGAR DOM
+    forceCloseAdminPanel();
+    
     detectDevice();
     initializeApp();
     setupEventListeners();
@@ -231,6 +257,34 @@ document.addEventListener('DOMContentLoaded', function() {
         ensureCompletePersistence();
     }, 2000);
     
+    // VERIFICACIÓN MÚLTIPLE DE SEGURIDAD: Cerrar panel de admin varias veces
+    setTimeout(() => {
+        const adminModal = document.getElementById('adminModal');
+        if (adminModal && adminModal.style.display === 'block') {
+            console.log('🚨 VERIFICACIÓN 1: Panel de admin abierto, cerrándolo...');
+            adminModal.style.display = 'none';
+            document.body.style.overflow = 'auto';
+        }
+    }, 1000);
+    
+    setTimeout(() => {
+        const adminModal = document.getElementById('adminModal');
+        if (adminModal && adminModal.style.display === 'block') {
+            console.log('🚨 VERIFICACIÓN 2: Panel de admin abierto, cerrándolo...');
+            adminModal.style.display = 'none';
+            document.body.style.overflow = 'auto';
+        }
+    }, 3000);
+    
+    setTimeout(() => {
+        const adminModal = document.getElementById('adminModal');
+        if (adminModal && adminModal.style.display === 'block') {
+            console.log('🚨 VERIFICACIÓN 3: Panel de admin abierto, cerrándolo...');
+            adminModal.style.display = 'none';
+            document.body.style.overflow = 'auto';
+        }
+    }, 5000);
+    
     // Configurar editor de texto enriquecido
     setTimeout(() => {
         setupRichEditor();
@@ -239,6 +293,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Cargar contenido de Cobreros
     setTimeout(() => {
         loadCobrerosContent();
+        loadDocumentsInMainPage(); // Cargar documentos en la página principal
     }, 1500);
     
     // Cargar configuración de citas previas (CRÍTICO - SIEMPRE PRIMERO)
@@ -767,6 +822,17 @@ function getDeviceInfo() {
 
 // Inicializar la aplicación
 function initializeApp() {
+    // CERRAR PANEL DE ADMINISTRACIÓN POR SEGURIDAD al cargar la página
+    const adminModal = document.getElementById('adminModal');
+    if (adminModal) {
+        console.log('🔒 Cerrando panel de administración por seguridad...');
+        adminModal.style.display = 'none';
+        document.body.style.overflow = 'auto';
+        console.log('✅ Panel de administración cerrado correctamente');
+    } else {
+        console.log('⚠️ No se encontró el elemento adminModal');
+    }
+    
     // Verificar si hay un usuario logueado
     const savedUser = localStorage.getItem('currentUser');
     if (savedUser) {
@@ -811,6 +877,21 @@ function initializeApp() {
     // Cargar configuración de citas previas
     loadAppointmentSettings();
     
+    // Inicializar sistema de citas previas
+    initializeAppointmentSystem();
+    
+    // Actualizar estado de citas previas en la página principal
+    updateAppointmentStatus();
+    
+    // Verificación adicional de persistencia
+    setTimeout(() => {
+        const config = localStorage.getItem('appointmentSchedule');
+        if (config) {
+            const parsed = JSON.parse(config);
+            console.log('🔍 Verificación final de configuración:', parsed.enabled ? 'CITA PREVIA' : 'SIN CITA PREVIA');
+        }
+    }, 1000);
+    
     // Cargar citas previas
     loadAppointments();
     
@@ -847,6 +928,34 @@ function initializeApp() {
     // Limpiar formularios cuando se cierre la página
     window.addEventListener('beforeunload', clearAllForms);
     
+    // CERRAR PANEL DE ADMIN EN MÚLTIPLES EVENTOS DE SEGURIDAD
+    window.addEventListener('beforeunload', forceCloseAdminPanel);
+    window.addEventListener('focus', forceCloseAdminPanel);
+    window.addEventListener('pageshow', (event) => {
+        // Cerrar panel especialmente en refrescos y navegación
+        if (event.persisted || performance.navigation.type === 1) {
+            console.log('🔄 Página recargada/navegada - cerrando panel de admin');
+        }
+        forceCloseAdminPanel();
+    });
+    document.addEventListener('visibilitychange', () => {
+        if (!document.hidden) {
+            forceCloseAdminPanel();
+        }
+    });
+    
+    // Cerrar panel de admin al hacer clic fuera de él
+    document.addEventListener('click', (event) => {
+        const adminModal = document.getElementById('adminModal');
+        if (adminModal && adminModal.style.display === 'block') {
+            // Si se hace clic fuera del modal de admin, cerrarlo
+            if (!adminModal.contains(event.target) && !event.target.closest('#adminBtn')) {
+                console.log('🔒 Clic fuera del panel de admin - cerrando por seguridad');
+                forceCloseAdminPanel();
+            }
+        }
+    });
+    
     // Asegurar que la página esté en el inicio cuando se carga completamente
     window.addEventListener('load', () => {
         setTimeout(() => {
@@ -860,6 +969,14 @@ function initializeApp() {
             clearAllForms();
             // Asegurar que solo el enlace de inicio esté activo
             resetNavigationState();
+            
+            // VERIFICACIÓN ADICIONAL DE SEGURIDAD: Cerrar panel de admin si está abierto
+            const adminModal = document.getElementById('adminModal');
+            if (adminModal && adminModal.style.display === 'block') {
+                console.log('🚨 ALERTA DE SEGURIDAD: Panel de admin estaba abierto, cerrándolo...');
+                adminModal.style.display = 'none';
+                document.body.style.overflow = 'auto';
+            }
         }, 50);
     });
     
@@ -1981,7 +2098,7 @@ function switchTab(tabName) {
         loadEventsList();
         loadQuickAccessList();
     } else if (tabName === 'users') {
-        loadUsersList();
+        initializeUserManagement();
     } else if (tabName === 'admins') {
         loadAdminsList();
     } else if (tabName === 'documents') {
@@ -2020,12 +2137,15 @@ function switchTab(tabName) {
     } else if (tabName === 'appointments') {
         console.log('Cargando pestaña de citas previas...');
         loadAppointments();
-        loadAppointmentsList();
-        loadAppointmentStats();
-        loadMunicipalAlertsList();
+        initializeAppointmentManagement();
         console.log('Pestaña de citas previas cargada');
     } else if (tabName === 'servicios') {
         loadServiciosAdmin();
+        initializeDataLinksManagement();
+    } else if (tabName === 'cultura-ocio') {
+        syncCultureTabWithMainPage();
+    } else if (tabName === 'documents') {
+        initializeDocumentsManagement();
     }
 }
 
@@ -2463,7 +2583,7 @@ function showNotificationDetail(notification) {
     
     modal.innerHTML = `
         <div class="modal-content">
-            <span class="close" onclick="this.closest('.modal').remove()">&times;</span>
+            <span class="close" onclick="closeModalOnly(this.closest('.modal'))">&times;</span>
             <h2>${notification.title}</h2>
             <p><strong>Tipo:</strong> ${notification.type}</p>
             <p><strong>Fecha:</strong> ${formatDate(notification.date)}</p>
@@ -2487,7 +2607,7 @@ function showNewsDetail(newsId) {
     modal.style.display = 'block';
     modal.innerHTML = `
         <div class="modal-content">
-            <span class="close" onclick="this.closest('.modal').remove()">&times;</span>
+            <span class="close" onclick="closeModalOnly(this.closest('.modal'))">&times;</span>
             <h2>${article.title}</h2>
             <p><strong>Fecha:</strong> ${formatDate(article.date)}</p>
             <div style="margin-top: 1rem;">
@@ -2508,7 +2628,7 @@ function showBandoDetail(bandoId) {
     modal.style.display = 'block';
     modal.innerHTML = `
         <div class="modal-content">
-            <span class="close" onclick="this.closest('.modal').remove()">&times;</span>
+            <span class="close" onclick="closeModalOnly(this.closest('.modal'))">&times;</span>
             <h2>${bando.title}</h2>
             <p><strong>Fecha:</strong> ${formatDate(bando.date)}</p>
             <div style="margin-top: 1rem; white-space: pre-line;">
@@ -2654,7 +2774,7 @@ function openNewsEditor(newsId = null) {
     modal.style.display = 'block';
     modal.innerHTML = `
         <div class="modal-content">
-            <span class="close" onclick="this.closest('.modal').remove()">&times;</span>
+            <span class="close" onclick="closeModalOnly(this.closest('.modal'))">&times;</span>
             <h2>${article ? 'Editar Anuncio' : 'Nuevo Anuncio'}</h2>
             <form id="newsForm">
                 <div class="form-group">
@@ -2722,7 +2842,7 @@ function openBandoEditor(bandoId = null) {
     modal.style.display = 'block';
     modal.innerHTML = `
         <div class="modal-content">
-            <span class="close" onclick="this.closest('.modal').remove()">&times;</span>
+            <span class="close" onclick="closeModalOnly(this.closest('.modal'))">&times;</span>
             <h2>${bando ? 'Editar Bando' : 'Nuevo Bando'}</h2>
             <form id="bandoForm">
                 <div class="form-group">
@@ -2853,7 +2973,7 @@ function editDocument(docId) {
     modal.style.display = 'block';
     modal.innerHTML = `
         <div class="modal-content">
-            <span class="close" onclick="this.closest('.modal').remove()">&times;</span>
+            <span class="close" onclick="closeModalOnly(this.closest('.modal'))">&times;</span>
             <h2>Editar Documento</h2>
             <form id="editDocumentForm">
                 <div class="form-group">
@@ -2924,7 +3044,7 @@ function openNewsEditor(newsId = null) {
     modal.style.display = 'block';
     modal.innerHTML = `
         <div class="modal-content">
-            <span class="close" onclick="this.closest('.modal').remove()">&times;</span>
+            <span class="close" onclick="closeModalOnly(this.closest('.modal'))">&times;</span>
             <h2>${isEdit ? 'Editar Anuncio' : 'Nuevo Anuncio'}</h2>
             <form id="newsForm">
                 <div class="form-group">
@@ -3024,7 +3144,7 @@ function openBandoEditor(bandoId = null) {
     modal.style.display = 'block';
     modal.innerHTML = `
         <div class="modal-content">
-            <span class="close" onclick="this.closest('.modal').remove()">&times;</span>
+            <span class="close" onclick="closeModalOnly(this.closest('.modal'))">&times;</span>
             <h2>${isEdit ? 'Editar Bando' : 'Nuevo Bando'}</h2>
             <form id="bandoForm">
                 <div class="form-group">
@@ -4338,7 +4458,7 @@ function showUserStats() {
     modal.style.display = 'block';
     modal.innerHTML = `
         <div class="modal-content">
-            <span class="close" onclick="this.closest('.modal').remove()">&times;</span>
+            <span class="close" onclick="closeModalOnly(this.closest('.modal'))">&times;</span>
             <h2>Estadísticas de Usuarios</h2>
             <div class="stats-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin: 1rem 0;">
                 <div class="stat-card" style="background: #f0f9ff; padding: 1rem; border-radius: 8px; text-align: center;">
@@ -4364,8 +4484,18 @@ function loadSystemStats() {
     const statsContainer = document.getElementById('systemStats');
     if (!statsContainer) return;
 
+    // Obtener datos actualizados desde localStorage
+    const users = JSON.parse(localStorage.getItem('users')) || [];
+    const admins = JSON.parse(localStorage.getItem('admins')) || [];
+    const documents = JSON.parse(localStorage.getItem('documents')) || [];
+    const notifications = JSON.parse(localStorage.getItem('notifications')) || [];
+    const news = JSON.parse(localStorage.getItem('news')) || [];
+    const bandos = JSON.parse(localStorage.getItem('bandos')) || [];
+    const events = JSON.parse(localStorage.getItem('events')) || [];
+    const quickAccess = JSON.parse(localStorage.getItem('quickAccess')) || [];
+
     const totalUsers = users.length;
-    const totalAdmins = administrators.length;
+    const totalAdmins = admins.length;
     const totalDocuments = documents.length;
     const totalNotifications = notifications.length;
     const totalNews = news.length;
@@ -4376,35 +4506,35 @@ function loadSystemStats() {
     statsContainer.innerHTML = `
         <div class="stats-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
             <div class="stat-card" style="background: #f0f9ff; padding: 1rem; border-radius: 8px; text-align: center; border: 1px solid #0ea5e9;">
-                <h3 style="color: #0ea5e9; margin: 0;">${totalUsers}</h3>
+                <h3 style="color: #0ea5e9; margin: 0;" id="usersCount">${totalUsers}</h3>
                 <p style="margin: 0.5rem 0 0 0; color: #64748b;">Usuarios Registrados</p>
             </div>
             <div class="stat-card" style="background: #f0fdf4; padding: 1rem; border-radius: 8px; text-align: center; border: 1px solid #22c55e;">
-                <h3 style="color: #22c55e; margin: 0;">${totalAdmins}</h3>
+                <h3 style="color: #22c55e; margin: 0;" id="adminsCount">${totalAdmins}</h3>
                 <p style="margin: 0.5rem 0 0 0; color: #64748b;">Administradores</p>
             </div>
             <div class="stat-card" style="background: #fef3c7; padding: 1rem; border-radius: 8px; text-align: center; border: 1px solid #f59e0b;">
-                <h3 style="color: #f59e0b; margin: 0;">${totalDocuments}</h3>
+                <h3 style="color: #f59e0b; margin: 0;" id="documentsCount">${totalDocuments}</h3>
                 <p style="margin: 0.5rem 0 0 0; color: #64748b;">Documentos</p>
             </div>
             <div class="stat-card" style="background: #fdf2f8; padding: 1rem; border-radius: 8px; text-align: center; border: 1px solid #ec4899;">
-                <h3 style="color: #ec4899; margin: 0;">${totalNotifications}</h3>
+                <h3 style="color: #ec4899; margin: 0;" id="notificationsCount">${totalNotifications}</h3>
                 <p style="margin: 0.5rem 0 0 0; color: #64748b;">Notificaciones</p>
             </div>
             <div class="stat-card" style="background: #f3e8ff; padding: 1rem; border-radius: 8px; text-align: center; border: 1px solid #a855f7;">
-                <h3 style="color: #a855f7; margin: 0;">${totalNews}</h3>
+                <h3 style="color: #a855f7; margin: 0;" id="newsCount">${totalNews}</h3>
                 <p style="margin: 0.5rem 0 0 0; color: #64748b;">Noticias</p>
             </div>
             <div class="stat-card" style="background: #ecfdf5; padding: 1rem; border-radius: 8px; text-align: center; border: 1px solid #10b981;">
-                <h3 style="color: #10b981; margin: 0;">${totalBandos}</h3>
+                <h3 style="color: #10b981; margin: 0;" id="bandosCount">${totalBandos}</h3>
                 <p style="margin: 0.5rem 0 0 0; color: #64748b;">Bandos</p>
             </div>
             <div class="stat-card" style="background: #fef2f2; padding: 1rem; border-radius: 8px; text-align: center; border: 1px solid #ef4444;">
-                <h3 style="color: #ef4444; margin: 0;">${totalEvents}</h3>
+                <h3 style="color: #ef4444; margin: 0;" id="eventsCount">${totalEvents}</h3>
                 <p style="margin: 0.5rem 0 0 0; color: #64748b;">Eventos</p>
             </div>
             <div class="stat-card" style="background: #f0fdfa; padding: 1rem; border-radius: 8px; text-align: center; border: 1px solid #14b8a6;">
-                <h3 style="color: #14b8a6; margin: 0;">${totalQuickAccess}</h3>
+                <h3 style="color: #14b8a6; margin: 0;" id="quickAccessCount">${totalQuickAccess}</h3>
                 <p style="margin: 0.5rem 0 0 0; color: #64748b;">Acceso Rápido</p>
             </div>
         </div>
@@ -5721,6 +5851,9 @@ function logout() {
     }, 1000);
 }
 
+// Variable para controlar el timeout de sesión de admin
+let adminSessionTimeout = null;
+
 // Abrir panel de administración
 function openAdminPanel() {
     if (!isAdmin) {
@@ -5729,12 +5862,13 @@ function openAdminPanel() {
     }
     
     document.getElementById('adminModal').style.display = 'block';
+    
+    // Sincronizar todas las pestañas con el contenido de la página principal
+    syncAllAdminTabsWithMainPage();
+    
+    // Cargar otras listas que no están en la pestaña de contenido
     loadUsersList();
     loadAdminsList();
-    loadNewsList();
-    loadBandoList();
-    loadEventsList();
-    loadQuickAccessList();
     loadDocumentsList();
     loadNotificationsHistory();
     loadSystemStats();
@@ -5745,11 +5879,57 @@ function openAdminPanel() {
     setTimeout(() => {
         updateSystemInfo();
     }, 500);
+    
+    // Configurar timeout de sesión de seguridad (30 minutos)
+    setupAdminSessionTimeout();
+    
+    // Agregar event listeners para resetear timeout en interacciones
+    const adminModal = document.getElementById('adminModal');
+    if (adminModal) {
+        adminModal.addEventListener('click', resetAdminSessionTimeout);
+        adminModal.addEventListener('keydown', resetAdminSessionTimeout);
+    }
+}
+
+// Configurar timeout de sesión de administración
+function setupAdminSessionTimeout() {
+    // Limpiar timeout anterior si existe
+    if (adminSessionTimeout) {
+        clearTimeout(adminSessionTimeout);
+    }
+    
+    // Configurar nuevo timeout (30 minutos = 1800000 ms)
+    adminSessionTimeout = setTimeout(() => {
+        console.log('🔒 Timeout de sesión de administración - cerrando panel por seguridad');
+        closeAdminPanel();
+        showNotification('Sesión de administración expirada por seguridad', 'warning');
+    }, 30 * 60 * 1000); // 30 minutos
+}
+
+// Resetear timeout de sesión cuando hay actividad
+function resetAdminSessionTimeout() {
+    if (adminSessionTimeout) {
+        setupAdminSessionTimeout(); // Reiniciar el timeout
+    }
 }
 
 // Cerrar panel de administración
 function closeAdminPanel() {
+    // Limpiar timeout de sesión
+    if (adminSessionTimeout) {
+        clearTimeout(adminSessionTimeout);
+        adminSessionTimeout = null;
+    }
+    
+    // Remover event listeners de seguridad
+    const adminModal = document.getElementById('adminModal');
+    if (adminModal) {
+        adminModal.removeEventListener('click', resetAdminSessionTimeout);
+        adminModal.removeEventListener('keydown', resetAdminSessionTimeout);
+    }
+    
     document.getElementById('adminModal').style.display = 'none';
+    document.body.style.overflow = 'auto';
 }
 
 // ===== SERVICIOS SIMPLES =====
@@ -6346,7 +6526,7 @@ function viewTransportePhoto(url, nombre) {
     modal.style.display = 'block';
     modal.innerHTML = `
         <div class="modal-content" style="max-width: 90%; max-height: 90%;">
-            <span class="close" onclick="this.closest('.modal').remove()">&times;</span>
+            <span class="close" onclick="closeModalOnly(this.closest('.modal'))">&times;</span>
             <h3>${nombre}</h3>
             <img src="${url}" alt="${nombre}" style="width: 100%; height: auto; border-radius: 8px;">
         </div>
@@ -7126,7 +7306,7 @@ function addServicio(type) {
     modal.style.display = 'block';
     modal.innerHTML = `
         <div class="modal-content">
-            <span class="close" onclick="this.closest('.modal').remove()">&times;</span>
+            <span class="close" onclick="closeModalOnly(this.closest('.modal'))">&times;</span>
             <h2>Nuevo Servicio</h2>
             <form id="servicioForm">
                 <input type="hidden" id="servicioId" value="">
@@ -7212,7 +7392,7 @@ function editServicio(type, id) {
     modal.style.display = 'block';
     modal.innerHTML = `
         <div class="modal-content">
-            <span class="close" onclick="this.closest('.modal').remove()">&times;</span>
+            <span class="close" onclick="closeModalOnly(this.closest('.modal'))">&times;</span>
             <h2>Editar Servicio</h2>
             <form id="servicioForm">
                 <input type="hidden" id="servicioId" value="${servicio.id}">
@@ -7573,7 +7753,7 @@ function openCustomModal() {
     modal.style.display = 'block';
     modal.innerHTML = `
         <div class="modal-content">
-            <span class="close" onclick="this.closest('.modal').remove()">&times;</span>
+            <span class="close" onclick="closeModalOnly(this.closest('.modal'))">&times;</span>
             <h2>🛠️ Modal Personalizable</h2>
             <form id="customModalForm">
                 <div class="form-group">
@@ -7859,7 +8039,7 @@ function openSeccionConfig(type) {
     modal.style.display = 'block';
     modal.innerHTML = `
         <div class="modal-content">
-            <span class="close" onclick="this.closest('.modal').remove()">&times;</span>
+            <span class="close" onclick="closeModalOnly(this.closest('.modal'))">&times;</span>
             <h2>Configurar Sección</h2>
             <form id="seccionConfigForm">
                 <input type="hidden" id="seccionType" value="${type}">
@@ -9257,6 +9437,2200 @@ async function syncUserToFirestore(userData) {
     }
 }
 
+// ===== FUNCIONES DE EXPORTACIÓN =====
+
+// Función universal para exportar a Excel
+function exportToExcel(data, filename, sheetName = 'Datos') {
+    try {
+        // Crear libro de trabajo
+        const wb = XLSX.utils.book_new();
+        
+        // Convertir datos a hoja de trabajo
+        const ws = XLSX.utils.json_to_sheet(data);
+        
+        // Agregar hoja al libro
+        XLSX.utils.book_append_sheet(wb, ws, sheetName);
+        
+        // Generar archivo Excel
+        XLSX.writeFile(wb, `${filename}.xlsx`);
+        
+        console.log(`✅ Exportado a Excel: ${filename}.xlsx`);
+        showNotification(`Archivo ${filename}.xlsx descargado correctamente`, 'success');
+        
+    } catch (error) {
+        console.error('❌ Error exportando a Excel:', error);
+        showNotification('Error al exportar a Excel', 'error');
+    }
+}
+
+// Función universal para exportar a DOC
+function exportToDoc(data, filename, title) {
+    try {
+        let content = `<h1>${title}</h1>\n`;
+        content += `<p><strong>Fecha de exportación:</strong> ${new Date().toLocaleString('es-ES')}</p>\n`;
+        content += `<p><strong>Total de registros:</strong> ${data.length}</p>\n\n`;
+        
+        if (data.length === 0) {
+            content += `<p>No hay datos para exportar.</p>`;
+        } else {
+            // Crear tabla
+            content += `<table border="1" style="border-collapse: collapse; width: 100%;">\n`;
+            
+            // Encabezados
+            const headers = Object.keys(data[0]);
+            content += `<tr>`;
+            headers.forEach(header => {
+                content += `<th style="background-color: #f0f0f0; padding: 8px;">${header}</th>`;
+            });
+            content += `</tr>\n`;
+            
+            // Datos
+            data.forEach(row => {
+                content += `<tr>`;
+                headers.forEach(header => {
+                    const value = row[header] || '';
+                    content += `<td style="padding: 8px;">${value}</td>`;
+                });
+                content += `</tr>\n`;
+            });
+            
+            content += `</table>`;
+        }
+        
+        // Crear y descargar archivo
+        const blob = new Blob([content], { type: 'application/msword' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${filename}.doc`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        
+        console.log(`✅ Exportado a DOC: ${filename}.doc`);
+        showNotification(`Archivo ${filename}.doc descargado correctamente`, 'success');
+        
+    } catch (error) {
+        console.error('❌ Error exportando a DOC:', error);
+        showNotification('Error al exportar a DOC', 'error');
+    }
+}
+
+// Función para exportar anuncios
+function exportAnuncios() {
+    const anunciosData = news.map(anuncio => ({
+        'Título': anuncio.title,
+        'Contenido': anuncio.content,
+        'Fecha': new Date(anuncio.date).toLocaleDateString('es-ES'),
+        'Autor': anuncio.author || 'Administrador',
+        'Estado': anuncio.published ? 'Publicado' : 'Borrador',
+        'Categoría': anuncio.category || 'General'
+    }));
+    
+    exportToExcel(anunciosData, 'anuncios_ayuntamiento_cobreros', 'Anuncios');
+}
+
+// Función para exportar bandos
+function exportBandos() {
+    const bandosData = bandos.map(bando => ({
+        'Título': bando.title,
+        'Contenido': bando.content,
+        'Fecha': new Date(bando.date).toLocaleDateString('es-ES'),
+        'Número': bando.number || '',
+        'Estado': bando.published ? 'Publicado' : 'Borrador',
+        'Tipo': bando.type || 'General'
+    }));
+    
+    exportToExcel(bandosData, 'bandos_ayuntamiento_cobreros', 'Bandos');
+}
+
+// Función para exportar eventos
+function exportEventos() {
+    const eventosData = events.map(evento => ({
+        'Título': evento.title,
+        'Descripción': evento.description,
+        'Fecha': new Date(evento.date).toLocaleDateString('es-ES'),
+        'Hora': evento.time || '',
+        'Lugar': evento.location || '',
+        'Tipo': evento.type || 'General',
+        'Estado': evento.published ? 'Publicado' : 'Borrador'
+    }));
+    
+    exportToExcel(eventosData, 'eventos_ayuntamiento_cobreros', 'Eventos');
+}
+
+// Función para exportar acceso rápido
+function exportAccesoRapido() {
+    const accesoData = quickAccess.map(item => ({
+        'Título': item.title,
+        'Descripción': item.description,
+        'Sección': item.section,
+        'Orden': item.order,
+        'Estado': item.active ? 'Activo' : 'Inactivo',
+        'URL': item.url || '',
+        'Icono': item.icon || ''
+    }));
+    
+    exportToExcel(accesoData, 'acceso_rapido_ayuntamiento_cobreros', 'Acceso Rápido');
+}
+
+// Función para exportar cultura y ocio completo
+function exportCulturaOcioCompleto() {
+    try {
+        const culturaData = JSON.parse(localStorage.getItem('culturaOcioData')) || {};
+        
+        let allData = [];
+        
+        // Procesar cada sección
+        Object.keys(culturaData).forEach(sectionKey => {
+            const section = culturaData[sectionKey];
+            if (section && section.items) {
+                section.items.forEach(item => {
+                    allData.push({
+                        'Sección': section.title,
+                        'Título': item.title,
+                        'Descripción': item.description,
+                        'Orden': item.order || 0,
+                        'Estado': item.active !== false ? 'Activo' : 'Inactivo',
+                        'Imagen': item.image || '',
+                        'Enlaces': item.links ? item.links.join(', ') : '',
+                        'Documento': item.document || '',
+                        'Enlace Externo': item.externalLink || ''
+                    });
+                });
+            }
+        });
+        
+        exportToExcel(allData, 'cultura_ocio_completo_ayuntamiento_cobreros', 'Cultura y Ocio');
+        
+    } catch (error) {
+        console.error('❌ Error exportando cultura y ocio:', error);
+        showNotification('Error al exportar cultura y ocio', 'error');
+    }
+}
+
+// ===== FUNCIONES DE GESTIÓN DE CONTENIDO =====
+
+// Función para crear nuevo anuncio
+function crearNuevoAnuncio() {
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.style.display = 'block';
+    modal.innerHTML = `
+        <div class="modal-content" style="max-width: 800px;">
+            <div class="modal-header">
+                <h3>📢 Nuevo Anuncio</h3>
+                <span class="close" onclick="this.closest('.modal').remove()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form id="nuevoAnuncioForm">
+                    <div class="form-group">
+                        <label for="anuncioTitulo">Título del Anuncio:</label>
+                        <input type="text" id="anuncioTitulo" name="titulo" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="anuncioContenido">Contenido:</label>
+                        <textarea id="anuncioContenido" name="contenido" rows="8" required></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="anuncioCategoria">Categoría:</label>
+                        <select id="anuncioCategoria" name="categoria">
+                            <option value="general">General</option>
+                            <option value="servicios">Servicios</option>
+                            <option value="eventos">Eventos</option>
+                            <option value="normativas">Normativas</option>
+                            <option value="emergencias">Emergencias</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>
+                            <input type="checkbox" id="anuncioPublicado" name="publicado">
+                            Publicar inmediatamente
+                        </label>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="this.closest('.modal').remove()">Cancelar</button>
+                <button class="btn btn-primary" onclick="guardarNuevoAnuncio()">Guardar Anuncio</button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+}
+
+// Función para guardar nuevo anuncio
+function guardarNuevoAnuncio() {
+    const form = document.getElementById('nuevoAnuncioForm');
+    const formData = new FormData(form);
+    
+    const nuevoAnuncio = {
+        id: Date.now().toString(),
+        title: formData.get('titulo'),
+        content: formData.get('contenido'),
+        category: formData.get('categoria'),
+        published: formData.get('publicado') === 'on',
+        date: new Date().toISOString(),
+        author: currentUser ? currentUser.name : 'Administrador'
+    };
+    
+    // Agregar a la lista de noticias
+    news.unshift(nuevoAnuncio);
+    
+    // Guardar en localStorage
+    localStorage.setItem('news', JSON.stringify(news));
+    
+    // Sincronizar con Firestore
+    syncLocalDataToFirestore();
+    
+    // Actualizar la interfaz
+    updateNewsSection();
+    loadNewsList();
+    
+    // Cerrar modal
+    document.querySelector('.modal').remove();
+    
+    showNotification('Anuncio creado correctamente', 'success');
+}
+
+// Función para crear nuevo bando
+function crearNuevoBando() {
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.style.display = 'block';
+    modal.innerHTML = `
+        <div class="modal-content" style="max-width: 800px;">
+            <div class="modal-header">
+                <h3>📋 Nuevo Bando</h3>
+                <span class="close" onclick="this.closest('.modal').remove()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form id="nuevoBandoForm">
+                    <div class="form-group">
+                        <label for="bandoTitulo">Título del Bando:</label>
+                        <input type="text" id="bandoTitulo" name="titulo" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="bandoNumero">Número de Bando:</label>
+                        <input type="text" id="bandoNumero" name="numero">
+                    </div>
+                    <div class="form-group">
+                        <label for="bandoContenido">Contenido:</label>
+                        <textarea id="bandoContenido" name="contenido" rows="8" required></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="bandoTipo">Tipo:</label>
+                        <select id="bandoTipo" name="tipo">
+                            <option value="general">General</option>
+                            <option value="normativa">Normativa</option>
+                            <option value="servicios">Servicios</option>
+                            <option value="emergencia">Emergencia</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>
+                            <input type="checkbox" id="bandoPublicado" name="publicado">
+                            Publicar inmediatamente
+                        </label>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="this.closest('.modal').remove()">Cancelar</button>
+                <button class="btn btn-primary" onclick="guardarNuevoBando()">Guardar Bando</button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+}
+
+// Función para guardar nuevo bando
+function guardarNuevoBando() {
+    const form = document.getElementById('nuevoBandoForm');
+    const formData = new FormData(form);
+    
+    const nuevoBando = {
+        id: Date.now().toString(),
+        title: formData.get('titulo'),
+        number: formData.get('numero'),
+        content: formData.get('contenido'),
+        type: formData.get('tipo'),
+        published: formData.get('publicado') === 'on',
+        date: new Date().toISOString(),
+        author: currentUser ? currentUser.name : 'Administrador'
+    };
+    
+    // Agregar a la lista de bandos
+    bandos.unshift(nuevoBando);
+    
+    // Guardar en localStorage
+    localStorage.setItem('bandos', JSON.stringify(bandos));
+    
+    // Sincronizar con Firestore
+    syncLocalDataToFirestore();
+    
+    // Actualizar la interfaz
+    updateBandoSection();
+    loadBandoList();
+    
+    // Cerrar modal
+    document.querySelector('.modal').remove();
+    
+    showNotification('Bando creado correctamente', 'success');
+}
+
+// Función para crear nuevo evento
+function crearNuevoEvento() {
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.style.display = 'block';
+    modal.innerHTML = `
+        <div class="modal-content" style="max-width: 800px;">
+            <div class="modal-header">
+                <h3>🎪 Nuevo Evento</h3>
+                <span class="close" onclick="this.closest('.modal').remove()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form id="nuevoEventoForm">
+                    <div class="form-group">
+                        <label for="eventoTitulo">Título del Evento:</label>
+                        <input type="text" id="eventoTitulo" name="titulo" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="eventoDescripcion">Descripción:</label>
+                        <textarea id="eventoDescripcion" name="descripcion" rows="6" required></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="eventoFecha">Fecha:</label>
+                        <input type="date" id="eventoFecha" name="fecha" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="eventoHora">Hora:</label>
+                        <input type="time" id="eventoHora" name="hora">
+                    </div>
+                    <div class="form-group">
+                        <label for="eventoLugar">Lugar:</label>
+                        <input type="text" id="eventoLugar" name="lugar">
+                    </div>
+                    <div class="form-group">
+                        <label for="eventoTipo">Tipo:</label>
+                        <select id="eventoTipo" name="tipo">
+                            <option value="cultural">Cultural</option>
+                            <option value="deportivo">Deportivo</option>
+                            <option value="social">Social</option>
+                            <option value="oficial">Oficial</option>
+                            <option value="festival">Festival</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>
+                            <input type="checkbox" id="eventoPublicado" name="publicado">
+                            Publicar inmediatamente
+                        </label>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="this.closest('.modal').remove()">Cancelar</button>
+                <button class="btn btn-primary" onclick="guardarNuevoEvento()">Guardar Evento</button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+}
+
+// Función para guardar nuevo evento
+function guardarNuevoEvento() {
+    const form = document.getElementById('nuevoEventoForm');
+    const formData = new FormData(form);
+    
+    const nuevoEvento = {
+        id: Date.now().toString(),
+        title: formData.get('titulo'),
+        description: formData.get('descripcion'),
+        date: formData.get('fecha'),
+        time: formData.get('hora'),
+        location: formData.get('lugar'),
+        type: formData.get('tipo'),
+        published: formData.get('publicado') === 'on',
+        created: new Date().toISOString(),
+        author: currentUser ? currentUser.name : 'Administrador'
+    };
+    
+    // Agregar a la lista de eventos
+    events.unshift(nuevoEvento);
+    
+    // Guardar en localStorage
+    localStorage.setItem('events', JSON.stringify(events));
+    
+    // Sincronizar con Firestore
+    syncLocalDataToFirestore();
+    
+    // Actualizar la interfaz
+    renderEventos();
+    loadEventsList();
+    
+    // Cerrar modal
+    document.querySelector('.modal').remove();
+    
+    showNotification('Evento creado correctamente', 'success');
+}
+
+// Función para crear nueva tarjeta de acceso rápido
+function crearNuevaTarjeta() {
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.style.display = 'block';
+    modal.innerHTML = `
+        <div class="modal-content" style="max-width: 800px;">
+            <div class="modal-header">
+                <h3>🔗 Nueva Tarjeta de Acceso Rápido</h3>
+                <span class="close" onclick="this.closest('.modal').remove()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form id="nuevaTarjetaForm">
+                    <div class="form-group">
+                        <label for="tarjetaTitulo">Título:</label>
+                        <input type="text" id="tarjetaTitulo" name="titulo" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="tarjetaDescripcion">Descripción:</label>
+                        <textarea id="tarjetaDescripcion" name="descripcion" rows="3" required></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="tarjetaSeccion">Sección:</label>
+                        <select id="tarjetaSeccion" name="seccion" required>
+                            <option value="bando">Bando Municipal</option>
+                            <option value="sede-electronica">Sede Electrónica</option>
+                            <option value="documentos">Documentos</option>
+                            <option value="cultura-ocio">Cultura y Ocio</option>
+                            <option value="servicios">Servicios</option>
+                            <option value="contacto">Contacto</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="tarjetaURL">URL (opcional):</label>
+                        <input type="url" id="tarjetaURL" name="url">
+                    </div>
+                    <div class="form-group">
+                        <label for="tarjetaIcono">Icono (opcional):</label>
+                        <input type="text" id="tarjetaIcono" name="icono" placeholder="ej: fas fa-file-alt">
+                    </div>
+                    <div class="form-group">
+                        <label for="tarjetaOrden">Orden:</label>
+                        <input type="number" id="tarjetaOrden" name="orden" min="1" value="${quickAccess.length + 1}">
+                    </div>
+                    <div class="form-group">
+                        <label>
+                            <input type="checkbox" id="tarjetaActiva" name="activa" checked>
+                            Activa
+                        </label>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="this.closest('.modal').remove()">Cancelar</button>
+                <button class="btn btn-primary" onclick="guardarNuevaTarjeta()">Guardar Tarjeta</button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+}
+
+// Función para guardar nueva tarjeta
+function guardarNuevaTarjeta() {
+    const form = document.getElementById('nuevaTarjetaForm');
+    const formData = new FormData(form);
+    
+    const nuevaTarjeta = {
+        id: Date.now().toString(),
+        title: formData.get('titulo'),
+        description: formData.get('descripcion'),
+        section: formData.get('seccion'),
+        url: formData.get('url'),
+        icon: formData.get('icono'),
+        order: parseInt(formData.get('orden')),
+        active: formData.get('activa') === 'on',
+        created: new Date().toISOString()
+    };
+    
+    // Agregar a la lista de acceso rápido
+    quickAccess.push(nuevaTarjeta);
+    
+    // Ordenar por orden
+    quickAccess.sort((a, b) => a.order - b.order);
+    
+    // Guardar en localStorage
+    localStorage.setItem('quickAccess', JSON.stringify(quickAccess));
+    
+    // Sincronizar con Firestore
+    syncLocalDataToFirestore();
+    
+    // Actualizar la interfaz
+    loadQuickAccess();
+    loadQuickAccessList();
+    
+    // Cerrar modal
+    document.querySelector('.modal').remove();
+    
+    showNotification('Tarjeta de acceso rápido creada correctamente', 'success');
+}
+
+// Función para abrir editor de acceso rápido (alias para crearNuevaTarjeta)
+function openQuickAccessEditor() {
+    crearNuevaTarjeta();
+}
+
+// Función para exportar acceso rápido (alias para exportAccesoRapido)
+function exportQuickAccess() {
+    exportAccesoRapido();
+}
+
+// ===== SISTEMA DE INTEGRACIÓN PANEL ADMIN - PÁGINA PRINCIPAL =====
+
+// Función para sincronizar pestaña de noticias con la página principal
+function syncNewsTabWithMainPage() {
+    const newsList = document.getElementById('newsList');
+    if (!newsList) return;
+    
+    // Limpiar lista actual
+    newsList.innerHTML = '';
+    
+    // Mostrar noticias de la página principal
+    news.forEach(article => {
+        const newsItem = document.createElement('div');
+        newsItem.className = 'content-item';
+        newsItem.style.cssText = 'background: var(--bg-secondary); padding: 1rem; margin: 0.5rem 0; border-radius: 8px; display: flex; justify-content: space-between; align-items: center;';
+        
+        newsItem.innerHTML = `
+            <div>
+                <h4 style="margin: 0 0 0.5rem 0; color: var(--text-primary);">${article.title}</h4>
+                <p style="margin: 0; color: var(--text-secondary); font-size: 0.9rem;">
+                    ${new Date(article.date).toLocaleDateString('es-ES')} - 
+                    ${article.published ? '<span style="color: green;">Publicado</span>' : '<span style="color: orange;">Borrador</span>'}
+                </p>
+            </div>
+            <div style="display: flex; gap: 0.5rem;">
+                <button class="btn btn-sm btn-outline" onclick="editNews('${article.id}')">Editar</button>
+                <button class="btn btn-sm btn-danger" onclick="deleteNews('${article.id}')">Eliminar</button>
+            </div>
+        `;
+        
+        newsList.appendChild(newsItem);
+    });
+    
+    // Si no hay noticias, mostrar mensaje
+    if (news.length === 0) {
+        newsList.innerHTML = '<p style="text-align: center; color: #666; padding: 2rem;">No hay anuncios publicados.</p>';
+    }
+}
+
+// Función para sincronizar pestaña de bandos con la página principal
+function syncBandosTabWithMainPage() {
+    const bandoList = document.getElementById('bandoList');
+    if (!bandoList) return;
+    
+    // Limpiar lista actual
+    bandoList.innerHTML = '';
+    
+    // Mostrar bandos de la página principal
+    bandos.forEach(bando => {
+        const bandoItem = document.createElement('div');
+        bandoItem.className = 'content-item';
+        bandoItem.style.cssText = 'background: var(--bg-secondary); padding: 1rem; margin: 0.5rem 0; border-radius: 8px; display: flex; justify-content: space-between; align-items: center;';
+        
+        bandoItem.innerHTML = `
+            <div>
+                <h4 style="margin: 0 0 0.5rem 0; color: var(--text-primary);">${bando.title}</h4>
+                <p style="margin: 0; color: var(--text-secondary); font-size: 0.9rem;">
+                    ${new Date(bando.date).toLocaleDateString('es-ES')} - 
+                    ${bando.published ? '<span style="color: green;">Publicado</span>' : '<span style="color: orange;">Borrador</span>'}
+                </p>
+            </div>
+            <div style="display: flex; gap: 0.5rem;">
+                <button class="btn btn-sm btn-outline" onclick="editBando('${bando.id}')">Editar</button>
+                <button class="btn btn-sm btn-danger" onclick="deleteBando('${bando.id}')">Eliminar</button>
+            </div>
+        `;
+        
+        bandoList.appendChild(bandoItem);
+    });
+    
+    // Si no hay bandos, mostrar mensaje
+    if (bandos.length === 0) {
+        bandoList.innerHTML = '<p style="text-align: center; color: #666; padding: 2rem;">No hay bandos publicados.</p>';
+    }
+}
+
+// Función para sincronizar pestaña de eventos con la página principal
+function syncEventsTabWithMainPage() {
+    const eventsList = document.getElementById('eventsList');
+    if (!eventsList) return;
+    
+    // Limpiar lista actual
+    eventsList.innerHTML = '';
+    
+    // Mostrar eventos de la página principal
+    events.forEach(event => {
+        const eventItem = document.createElement('div');
+        eventItem.className = 'content-item';
+        eventItem.style.cssText = 'background: var(--bg-secondary); padding: 1rem; margin: 0.5rem 0; border-radius: 8px; display: flex; justify-content: space-between; align-items: center;';
+        
+        eventItem.innerHTML = `
+            <div>
+                <h4 style="margin: 0 0 0.5rem 0; color: var(--text-primary);">${event.title}</h4>
+                <p style="margin: 0; color: var(--text-secondary); font-size: 0.9rem;">
+                    ${new Date(event.date).toLocaleDateString('es-ES')} ${event.time ? ' - ' + event.time : ''} - 
+                    ${event.published ? '<span style="color: green;">Publicado</span>' : '<span style="color: orange;">Borrador</span>'}
+                </p>
+            </div>
+            <div style="display: flex; gap: 0.5rem;">
+                <button class="btn btn-sm btn-outline" onclick="editEvent('${event.id}')">Editar</button>
+                <button class="btn btn-sm btn-danger" onclick="deleteEvent('${event.id}')">Eliminar</button>
+            </div>
+        `;
+        
+        eventsList.appendChild(eventItem);
+    });
+    
+    // Si no hay eventos, mostrar mensaje
+    if (events.length === 0) {
+        eventsList.innerHTML = '<p style="text-align: center; color: #666; padding: 2rem;">No hay eventos programados.</p>';
+    }
+}
+
+// Función para sincronizar pestaña de acceso rápido con la página principal
+function syncQuickAccessTabWithMainPage() {
+    const quickAccessList = document.getElementById('quickAccessList');
+    if (!quickAccessList) return;
+    
+    // Limpiar lista actual
+    quickAccessList.innerHTML = '';
+    
+    // Mostrar tarjetas de acceso rápido de la página principal
+    quickAccess.forEach(item => {
+        const accessItem = document.createElement('div');
+        accessItem.className = 'content-item';
+        accessItem.style.cssText = 'background: var(--bg-secondary); padding: 1rem; margin: 0.5rem 0; border-radius: 8px; display: flex; justify-content: space-between; align-items: center;';
+        
+        accessItem.innerHTML = `
+            <div>
+                <h4 style="margin: 0 0 0.5rem 0; color: var(--text-primary);">${item.title}</h4>
+                <p style="margin: 0; color: var(--text-secondary); font-size: 0.9rem;">
+                    Sección: ${item.section} - Orden: ${item.order} - 
+                    ${item.active ? '<span style="color: green;">Activo</span>' : '<span style="color: red;">Inactivo</span>'}
+                </p>
+            </div>
+            <div style="display: flex; gap: 0.5rem;">
+                <button class="btn btn-sm btn-outline" onclick="editQuickAccessItem('${item.id}')">Editar</button>
+                <button class="btn btn-sm btn-danger" onclick="deleteQuickAccessItem('${item.id}')">Eliminar</button>
+            </div>
+        `;
+        
+        quickAccessList.appendChild(accessItem);
+    });
+    
+    // Si no hay tarjetas, mostrar mensaje
+    if (quickAccess.length === 0) {
+        quickAccessList.innerHTML = '<p style="text-align: center; color: #666; padding: 2rem;">No hay tarjetas de acceso rápido configuradas.</p>';
+    }
+}
+
+// Función para sincronizar pestaña de cultura y ocio con la página principal
+function syncCultureTabWithMainPage() {
+    // Buscar la pestaña de cultura y ocio en el panel de admin
+    const culturaOcioTab = document.getElementById('cultura-ocio-tab');
+    
+    if (!culturaOcioTab) {
+        console.log('⚠️ No se encontró la pestaña de cultura y ocio en el panel de admin');
+        return;
+    }
+    
+    console.log('✅ Pestaña de cultura y ocio encontrada, cargando contenido...');
+    
+    // Cargar datos de cultura y ocio desde localStorage
+    const culturaData = JSON.parse(localStorage.getItem('culturaOcioData')) || {};
+    
+    // Buscar el contenedor de secciones
+    const sectionsList = document.getElementById('cultureSectionsList');
+    
+    if (!sectionsList) {
+        console.log('⚠️ No se encontró el contenedor de secciones');
+        return;
+    }
+    
+    // Limpiar contenido actual
+    sectionsList.innerHTML = '';
+    
+    // Definir títulos de secciones
+    const sectionTitles = {
+        'naturaleza': '🥾 Naturaleza y Senderismo',
+        'patrimonio': '🏛️ Patrimonio y Arte', 
+        'gastronomia': '🍄 Recolección y Gastronomía',
+        'eventos': '🎪 Eventos y Tradiciones',
+        'cercanos': '🗺️ Sitios Cercanos de Interés'
+    };
+    
+    // Mostrar cada sección
+    Object.keys(sectionTitles).forEach(sectionKey => {
+        const sectionData = culturaData[sectionKey] || [];
+        const sectionTitle = sectionTitles[sectionKey];
+        
+        const sectionDiv = document.createElement('div');
+        sectionDiv.className = 'culture-section-item';
+        sectionDiv.style.cssText = 'background: var(--bg-secondary); padding: 1rem; margin: 0.5rem 0; border-radius: 8px;';
+        
+        sectionDiv.innerHTML = `
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                <h5 style="margin: 0; color: var(--text-primary);">${sectionTitle}</h5>
+                <div style="display: flex; gap: 0.5rem;">
+                    <button class="btn btn-sm btn-outline" onclick="addNewCulturaItem('${sectionKey}')">
+                        <i class="fas fa-plus"></i> Nuevo
+                    </button>
+                    <button class="btn btn-sm btn-secondary" onclick="exportCulturaSection('${sectionKey}')">
+                        <i class="fas fa-download"></i> Exportar
+                    </button>
+                </div>
+            </div>
+            <div class="culture-items-list" id="cultureItems_${sectionKey}"></div>
+        `;
+        
+        sectionsList.appendChild(sectionDiv);
+        
+        // Mostrar items de la sección
+        const itemsList = document.getElementById(`cultureItems_${sectionKey}`);
+        
+        if (sectionData.length === 0) {
+            itemsList.innerHTML = '<p style="text-align: center; color: #666; padding: 1rem; font-style: italic;">No hay elementos en esta sección</p>';
+        } else {
+            sectionData.forEach((item, index) => {
+                const itemDiv = document.createElement('div');
+                itemDiv.style.cssText = 'background: var(--bg-primary); padding: 0.75rem; margin: 0.5rem 0; border-radius: 6px; display: flex; justify-content: space-between; align-items: center; border-left: 4px solid var(--primary-color);';
+                
+                itemDiv.innerHTML = `
+                    <div style="flex: 1;">
+                        <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.25rem;">
+                            <strong style="color: var(--text-primary);">${item.title}</strong>
+                            <span style="background: var(--primary-color); color: white; padding: 0.1rem 0.4rem; border-radius: 12px; font-size: 0.7rem;">
+                                ${index + 1}
+                            </span>
+                        </div>
+                        <p style="margin: 0; color: var(--text-secondary); font-size: 0.85rem; line-height: 1.3;">
+                            ${item.description ? item.description.substring(0, 100) + (item.description.length > 100 ? '...' : '') : 'Sin descripción'}
+                        </p>
+                        ${item.links && item.links.length > 0 ? 
+                            `<div style="margin-top: 0.25rem;">
+                                <small style="color: var(--text-secondary);">
+                                    <i class="fas fa-link"></i> ${item.links.length} enlace${item.links.length > 1 ? 's' : ''}
+                                </small>
+                            </div>` : ''
+                        }
+                    </div>
+                    <div style="display: flex; gap: 0.25rem; margin-left: 1rem;">
+                        <button class="btn btn-sm btn-outline" onclick="editCulturaItem('${sectionKey}', ${index})" title="Editar">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="btn btn-sm btn-danger" onclick="deleteCulturaItem('${sectionKey}', ${index})" title="Eliminar">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                `;
+                
+                itemsList.appendChild(itemDiv);
+            });
+        }
+    });
+    
+    console.log('✅ Pestaña de cultura y ocio sincronizada con el contenido de la página principal');
+}
+
+// Función para agregar nuevo elemento de cultura
+function addNewCulturaItem(sectionKey) {
+    console.log(`➕ Agregando nuevo elemento a la sección: ${sectionKey}`);
+    
+    // Crear modal para nuevo elemento
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.style.display = 'block';
+    modal.innerHTML = `
+        <div class="modal-content" style="max-width: 600px;">
+            <div class="modal-header">
+                <h3>➕ Nuevo Elemento - ${getSectionTitle(sectionKey)}</h3>
+                <span class="close" onclick="this.closest('.modal').remove()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form id="newCulturaItemForm">
+                    <div class="form-group">
+                        <label for="newItemTitle">Título:</label>
+                        <input type="text" id="newItemTitle" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="newItemDescription">Descripción:</label>
+                        <textarea id="newItemDescription" rows="4" required></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="newItemImage">URL de Imagen:</label>
+                        <input type="url" id="newItemImage" placeholder="https://ejemplo.com/imagen.jpg">
+                    </div>
+                    <div class="form-group">
+                        <label>Enlaces (opcional):</label>
+                        <div id="newItemLinks">
+                            <div class="link-input" style="display: flex; gap: 0.5rem; margin-bottom: 0.5rem;">
+                                <input type="text" placeholder="Texto del enlace" class="link-text">
+                                <input type="url" placeholder="URL" class="link-url">
+                                <select class="link-type">
+                                    <option value="pdf">PDF</option>
+                                    <option value="external">Enlace Externo</option>
+                                </select>
+                                <button type="button" onclick="removeLinkInput(this)" class="btn btn-sm btn-danger">×</button>
+                            </div>
+                        </div>
+                        <button type="button" onclick="addLinkInput()" class="btn btn-sm btn-outline">+ Agregar Enlace</button>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="this.closest('.modal').remove()">Cancelar</button>
+                <button class="btn btn-primary" onclick="saveNewCulturaItem('${sectionKey}')">Guardar</button>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+}
+
+// Función para obtener título de sección
+function getSectionTitle(sectionKey) {
+    const titles = {
+        'naturaleza': '🥾 Naturaleza y Senderismo',
+        'patrimonio': '🏛️ Patrimonio y Arte', 
+        'gastronomia': '🍄 Recolección y Gastronomía',
+        'eventos': '🎪 Eventos y Tradiciones',
+        'cercanos': '🗺️ Sitios Cercanos de Interés'
+    };
+    return titles[sectionKey] || sectionKey;
+}
+
+// Función para agregar campo de enlace
+function addLinkInput() {
+    const linksContainer = document.getElementById('newItemLinks');
+    const linkDiv = document.createElement('div');
+    linkDiv.className = 'link-input';
+    linkDiv.style.cssText = 'display: flex; gap: 0.5rem; margin-bottom: 0.5rem;';
+    linkDiv.innerHTML = `
+        <input type="text" placeholder="Texto del enlace" class="link-text">
+        <input type="url" placeholder="URL" class="link-url">
+        <select class="link-type">
+            <option value="pdf">PDF</option>
+            <option value="external">Enlace Externo</option>
+        </select>
+        <button type="button" onclick="removeLinkInput(this)" class="btn btn-sm btn-danger">×</button>
+    `;
+    linksContainer.appendChild(linkDiv);
+}
+
+// Función para eliminar campo de enlace
+function removeLinkInput(button) {
+    button.closest('.link-input').remove();
+}
+
+// Función para guardar nuevo elemento de cultura
+function saveNewCulturaItem(sectionKey) {
+    const title = document.getElementById('newItemTitle').value.trim();
+    const description = document.getElementById('newItemDescription').value.trim();
+    const image = document.getElementById('newItemImage').value.trim();
+    
+    if (!title || !description) {
+        showNotification('Por favor, complete todos los campos obligatorios', 'error');
+        return;
+    }
+    
+    // Recopilar enlaces
+    const links = [];
+    document.querySelectorAll('#newItemLinks .link-input').forEach(linkDiv => {
+        const text = linkDiv.querySelector('.link-text').value.trim();
+        const url = linkDiv.querySelector('.link-url').value.trim();
+        const type = linkDiv.querySelector('.link-type').value;
+        
+        if (text && url) {
+            links.push({ text, url, type });
+        }
+    });
+    
+    // Crear nuevo elemento
+    const newItem = {
+        title,
+        description,
+        image: image || null,
+        links: links.length > 0 ? links : null
+    };
+    
+    // Guardar en localStorage
+    const culturaData = JSON.parse(localStorage.getItem('culturaOcioData')) || {};
+    if (!culturaData[sectionKey]) {
+        culturaData[sectionKey] = [];
+    }
+    culturaData[sectionKey].push(newItem);
+    localStorage.setItem('culturaOcioData', JSON.stringify(culturaData));
+    
+    // Cerrar modal
+    document.querySelector('.modal').remove();
+    
+    // Actualizar interfaz
+    syncCultureTabWithMainPage();
+    loadCobrerosContent(); // Actualizar página principal
+    
+    showNotification(`Elemento agregado a ${getSectionTitle(sectionKey)}`, 'success');
+}
+
+// Función para editar elemento de cultura
+function editCulturaItem(sectionKey, index) {
+    const culturaData = JSON.parse(localStorage.getItem('culturaOcioData')) || {};
+    const item = culturaData[sectionKey][index];
+    
+    if (!item) {
+        showNotification('Elemento no encontrado', 'error');
+        return;
+    }
+    
+    // Crear modal de edición
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.style.display = 'block';
+    modal.innerHTML = `
+        <div class="modal-content" style="max-width: 600px;">
+            <div class="modal-header">
+                <h3>✏️ Editar Elemento - ${getSectionTitle(sectionKey)}</h3>
+                <span class="close" onclick="this.closest('.modal').remove()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form id="editCulturaItemForm">
+                    <div class="form-group">
+                        <label for="editItemTitle">Título:</label>
+                        <input type="text" id="editItemTitle" value="${item.title}" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="editItemDescription">Descripción:</label>
+                        <textarea id="editItemDescription" rows="4" required>${item.description || ''}</textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="editItemImage">URL de Imagen:</label>
+                        <input type="url" id="editItemImage" value="${item.image || ''}" placeholder="https://ejemplo.com/imagen.jpg">
+                    </div>
+                    <div class="form-group">
+                        <label>Enlaces:</label>
+                        <div id="editItemLinks">
+                            ${item.links ? item.links.map(link => `
+                                <div class="link-input" style="display: flex; gap: 0.5rem; margin-bottom: 0.5rem;">
+                                    <input type="text" placeholder="Texto del enlace" class="link-text" value="${link.text}">
+                                    <input type="url" placeholder="URL" class="link-url" value="${link.url}">
+                                    <select class="link-type">
+                                        <option value="pdf" ${link.type === 'pdf' ? 'selected' : ''}>PDF</option>
+                                        <option value="external" ${link.type === 'external' ? 'selected' : ''}>Enlace Externo</option>
+                                    </select>
+                                    <button type="button" onclick="removeLinkInput(this)" class="btn btn-sm btn-danger">×</button>
+                                </div>
+                            `).join('') : ''}
+                        </div>
+                        <button type="button" onclick="addEditLinkInput()" class="btn btn-sm btn-outline">+ Agregar Enlace</button>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="this.closest('.modal').remove()">Cancelar</button>
+                <button class="btn btn-primary" onclick="updateCulturaItem('${sectionKey}', ${index})">Actualizar</button>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+}
+
+// Función para agregar campo de enlace en edición
+function addEditLinkInput() {
+    const linksContainer = document.getElementById('editItemLinks');
+    const linkDiv = document.createElement('div');
+    linkDiv.className = 'link-input';
+    linkDiv.style.cssText = 'display: flex; gap: 0.5rem; margin-bottom: 0.5rem;';
+    linkDiv.innerHTML = `
+        <input type="text" placeholder="Texto del enlace" class="link-text">
+        <input type="url" placeholder="URL" class="link-url">
+        <select class="link-type">
+            <option value="pdf">PDF</option>
+            <option value="external">Enlace Externo</option>
+        </select>
+        <button type="button" onclick="removeLinkInput(this)" class="btn btn-sm btn-danger">×</button>
+    `;
+    linksContainer.appendChild(linkDiv);
+}
+
+// Función para actualizar elemento de cultura
+function updateCulturaItem(sectionKey, index) {
+    const title = document.getElementById('editItemTitle').value.trim();
+    const description = document.getElementById('editItemDescription').value.trim();
+    const image = document.getElementById('editItemImage').value.trim();
+    
+    if (!title || !description) {
+        showNotification('Por favor, complete todos los campos obligatorios', 'error');
+        return;
+    }
+    
+    // Recopilar enlaces
+    const links = [];
+    document.querySelectorAll('#editItemLinks .link-input').forEach(linkDiv => {
+        const text = linkDiv.querySelector('.link-text').value.trim();
+        const url = linkDiv.querySelector('.link-url').value.trim();
+        const type = linkDiv.querySelector('.link-type').value;
+        
+        if (text && url) {
+            links.push({ text, url, type });
+        }
+    });
+    
+    // Actualizar elemento
+    const culturaData = JSON.parse(localStorage.getItem('culturaOcioData')) || {};
+    culturaData[sectionKey][index] = {
+        title,
+        description,
+        image: image || null,
+        links: links.length > 0 ? links : null
+    };
+    
+    localStorage.setItem('culturaOcioData', JSON.stringify(culturaData));
+    
+    // Cerrar modal
+    document.querySelector('.modal').remove();
+    
+    // Actualizar interfaz
+    syncCultureTabWithMainPage();
+    loadCobrerosContent(); // Actualizar página principal
+    
+    showNotification('Elemento actualizado correctamente', 'success');
+}
+
+// Función para eliminar elemento de cultura
+function deleteCulturaItem(sectionKey, index) {
+    if (!confirm('¿Está seguro de que desea eliminar este elemento?')) {
+        return;
+    }
+    
+    const culturaData = JSON.parse(localStorage.getItem('culturaOcioData')) || {};
+    const item = culturaData[sectionKey][index];
+    
+    if (!item) {
+        showNotification('Elemento no encontrado', 'error');
+        return;
+    }
+    
+    // Eliminar elemento
+    culturaData[sectionKey].splice(index, 1);
+    localStorage.setItem('culturaOcioData', JSON.stringify(culturaData));
+    
+    // Actualizar interfaz
+    syncCultureTabWithMainPage();
+    loadCobrerosContent(); // Actualizar página principal
+    
+    showNotification('Elemento eliminado correctamente', 'success');
+}
+
+// ===== SISTEMA DE EXPORTACIÓN E IMPORTACIÓN =====
+
+// Función universal para exportar a Excel
+function exportToExcel(data, filename, sheetName = 'Datos') {
+    if (!data || data.length === 0) {
+        showNotification('No hay datos para exportar', 'warning');
+        return;
+    }
+    
+    try {
+        const ws = XLSX.utils.json_to_sheet(data);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, sheetName);
+        
+        const excelBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+        const blob = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+        
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = `${filename}-${new Date().toISOString().split('T')[0]}.xlsx`;
+        link.click();
+        
+        showNotification(`Datos exportados a Excel: ${filename}`, 'success');
+    } catch (error) {
+        console.error('Error al exportar a Excel:', error);
+        showNotification('Error al exportar a Excel', 'error');
+    }
+}
+
+// Función universal para exportar a DOC
+function exportToDoc(data, filename, title) {
+    if (!data || data.length === 0) {
+        showNotification('No hay datos para exportar', 'warning');
+        return;
+    }
+    
+    try {
+        let content = `${title}\n`;
+        content += `Fecha de exportación: ${new Date().toLocaleDateString()}\n`;
+        content += `Total de registros: ${data.length}\n\n`;
+        
+        data.forEach((item, index) => {
+            content += `${index + 1}. `;
+            Object.keys(item).forEach(key => {
+                if (item[key] && typeof item[key] === 'string') {
+                    content += `${key}: ${item[key]}\n`;
+                }
+            });
+            content += '\n';
+        });
+        
+        const blob = new Blob([content], { type: 'application/msword' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = `${filename}-${new Date().toISOString().split('T')[0]}.doc`;
+        link.click();
+        
+        showNotification(`Datos exportados a DOC: ${filename}`, 'success');
+    } catch (error) {
+        console.error('Error al exportar a DOC:', error);
+        showNotification('Error al exportar a DOC', 'error');
+    }
+}
+
+// Función universal para exportar a PDF
+function exportToPDF(data, filename, title) {
+    if (!data || data.length === 0) {
+        showNotification('No hay datos para exportar', 'warning');
+        return;
+    }
+    
+    try {
+        let content = `${title}\n\n`;
+        content += `Fecha de exportación: ${new Date().toLocaleDateString()}\n`;
+        content += `Total de registros: ${data.length}\n\n`;
+        
+        data.forEach((item, index) => {
+            content += `${index + 1}. `;
+            Object.keys(item).forEach(key => {
+                if (item[key] && typeof item[key] === 'string') {
+                    content += `${key}: ${item[key]}\n`;
+                }
+            });
+            content += '\n';
+        });
+        
+        // Crear PDF usando jsPDF (si está disponible) o generar texto plano
+        const blob = new Blob([content], { type: 'text/plain' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = `${filename}-${new Date().toISOString().split('T')[0]}.txt`;
+        link.click();
+        
+        showNotification(`Datos exportados: ${filename}`, 'success');
+    } catch (error) {
+        console.error('Error al exportar:', error);
+        showNotification('Error al exportar', 'error');
+    }
+}
+
+// ===== FUNCIONES DE EXPORTACIÓN ESPECÍFICAS =====
+
+// Exportar Usuarios
+function exportUsers() {
+    const users = JSON.parse(localStorage.getItem('users')) || [];
+    const usersData = users.map(user => ({
+        'ID': user.id,
+        'Nombre': user.name,
+        'Email': user.email,
+        'Teléfono': user.phone || 'No especificado',
+        'Pueblos': user.selectedPueblos ? user.selectedPueblos.join(', ') : 'No especificado',
+        'Notificaciones': user.notificationConsent ? 'Sí' : 'No',
+        'Fecha Registro': new Date(user.registrationDate).toLocaleDateString(),
+        'Última Actividad': user.lastActivity ? new Date(user.lastActivity).toLocaleDateString() : 'No disponible'
+    }));
+    
+    exportToExcel(usersData, 'usuarios-registrados', 'Usuarios');
+}
+
+// Exportar Administradores
+function exportAdmins() {
+    const admins = JSON.parse(localStorage.getItem('admins')) || [];
+    const adminsData = admins.map(admin => ({
+        'ID': admin.id,
+        'Nombre': admin.name,
+        'Email': admin.email,
+        'Rol': admin.role || 'Administrador',
+        'Fecha Creación': new Date(admin.createdAt).toLocaleDateString(),
+        'Última Actividad': admin.lastActivity ? new Date(admin.lastActivity).toLocaleDateString() : 'No disponible',
+        'Estado': admin.active ? 'Activo' : 'Inactivo'
+    }));
+    
+    exportToExcel(adminsData, 'administradores', 'Administradores');
+}
+
+// Exportar Documentos
+function exportDocuments() {
+    const documents = JSON.parse(localStorage.getItem('documents')) || [];
+    const docsData = documents.map(doc => ({
+        'ID': doc.id,
+        'Título': doc.title,
+        'Tipo': doc.type,
+        'URL': doc.url,
+        'Descripción': doc.description || 'Sin descripción',
+        'Fecha Creación': new Date(doc.createdAt).toLocaleDateString(),
+        'Creado por': doc.createdBy || 'Sistema'
+    }));
+    
+    exportToExcel(docsData, 'documentos', 'Documentos');
+}
+
+// Exportar Notificaciones
+function exportNotifications() {
+    const notifications = JSON.parse(localStorage.getItem('notifications')) || [];
+    const notifData = notifications.map(notif => ({
+        'ID': notif.id,
+        'Título': notif.title,
+        'Mensaje': notif.message,
+        'Tipo': notif.type,
+        'Fecha Envío': new Date(notif.sentAt).toLocaleDateString(),
+        'Enviado por': notif.sentBy || 'Sistema',
+        'Destinatarios': notif.recipients ? notif.recipients.length : 0,
+        'Estado': notif.status || 'Enviado'
+    }));
+    
+    exportToExcel(notifData, 'notificaciones', 'Notificaciones');
+}
+
+// Exportar Todo (Backup Completo)
+function exportAllData() {
+    try {
+        const allData = {
+            users: JSON.parse(localStorage.getItem('users')) || [],
+            admins: JSON.parse(localStorage.getItem('admins')) || [],
+            documents: JSON.parse(localStorage.getItem('documents')) || [],
+            notifications: JSON.parse(localStorage.getItem('notifications')) || [],
+            news: JSON.parse(localStorage.getItem('news')) || [],
+            bandos: JSON.parse(localStorage.getItem('bandos')) || [],
+            events: JSON.parse(localStorage.getItem('events')) || [],
+            quickAccess: JSON.parse(localStorage.getItem('quickAccess')) || [],
+            culturaOcioData: JSON.parse(localStorage.getItem('culturaOcioData')) || {},
+            appointmentSettings: JSON.parse(localStorage.getItem('appointmentSettings')) || {},
+            serviciosData: JSON.parse(localStorage.getItem('serviciosData')) || {},
+            exportDate: new Date().toISOString(),
+            version: '1.0'
+        };
+        
+        const blob = new Blob([JSON.stringify(allData, null, 2)], { type: 'application/json' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = `backup-completo-${new Date().toISOString().split('T')[0]}.json`;
+        link.click();
+        
+        showNotification('Backup completo exportado correctamente', 'success');
+    } catch (error) {
+        console.error('Error al exportar backup completo:', error);
+        showNotification('Error al exportar backup completo', 'error');
+    }
+}
+
+// ===== FUNCIONES DE IMPORTACIÓN UNIVERSAL =====
+
+// Función para manejar la selección de archivo (JSON, Excel, DOC)
+function handleFileSelect(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    
+    const fileName = file.name.toLowerCase();
+    const fileExtension = fileName.split('.').pop();
+    
+    const reader = new FileReader();
+    
+    reader.onload = function(e) {
+        try {
+            let data = null;
+            
+            switch (fileExtension) {
+                case 'json':
+                    data = JSON.parse(e.target.result);
+                    document.getElementById('importData').value = JSON.stringify(data, null, 2);
+                    showNotification('Archivo JSON cargado correctamente', 'success');
+                    break;
+                    
+                case 'xlsx':
+                case 'xls':
+                    // Para Excel, necesitamos usar XLSX.js
+                    if (typeof XLSX !== 'undefined') {
+                        const workbook = XLSX.read(e.target.result, { type: 'array' });
+                        const sheetName = workbook.SheetNames[0];
+                        const worksheet = workbook.Sheets[sheetName];
+                        data = XLSX.utils.sheet_to_json(worksheet);
+                        
+                        // Convertir a formato JSON para mostrar
+                        document.getElementById('importData').value = JSON.stringify(data, null, 2);
+                        showNotification('Archivo Excel cargado correctamente', 'success');
+                    } else {
+                        showNotification('Error: Biblioteca XLSX no disponible', 'error');
+                    }
+                    break;
+                    
+                case 'doc':
+                case 'docx':
+                    // Para DOC, intentamos leer como texto plano
+                    const text = e.target.result;
+                    data = parseDocContent(text);
+                    document.getElementById('importData').value = JSON.stringify(data, null, 2);
+                    showNotification('Archivo DOC cargado correctamente', 'success');
+                    break;
+                    
+                case 'txt':
+                    // Para archivos de texto plano
+                    const txtContent = e.target.result;
+                    data = parseTextContent(txtContent);
+                    document.getElementById('importData').value = JSON.stringify(data, null, 2);
+                    showNotification('Archivo de texto cargado correctamente', 'success');
+                    break;
+                    
+                default:
+                    showNotification('Formato de archivo no soportado', 'error');
+                    return;
+            }
+            
+        } catch (error) {
+            console.error('Error al procesar archivo:', error);
+            showNotification('Error al procesar el archivo', 'error');
+        }
+    };
+    
+    // Leer el archivo según su tipo
+    if (fileExtension === 'xlsx' || fileExtension === 'xls') {
+        reader.readAsArrayBuffer(file);
+    } else {
+        reader.readAsText(file);
+    }
+}
+
+// Función para parsear contenido de archivos DOC
+function parseDocContent(content) {
+    // Esta es una implementación básica para archivos DOC de texto plano
+    const lines = content.split('\n');
+    const data = [];
+    let currentItem = {};
+    
+    lines.forEach(line => {
+        line = line.trim();
+        if (line && line.includes(':')) {
+            const [key, value] = line.split(':', 2);
+            currentItem[key.trim()] = value.trim();
+        } else if (line === '' && Object.keys(currentItem).length > 0) {
+            data.push(currentItem);
+            currentItem = {};
+        }
+    });
+    
+    // Agregar el último elemento si existe
+    if (Object.keys(currentItem).length > 0) {
+        data.push(currentItem);
+    }
+    
+    return data;
+}
+
+// Función para parsear contenido de archivos de texto
+function parseTextContent(content) {
+    const lines = content.split('\n');
+    const data = [];
+    let currentItem = {};
+    
+    lines.forEach(line => {
+        line = line.trim();
+        if (line && line.includes(':')) {
+            const [key, value] = line.split(':', 2);
+            currentItem[key.trim()] = value.trim();
+        } else if (line === '' && Object.keys(currentItem).length > 0) {
+            data.push(currentItem);
+            currentItem = {};
+        }
+    });
+    
+    // Agregar el último elemento si existe
+    if (Object.keys(currentItem).length > 0) {
+        data.push(currentItem);
+    }
+    
+    return data;
+}
+
+// Función para importar datos (universal)
+function importData() {
+    const importType = document.getElementById('importType').value;
+    const importData = document.getElementById('importData').value;
+    
+    if (!importType || importType === 'Seleccionar tipo') {
+        showNotification('Por favor, seleccione el tipo de datos a importar', 'warning');
+        return;
+    }
+    
+    if (!importData.trim()) {
+        showNotification('Por favor, pegue los datos o seleccione un archivo', 'warning');
+        return;
+    }
+    
+    try {
+        let data;
+        
+        // Intentar parsear como JSON primero
+        try {
+            data = JSON.parse(importData);
+        } catch (jsonError) {
+            // Si no es JSON válido, intentar parsear como texto estructurado
+            data = parseStructuredText(importData);
+        }
+        
+        if (!data || (Array.isArray(data) && data.length === 0)) {
+            showNotification('No se encontraron datos válidos para importar', 'warning');
+            return;
+        }
+        
+        // Validar y procesar datos según el tipo
+        switch (importType) {
+            case 'usuarios':
+                data = validateAndFormatUsers(data);
+                localStorage.setItem('users', JSON.stringify(data));
+                showNotification(`${data.length} usuarios importados correctamente`, 'success');
+                break;
+                
+            case 'administradores':
+                data = validateAndFormatAdmins(data);
+                localStorage.setItem('admins', JSON.stringify(data));
+                showNotification(`${data.length} administradores importados correctamente`, 'success');
+                break;
+                
+            case 'documentos':
+                data = validateAndFormatDocuments(data);
+                localStorage.setItem('documents', JSON.stringify(data));
+                showNotification(`${data.length} documentos importados correctamente`, 'success');
+                break;
+                
+            case 'notificaciones':
+                data = validateAndFormatNotifications(data);
+                localStorage.setItem('notifications', JSON.stringify(data));
+                showNotification(`${data.length} notificaciones importadas correctamente`, 'success');
+                break;
+                
+            case 'backup-completo':
+                // Importar backup completo
+                let importedCount = 0;
+                Object.keys(data).forEach(key => {
+                    if (key !== 'exportDate' && key !== 'version' && data[key]) {
+                        localStorage.setItem(key, JSON.stringify(data[key]));
+                        importedCount++;
+                    }
+                });
+                showNotification(`Backup completo importado: ${importedCount} secciones`, 'success');
+                break;
+                
+            default:
+                showNotification('Tipo de datos no válido', 'error');
+                return;
+        }
+        
+        // Limpiar formulario
+        document.getElementById('importData').value = '';
+        document.getElementById('importType').value = 'Seleccionar tipo';
+        
+        // Actualizar estadísticas
+        updateSystemStats();
+        
+        // Sincronizar con Firestore si está disponible
+        if (typeof syncLocalDataToFirestore === 'function') {
+            syncLocalDataToFirestore();
+        }
+        
+    } catch (error) {
+        console.error('Error al importar datos:', error);
+        showNotification('Error al importar datos. Verifique el formato del archivo', 'error');
+    }
+}
+
+// Función para parsear texto estructurado
+function parseStructuredText(text) {
+    const lines = text.split('\n');
+    const data = [];
+    let currentItem = {};
+    
+    lines.forEach(line => {
+        line = line.trim();
+        if (line && line.includes(':')) {
+            const [key, value] = line.split(':', 2);
+            currentItem[key.trim()] = value.trim();
+        } else if (line === '' && Object.keys(currentItem).length > 0) {
+            data.push(currentItem);
+            currentItem = {};
+        }
+    });
+    
+    // Agregar el último elemento si existe
+    if (Object.keys(currentItem).length > 0) {
+        data.push(currentItem);
+    }
+    
+    return data;
+}
+
+// Funciones de validación y formateo
+function validateAndFormatUsers(data) {
+    if (!Array.isArray(data)) return [];
+    
+    return data.map((user, index) => ({
+        id: user.ID || user.id || `imported_${Date.now()}_${index}`,
+        name: user.Nombre || user.name || 'Usuario Importado',
+        email: user.Email || user.email || '',
+        phone: user.Teléfono || user.phone || '',
+        selectedPueblos: user.Pueblos ? user.Pueblos.split(',').map(p => p.trim()) : [],
+        notificationConsent: user.Notificaciones === 'Sí' || user.notificationConsent === true,
+        registrationDate: user['Fecha Registro'] || user.registrationDate || new Date().toISOString(),
+        lastActivity: user['Última Actividad'] || user.lastActivity || new Date().toISOString()
+    }));
+}
+
+function validateAndFormatAdmins(data) {
+    if (!Array.isArray(data)) return [];
+    
+    return data.map((admin, index) => ({
+        id: admin.ID || admin.id || `admin_imported_${Date.now()}_${index}`,
+        name: admin.Nombre || admin.name || 'Administrador Importado',
+        email: admin.Email || admin.email || '',
+        role: admin.Rol || admin.role || 'Administrador',
+        createdAt: admin['Fecha Creación'] || admin.createdAt || new Date().toISOString(),
+        lastActivity: admin['Última Actividad'] || admin.lastActivity || new Date().toISOString(),
+        active: admin.Estado === 'Activo' || admin.active !== false
+    }));
+}
+
+function validateAndFormatDocuments(data) {
+    if (!Array.isArray(data)) return [];
+    
+    return data.map((doc, index) => ({
+        id: doc.ID || doc.id || `doc_imported_${Date.now()}_${index}`,
+        title: doc.Título || doc.title || 'Documento Importado',
+        type: doc.Tipo || doc.type || 'general',
+        url: doc.URL || doc.url || '',
+        description: doc.Descripción || doc.description || '',
+        createdAt: doc['Fecha Creación'] || doc.createdAt || new Date().toISOString(),
+        createdBy: doc['Creado por'] || doc.createdBy || 'Sistema'
+    }));
+}
+
+function validateAndFormatNotifications(data) {
+    if (!Array.isArray(data)) return [];
+    
+    return data.map((notif, index) => ({
+        id: notif.ID || notif.id || `notif_imported_${Date.now()}_${index}`,
+        title: notif.Título || notif.title || 'Notificación Importada',
+        message: notif.Mensaje || notif.message || '',
+        type: notif.Tipo || notif.type || 'info',
+        sentAt: notif['Fecha Envío'] || notif.sentAt || new Date().toISOString(),
+        sentBy: notif['Enviado por'] || notif.sentBy || 'Sistema',
+        recipients: notif.Destinatarios || notif.recipients || 0,
+        status: notif.Estado || notif.status || 'Enviado'
+    }));
+}
+
+// Función para limpiar el formulario de importación
+function clearImportForm() {
+    document.getElementById('importFile').value = '';
+    document.getElementById('importData').value = '';
+    document.getElementById('importType').value = '';
+    showNotification('Formulario de importación limpiado', 'info');
+}
+
+// ===== ACTUALIZACIÓN DE ESTADÍSTICAS =====
+
+// Función para actualizar estadísticas del sistema
+function updateSystemStats() {
+    const users = JSON.parse(localStorage.getItem('users')) || [];
+    const admins = JSON.parse(localStorage.getItem('admins')) || [];
+    const documents = JSON.parse(localStorage.getItem('documents')) || [];
+    const notifications = JSON.parse(localStorage.getItem('notifications')) || [];
+    const news = JSON.parse(localStorage.getItem('news')) || [];
+    const bandos = JSON.parse(localStorage.getItem('bandos')) || [];
+    const events = JSON.parse(localStorage.getItem('events')) || [];
+    const quickAccess = JSON.parse(localStorage.getItem('quickAccess')) || [];
+    
+    // Actualizar contadores
+    document.getElementById('usersCount').textContent = users.length;
+    document.getElementById('adminsCount').textContent = admins.length;
+    document.getElementById('documentsCount').textContent = documents.length;
+    document.getElementById('notificationsCount').textContent = notifications.length;
+    document.getElementById('newsCount').textContent = news.length;
+    document.getElementById('bandosCount').textContent = bandos.length;
+    document.getElementById('eventsCount').textContent = events.length;
+    document.getElementById('quickAccessCount').textContent = quickAccess.length;
+    
+    console.log('📊 Estadísticas del sistema actualizadas');
+}
+
+// ===== GESTIÓN DE DOCUMENTOS =====
+
+// Función para cargar la lista de documentos
+function loadDocumentsList() {
+    const documentsList = document.getElementById('documentsList');
+    if (!documentsList) return;
+    
+    const documents = JSON.parse(localStorage.getItem('documents')) || [];
+    
+    if (documents.length === 0) {
+        documentsList.innerHTML = '<p style="text-align: center; color: #666; padding: 2rem;">No hay documentos subidos.</p>';
+        return;
+    }
+    
+    documentsList.innerHTML = '';
+    
+    documents.forEach((doc, index) => {
+        const docElement = document.createElement('div');
+        docElement.className = 'document-item';
+        docElement.style.cssText = 'background: #f8f9fa; padding: 1rem; margin: 0.5rem 0; border-radius: 8px; border-left: 4px solid #007bff; display: flex; justify-content: space-between; align-items: center;';
+        
+        docElement.innerHTML = `
+            <div style="flex: 1;">
+                <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+                    <h5 style="margin: 0; color: #333;">${doc.title}</h5>
+                    <span style="background: #007bff; color: white; padding: 0.2rem 0.5rem; border-radius: 12px; font-size: 0.7rem; text-transform: uppercase;">
+                        ${doc.category}
+                    </span>
+                </div>
+                <p style="margin: 0; color: #666; font-size: 0.9rem;">${doc.description || 'Sin descripción'}</p>
+                <div style="margin-top: 0.5rem; font-size: 0.8rem; color: #888;">
+                    <span><i class="fas fa-calendar"></i> ${new Date(doc.createdAt).toLocaleDateString()}</span>
+                    <span style="margin-left: 1rem;"><i class="fas fa-user"></i> ${doc.createdBy}</span>
+                    <span style="margin-left: 1rem;"><i class="fas fa-file"></i> ${doc.fileName}</span>
+                </div>
+            </div>
+            <div style="display: flex; gap: 0.5rem; margin-left: 1rem;">
+                <button class="btn btn-sm btn-outline" onclick="downloadDocument('${doc.id}')" title="Descargar">
+                    <i class="fas fa-download"></i>
+                </button>
+                <button class="btn btn-sm btn-outline" onclick="editDocument('${doc.id}')" title="Editar">
+                    <i class="fas fa-edit"></i>
+                </button>
+                <button class="btn btn-sm btn-danger" onclick="deleteDocument('${doc.id}')" title="Eliminar">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </div>
+        `;
+        
+        documentsList.appendChild(docElement);
+    });
+}
+
+// Función para manejar el envío del formulario de documentos
+function handleDocumentUpload(event) {
+    event.preventDefault();
+    
+    const name = document.getElementById('documentName').value.trim();
+    const description = document.getElementById('documentDescription').value.trim();
+    const category = document.getElementById('documentCategory').value;
+    const fileInput = document.getElementById('documentFile');
+    
+    if (!name || !category) {
+        showNotification('Por favor, complete todos los campos obligatorios', 'warning');
+        return;
+    }
+    
+    if (!fileInput.files[0]) {
+        showNotification('Por favor, seleccione un archivo', 'warning');
+        return;
+    }
+    
+    const file = fileInput.files[0];
+    
+    // Crear objeto de documento
+    const document = {
+        id: `doc_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        title: name,
+        description: description,
+        category: category,
+        fileName: file.name,
+        fileSize: file.size,
+        fileType: file.type,
+        createdAt: new Date().toISOString(),
+        createdBy: currentUser ? currentUser.name : 'Administrador',
+        url: null // En una implementación real, aquí se subiría el archivo a un servidor
+    };
+    
+    // Simular subida de archivo (en una implementación real, se subiría a un servidor)
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        document.url = e.target.result; // Data URL para simulación
+        
+        // Guardar documento
+        const documents = JSON.parse(localStorage.getItem('documents')) || [];
+        documents.push(document);
+        localStorage.setItem('documents', JSON.stringify(documents));
+        
+        // Limpiar formulario
+        document.getElementById('documentUploadForm').reset();
+        
+        // Actualizar lista
+        loadDocumentsList();
+        
+        // Actualizar página principal
+        loadDocumentsInMainPage();
+        
+        // Actualizar estadísticas
+        updateSystemStats();
+        
+        showNotification('Documento subido correctamente', 'success');
+    };
+    
+    reader.readAsDataURL(file);
+}
+
+// Función para descargar un documento
+function downloadDocument(documentId) {
+    const documents = JSON.parse(localStorage.getItem('documents')) || [];
+    const document = documents.find(doc => doc.id === documentId);
+    
+    if (!document) {
+        showNotification('Documento no encontrado', 'error');
+        return;
+    }
+    
+    if (document.url) {
+        const link = document.createElement('a');
+        link.href = document.url;
+        link.download = document.fileName;
+        link.click();
+        showNotification('Descargando documento...', 'info');
+    } else {
+        showNotification('El archivo no está disponible para descarga', 'warning');
+    }
+}
+
+// Función para editar un documento
+function editDocument(documentId) {
+    const documents = JSON.parse(localStorage.getItem('documents')) || [];
+    const document = documents.find(doc => doc.id === documentId);
+    
+    if (!document) {
+        showNotification('Documento no encontrado', 'error');
+        return;
+    }
+    
+    // Crear modal de edición
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.style.display = 'block';
+    modal.innerHTML = `
+        <div class="modal-content" style="max-width: 600px;">
+            <div class="modal-header">
+                <h3>✏️ Editar Documento</h3>
+                <span class="close" onclick="this.closest('.modal').remove()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form id="editDocumentForm">
+                    <div class="form-group">
+                        <label for="editDocumentName">Nombre del documento:</label>
+                        <input type="text" id="editDocumentName" value="${document.title}" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="editDocumentDescription">Descripción:</label>
+                        <textarea id="editDocumentDescription" rows="3">${document.description || ''}</textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="editDocumentCategory">Categoría:</label>
+                        <select id="editDocumentCategory" required>
+                            <option value="normativas" ${document.category === 'normativas' ? 'selected' : ''}>Normativas</option>
+                            <option value="formularios" ${document.category === 'formularios' ? 'selected' : ''}>Formularios</option>
+                            <option value="certificados" ${document.category === 'certificados' ? 'selected' : ''}>Certificados</option>
+                            <option value="informes" ${document.category === 'informes' ? 'selected' : ''}>Informes</option>
+                            <option value="otros" ${document.category === 'otros' ? 'selected' : ''}>Otros</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Archivo actual:</label>
+                        <p style="background: #f8f9fa; padding: 0.5rem; border-radius: 4px; margin: 0;">
+                            <i class="fas fa-file"></i> ${document.fileName} (${formatFileSize(document.fileSize)})
+                        </p>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="this.closest('.modal').remove()">Cancelar</button>
+                <button class="btn btn-primary" onclick="updateDocument('${documentId}')">Actualizar</button>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+}
+
+// Función para actualizar un documento
+function updateDocument(documentId) {
+    const name = document.getElementById('editDocumentName').value.trim();
+    const description = document.getElementById('editDocumentDescription').value.trim();
+    const category = document.getElementById('editDocumentCategory').value;
+    
+    if (!name || !category) {
+        showNotification('Por favor, complete todos los campos obligatorios', 'warning');
+        return;
+    }
+    
+    const documents = JSON.parse(localStorage.getItem('documents')) || [];
+    const documentIndex = documents.findIndex(doc => doc.id === documentId);
+    
+    if (documentIndex === -1) {
+        showNotification('Documento no encontrado', 'error');
+        return;
+    }
+    
+    // Actualizar documento
+    documents[documentIndex].title = name;
+    documents[documentIndex].description = description;
+    documents[documentIndex].category = category;
+    documents[documentIndex].updatedAt = new Date().toISOString();
+    documents[documentIndex].updatedBy = currentUser ? currentUser.name : 'Administrador';
+    
+    localStorage.setItem('documents', JSON.stringify(documents));
+    
+    // Cerrar modal
+    document.querySelector('.modal').remove();
+    
+    // Actualizar lista
+    loadDocumentsList();
+    
+    // Actualizar página principal
+    loadDocumentsInMainPage();
+    
+    showNotification('Documento actualizado correctamente', 'success');
+}
+
+// Función para eliminar un documento
+function deleteDocument(documentId) {
+    if (!confirm('¿Está seguro de que desea eliminar este documento?')) {
+        return;
+    }
+    
+    const documents = JSON.parse(localStorage.getItem('documents')) || [];
+    const documentIndex = documents.findIndex(doc => doc.id === documentId);
+    
+    if (documentIndex === -1) {
+        showNotification('Documento no encontrado', 'error');
+        return;
+    }
+    
+    const document = documents[documentIndex];
+    
+    // Eliminar documento
+    documents.splice(documentIndex, 1);
+    localStorage.setItem('documents', JSON.stringify(documents));
+    
+    // Actualizar lista
+    loadDocumentsList();
+    
+    // Actualizar página principal
+    loadDocumentsInMainPage();
+    
+    // Actualizar estadísticas
+    updateSystemStats();
+    
+    showNotification(`Documento "${document.title}" eliminado correctamente`, 'success');
+}
+
+// Función para formatear el tamaño del archivo
+function formatFileSize(bytes) {
+    if (bytes === 0) return '0 Bytes';
+    
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
+
+// Función para inicializar la gestión de documentos
+function initializeDocumentsManagement() {
+    // Agregar event listener al formulario de subida
+    const uploadForm = document.getElementById('documentUploadForm');
+    if (uploadForm) {
+        uploadForm.addEventListener('submit', handleDocumentUpload);
+    }
+    
+    // Cargar lista inicial
+    loadDocumentsList();
+    
+    console.log('📄 Gestión de documentos inicializada');
+}
+
+// ===== FUNCIONES PARA LA PÁGINA PRINCIPAL =====
+
+// Función para cargar documentos en la página principal
+function loadDocumentsInMainPage() {
+    const documentsGrid = document.getElementById('documentsGrid');
+    if (!documentsGrid) return;
+    
+    const documents = JSON.parse(localStorage.getItem('documents')) || [];
+    
+    if (documents.length === 0) {
+        // Mostrar documentos por defecto si no hay documentos subidos
+        documentsGrid.innerHTML = `
+            <div class="document-category">
+                <h3>Formularios</h3>
+                <ul class="document-list">
+                    <li><a href="https://cobreros.sedelectronica.es/catalog/t/15fabacb-83b1-47d1-b435-508245672051" target="_blank" class="document-link"><i class="fas fa-download"></i> Licencia de obras</a></li>
+                    <li><a href="https://cobreros.sedelectronica.es/catalog/t/d120f65c-c936-4a95-bd50-e7ae970ca149" target="_blank" class="document-link"><i class="fas fa-download"></i> Solicitud de empadronamiento</a></li>
+                    <li><a href="https://cobreros.sedelectronica.es/catalog/t/1c74bc66-8b69-4f3c-8183-d3591f0504ed" target="_blank" class="document-link"><i class="fas fa-download"></i> Certificado de empadronamiento</a></li>
+                    <li><a href="https://cobreros.sedelectronica.es/?x=YNOk4QU4OCH1VkP5PEIUePAoMJMUn8b-T88O9vfrVKUeSihv2bENIqzWyk461HpKudzhAdFOWwE9q4qefF-Mxi32kuWV4orZqsZxo8GjkR0m9UsFMZJrvtQI8cQXwqOE5h8yPgI9lbLQB86*ZKIMyz9hPheu1upkL85pK64JPLMMHjMYAS8uiKjtaeB2Hr*mQ8UtWDh77MXQZ4v-fH9CQw" target="_blank" class="document-link"><i class="fas fa-download"></i> Instancia General</a></li>
+                </ul>
+            </div>
+            <div class="document-category">
+                <h3>Normativas</h3>
+                <ul class="document-list">
+                    <li><a href="#" class="document-link"><i class="fas fa-download"></i> Ordenanzas municipales</a></li>
+                    <li><a href="https://cobreros.sedelectronica.es/catalog/t/96514574-aca1-40e1-a800-e06485e6d016" target="_blank" class="document-link"><i class="fas fa-download"></i> Planeamiento General (Modificación)</a></li>
+                </ul>
+            </div>
+        `;
+        return;
+    }
+    
+    // Agrupar documentos por categoría
+    const documentsByCategory = {};
+    documents.forEach(doc => {
+        if (!documentsByCategory[doc.category]) {
+            documentsByCategory[doc.category] = [];
+        }
+        documentsByCategory[doc.category].push(doc);
+    });
+    
+    // Crear HTML para cada categoría
+    let html = '';
+    Object.keys(documentsByCategory).forEach(category => {
+        const categoryName = getCategoryDisplayName(category);
+        const categoryDocs = documentsByCategory[category];
+        
+        html += `
+            <div class="document-category">
+                <h3>${categoryName}</h3>
+                <ul class="document-list">
+        `;
+        
+        categoryDocs.forEach(doc => {
+            html += `
+                <li>
+                    <a href="#" onclick="downloadDocumentFromMain('${doc.id}')" class="document-link">
+                        <i class="fas fa-download"></i> ${doc.title}
+                    </a>
+                    ${doc.description ? `<small style="display: block; color: #666; margin-top: 0.25rem;">${doc.description}</small>` : ''}
+                </li>
+            `;
+        });
+        
+        html += `
+                </ul>
+            </div>
+        `;
+    });
+    
+    documentsGrid.innerHTML = html;
+}
+
+// Función para obtener el nombre de visualización de la categoría
+function getCategoryDisplayName(category) {
+    const categoryNames = {
+        'normativas': 'Normativas',
+        'formularios': 'Formularios',
+        'certificados': 'Certificados',
+        'informes': 'Informes',
+        'otros': 'Otros'
+    };
+    return categoryNames[category] || category;
+}
+
+// Función para descargar documento desde la página principal
+function downloadDocumentFromMain(documentId) {
+    const documents = JSON.parse(localStorage.getItem('documents')) || [];
+    const document = documents.find(doc => doc.id === documentId);
+    
+    if (!document) {
+        showNotification('Documento no encontrado', 'error');
+        return;
+    }
+    
+    if (document.url) {
+        const link = document.createElement('a');
+        link.href = document.url;
+        link.download = document.fileName;
+        link.click();
+        showNotification(`Descargando: ${document.title}`, 'info');
+    } else {
+        showNotification('El archivo no está disponible para descarga', 'warning');
+    }
+}
+
+// Función principal para sincronizar todas las pestañas
+function syncAllAdminTabsWithMainPage() {
+    console.log('🔄 Sincronizando todas las pestañas del panel de admin con la página principal...');
+    
+    syncNewsTabWithMainPage();
+    syncBandosTabWithMainPage();
+    syncEventsTabWithMainPage();
+    syncQuickAccessTabWithMainPage();
+    syncCultureTabWithMainPage();
+    
+    console.log('✅ Sincronización completada');
+}
+
+// Funciones para gestionar elementos de acceso rápido
+function editQuickAccessItem(itemId) {
+    const item = quickAccess.find(i => i.id === itemId);
+    if (!item) return;
+    
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.style.display = 'block';
+    modal.innerHTML = `
+        <div class="modal-content" style="max-width: 800px;">
+            <div class="modal-header">
+                <h3>🔗 Editar Tarjeta de Acceso Rápido</h3>
+                <span class="close" onclick="this.closest('.modal').remove()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form id="editTarjetaForm">
+                    <div class="form-group">
+                        <label for="editTarjetaTitulo">Título:</label>
+                        <input type="text" id="editTarjetaTitulo" name="titulo" value="${item.title}" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="editTarjetaDescripcion">Descripción:</label>
+                        <textarea id="editTarjetaDescripcion" name="descripcion" rows="3" required>${item.description}</textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="editTarjetaSeccion">Sección:</label>
+                        <select id="editTarjetaSeccion" name="seccion" required>
+                            <option value="bando" ${item.section === 'bando' ? 'selected' : ''}>Bando Municipal</option>
+                            <option value="sede-electronica" ${item.section === 'sede-electronica' ? 'selected' : ''}>Sede Electrónica</option>
+                            <option value="documentos" ${item.section === 'documentos' ? 'selected' : ''}>Documentos</option>
+                            <option value="cultura-ocio" ${item.section === 'cultura-ocio' ? 'selected' : ''}>Cultura y Ocio</option>
+                            <option value="servicios" ${item.section === 'servicios' ? 'selected' : ''}>Servicios</option>
+                            <option value="contacto" ${item.section === 'contacto' ? 'selected' : ''}>Contacto</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="editTarjetaURL">URL (opcional):</label>
+                        <input type="url" id="editTarjetaURL" name="url" value="${item.url || ''}">
+                    </div>
+                    <div class="form-group">
+                        <label for="editTarjetaIcono">Icono (opcional):</label>
+                        <input type="text" id="editTarjetaIcono" name="icono" value="${item.icon || ''}" placeholder="ej: fas fa-file-alt">
+                    </div>
+                    <div class="form-group">
+                        <label for="editTarjetaOrden">Orden:</label>
+                        <input type="number" id="editTarjetaOrden" name="orden" min="1" value="${item.order}">
+                    </div>
+                    <div class="form-group">
+                        <label>
+                            <input type="checkbox" id="editTarjetaActiva" name="activa" ${item.active ? 'checked' : ''}>
+                            Activa
+                        </label>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="this.closest('.modal').remove()">Cancelar</button>
+                <button class="btn btn-primary" onclick="guardarEdicionTarjeta('${itemId}')">Guardar Cambios</button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+}
+
+function guardarEdicionTarjeta(itemId) {
+    const form = document.getElementById('editTarjetaForm');
+    const formData = new FormData(form);
+    
+    const itemIndex = quickAccess.findIndex(i => i.id === itemId);
+    if (itemIndex === -1) return;
+    
+    // Actualizar el elemento
+    quickAccess[itemIndex] = {
+        ...quickAccess[itemIndex],
+        title: formData.get('titulo'),
+        description: formData.get('descripcion'),
+        section: formData.get('seccion'),
+        url: formData.get('url'),
+        icon: formData.get('icono'),
+        order: parseInt(formData.get('orden')),
+        active: formData.get('activa') === 'on'
+    };
+    
+    // Ordenar por orden
+    quickAccess.sort((a, b) => a.order - b.order);
+    
+    // Guardar en localStorage
+    localStorage.setItem('quickAccess', JSON.stringify(quickAccess));
+    
+    // Sincronizar con Firestore
+    syncLocalDataToFirestore();
+    
+    // Actualizar la interfaz
+    loadQuickAccess();
+    syncQuickAccessTabWithMainPage();
+    
+    // Cerrar modal
+    document.querySelector('.modal').remove();
+    
+    showNotification('Tarjeta de acceso rápido actualizada correctamente', 'success');
+}
+
+function deleteQuickAccessItem(itemId) {
+    if (!confirm('¿Está seguro de que desea eliminar esta tarjeta de acceso rápido?')) {
+        return;
+    }
+    
+    const itemIndex = quickAccess.findIndex(i => i.id === itemId);
+    if (itemIndex === -1) return;
+    
+    const item = quickAccess[itemIndex];
+    quickAccess.splice(itemIndex, 1);
+    
+    // Guardar en localStorage
+    localStorage.setItem('quickAccess', JSON.stringify(quickAccess));
+    
+    // Sincronizar con Firestore
+    syncLocalDataToFirestore();
+    
+    // Actualizar la interfaz
+    loadQuickAccess();
+    syncQuickAccessTabWithMainPage();
+    
+    showNotification(`Tarjeta "${item.title}" eliminada correctamente`, 'success');
+}
+
+// Funciones para gestionar elementos de cultura y ocio
+function editCulturaItem(sectionKey, itemId) {
+    const culturaData = JSON.parse(localStorage.getItem('culturaOcioData')) || {};
+    const section = culturaData[sectionKey];
+    if (!section || !section.items) return;
+    
+    const item = section.items.find(i => i.id === itemId);
+    if (!item) return;
+    
+    // Usar la función existente de edición de cultura
+    openCulturaItemEditor(sectionKey, itemId);
+}
+
+function deleteCulturaItem(sectionKey, itemId) {
+    if (!confirm('¿Está seguro de que desea eliminar este elemento de cultura y ocio?')) {
+        return;
+    }
+    
+    // Usar la función existente de eliminación de cultura
+    deleteCulturaItem(sectionKey, itemId);
+}
+
+
 // ===== PWA (Progressive Web App) =====
 
 // Registrar Service Worker para PWA
@@ -9854,7 +12228,7 @@ function abrirModalNotificacion() {
     modal.style.display = 'block';
     modal.innerHTML = `
         <div class="modal-content">
-            <span class="close" onclick="this.closest('.modal').remove()">&times;</span>
+            <span class="close" onclick="closeModalOnly(this.closest('.modal'))">&times;</span>
             <h2>📱 Enviar Notificación Push</h2>
             <form id="notificacionForm">
                 <div class="form-group">
@@ -10081,7 +12455,7 @@ function mostrarDescargaAPK() {
     modal.style.display = 'block';
     modal.innerHTML = `
         <div class="modal-content">
-            <span class="close" onclick="this.closest('.modal').remove()">&times;</span>
+            <span class="close" onclick="closeModalOnly(this.closest('.modal'))">&times;</span>
             <h2>📲 Configurar Descarga de APK</h2>
             <form id="apkConfigForm">
                 <div class="form-group">
@@ -10270,7 +12644,7 @@ function openConsultorioModal() {
     modal.style.display = 'block';
     modal.innerHTML = `
         <div class="modal-content">
-            <span class="close" onclick="this.closest('.modal').remove()">&times;</span>
+            <span class="close" onclick="closeModalOnly(this.closest('.modal'))">&times;</span>
             <h2>🏥 Editar Consultorio Médico</h2>
             <div class="modal-tabs">
                 <button class="tab-btn active" onclick="showConsultorioTab('documentos')">📋 Documentos</button>
@@ -10309,7 +12683,7 @@ function openItvModal() {
     modal.style.display = 'block';
     modal.innerHTML = `
         <div class="modal-content">
-            <span class="close" onclick="this.closest('.modal').remove()">&times;</span>
+            <span class="close" onclick="closeModalOnly(this.closest('.modal'))">&times;</span>
             <h2>🚗 Editar ITV - Puebla de Sanabria</h2>
             <div class="modal-tabs">
                 <button class="tab-btn active" onclick="showItvTab('documentos')">📋 Documentos</button>
@@ -10510,7 +12884,7 @@ function openConsultorioDocumentModal() {
     modal.style.display = 'block';
     modal.innerHTML = `
         <div class="modal-content">
-            <span class="close" onclick="this.closest('.modal').remove()">&times;</span>
+            <span class="close" onclick="closeModalOnly(this.closest('.modal'))">&times;</span>
             <h2>📋 Añadir Documento del Consultorio</h2>
             <form id="consultorioDocumentForm" enctype="multipart/form-data">
                 <div class="form-group">
@@ -10582,7 +12956,7 @@ function openConsultorioFotoModal() {
     modal.style.display = 'block';
     modal.innerHTML = `
         <div class="modal-content">
-            <span class="close" onclick="this.closest('.modal').remove()">&times;</span>
+            <span class="close" onclick="closeModalOnly(this.closest('.modal'))">&times;</span>
             <h2>📸 Añadir Foto del Consultorio</h2>
             <form id="consultorioFotoForm" enctype="multipart/form-data">
                 <div class="form-group">
@@ -10654,7 +13028,7 @@ function openItvDocumentModal() {
     modal.style.display = 'block';
     modal.innerHTML = `
         <div class="modal-content">
-            <span class="close" onclick="this.closest('.modal').remove()">&times;</span>
+            <span class="close" onclick="closeModalOnly(this.closest('.modal'))">&times;</span>
             <h2>📋 Añadir Documento de ITV</h2>
             <form id="itvDocumentForm" enctype="multipart/form-data">
                 <div class="form-group">
@@ -10726,7 +13100,7 @@ function openItvFotoModal() {
     modal.style.display = 'block';
     modal.innerHTML = `
         <div class="modal-content">
-            <span class="close" onclick="this.closest('.modal').remove()">&times;</span>
+            <span class="close" onclick="closeModalOnly(this.closest('.modal'))">&times;</span>
             <h2>📸 Añadir Foto de ITV</h2>
             <form id="itvFotoForm" enctype="multipart/form-data">
                 <div class="form-group">
@@ -10815,7 +13189,7 @@ function openTelefonosInteresModal() {
     modal.style.display = 'block';
     modal.innerHTML = `
         <div class="modal-content">
-            <span class="close" onclick="this.closest('.modal').remove()">&times;</span>
+            <span class="close" onclick="closeModalOnly(this.closest('.modal'))">&times;</span>
             <h2>📞 Editar Configuración de Teléfonos de Interés</h2>
             <form id="telefonosInteresConfigForm">
                 <div class="form-group">
@@ -10874,7 +13248,7 @@ function openTelefonoElementoModal() {
     modal.style.display = 'block';
     modal.innerHTML = `
         <div class="modal-content">
-            <span class="close" onclick="this.closest('.modal').remove()">&times;</span>
+            <span class="close" onclick="closeModalOnly(this.closest('.modal'))">&times;</span>
             <h2>📞 Nuevo Elemento de Teléfonos de Interés</h2>
             <form id="telefonoElementoForm">
                 <div class="form-group">
@@ -11708,6 +14082,3005 @@ function openCalendarioEventos() {
             modalContent.scrollTop = 0;
         }
     }, 50);
+}
+
+// ===== SISTEMA COMPLETO DE CITAS PREVIAS =====
+
+// Configuración de horarios del ayuntamiento
+let appointmentSchedule = {
+    enabled: true,
+    workingDays: ['lunes', 'martes', 'miércoles', 'jueves', 'viernes'],
+    workingHours: {
+        morning: { start: '09:00', end: '14:00' },
+        afternoon: { start: '16:00', end: '18:00' }
+    },
+    timeSlots: 30, // minutos por cita
+    maxAppointmentsPerDay: 20,
+    emailNotifications: true,
+    adminEmail: 'aytocobrero@gmail.com'
+};
+
+// Función para cargar configuración de horarios
+function loadAppointmentSchedule() {
+    const saved = localStorage.getItem('appointmentSchedule');
+    const backup = localStorage.getItem('appointmentConfigBackup');
+    
+    if (saved) {
+        try {
+            const config = JSON.parse(saved);
+            appointmentSchedule = { ...appointmentSchedule, ...config };
+            console.log('📅 Configuración cargada desde appointmentSchedule:', config.enabled ? 'CITA PREVIA' : 'SIN CITA PREVIA');
+        } catch (error) {
+            console.error('❌ Error cargando appointmentSchedule:', error);
+        }
+    }
+    
+    // Verificar backup si la configuración principal no está disponible
+    if (backup && (!saved || !JSON.parse(saved).enabled !== undefined)) {
+        try {
+            const backupConfig = JSON.parse(backup);
+            appointmentSchedule.enabled = backupConfig.enabled;
+            console.log('📅 Configuración cargada desde backup:', backupConfig.enabled ? 'CITA PREVIA' : 'SIN CITA PREVIA');
+            
+            // Restaurar configuración principal
+            saveAppointmentSchedule();
+        } catch (error) {
+            console.error('❌ Error cargando backup:', error);
+        }
+    }
+}
+
+// Función para guardar configuración de horarios
+function saveAppointmentSchedule() {
+    localStorage.setItem('appointmentSchedule', JSON.stringify(appointmentSchedule));
+}
+
+// Función para generar horarios disponibles
+function generateAvailableTimeSlots(date) {
+    const slots = [];
+    const selectedDate = new Date(date);
+    const dayName = selectedDate.toLocaleDateString('es-ES', { weekday: 'long' });
+    
+    // Verificar si es día laboral
+    if (!appointmentSchedule.workingDays.includes(dayName)) {
+        return slots;
+    }
+    
+    // Obtener citas existentes para esa fecha
+    const existingAppointments = getAppointmentsByDate(date);
+    const occupiedSlots = existingAppointments.map(apt => apt.time);
+    
+    // Generar slots de mañana
+    const morningStart = appointmentSchedule.workingHours.morning.start;
+    const morningEnd = appointmentSchedule.workingHours.morning.end;
+    slots.push(...generateTimeSlots(morningStart, morningEnd, occupiedSlots));
+    
+    // Generar slots de tarde
+    const afternoonStart = appointmentSchedule.workingHours.afternoon.start;
+    const afternoonEnd = appointmentSchedule.workingHours.afternoon.end;
+    slots.push(...generateTimeSlots(afternoonStart, afternoonEnd, occupiedSlots));
+    
+    return slots;
+}
+
+// Función para generar slots de tiempo
+function generateTimeSlots(startTime, endTime, occupiedSlots) {
+    const slots = [];
+    const start = timeToMinutes(startTime);
+    const end = timeToMinutes(endTime);
+    const slotDuration = appointmentSchedule.timeSlots;
+    
+    for (let time = start; time < end; time += slotDuration) {
+        const timeString = minutesToTime(time);
+        if (!occupiedSlots.includes(timeString)) {
+            slots.push(timeString);
+        }
+    }
+    
+    return slots;
+}
+
+// Función para convertir tiempo a minutos
+function timeToMinutes(timeString) {
+    const [hours, minutes] = timeString.split(':').map(Number);
+    return hours * 60 + minutes;
+}
+
+// Función para convertir minutos a tiempo
+function minutesToTime(minutes) {
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    return `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`;
+}
+
+// Función para obtener citas por fecha
+function getAppointmentsByDate(date) {
+    const appointments = JSON.parse(localStorage.getItem('appointments')) || [];
+    return appointments.filter(apt => apt.date === date);
+}
+
+// Función para actualizar el selector de horarios
+function updateTimeSlots() {
+    const dateInput = document.getElementById('date');
+    const timeSelect = document.getElementById('time');
+    
+    if (!dateInput || !timeSelect) return;
+    
+    const selectedDate = dateInput.value;
+    if (!selectedDate) {
+        timeSelect.innerHTML = '<option value="">Seleccione una hora</option>';
+        return;
+    }
+    
+    const availableSlots = generateAvailableTimeSlots(selectedDate);
+    
+    timeSelect.innerHTML = '<option value="">Seleccione una hora</option>';
+    availableSlots.forEach(slot => {
+        const option = document.createElement('option');
+        option.value = slot;
+        option.textContent = slot;
+        timeSelect.appendChild(option);
+    });
+    
+    if (availableSlots.length === 0) {
+        timeSelect.innerHTML = '<option value="">No hay horarios disponibles</option>';
+    }
+}
+
+// Función para enviar confirmación por email usando Firebase
+async function sendAppointmentConfirmation(appointment) {
+    try {
+        console.log('📧 Enviando confirmación de cita por email usando Firebase...');
+        
+        // Preparar datos del email para el usuario
+        const userEmailData = {
+            to: appointment.email,
+            from: 'aytocobrero@gmail.com',
+            subject: 'Confirmación de Cita Previa - Ayuntamiento de Cobreros',
+            template: 'appointment_confirmation',
+            data: {
+                name: appointment.name,
+                service: appointment.service,
+                date: new Date(appointment.date).toLocaleDateString('es-ES'),
+                time: appointment.time,
+                dni: appointment.dni,
+                comments: appointment.comments || 'Sin comentarios adicionales',
+                appointmentId: appointment.id
+            }
+        };
+        
+        // Preparar datos del email para el ayuntamiento
+        const adminEmailData = {
+            to: appointmentSchedule.adminEmail,
+            from: 'aytocobrero@gmail.com',
+            subject: `Nueva Solicitud de Cita Previa - ${appointment.name}`,
+            template: 'appointment_notification_admin',
+            data: {
+                name: appointment.name,
+                service: appointment.service,
+                date: new Date(appointment.date).toLocaleDateString('es-ES'),
+                time: appointment.time,
+                dni: appointment.dni,
+                email: appointment.email,
+                phone: appointment.phone,
+                comments: appointment.comments || 'Sin comentarios adicionales',
+                appointmentId: appointment.id,
+                createdAt: new Date(appointment.createdAt).toLocaleString('es-ES')
+            }
+        };
+        
+        // Enviar email al usuario
+        const userResponse = await fetch('/api/send-email', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(userEmailData)
+        });
+        
+        // Enviar notificación al ayuntamiento
+        const adminResponse = await fetch('/api/send-email', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(adminEmailData)
+        });
+        
+        if (userResponse.ok && adminResponse.ok) {
+            const userResult = await userResponse.json();
+            const adminResult = await adminResponse.json();
+            console.log('✅ Emails enviados correctamente:', { user: userResult, admin: adminResult });
+            return {
+                success: true,
+                message: 'Confirmación enviada correctamente',
+                messageId: userResult.messageId,
+                adminNotification: adminResult.messageId
+            };
+        } else {
+            throw new Error(`Error HTTP: Usuario ${userResponse.status}, Admin ${adminResponse.status}`);
+        }
+        
+    } catch (error) {
+        console.error('❌ Error al enviar email:', error);
+        
+        // Fallback: mostrar contenido del email en consola para desarrollo
+        const userEmailContent = `
+Estimado/a ${appointment.name},
+
+Le confirmamos que su solicitud de cita previa ha sido recibida correctamente.
+
+Detalles de la cita:
+- Servicio: ${appointment.service}
+- Fecha: ${new Date(appointment.date).toLocaleDateString('es-ES')}
+- Hora: ${appointment.time}
+- DNI: ${appointment.dni}
+- ID de Cita: ${appointment.id}
+
+Nos pondremos en contacto con usted para confirmar la disponibilidad de la fecha y hora solicitada.
+
+Atentamente,
+Ayuntamiento de Cobreros
+aytocobrero@gmail.com
+        `;
+        
+        const adminEmailContent = `
+NUEVA SOLICITUD DE CITA PREVIA
+
+Datos del solicitante:
+- Nombre: ${appointment.name}
+- DNI: ${appointment.dni}
+- Email: ${appointment.email}
+- Teléfono: ${appointment.phone}
+
+Detalles de la cita:
+- Servicio: ${appointment.service}
+- Fecha: ${new Date(appointment.date).toLocaleDateString('es-ES')}
+- Hora: ${appointment.time}
+- ID de Cita: ${appointment.id}
+- Comentarios: ${appointment.comments || 'Sin comentarios adicionales'}
+- Fecha de solicitud: ${new Date(appointment.createdAt).toLocaleString('es-ES')}
+
+Acción requerida: Confirmar disponibilidad y contactar al solicitante.
+        `;
+        
+        console.log('📧 Email al usuario (fallback):', userEmailContent);
+        console.log('📧 Notificación al ayuntamiento (fallback):', adminEmailContent);
+        
+        return {
+            success: false,
+            message: 'Error al enviar email, pero la cita se ha registrado correctamente',
+            error: error.message
+        };
+    }
+}
+
+// Función para procesar solicitud de cita
+async function processAppointmentRequest(appointmentData) {
+    const appointment = {
+        id: `apt_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        ...appointmentData,
+        status: 'pendiente',
+        createdAt: new Date().toISOString(),
+        confirmed: false
+    };
+    
+    // Guardar cita
+    const appointments = JSON.parse(localStorage.getItem('appointments')) || [];
+    appointments.push(appointment);
+    localStorage.setItem('appointments', JSON.stringify(appointments));
+    
+    // Enviar confirmación por email
+    try {
+        const result = await sendAppointmentConfirmation(appointment);
+        if (result.success) {
+            showNotification('Cita solicitada correctamente. Recibirá una confirmación por email.', 'success');
+        } else {
+            showNotification('Cita solicitada, pero hubo un problema al enviar la confirmación por email.', 'warning');
+        }
+    } catch (error) {
+        console.error('Error al enviar confirmación:', error);
+        showNotification('Cita solicitada correctamente.', 'success');
+    }
+    
+    // Actualizar estadísticas
+    updateSystemStats();
+    
+    return appointment;
+}
+
+// Función para manejar el envío del formulario de citas
+async function handleAppointmentFormSubmit(event) {
+    event.preventDefault();
+    
+    const formData = new FormData(event.target);
+    const appointmentData = {
+        service: formData.get('service'),
+        name: formData.get('name'),
+        dni: formData.get('dni'),
+        email: formData.get('email'),
+        phone: formData.get('phone'),
+        date: formData.get('date'),
+        time: formData.get('time'),
+        comments: formData.get('comments'),
+        gdprConsent: formData.get('gdprConsent') === 'on',
+        notificationConsent: formData.get('notificationConsent') === 'on'
+    };
+    
+    // Validar datos
+    if (!appointmentData.gdprConsent) {
+        showNotification('Debe aceptar la Política de Protección de Datos', 'warning');
+        return;
+    }
+    
+    // Verificar disponibilidad
+    const availableSlots = generateAvailableTimeSlots(appointmentData.date);
+    if (!availableSlots.includes(appointmentData.time)) {
+        showNotification('El horario seleccionado ya no está disponible', 'warning');
+        return;
+    }
+    
+    // Mostrar indicador de carga
+    const submitButton = event.target.querySelector('button[type="submit"]');
+    const originalText = submitButton.textContent;
+    submitButton.textContent = 'Enviando...';
+    submitButton.disabled = true;
+    
+    try {
+        // Procesar solicitud
+        const appointment = await processAppointmentRequest(appointmentData);
+        
+        // Limpiar formulario
+        event.target.reset();
+        
+        // Ocultar formulario
+        const formContainer = document.getElementById('appointmentFormContainer');
+        if (formContainer) {
+            formContainer.style.display = 'none';
+        }
+        
+        console.log('✅ Cita previa procesada:', appointment);
+        
+    } catch (error) {
+        console.error('Error al procesar cita:', error);
+        showNotification('Error al procesar la solicitud. Inténtelo de nuevo.', 'error');
+    } finally {
+        // Restaurar botón
+        submitButton.textContent = originalText;
+        submitButton.disabled = false;
+    }
+}
+
+// Función para inicializar el sistema de citas previas
+function initializeAppointmentSystem() {
+    // Cargar configuración
+    loadAppointmentSchedule();
+    
+    // Configurar event listeners
+    const appointmentForm = document.getElementById('appointmentForm');
+    if (appointmentForm) {
+        appointmentForm.addEventListener('submit', handleAppointmentFormSubmit);
+    }
+    
+    const dateInput = document.getElementById('date');
+    if (dateInput) {
+        dateInput.addEventListener('change', updateTimeSlots);
+    }
+    
+    const toggleButton = document.getElementById('toggleAppointmentForm');
+    if (toggleButton) {
+        toggleButton.addEventListener('click', () => {
+            const formContainer = document.getElementById('appointmentFormContainer');
+            if (formContainer) {
+                formContainer.style.display = formContainer.style.display === 'none' ? 'block' : 'none';
+            }
+        });
+    }
+    
+    // Configurar fecha mínima (hoy)
+    if (dateInput) {
+        const today = new Date().toISOString().split('T')[0];
+        dateInput.min = today;
+    }
+    
+    console.log('📅 Sistema de citas previas inicializado');
+}
+
+// ===== GESTIÓN DE CITAS PREVIAS EN ADMINISTRACIÓN =====
+
+// Función para cargar alertas municipales
+function loadMunicipalAlerts() {
+    const appointments = JSON.parse(localStorage.getItem('appointments')) || [];
+    const pendingAppointments = appointments.filter(apt => apt.status === 'pendiente');
+    
+    const alertsContainer = document.getElementById('municipalAlertsList');
+    const alertsCount = document.getElementById('alertsCount');
+    
+    if (!alertsContainer || !alertsCount) return;
+    
+    if (pendingAppointments.length === 0) {
+        alertsContainer.innerHTML = '<div class="no-alerts">No hay alertas pendientes</div>';
+        alertsCount.textContent = '0 alertas pendientes';
+    } else {
+        alertsContainer.innerHTML = pendingAppointments.map(appointment => `
+            <div class="alert-item" data-appointment-id="${appointment.id}">
+                <div class="alert-content">
+                    <div class="alert-header">
+                        <span class="alert-type">📅 Nueva Cita Previa</span>
+                        <span class="alert-time">${new Date(appointment.createdAt).toLocaleString('es-ES')}</span>
+                    </div>
+                    <div class="alert-details">
+                        <strong>${appointment.name}</strong> - ${appointment.service}
+                        <br>
+                        <small>Fecha: ${new Date(appointment.date).toLocaleDateString('es-ES')} a las ${appointment.time}</small>
+                    </div>
+                </div>
+                <div class="alert-actions">
+                    <button class="btn btn-sm btn-success" onclick="confirmAppointment('${appointment.id}')">
+                        <i class="fas fa-check"></i> Confirmar
+                    </button>
+                    <button class="btn btn-sm btn-danger" onclick="cancelAppointment('${appointment.id}')">
+                        <i class="fas fa-times"></i> Cancelar
+                    </button>
+                    <button class="btn btn-sm btn-outline" onclick="viewAppointmentDetails('${appointment.id}')">
+                        <i class="fas fa-eye"></i> Ver
+                    </button>
+                </div>
+            </div>
+        `).join('');
+        
+        alertsCount.textContent = `${pendingAppointments.length} alertas pendientes`;
+    }
+}
+
+// Función para limpiar todas las alertas
+function clearAllAlerts() {
+    if (confirm('¿Está seguro de que desea limpiar todas las alertas?')) {
+        const appointments = JSON.parse(localStorage.getItem('appointments')) || [];
+        const updatedAppointments = appointments.map(apt => {
+            if (apt.status === 'pendiente') {
+                return { ...apt, status: 'confirmada', confirmedAt: new Date().toISOString() };
+            }
+            return apt;
+        });
+        
+        localStorage.setItem('appointments', JSON.stringify(updatedAppointments));
+        loadMunicipalAlerts();
+        loadAppointmentsList();
+        updateAppointmentStats();
+        showNotification('Todas las alertas han sido procesadas', 'success');
+    }
+}
+
+// Función para actualizar el modo de citas previas
+function updateAppointmentMode() {
+    const enabledRadio = document.getElementById('appointmentEnabled');
+    const disabledRadio = document.getElementById('appointmentDisabled');
+    
+    if (!enabledRadio || !disabledRadio) {
+        console.error('❌ Error: Radio buttons no encontrados');
+        showNotification('Error: No se pudieron encontrar los controles de configuración', 'error');
+        return;
+    }
+    
+    const isEnabled = enabledRadio.checked;
+    
+    try {
+        // SINCRONIZAR AMBOS SISTEMAS
+        // Sistema nuevo (appointmentSchedule)
+        appointmentSchedule.enabled = isEnabled;
+        saveAppointmentSchedule();
+        
+        // Sistema antiguo (appointmentsEnabled)
+        appointmentsEnabled = isEnabled;
+        const oldSystemSettings = {
+            enabled: isEnabled,
+            updatedBy: 'admin',
+            updatedAt: new Date().toISOString(),
+            version: '1.0'
+        };
+        localStorage.setItem('appointmentSettings', JSON.stringify(oldSystemSettings));
+        
+        // Verificación adicional - guardar también en una clave separada
+        const backupConfig = {
+            enabled: isEnabled,
+            updatedAt: new Date().toISOString(),
+            version: '1.0'
+        };
+        localStorage.setItem('appointmentConfigBackup', JSON.stringify(backupConfig));
+        
+        // Actualizar estado en la página principal (sistema antiguo)
+        updateAppointmentUI();
+        
+        // Actualizar estado en la página principal (sistema nuevo)
+        updateAppointmentStatus();
+        
+        // Verificación final de ambos sistemas
+        setTimeout(() => {
+            const newSystem = localStorage.getItem('appointmentSchedule');
+            const oldSystem = localStorage.getItem('appointmentSettings');
+            
+            if (newSystem) {
+                const config = JSON.parse(newSystem);
+                console.log('✅ Sistema nuevo:', config.enabled ? 'CITA PREVIA' : 'SIN CITA PREVIA');
+            }
+            
+            if (oldSystem) {
+                const config = JSON.parse(oldSystem);
+                console.log('✅ Sistema antiguo:', config.enabled ? 'CITA PREVIA' : 'SIN CITA PREVIA');
+            }
+        }, 100);
+        
+        showNotification(`Modo de citas previas actualizado: ${isEnabled ? 'CITA PREVIA' : 'SIN CITA PREVIA'}`, 'success');
+        console.log('💾 Configuración sincronizada en ambos sistemas:', isEnabled ? 'CITA PREVIA' : 'SIN CITA PREVIA');
+        
+    } catch (error) {
+        console.error('❌ Error actualizando configuración:', error);
+        showNotification('Error al guardar la configuración', 'error');
+    }
+}
+
+// Función para cargar la lista de citas previas
+function loadAppointmentsList() {
+    const appointments = JSON.parse(localStorage.getItem('appointments')) || [];
+    const filter = document.getElementById('appointmentStatusFilter')?.value || 'all';
+    
+    let filteredAppointments = appointments;
+    if (filter !== 'all') {
+        filteredAppointments = appointments.filter(apt => {
+            switch (filter) {
+                case 'pending': return apt.status === 'pendiente';
+                case 'confirmed': return apt.status === 'confirmada';
+                case 'cancelled': return apt.status === 'cancelada';
+                default: return true;
+            }
+        });
+    }
+    
+    const appointmentsList = document.getElementById('appointmentsList');
+    if (!appointmentsList) return;
+    
+    if (filteredAppointments.length === 0) {
+        appointmentsList.innerHTML = '<div class="no-data">No hay citas previas solicitadas</div>';
+    } else {
+        appointmentsList.innerHTML = filteredAppointments.map(appointment => `
+            <div class="appointment-item" data-appointment-id="${appointment.id}">
+                <div class="appointment-header">
+                    <div class="appointment-info">
+                        <h5>${appointment.name}</h5>
+                        <span class="appointment-service">${appointment.service}</span>
+                    </div>
+                    <div class="appointment-status">
+                        <span class="status-badge status-${appointment.status}">${getStatusText(appointment.status)}</span>
+                    </div>
+                </div>
+                <div class="appointment-details">
+                    <div class="detail-row">
+                        <span class="detail-label">📅 Fecha:</span>
+                        <span class="detail-value">${new Date(appointment.date).toLocaleDateString('es-ES')} a las ${appointment.time}</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">📧 Email:</span>
+                        <span class="detail-value">${appointment.email}</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">📞 Teléfono:</span>
+                        <span class="detail-value">${appointment.phone}</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">🆔 DNI:</span>
+                        <span class="detail-value">${appointment.dni}</span>
+                    </div>
+                    ${appointment.comments ? `
+                    <div class="detail-row">
+                        <span class="detail-label">💬 Comentarios:</span>
+                        <span class="detail-value">${appointment.comments}</span>
+                    </div>
+                    ` : ''}
+                    <div class="detail-row">
+                        <span class="detail-label">🕒 Solicitado:</span>
+                        <span class="detail-value">${new Date(appointment.createdAt).toLocaleString('es-ES')}</span>
+                    </div>
+                </div>
+                <div class="appointment-actions">
+                    ${appointment.status === 'pendiente' ? `
+                        <button class="btn btn-sm btn-success" onclick="confirmAppointment('${appointment.id}')">
+                            <i class="fas fa-check"></i> Confirmar
+                        </button>
+                        <button class="btn btn-sm btn-danger" onclick="cancelAppointment('${appointment.id}')">
+                            <i class="fas fa-times"></i> Cancelar
+                        </button>
+                    ` : ''}
+                    <button class="btn btn-sm btn-primary" onclick="viewAppointmentDetails('${appointment.id}')">
+                        <i class="fas fa-eye"></i> Ver Detalles
+                    </button>
+                    <button class="btn btn-sm btn-outline" onclick="editAppointment('${appointment.id}')">
+                        <i class="fas fa-edit"></i> Editar
+                    </button>
+                </div>
+            </div>
+        `).join('');
+    }
+}
+
+// Función para filtrar citas
+function filterAppointments() {
+    loadAppointmentsList();
+}
+
+// Función para actualizar la lista de citas
+function refreshAppointments() {
+    loadAppointmentsList();
+    loadMunicipalAlerts();
+    updateAppointmentStats();
+    showNotification('Lista de citas actualizada', 'success');
+}
+
+// Función para crear una cita de prueba
+function createTestAppointment() {
+    const testAppointment = {
+        id: `apt_test_${Date.now()}`,
+        service: 'Empadronamiento',
+        name: 'Juan Pérez García',
+        dni: '12345678A',
+        email: 'juan.perez@ejemplo.com',
+        phone: '666123456',
+        date: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().split('T')[0], // Mañana
+        time: '10:00',
+        comments: 'Cita de prueba creada desde administración',
+        status: 'pendiente',
+        createdAt: new Date().toISOString(),
+        confirmed: false
+    };
+    
+    const appointments = JSON.parse(localStorage.getItem('appointments')) || [];
+    appointments.push(testAppointment);
+    localStorage.setItem('appointments', JSON.stringify(appointments));
+    
+    loadAppointmentsList();
+    loadMunicipalAlerts();
+    updateAppointmentStats();
+    showNotification('Cita de prueba creada correctamente', 'success');
+}
+
+// Función para confirmar una cita
+function confirmAppointment(appointmentId) {
+    const appointments = JSON.parse(localStorage.getItem('appointments')) || [];
+    const appointmentIndex = appointments.findIndex(apt => apt.id === appointmentId);
+    
+    if (appointmentIndex !== -1) {
+        appointments[appointmentIndex].status = 'confirmada';
+        appointments[appointmentIndex].confirmedAt = new Date().toISOString();
+        appointments[appointmentIndex].confirmed = true;
+        
+        localStorage.setItem('appointments', JSON.stringify(appointments));
+        
+        // Enviar email de confirmación al usuario
+        sendAppointmentConfirmationEmail(appointments[appointmentIndex], 'confirmed');
+        
+        loadAppointmentsList();
+        loadMunicipalAlerts();
+        updateAppointmentStats();
+        showNotification('Cita confirmada correctamente', 'success');
+    }
+}
+
+// Función para cancelar una cita
+function cancelAppointment(appointmentId) {
+    if (confirm('¿Está seguro de que desea cancelar esta cita?')) {
+        const appointments = JSON.parse(localStorage.getItem('appointments')) || [];
+        const appointmentIndex = appointments.findIndex(apt => apt.id === appointmentId);
+        
+        if (appointmentIndex !== -1) {
+            appointments[appointmentIndex].status = 'cancelada';
+            appointments[appointmentIndex].cancelledAt = new Date().toISOString();
+            
+            localStorage.setItem('appointments', JSON.stringify(appointments));
+            
+            // Enviar email de cancelación al usuario
+            sendAppointmentConfirmationEmail(appointments[appointmentIndex], 'cancelled');
+            
+            loadAppointmentsList();
+            loadMunicipalAlerts();
+            updateAppointmentStats();
+            showNotification('Cita cancelada correctamente', 'success');
+        }
+    }
+}
+
+// Función para ver detalles de una cita
+function viewAppointmentDetails(appointmentId) {
+    const appointments = JSON.parse(localStorage.getItem('appointments')) || [];
+    const appointment = appointments.find(apt => apt.id === appointmentId);
+    
+    if (appointment) {
+        const details = `
+DETALLES DE LA CITA:
+
+👤 SOLICITANTE:
+- Nombre: ${appointment.name}
+- DNI: ${appointment.dni}
+- Email: ${appointment.email}
+- Teléfono: ${appointment.phone}
+
+📅 CITA:
+- Servicio: ${appointment.service}
+- Fecha: ${new Date(appointment.date).toLocaleDateString('es-ES')}
+- Hora: ${appointment.time}
+- Estado: ${getStatusText(appointment.status)}
+
+💬 COMENTARIOS:
+${appointment.comments || 'Sin comentarios'}
+
+🕒 INFORMACIÓN:
+- ID: ${appointment.id}
+- Solicitado: ${new Date(appointment.createdAt).toLocaleString('es-ES')}
+${appointment.confirmedAt ? `- Confirmado: ${new Date(appointment.confirmedAt).toLocaleString('es-ES')}` : ''}
+${appointment.cancelledAt ? `- Cancelado: ${new Date(appointment.cancelledAt).toLocaleString('es-ES')}` : ''}
+        `;
+        
+        alert(details);
+    }
+}
+
+// Función para editar una cita
+function editAppointment(appointmentId) {
+    const appointments = JSON.parse(localStorage.getItem('appointments')) || [];
+    const appointment = appointments.find(apt => apt.id === appointmentId);
+    
+    if (appointment) {
+        // Abrir modal de edición (implementar si es necesario)
+        showNotification('Función de edición en desarrollo', 'info');
+    }
+}
+
+// Función para obtener texto del estado
+function getStatusText(status) {
+    switch (status) {
+        case 'pendiente': return 'Pendiente';
+        case 'confirmada': return 'Confirmada';
+        case 'cancelada': return 'Cancelada';
+        default: return 'Desconocido';
+    }
+}
+
+// Función para actualizar estadísticas de citas
+function updateAppointmentStats() {
+    const appointments = JSON.parse(localStorage.getItem('appointments')) || [];
+    
+    const total = appointments.length;
+    const pending = appointments.filter(apt => apt.status === 'pendiente').length;
+    const confirmed = appointments.filter(apt => apt.status === 'confirmada').length;
+    const cancelled = appointments.filter(apt => apt.status === 'cancelada').length;
+    
+    const totalElement = document.getElementById('totalAppointments');
+    const pendingElement = document.getElementById('pendingAppointments');
+    const confirmedElement = document.getElementById('confirmedAppointments');
+    const cancelledElement = document.getElementById('cancelledAppointments');
+    
+    if (totalElement) totalElement.textContent = total;
+    if (pendingElement) pendingElement.textContent = pending;
+    if (confirmedElement) confirmedElement.textContent = confirmed;
+    if (cancelledElement) cancelledElement.textContent = cancelled;
+}
+
+// Función para enviar email de confirmación/cancelación
+async function sendAppointmentConfirmationEmail(appointment, type) {
+    try {
+        const subject = type === 'confirmed' 
+            ? 'Cita Previa Confirmada - Ayuntamiento de Cobreros'
+            : 'Cita Previa Cancelada - Ayuntamiento de Cobreros';
+            
+        const emailData = {
+            to: appointment.email,
+            from: 'aytocobrero@gmail.com',
+            subject: subject,
+            template: `appointment_${type}`,
+            data: {
+                name: appointment.name,
+                service: appointment.service,
+                date: new Date(appointment.date).toLocaleDateString('es-ES'),
+                time: appointment.time,
+                dni: appointment.dni,
+                appointmentId: appointment.id,
+                status: getStatusText(appointment.status)
+            }
+        };
+        
+        const response = await fetch('/api/send-email', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(emailData)
+        });
+        
+        if (response.ok) {
+            console.log(`✅ Email de ${type} enviado correctamente`);
+        } else {
+            console.error(`❌ Error al enviar email de ${type}`);
+        }
+        
+    } catch (error) {
+        console.error(`❌ Error al enviar email de ${type}:`, error);
+    }
+}
+
+// Función para inicializar la gestión de citas previas
+function initializeAppointmentManagement() {
+    // Cargar configuración inicial
+    loadAppointmentSchedule(); // Sistema nuevo
+    loadAppointmentSettings(); // Sistema antiguo
+    loadMunicipalAlerts();
+    loadAppointmentsList();
+    updateAppointmentStats();
+    
+    // Configurar modo de citas previas con verificación robusta
+    const enabledRadio = document.getElementById('appointmentEnabled');
+    const disabledRadio = document.getElementById('appointmentDisabled');
+    
+    if (enabledRadio && disabledRadio) {
+        // Verificar configuración guardada (priorizar sistema antiguo)
+        const oldSystem = localStorage.getItem('appointmentSettings');
+        const newSystem = localStorage.getItem('appointmentSchedule');
+        let isEnabled = true; // Valor por defecto
+        
+        // Priorizar sistema antiguo si existe
+        if (oldSystem) {
+            try {
+                const config = JSON.parse(oldSystem);
+                isEnabled = config.enabled !== false;
+                console.log('📅 Usando configuración del sistema antiguo:', isEnabled ? 'CITA PREVIA' : 'SIN CITA PREVIA');
+            } catch (error) {
+                console.error('❌ Error cargando sistema antiguo:', error);
+            }
+        } else if (newSystem) {
+            try {
+                const config = JSON.parse(newSystem);
+                isEnabled = config.enabled !== false;
+                console.log('📅 Usando configuración del sistema nuevo:', isEnabled ? 'CITA PREVIA' : 'SIN CITA PREVIA');
+            } catch (error) {
+                console.error('❌ Error cargando sistema nuevo:', error);
+            }
+        }
+        
+        // SINCRONIZAR AMBOS SISTEMAS
+        appointmentSchedule.enabled = isEnabled;
+        appointmentsEnabled = isEnabled;
+        
+        // Configurar radio buttons
+        if (isEnabled) {
+            enabledRadio.checked = true;
+            disabledRadio.checked = false;
+        } else {
+            enabledRadio.checked = false;
+            disabledRadio.checked = true;
+        }
+        
+        // Guardar configuración en ambos sistemas para asegurar sincronización
+        saveAppointmentSchedule();
+        const oldSystemSettings = {
+            enabled: isEnabled,
+            updatedBy: 'sistema',
+            updatedAt: new Date().toISOString(),
+            version: '1.0'
+        };
+        localStorage.setItem('appointmentSettings', JSON.stringify(oldSystemSettings));
+        
+        console.log('📅 Configuración sincronizada en ambos sistemas:', isEnabled ? 'CITA PREVIA' : 'SIN CITA PREVIA');
+    }
+    
+    console.log('📅 Gestión de citas previas inicializada');
+}
+
+// Función para actualizar el estado de citas previas en la página principal
+function updateAppointmentStatus() {
+    // Asegurar que la configuración esté cargada en ambos sistemas
+    loadAppointmentSchedule(); // Sistema nuevo
+    loadAppointmentSettings(); // Sistema antiguo
+    
+    const statusBadge = document.getElementById('statusBadge');
+    const statusText = document.getElementById('statusText');
+    const appointmentDescription = document.getElementById('appointmentDescription');
+    const toggleButton = document.getElementById('toggleAppointmentForm');
+    
+    if (!statusBadge || !statusText || !appointmentDescription || !toggleButton) {
+        console.warn('⚠️ Elementos de UI de citas previas no encontrados');
+        return;
+    }
+    
+    // Verificar configuración con fallback (priorizar sistema antiguo)
+    let isEnabled = true; // Valor por defecto
+    
+    if (appointmentsEnabled !== null) {
+        isEnabled = appointmentsEnabled;
+        console.log('📅 Usando sistema antiguo (appointmentsEnabled):', isEnabled ? 'CITA PREVIA' : 'SIN CITA PREVIA');
+    } else if (appointmentSchedule.enabled !== undefined) {
+        isEnabled = appointmentSchedule.enabled !== false;
+        console.log('📅 Usando sistema nuevo (appointmentSchedule):', isEnabled ? 'CITA PREVIA' : 'SIN CITA PREVIA');
+    }
+    
+    if (isEnabled) {
+        statusBadge.innerHTML = '<i class="fas fa-calendar-check"></i><span id="statusText">CITA PREVIA</span>';
+        statusText.textContent = 'CITA PREVIA';
+        appointmentDescription.textContent = 'Para solicitar una cita previa, complete el formulario a continuación. Le contactaremos para confirmar la fecha y hora.';
+        toggleButton.style.display = 'inline-block';
+        console.log('📅 Estado actualizado: CITA PREVIA');
+    } else {
+        statusBadge.innerHTML = '<i class="fas fa-calendar-times"></i><span id="statusText">SIN CITA PREVIA</span>';
+        statusText.textContent = 'SIN CITA PREVIA';
+        appointmentDescription.textContent = 'Actualmente se atiende sin cita previa. Puede acudir directamente al ayuntamiento en horario de atención.';
+        toggleButton.style.display = 'none';
+        console.log('📅 Estado actualizado: SIN CITA PREVIA');
+    }
+    
+    // Sincronizar ambos sistemas
+    appointmentSchedule.enabled = isEnabled;
+    appointmentsEnabled = isEnabled;
+    
+    // Guardar configuración en ambos sistemas para asegurar persistencia
+    saveAppointmentSchedule();
+    const oldSystemSettings = {
+        enabled: isEnabled,
+        updatedBy: 'sistema',
+        updatedAt: new Date().toISOString(),
+        version: '1.0'
+    };
+    localStorage.setItem('appointmentSettings', JSON.stringify(oldSystemSettings));
+}
+
+// ===== GESTIÓN DE USUARIOS EN ADMINISTRACIÓN =====
+
+// Función para cargar la lista de usuarios
+function loadUsersList() {
+    const usersList = document.getElementById('usersList');
+    if (!usersList) return;
+    
+    // Obtener usuarios de diferentes fuentes
+    const appointments = JSON.parse(localStorage.getItem('appointments')) || [];
+    const notifications = JSON.parse(localStorage.getItem('userNotifications')) || [];
+    const documents = JSON.parse(localStorage.getItem('documents')) || [];
+    
+    // Crear mapa de usuarios únicos
+    const usersMap = new Map();
+    
+    // Agregar usuarios de citas previas
+    appointments.forEach(appointment => {
+        if (appointment.email && appointment.name) {
+            const userId = appointment.email.toLowerCase();
+            if (!usersMap.has(userId)) {
+                usersMap.set(userId, {
+                    id: userId,
+                    name: appointment.name,
+                    email: appointment.email,
+                    phone: appointment.phone,
+                    dni: appointment.dni,
+                    source: 'Cita Previa',
+                    firstSeen: appointment.createdAt,
+                    lastSeen: appointment.createdAt,
+                    appointments: 1,
+                    notifications: 0,
+                    documents: 0
+                });
+            } else {
+                const user = usersMap.get(userId);
+                user.appointments++;
+                if (new Date(appointment.createdAt) > new Date(user.lastSeen)) {
+                    user.lastSeen = appointment.createdAt;
+                }
+            }
+        }
+    });
+    
+    // Agregar usuarios de notificaciones
+    notifications.forEach(notification => {
+        if (notification.email && notification.name) {
+            const userId = notification.email.toLowerCase();
+            if (!usersMap.has(userId)) {
+                usersMap.set(userId, {
+                    id: userId,
+                    name: notification.name,
+                    email: notification.email,
+                    phone: notification.phone || 'No disponible',
+                    dni: notification.dni || 'No disponible',
+                    source: 'Notificación',
+                    firstSeen: notification.createdAt,
+                    lastSeen: notification.createdAt,
+                    appointments: 0,
+                    notifications: 1,
+                    documents: 0
+                });
+            } else {
+                const user = usersMap.get(userId);
+                user.notifications++;
+                if (new Date(notification.createdAt) > new Date(user.lastSeen)) {
+                    user.lastSeen = notification.createdAt;
+                }
+            }
+        }
+    });
+    
+    // Agregar usuarios de documentos
+    documents.forEach(document => {
+        if (document.uploadedBy) {
+            const userId = document.uploadedBy.toLowerCase();
+            if (!usersMap.has(userId)) {
+                usersMap.set(userId, {
+                    id: userId,
+                    name: document.uploadedBy,
+                    email: document.uploadedBy,
+                    phone: 'No disponible',
+                    dni: 'No disponible',
+                    source: 'Documento',
+                    firstSeen: document.uploadedAt,
+                    lastSeen: document.uploadedAt,
+                    appointments: 0,
+                    notifications: 0,
+                    documents: 1
+                });
+            } else {
+                const user = usersMap.get(userId);
+                user.documents++;
+                if (new Date(document.uploadedAt) > new Date(user.lastSeen)) {
+                    user.lastSeen = document.uploadedAt;
+                }
+            }
+        }
+    });
+    
+    const users = Array.from(usersMap.values());
+    
+    if (users.length === 0) {
+        usersList.innerHTML = '<div class="no-data">No hay usuarios registrados</div>';
+    } else {
+        usersList.innerHTML = users.map(user => `
+            <div class="user-item" data-user-id="${user.id}">
+                <div class="user-header">
+                    <div class="user-info">
+                        <h5>${user.name}</h5>
+                        <span class="user-email">${user.email}</span>
+                    </div>
+                    <div class="user-stats">
+                        <span class="stat-badge">📅 ${user.appointments} citas</span>
+                        <span class="stat-badge">📢 ${user.notifications} notif.</span>
+                        <span class="stat-badge">📄 ${user.documents} docs</span>
+                    </div>
+                </div>
+                <div class="user-details">
+                    <div class="detail-row">
+                        <span class="detail-label">📞 Teléfono:</span>
+                        <span class="detail-value">${user.phone}</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">🆔 DNI:</span>
+                        <span class="detail-value">${user.dni}</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">📅 Primera vez:</span>
+                        <span class="detail-value">${new Date(user.firstSeen).toLocaleDateString('es-ES')}</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">🕒 Última vez:</span>
+                        <span class="detail-value">${new Date(user.lastSeen).toLocaleDateString('es-ES')}</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">🔗 Fuente:</span>
+                        <span class="detail-value">${user.source}</span>
+                    </div>
+                </div>
+                <div class="user-actions">
+                    <button class="btn btn-sm btn-primary" onclick="viewUserDetails('${user.id}')">
+                        <i class="fas fa-eye"></i> Ver Detalles
+                    </button>
+                    <button class="btn btn-sm btn-success" onclick="contactUser('${user.email}')">
+                        <i class="fas fa-envelope"></i> Contactar
+                    </button>
+                    <button class="btn btn-sm btn-warning" onclick="viewUserHistory('${user.id}')">
+                        <i class="fas fa-history"></i> Historial
+                    </button>
+                </div>
+            </div>
+        `).join('');
+    }
+}
+
+// Función para exportar usuarios
+function exportUsers() {
+    try {
+        // Obtener usuarios de diferentes fuentes
+        const appointments = JSON.parse(localStorage.getItem('appointments')) || [];
+        const notifications = JSON.parse(localStorage.getItem('userNotifications')) || [];
+        const documents = JSON.parse(localStorage.getItem('documents')) || [];
+        
+        // Crear mapa de usuarios únicos
+        const usersMap = new Map();
+        
+        // Agregar usuarios de citas previas
+        appointments.forEach(appointment => {
+            if (appointment.email && appointment.name) {
+                const userId = appointment.email.toLowerCase();
+                if (!usersMap.has(userId)) {
+                    usersMap.set(userId, {
+                        nombre: appointment.name,
+                        email: appointment.email,
+                        telefono: appointment.phone,
+                        dni: appointment.dni,
+                        fuente: 'Cita Previa',
+                        primera_vez: new Date(appointment.createdAt).toLocaleDateString('es-ES'),
+                        ultima_vez: new Date(appointment.createdAt).toLocaleDateString('es-ES'),
+                        citas_previas: 1,
+                        notificaciones: 0,
+                        documentos: 0
+                    });
+                } else {
+                    const user = usersMap.get(userId);
+                    user.citas_previas++;
+                    if (new Date(appointment.createdAt) > new Date(user.ultima_vez)) {
+                        user.ultima_vez = new Date(appointment.createdAt).toLocaleDateString('es-ES');
+                    }
+                }
+            }
+        });
+        
+        // Agregar usuarios de notificaciones
+        notifications.forEach(notification => {
+            if (notification.email && notification.name) {
+                const userId = notification.email.toLowerCase();
+                if (!usersMap.has(userId)) {
+                    usersMap.set(userId, {
+                        nombre: notification.name,
+                        email: notification.email,
+                        telefono: notification.phone || 'No disponible',
+                        dni: notification.dni || 'No disponible',
+                        fuente: 'Notificación',
+                        primera_vez: new Date(notification.createdAt).toLocaleDateString('es-ES'),
+                        ultima_vez: new Date(notification.createdAt).toLocaleDateString('es-ES'),
+                        citas_previas: 0,
+                        notificaciones: 1,
+                        documentos: 0
+                    });
+                } else {
+                    const user = usersMap.get(userId);
+                    user.notificaciones++;
+                    if (new Date(notification.createdAt) > new Date(user.ultima_vez)) {
+                        user.ultima_vez = new Date(notification.createdAt).toLocaleDateString('es-ES');
+                    }
+                }
+            }
+        });
+        
+        // Agregar usuarios de documentos
+        documents.forEach(document => {
+            if (document.uploadedBy) {
+                const userId = document.uploadedBy.toLowerCase();
+                if (!usersMap.has(userId)) {
+                    usersMap.set(userId, {
+                        nombre: document.uploadedBy,
+                        email: document.uploadedBy,
+                        telefono: 'No disponible',
+                        dni: 'No disponible',
+                        fuente: 'Documento',
+                        primera_vez: new Date(document.uploadedAt).toLocaleDateString('es-ES'),
+                        ultima_vez: new Date(document.uploadedAt).toLocaleDateString('es-ES'),
+                        citas_previas: 0,
+                        notificaciones: 0,
+                        documentos: 1
+                    });
+                } else {
+                    const user = usersMap.get(userId);
+                    user.documentos++;
+                    if (new Date(document.uploadedAt) > new Date(user.ultima_vez)) {
+                        user.ultima_vez = new Date(document.uploadedAt).toLocaleDateString('es-ES');
+                    }
+                }
+            }
+        });
+        
+        const users = Array.from(usersMap.values());
+        
+        if (users.length === 0) {
+            showNotification('No hay usuarios para exportar', 'warning');
+            return;
+        }
+        
+        // Crear CSV
+        const headers = ['Nombre', 'Email', 'Teléfono', 'DNI', 'Fuente', 'Primera Vez', 'Última Vez', 'Citas Previas', 'Notificaciones', 'Documentos'];
+        const csvContent = [
+            headers.join(','),
+            ...users.map(user => [
+                `"${user.nombre}"`,
+                `"${user.email}"`,
+                `"${user.telefono}"`,
+                `"${user.dni}"`,
+                `"${user.fuente}"`,
+                `"${user.primera_vez}"`,
+                `"${user.ultima_vez}"`,
+                user.citas_previas,
+                user.notificaciones,
+                user.documentos
+            ].join(','))
+        ].join('\n');
+        
+        // Descargar archivo
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        const url = URL.createObjectURL(blob);
+        link.setAttribute('href', url);
+        link.setAttribute('download', `usuarios_ayuntamiento_cobreros_${new Date().toISOString().split('T')[0]}.csv`);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        showNotification(`Exportados ${users.length} usuarios correctamente`, 'success');
+        
+    } catch (error) {
+        console.error('Error al exportar usuarios:', error);
+        showNotification('Error al exportar usuarios', 'error');
+    }
+}
+
+// Función para mostrar estadísticas de usuarios
+function showUserStats() {
+    const appointments = JSON.parse(localStorage.getItem('appointments')) || [];
+    const notifications = JSON.parse(localStorage.getItem('userNotifications')) || [];
+    const documents = JSON.parse(localStorage.getItem('documents')) || [];
+    
+    // Calcular estadísticas
+    const totalUsers = new Set();
+    const usersBySource = {
+        citas: new Set(),
+        notificaciones: new Set(),
+        documentos: new Set()
+    };
+    
+    appointments.forEach(apt => {
+        if (apt.email) {
+            totalUsers.add(apt.email.toLowerCase());
+            usersBySource.citas.add(apt.email.toLowerCase());
+        }
+    });
+    
+    notifications.forEach(notif => {
+        if (notif.email) {
+            totalUsers.add(notif.email.toLowerCase());
+            usersBySource.notificaciones.add(notif.email.toLowerCase());
+        }
+    });
+    
+    documents.forEach(doc => {
+        if (doc.uploadedBy) {
+            totalUsers.add(doc.uploadedBy.toLowerCase());
+            usersBySource.documentos.add(doc.uploadedBy.toLowerCase());
+        }
+    });
+    
+    const stats = `
+📊 ESTADÍSTICAS DE USUARIOS
+
+👥 USUARIOS TOTALES: ${totalUsers.size}
+
+📅 Por Citas Previas: ${usersBySource.citas.size}
+📢 Por Notificaciones: ${usersBySource.notificaciones.size}
+📄 Por Documentos: ${usersBySource.documentos.size}
+
+📈 ACTIVIDAD:
+- Total Citas: ${appointments.length}
+- Total Notificaciones: ${notifications.length}
+- Total Documentos: ${documents.length}
+
+🕒 PERÍODO:
+- Desde: ${appointments.length > 0 ? new Date(Math.min(...appointments.map(a => new Date(a.createdAt)))).toLocaleDateString('es-ES') : 'N/A'}
+- Hasta: ${new Date().toLocaleDateString('es-ES')}
+    `;
+    
+    alert(stats);
+}
+
+// Función para ver detalles de un usuario
+function viewUserDetails(userId) {
+    const appointments = JSON.parse(localStorage.getItem('appointments')) || [];
+    const notifications = JSON.parse(localStorage.getItem('userNotifications')) || [];
+    const documents = JSON.parse(localStorage.getItem('documents')) || [];
+    
+    // Buscar usuario
+    let user = null;
+    let userAppointments = [];
+    let userNotifications = [];
+    let userDocuments = [];
+    
+    // Buscar en citas
+    appointments.forEach(apt => {
+        if (apt.email && apt.email.toLowerCase() === userId) {
+            if (!user) {
+                user = {
+                    name: apt.name,
+                    email: apt.email,
+                    phone: apt.phone,
+                    dni: apt.dni
+                };
+            }
+            userAppointments.push(apt);
+        }
+    });
+    
+    // Buscar en notificaciones
+    notifications.forEach(notif => {
+        if (notif.email && notif.email.toLowerCase() === userId) {
+            if (!user) {
+                user = {
+                    name: notif.name,
+                    email: notif.email,
+                    phone: notif.phone || 'No disponible',
+                    dni: notif.dni || 'No disponible'
+                };
+            }
+            userNotifications.push(notif);
+        }
+    });
+    
+    // Buscar en documentos
+    documents.forEach(doc => {
+        if (doc.uploadedBy && doc.uploadedBy.toLowerCase() === userId) {
+            if (!user) {
+                user = {
+                    name: doc.uploadedBy,
+                    email: doc.uploadedBy,
+                    phone: 'No disponible',
+                    dni: 'No disponible'
+                };
+            }
+            userDocuments.push(doc);
+        }
+    });
+    
+    if (!user) {
+        showNotification('Usuario no encontrado', 'error');
+        return;
+    }
+    
+    const details = `
+👤 DETALLES DEL USUARIO
+
+📋 INFORMACIÓN PERSONAL:
+- Nombre: ${user.name}
+- Email: ${user.email}
+- Teléfono: ${user.phone}
+- DNI: ${user.dni}
+
+📅 CITAS PREVIAS: ${userAppointments.length}
+${userAppointments.map(apt => `- ${apt.service} (${new Date(apt.date).toLocaleDateString('es-ES')} ${apt.time}) - ${apt.status}`).join('\n')}
+
+📢 NOTIFICACIONES: ${userNotifications.length}
+${userNotifications.map(notif => `- ${notif.title} (${new Date(notif.createdAt).toLocaleDateString('es-ES')})`).join('\n')}
+
+📄 DOCUMENTOS: ${userDocuments.length}
+${userDocuments.map(doc => `- ${doc.name} (${new Date(doc.uploadedAt).toLocaleDateString('es-ES')})`).join('\n')}
+    `;
+    
+    alert(details);
+}
+
+// Función para contactar a un usuario
+function contactUser(email) {
+    const subject = 'Ayuntamiento de Cobreros - Comunicación';
+    const body = 'Estimado/a ciudadano/a,\n\n';
+    const mailtoLink = `mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    window.open(mailtoLink);
+}
+
+// Función para ver historial de un usuario
+function viewUserHistory(userId) {
+    const appointments = JSON.parse(localStorage.getItem('appointments')) || [];
+    const notifications = JSON.parse(localStorage.getItem('userNotifications')) || [];
+    const documents = JSON.parse(localStorage.getItem('documents')) || [];
+    
+    // Recopilar todo el historial
+    const history = [];
+    
+    appointments.forEach(apt => {
+        if (apt.email && apt.email.toLowerCase() === userId) {
+            history.push({
+                type: 'Cita Previa',
+                date: apt.createdAt,
+                details: `${apt.service} - ${new Date(apt.date).toLocaleDateString('es-ES')} ${apt.time}`,
+                status: apt.status
+            });
+        }
+    });
+    
+    notifications.forEach(notif => {
+        if (notif.email && notif.email.toLowerCase() === userId) {
+            history.push({
+                type: 'Notificación',
+                date: notif.createdAt,
+                details: notif.title,
+                status: 'Enviada'
+            });
+        }
+    });
+    
+    documents.forEach(doc => {
+        if (doc.uploadedBy && doc.uploadedBy.toLowerCase() === userId) {
+            history.push({
+                type: 'Documento',
+                date: doc.uploadedAt,
+                details: doc.name,
+                status: 'Subido'
+            });
+        }
+    });
+    
+    // Ordenar por fecha
+    history.sort((a, b) => new Date(b.date) - new Date(a.date));
+    
+    if (history.length === 0) {
+        showNotification('No hay historial disponible', 'info');
+        return;
+    }
+    
+    const historyText = `
+📜 HISTORIAL DEL USUARIO
+
+${history.map(item => `
+${item.type} - ${new Date(item.date).toLocaleString('es-ES')}
+${item.details}
+Estado: ${item.status}
+---`).join('\n')}
+    `;
+    
+    alert(historyText);
+}
+
+// Función para inicializar la gestión de usuarios
+function initializeUserManagement() {
+    loadUsersList();
+    console.log('👥 Gestión de usuarios inicializada');
+}
+
+// ===== GESTIÓN DE DATOS Y ENLACES =====
+
+// Configuración de datos y enlaces
+let dataLinksConfig = {
+    medical: {
+        title: '🏥 CONSULTORIO MÉDICO',
+        icon: '🏥',
+        enabled: true,
+        content: []
+    },
+    itv: {
+        title: '🚗 ITV',
+        icon: '🚗',
+        enabled: true,
+        content: []
+    },
+    phones: {
+        title: '📞 Teléfonos de Interés',
+        icon: '📞',
+        enabled: true,
+        content: []
+    },
+    transport: {
+        title: '🚌 Líneas de Transporte',
+        icon: '🚌',
+        enabled: true,
+        content: []
+    }
+};
+
+// Función para cargar configuración de datos y enlaces
+function loadDataLinksConfig() {
+    const saved = localStorage.getItem('dataLinksConfig');
+    if (saved) {
+        dataLinksConfig = { ...dataLinksConfig, ...JSON.parse(saved) };
+    }
+}
+
+// Función para guardar configuración de datos y enlaces
+function saveDataLinksConfig() {
+    localStorage.setItem('dataLinksConfig', JSON.stringify(dataLinksConfig));
+}
+
+// Función para cargar lista del consultorio médico
+function loadConsultorioList() {
+    const consultorioList = document.getElementById('consultorioList');
+    if (!consultorioList) return;
+    
+    const medicalContent = dataLinksConfig.medical.content;
+    
+    if (medicalContent.length === 0) {
+        consultorioList.innerHTML = '<div class="no-data">No hay contenido disponible para el consultorio médico.</div>';
+    } else {
+        consultorioList.innerHTML = medicalContent.map(item => `
+            <div class="content-item">
+                <div class="content-info">
+                    <h5>${item.title}</h5>
+                    <p>${item.description}</p>
+                    ${item.schedule ? `<small>📅 ${item.schedule}</small>` : ''}
+                </div>
+                <div class="content-actions">
+                    <button class="btn btn-sm btn-primary" onclick="editConsultorioItem('${item.id}')">
+                        <i class="fas fa-edit"></i> Editar
+                    </button>
+                    <button class="btn btn-sm btn-danger" onclick="deleteConsultorioItem('${item.id}')">
+                        <i class="fas fa-trash"></i> Eliminar
+                    </button>
+                </div>
+            </div>
+        `).join('');
+    }
+}
+
+// Función para cargar lista de ITV
+function loadItvList() {
+    const itvList = document.getElementById('itvList');
+    if (!itvList) return;
+    
+    const itvContent = dataLinksConfig.itv.content;
+    
+    if (itvContent.length === 0) {
+        itvList.innerHTML = '<div class="no-data">No hay contenido disponible para ITV.</div>';
+    } else {
+        itvList.innerHTML = itvContent.map(item => `
+            <div class="content-item">
+                <div class="content-info">
+                    <h5>${item.title}</h5>
+                    <p>${item.description}</p>
+                    ${item.address ? `<small>📍 ${item.address}</small>` : ''}
+                    ${item.phone ? `<small>📞 ${item.phone}</small>` : ''}
+                    ${item.schedule ? `<small>📅 ${item.schedule}</small>` : ''}
+                </div>
+                <div class="content-actions">
+                    <button class="btn btn-sm btn-primary" onclick="editItvItem('${item.id}')">
+                        <i class="fas fa-edit"></i> Editar
+                    </button>
+                    <button class="btn btn-sm btn-danger" onclick="deleteItvItem('${item.id}')">
+                        <i class="fas fa-trash"></i> Eliminar
+                    </button>
+                </div>
+            </div>
+        `).join('');
+    }
+}
+
+// Función para cargar lista de teléfonos de interés
+function loadTelefonosElementosList() {
+    const telefonosList = document.getElementById('telefonosElementosList');
+    if (!telefonosList) return;
+    
+    const phonesContent = dataLinksConfig.phones.content;
+    
+    if (phonesContent.length === 0) {
+        telefonosList.innerHTML = '<div class="no-data">No hay teléfonos de interés configurados.</div>';
+    } else {
+        telefonosList.innerHTML = phonesContent.map(item => `
+            <div class="content-item">
+                <div class="content-info">
+                    <h5>${item.icon} ${item.title}</h5>
+                    <p>${item.description}</p>
+                    <small>Tipo: ${item.type} | Orden: ${item.order}</small>
+                </div>
+                <div class="content-actions">
+                    <button class="btn btn-sm btn-primary" onclick="editTelefonoItem('${item.id}')">
+                        <i class="fas fa-edit"></i> Editar
+                    </button>
+                    <button class="btn btn-sm btn-danger" onclick="deleteTelefonoItem('${item.id}')">
+                        <i class="fas fa-trash"></i> Eliminar
+                    </button>
+                </div>
+            </div>
+        `).join('');
+    }
+}
+
+// Función para cargar lista de líneas de transporte
+function loadTransporteLinesList() {
+    const transporteList = document.getElementById('transporteLinesList');
+    if (!transporteList) return;
+    
+    const transportContent = dataLinksConfig.transport.content;
+    
+    if (transportContent.length === 0) {
+        transporteList.innerHTML = '<div class="no-data">No hay líneas de transporte configuradas.</div>';
+    } else {
+        transporteList.innerHTML = transportContent.map(item => `
+            <div class="content-item">
+                <div class="content-info">
+                    <h5>${item.icon} ${item.title}</h5>
+                    <p>${item.description}</p>
+                    ${item.route ? `<small>🛣️ ${item.route}</small>` : ''}
+                    ${item.schedule ? `<small>📅 ${item.schedule}</small>` : ''}
+                </div>
+                <div class="content-actions">
+                    <button class="btn btn-sm btn-primary" onclick="editTransporteItem('${item.id}')">
+                        <i class="fas fa-edit"></i> Editar
+                    </button>
+                    <button class="btn btn-sm btn-danger" onclick="deleteTransporteItem('${item.id}')">
+                        <i class="fas fa-trash"></i> Eliminar
+                    </button>
+                </div>
+            </div>
+        `).join('');
+    }
+}
+
+// Función para abrir modal del consultorio médico
+function openConsultorioModal() {
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.innerHTML = `
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>🏥 Editar Consultorio Médico</h3>
+                <span class="close" onclick="this.closest('.modal').remove()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form id="consultorioForm">
+                    <div class="form-group">
+                        <label for="consultorioTitle">Título:</label>
+                        <input type="text" id="consultorioTitle" name="title" value="${dataLinksConfig.medical.title}" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="consultorioIcon">Icono:</label>
+                        <input type="text" id="consultorioIcon" name="icon" value="${dataLinksConfig.medical.icon}" required>
+                    </div>
+                    <div class="form-group">
+                        <label>
+                            <input type="checkbox" id="consultorioEnabled" name="enabled" ${dataLinksConfig.medical.enabled ? 'checked' : ''}>
+                            Sección habilitada
+                        </label>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-primary" onclick="saveConsultorioConfig()">Guardar</button>
+                <button class="btn btn-secondary" onclick="this.closest('.modal').remove()">Cancelar</button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+}
+
+// Función para guardar configuración del consultorio
+function saveConsultorioConfig() {
+    const title = document.getElementById('consultorioTitle').value;
+    const icon = document.getElementById('consultorioIcon').value;
+    const enabled = document.getElementById('consultorioEnabled').checked;
+    
+    dataLinksConfig.medical.title = title;
+    dataLinksConfig.medical.icon = icon;
+    dataLinksConfig.medical.enabled = enabled;
+    
+    saveDataLinksConfig();
+    updateMainPageSections();
+    
+    document.querySelector('.modal').remove();
+    showNotification('Configuración del consultorio médico guardada', 'success');
+}
+
+// Función para abrir modal de ITV
+function openItvModal() {
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.innerHTML = `
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>🚗 Editar ITV</h3>
+                <span class="close" onclick="this.closest('.modal').remove()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form id="itvForm">
+                    <div class="form-group">
+                        <label for="itvTitle">Título:</label>
+                        <input type="text" id="itvTitle" name="title" value="${dataLinksConfig.itv.title}" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="itvIcon">Icono:</label>
+                        <input type="text" id="itvIcon" name="icon" value="${dataLinksConfig.itv.icon}" required>
+                    </div>
+                    <div class="form-group">
+                        <label>
+                            <input type="checkbox" id="itvEnabled" name="enabled" ${dataLinksConfig.itv.enabled ? 'checked' : ''}>
+                            Sección habilitada
+                        </label>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-primary" onclick="saveItvConfig()">Guardar</button>
+                <button class="btn btn-secondary" onclick="this.closest('.modal').remove()">Cancelar</button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+}
+
+// Función para guardar configuración de ITV
+function saveItvConfig() {
+    const title = document.getElementById('itvTitle').value;
+    const icon = document.getElementById('itvIcon').value;
+    const enabled = document.getElementById('itvEnabled').checked;
+    
+    dataLinksConfig.itv.title = title;
+    dataLinksConfig.itv.icon = icon;
+    dataLinksConfig.itv.enabled = enabled;
+    
+    saveDataLinksConfig();
+    updateMainPageSections();
+    
+    document.querySelector('.modal').remove();
+    showNotification('Configuración de ITV guardada', 'success');
+}
+
+// Función para abrir modal de teléfonos de interés
+function openTelefonosInteresModal() {
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.innerHTML = `
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>📞 Configurar Teléfonos de Interés</h3>
+                <span class="close" onclick="this.closest('.modal').remove()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form id="telefonosForm">
+                    <div class="form-group">
+                        <label for="telefonosTitle">Título:</label>
+                        <input type="text" id="telefonosTitle" name="title" value="${dataLinksConfig.phones.title}" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="telefonosIcon">Icono:</label>
+                        <input type="text" id="telefonosIcon" name="icon" value="${dataLinksConfig.phones.icon}" required>
+                    </div>
+                    <div class="form-group">
+                        <label>
+                            <input type="checkbox" id="telefonosEnabled" name="enabled" ${dataLinksConfig.phones.enabled ? 'checked' : ''}>
+                            Sección habilitada
+                        </label>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-primary" onclick="saveTelefonosConfig()">Guardar</button>
+                <button class="btn btn-secondary" onclick="this.closest('.modal').remove()">Cancelar</button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+}
+
+// Función para guardar configuración de teléfonos
+function saveTelefonosConfig() {
+    const title = document.getElementById('telefonosTitle').value;
+    const icon = document.getElementById('telefonosIcon').value;
+    const enabled = document.getElementById('telefonosEnabled').checked;
+    
+    dataLinksConfig.phones.title = title;
+    dataLinksConfig.phones.icon = icon;
+    dataLinksConfig.phones.enabled = enabled;
+    
+    saveDataLinksConfig();
+    updateMainPageSections();
+    
+    document.querySelector('.modal').remove();
+    showNotification('Configuración de teléfonos guardada', 'success');
+}
+
+// Función para abrir modal de nuevo elemento de teléfono
+function openTelefonoElementoModal() {
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.innerHTML = `
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>📞 Nuevo Teléfono de Interés</h3>
+                <span class="close" onclick="this.closest('.modal').remove()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form id="telefonoElementoForm">
+                    <div class="form-group">
+                        <label for="telefonoIcon">Icono:</label>
+                        <input type="text" id="telefonoIcon" name="icon" placeholder="🚕" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="telefonoTitle">Título:</label>
+                        <input type="text" id="telefonoTitle" name="title" placeholder="Taxis" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="telefonoDescription">Descripción:</label>
+                        <textarea id="telefonoDescription" name="description" placeholder="Servicio de taxis locales" required></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="telefonoType">Tipo:</label>
+                        <select id="telefonoType" name="type" required>
+                            <option value="telefonos">Teléfonos</option>
+                            <option value="servicio">Servicio</option>
+                            <option value="documento">Documento</option>
+                            <option value="emergencia">Emergencia</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="telefonoOrder">Orden:</label>
+                        <input type="number" id="telefonoOrder" name="order" value="${dataLinksConfig.phones.content.length + 1}" min="1" required>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-primary" onclick="saveTelefonoElemento()">Guardar</button>
+                <button class="btn btn-secondary" onclick="this.closest('.modal').remove()">Cancelar</button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+}
+
+// Función para guardar nuevo elemento de teléfono
+function saveTelefonoElemento() {
+    const icon = document.getElementById('telefonoIcon').value;
+    const title = document.getElementById('telefonoTitle').value;
+    const description = document.getElementById('telefonoDescription').value;
+    const type = document.getElementById('telefonoType').value;
+    const order = parseInt(document.getElementById('telefonoOrder').value);
+    
+    const newItem = {
+        id: `phone_${Date.now()}`,
+        icon: icon,
+        title: title,
+        description: description,
+        type: type,
+        order: order,
+        createdAt: new Date().toISOString()
+    };
+    
+    dataLinksConfig.phones.content.push(newItem);
+    dataLinksConfig.phones.content.sort((a, b) => a.order - b.order);
+    
+    saveDataLinksConfig();
+    loadTelefonosElementosList();
+    updateMainPageSections();
+    
+    document.querySelector('.modal').remove();
+    showNotification('Teléfono de interés agregado correctamente', 'success');
+}
+
+// Función para abrir modal de transporte
+function openTransporteModal() {
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.innerHTML = `
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>🚌 Configurar Líneas de Transporte</h3>
+                <span class="close" onclick="this.closest('.modal').remove()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form id="transporteForm">
+                    <div class="form-group">
+                        <label for="transporteTitle">Título:</label>
+                        <input type="text" id="transporteTitle" name="title" value="${dataLinksConfig.transport.title}" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="transporteIcon">Icono:</label>
+                        <input type="text" id="transporteIcon" name="icon" value="${dataLinksConfig.transport.icon}" required>
+                    </div>
+                    <div class="form-group">
+                        <label>
+                            <input type="checkbox" id="transporteEnabled" name="enabled" ${dataLinksConfig.transport.enabled ? 'checked' : ''}>
+                            Sección habilitada
+                        </label>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-primary" onclick="saveTransporteConfig()">Guardar</button>
+                <button class="btn btn-secondary" onclick="this.closest('.modal').remove()">Cancelar</button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+}
+
+// Función para guardar configuración de transporte
+function saveTransporteConfig() {
+    const title = document.getElementById('transporteTitle').value;
+    const icon = document.getElementById('transporteIcon').value;
+    const enabled = document.getElementById('transporteEnabled').checked;
+    
+    dataLinksConfig.transport.title = title;
+    dataLinksConfig.transport.icon = icon;
+    dataLinksConfig.transport.enabled = enabled;
+    
+    saveDataLinksConfig();
+    updateMainPageSections();
+    
+    document.querySelector('.modal').remove();
+    showNotification('Configuración de transporte guardada', 'success');
+}
+
+// Función para abrir modal de nueva línea de transporte
+function openTransporteLineaModal() {
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.innerHTML = `
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>🚌 Nueva Línea de Transporte</h3>
+                <span class="close" onclick="this.closest('.modal').remove()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form id="transporteLineaForm">
+                    <div class="form-group">
+                        <label for="lineaIcon">Icono:</label>
+                        <input type="text" id="lineaIcon" name="icon" placeholder="🚌" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="lineaTitle">Título:</label>
+                        <input type="text" id="lineaTitle" name="title" placeholder="Línea 1" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="lineaDescription">Descripción:</label>
+                        <textarea id="lineaDescription" name="description" placeholder="Ruta principal" required></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="lineaRoute">Ruta:</label>
+                        <input type="text" id="lineaRoute" name="route" placeholder="Cobreros - Puebla de Sanabria">
+                    </div>
+                    <div class="form-group">
+                        <label for="lineaSchedule">Horario:</label>
+                        <input type="text" id="lineaSchedule" name="schedule" placeholder="Lunes a Viernes - 08:00-18:00">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-primary" onclick="saveTransporteLinea()">Guardar</button>
+                <button class="btn btn-secondary" onclick="this.closest('.modal').remove()">Cancelar</button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+}
+
+// Función para guardar nueva línea de transporte
+function saveTransporteLinea() {
+    const icon = document.getElementById('lineaIcon').value;
+    const title = document.getElementById('lineaTitle').value;
+    const description = document.getElementById('lineaDescription').value;
+    const route = document.getElementById('lineaRoute').value;
+    const schedule = document.getElementById('lineaSchedule').value;
+    
+    const newItem = {
+        id: `transport_${Date.now()}`,
+        icon: icon,
+        title: title,
+        description: description,
+        route: route,
+        schedule: schedule,
+        createdAt: new Date().toISOString()
+    };
+    
+    dataLinksConfig.transport.content.push(newItem);
+    
+    saveDataLinksConfig();
+    loadTransporteLinesList();
+    updateMainPageSections();
+    
+    document.querySelector('.modal').remove();
+    showNotification('Línea de transporte agregada correctamente', 'success');
+}
+
+// Función para actualizar secciones en la página principal
+function updateMainPageSections() {
+    // Actualizar títulos de secciones
+    const medicalTitle = document.getElementById('medicalSectionTitle');
+    const itvTitle = document.getElementById('itvSectionTitle');
+    const phoneTitle = document.getElementById('phoneSectionTitle');
+    
+    if (medicalTitle) medicalTitle.textContent = dataLinksConfig.medical.title;
+    if (itvTitle) itvTitle.textContent = dataLinksConfig.itv.title;
+    if (phoneTitle) phoneTitle.textContent = dataLinksConfig.phones.title;
+    
+    // Actualizar contenido en la página principal
+    updateMainPageContent();
+}
+
+// Función para inicializar la gestión de datos y enlaces
+function initializeDataLinksManagement() {
+    loadDataLinksConfig();
+    
+    // Agregar datos de ejemplo si no existen
+    if (dataLinksConfig.medical.content.length === 0) {
+        dataLinksConfig.medical.content.push({
+            id: 'medical_1',
+            title: 'Centro de Salud de Cobreros',
+            description: 'Atención médica primaria para todos los vecinos',
+            schedule: 'Lunes a Viernes - 08:00-15:00',
+            createdAt: new Date().toISOString()
+        });
+    }
+    
+    if (dataLinksConfig.phones.content.length === 0) {
+        dataLinksConfig.phones.content = [
+            {
+                id: 'phone_1',
+                icon: '🚕',
+                title: 'Taxis',
+                description: 'Servicio de taxis locales',
+                type: 'telefonos',
+                order: 1,
+                createdAt: new Date().toISOString()
+            },
+            {
+                id: 'phone_2',
+                icon: '🚗',
+                title: 'ITV',
+                description: 'Inspección Técnica de Vehículos',
+                type: 'servicio',
+                order: 2,
+                createdAt: new Date().toISOString()
+            },
+            {
+                id: 'phone_3',
+                icon: '🆔',
+                title: 'Renovación DNI',
+                description: 'Gestión de documentación',
+                type: 'documento',
+                order: 3,
+                createdAt: new Date().toISOString()
+            }
+        ];
+    }
+    
+    saveDataLinksConfig();
+    loadConsultorioList();
+    loadItvList();
+    loadTelefonosElementosList();
+    loadTransporteLinesList();
+    updateMainPageContent();
+    console.log('🔗 Gestión de datos y enlaces inicializada');
+}
+
+// Función para actualizar el contenido de la página principal
+function updateMainPageContent() {
+    // Actualizar sección de consultorio médico
+    const medicalList = document.getElementById('medicalList');
+    if (medicalList && dataLinksConfig.medical.enabled) {
+        if (dataLinksConfig.medical.content.length > 0) {
+            medicalList.innerHTML = dataLinksConfig.medical.content.map(item => `
+                <div class="service-item">
+                    <h4>${item.title}</h4>
+                    <p>${item.description}</p>
+                    ${item.schedule ? `<p><strong>Horario:</strong> ${item.schedule}</p>` : ''}
+                </div>
+            `).join('');
+        } else {
+            medicalList.innerHTML = '<p>No hay información disponible del consultorio médico.</p>';
+        }
+    }
+    
+    // Actualizar sección de ITV
+    const itvListMain = document.getElementById('itvList');
+    if (itvListMain && dataLinksConfig.itv.enabled) {
+        if (dataLinksConfig.itv.content.length > 0) {
+            itvListMain.innerHTML = dataLinksConfig.itv.content.map(item => `
+                <div class="service-item">
+                    <h4>${item.title}</h4>
+                    <p>${item.description}</p>
+                    ${item.address ? `<p><strong>Dirección:</strong> ${item.address}</p>` : ''}
+                    ${item.phone ? `<p><strong>Teléfono:</strong> ${item.phone}</p>` : ''}
+                    ${item.schedule ? `<p><strong>Horario:</strong> ${item.schedule}</p>` : ''}
+                </div>
+            `).join('');
+        } else {
+            itvListMain.innerHTML = '<p>No hay información disponible de ITV.</p>';
+        }
+    }
+    
+    // Actualizar sección de teléfonos de interés
+    const phoneListMain = document.getElementById('phoneList');
+    if (phoneListMain && dataLinksConfig.phones.enabled) {
+        if (dataLinksConfig.phones.content.length > 0) {
+            phoneListMain.innerHTML = dataLinksConfig.phones.content.map(item => `
+                <div class="service-item">
+                    <h4>${item.icon} ${item.title}</h4>
+                    <p>${item.description}</p>
+                    <p><strong>Tipo:</strong> ${item.type}</p>
+                </div>
+            `).join('');
+        } else {
+            phoneListMain.innerHTML = '<p>No hay teléfonos de interés configurados.</p>';
+        }
+    }
+    
+    // Actualizar sección de transporte
+    const transportListMain = document.getElementById('transporteLinesList');
+    if (transportListMain && dataLinksConfig.transport.enabled) {
+        if (dataLinksConfig.transport.content.length > 0) {
+            transportListMain.innerHTML = dataLinksConfig.transport.content.map(item => `
+                <div class="service-item">
+                    <h4>${item.icon} ${item.title}</h4>
+                    <p>${item.description}</p>
+                    ${item.route ? `<p><strong>Ruta:</strong> ${item.route}</p>` : ''}
+                    ${item.schedule ? `<p><strong>Horario:</strong> ${item.schedule}</p>` : ''}
+                </div>
+            `).join('');
+        } else {
+            transportListMain.innerHTML = '<p>No hay líneas de transporte configuradas.</p>';
+        }
+    }
+}
+
+// Funciones adicionales para editar y eliminar elementos
+
+// Función para editar elemento del consultorio
+function editConsultorioItem(itemId) {
+    const item = dataLinksConfig.medical.content.find(i => i.id === itemId);
+    if (!item) return;
+    
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.innerHTML = `
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>🏥 Editar Consultorio</h3>
+                <span class="close" onclick="this.closest('.modal').remove()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form id="editConsultorioForm">
+                    <div class="form-group">
+                        <label for="editConsultorioTitle">Título:</label>
+                        <input type="text" id="editConsultorioTitle" name="title" value="${item.title}" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="editConsultorioDescription">Descripción:</label>
+                        <textarea id="editConsultorioDescription" name="description" required>${item.description}</textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="editConsultorioSchedule">Horario:</label>
+                        <input type="text" id="editConsultorioSchedule" name="schedule" value="${item.schedule || ''}">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-primary" onclick="saveEditConsultorioItem('${itemId}')">Guardar</button>
+                <button class="btn btn-secondary" onclick="this.closest('.modal').remove()">Cancelar</button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+}
+
+// Función para guardar edición del consultorio
+function saveEditConsultorioItem(itemId) {
+    const title = document.getElementById('editConsultorioTitle').value;
+    const description = document.getElementById('editConsultorioDescription').value;
+    const schedule = document.getElementById('editConsultorioSchedule').value;
+    
+    const itemIndex = dataLinksConfig.medical.content.findIndex(i => i.id === itemId);
+    if (itemIndex !== -1) {
+        dataLinksConfig.medical.content[itemIndex] = {
+            ...dataLinksConfig.medical.content[itemIndex],
+            title: title,
+            description: description,
+            schedule: schedule
+        };
+        
+        saveDataLinksConfig();
+        loadConsultorioList();
+        updateMainPageSections();
+        
+        document.querySelector('.modal').remove();
+        showNotification('Consultorio actualizado correctamente', 'success');
+    }
+}
+
+// Función para eliminar elemento del consultorio
+function deleteConsultorioItem(itemId) {
+    if (confirm('¿Está seguro de que desea eliminar este elemento?')) {
+        dataLinksConfig.medical.content = dataLinksConfig.medical.content.filter(i => i.id !== itemId);
+        saveDataLinksConfig();
+        loadConsultorioList();
+        updateMainPageSections();
+        showNotification('Elemento eliminado correctamente', 'success');
+    }
+}
+
+// Función para editar elemento de ITV
+function editItvItem(itemId) {
+    const item = dataLinksConfig.itv.content.find(i => i.id === itemId);
+    if (!item) return;
+    
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.innerHTML = `
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>🚗 Editar ITV</h3>
+                <span class="close" onclick="this.closest('.modal').remove()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form id="editItvForm">
+                    <div class="form-group">
+                        <label for="editItvTitle">Título:</label>
+                        <input type="text" id="editItvTitle" name="title" value="${item.title}" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="editItvDescription">Descripción:</label>
+                        <textarea id="editItvDescription" name="description" required>${item.description}</textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="editItvAddress">Dirección:</label>
+                        <input type="text" id="editItvAddress" name="address" value="${item.address || ''}">
+                    </div>
+                    <div class="form-group">
+                        <label for="editItvPhone">Teléfono:</label>
+                        <input type="text" id="editItvPhone" name="phone" value="${item.phone || ''}">
+                    </div>
+                    <div class="form-group">
+                        <label for="editItvSchedule">Horario:</label>
+                        <input type="text" id="editItvSchedule" name="schedule" value="${item.schedule || ''}">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-primary" onclick="saveEditItvItem('${itemId}')">Guardar</button>
+                <button class="btn btn-secondary" onclick="this.closest('.modal').remove()">Cancelar</button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+}
+
+// Función para guardar edición de ITV
+function saveEditItvItem(itemId) {
+    const title = document.getElementById('editItvTitle').value;
+    const description = document.getElementById('editItvDescription').value;
+    const address = document.getElementById('editItvAddress').value;
+    const phone = document.getElementById('editItvPhone').value;
+    const schedule = document.getElementById('editItvSchedule').value;
+    
+    const itemIndex = dataLinksConfig.itv.content.findIndex(i => i.id === itemId);
+    if (itemIndex !== -1) {
+        dataLinksConfig.itv.content[itemIndex] = {
+            ...dataLinksConfig.itv.content[itemIndex],
+            title: title,
+            description: description,
+            address: address,
+            phone: phone,
+            schedule: schedule
+        };
+        
+        saveDataLinksConfig();
+        loadItvList();
+        updateMainPageSections();
+        
+        document.querySelector('.modal').remove();
+        showNotification('ITV actualizado correctamente', 'success');
+    }
+}
+
+// Función para eliminar elemento de ITV
+function deleteItvItem(itemId) {
+    if (confirm('¿Está seguro de que desea eliminar este elemento?')) {
+        dataLinksConfig.itv.content = dataLinksConfig.itv.content.filter(i => i.id !== itemId);
+        saveDataLinksConfig();
+        loadItvList();
+        updateMainPageSections();
+        showNotification('Elemento eliminado correctamente', 'success');
+    }
+}
+
+// Función para editar elemento de teléfono
+function editTelefonoItem(itemId) {
+    const item = dataLinksConfig.phones.content.find(i => i.id === itemId);
+    if (!item) return;
+    
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.innerHTML = `
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>📞 Editar Teléfono de Interés</h3>
+                <span class="close" onclick="this.closest('.modal').remove()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form id="editTelefonoForm">
+                    <div class="form-group">
+                        <label for="editTelefonoIcon">Icono:</label>
+                        <input type="text" id="editTelefonoIcon" name="icon" value="${item.icon}" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="editTelefonoTitle">Título:</label>
+                        <input type="text" id="editTelefonoTitle" name="title" value="${item.title}" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="editTelefonoDescription">Descripción:</label>
+                        <textarea id="editTelefonoDescription" name="description" required>${item.description}</textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="editTelefonoType">Tipo:</label>
+                        <select id="editTelefonoType" name="type" required>
+                            <option value="telefonos" ${item.type === 'telefonos' ? 'selected' : ''}>Teléfonos</option>
+                            <option value="servicio" ${item.type === 'servicio' ? 'selected' : ''}>Servicio</option>
+                            <option value="documento" ${item.type === 'documento' ? 'selected' : ''}>Documento</option>
+                            <option value="emergencia" ${item.type === 'emergencia' ? 'selected' : ''}>Emergencia</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="editTelefonoOrder">Orden:</label>
+                        <input type="number" id="editTelefonoOrder" name="order" value="${item.order}" min="1" required>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-primary" onclick="saveEditTelefonoItem('${itemId}')">Guardar</button>
+                <button class="btn btn-secondary" onclick="this.closest('.modal').remove()">Cancelar</button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+}
+
+// Función para guardar edición de teléfono
+function saveEditTelefonoItem(itemId) {
+    const icon = document.getElementById('editTelefonoIcon').value;
+    const title = document.getElementById('editTelefonoTitle').value;
+    const description = document.getElementById('editTelefonoDescription').value;
+    const type = document.getElementById('editTelefonoType').value;
+    const order = parseInt(document.getElementById('editTelefonoOrder').value);
+    
+    const itemIndex = dataLinksConfig.phones.content.findIndex(i => i.id === itemId);
+    if (itemIndex !== -1) {
+        dataLinksConfig.phones.content[itemIndex] = {
+            ...dataLinksConfig.phones.content[itemIndex],
+            icon: icon,
+            title: title,
+            description: description,
+            type: type,
+            order: order
+        };
+        
+        dataLinksConfig.phones.content.sort((a, b) => a.order - b.order);
+        saveDataLinksConfig();
+        loadTelefonosElementosList();
+        updateMainPageSections();
+        
+        document.querySelector('.modal').remove();
+        showNotification('Teléfono actualizado correctamente', 'success');
+    }
+}
+
+// Función para eliminar elemento de teléfono
+function deleteTelefonoItem(itemId) {
+    if (confirm('¿Está seguro de que desea eliminar este elemento?')) {
+        dataLinksConfig.phones.content = dataLinksConfig.phones.content.filter(i => i.id !== itemId);
+        saveDataLinksConfig();
+        loadTelefonosElementosList();
+        updateMainPageSections();
+        showNotification('Elemento eliminado correctamente', 'success');
+    }
+}
+
+// Función para editar elemento de transporte
+function editTransporteItem(itemId) {
+    const item = dataLinksConfig.transport.content.find(i => i.id === itemId);
+    if (!item) return;
+    
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.innerHTML = `
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>🚌 Editar Línea de Transporte</h3>
+                <span class="close" onclick="this.closest('.modal').remove()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form id="editTransporteForm">
+                    <div class="form-group">
+                        <label for="editTransporteIcon">Icono:</label>
+                        <input type="text" id="editTransporteIcon" name="icon" value="${item.icon}" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="editTransporteTitle">Título:</label>
+                        <input type="text" id="editTransporteTitle" name="title" value="${item.title}" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="editTransporteDescription">Descripción:</label>
+                        <textarea id="editTransporteDescription" name="description" required>${item.description}</textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="editTransporteRoute">Ruta:</label>
+                        <input type="text" id="editTransporteRoute" name="route" value="${item.route || ''}">
+                    </div>
+                    <div class="form-group">
+                        <label for="editTransporteSchedule">Horario:</label>
+                        <input type="text" id="editTransporteSchedule" name="schedule" value="${item.schedule || ''}">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-primary" onclick="saveEditTransporteItem('${itemId}')">Guardar</button>
+                <button class="btn btn-secondary" onclick="this.closest('.modal').remove()">Cancelar</button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+}
+
+// Función para guardar edición de transporte
+function saveEditTransporteItem(itemId) {
+    const icon = document.getElementById('editTransporteIcon').value;
+    const title = document.getElementById('editTransporteTitle').value;
+    const description = document.getElementById('editTransporteDescription').value;
+    const route = document.getElementById('editTransporteRoute').value;
+    const schedule = document.getElementById('editTransporteSchedule').value;
+    
+    const itemIndex = dataLinksConfig.transport.content.findIndex(i => i.id === itemId);
+    if (itemIndex !== -1) {
+        dataLinksConfig.transport.content[itemIndex] = {
+            ...dataLinksConfig.transport.content[itemIndex],
+            icon: icon,
+            title: title,
+            description: description,
+            route: route,
+            schedule: schedule
+        };
+        
+        saveDataLinksConfig();
+        loadTransporteLinesList();
+        updateMainPageSections();
+        
+        document.querySelector('.modal').remove();
+        showNotification('Línea de transporte actualizada correctamente', 'success');
+    }
+}
+
+// Función para eliminar elemento de transporte
+function deleteTransporteItem(itemId) {
+    if (confirm('¿Está seguro de que desea eliminar este elemento?')) {
+        dataLinksConfig.transport.content = dataLinksConfig.transport.content.filter(i => i.id !== itemId);
+        saveDataLinksConfig();
+        loadTransporteLinesList();
+        updateMainPageSections();
+        showNotification('Elemento eliminado correctamente', 'success');
+    }
+}
+
+// ===== SISTEMA DE EXPORTACIÓN E IMPORTACIÓN DE DATOS =====
+
+// Función para exportar todos los datos como JSON
+function exportDataAsJSON() {
+    try {
+        const allData = {
+            timestamp: new Date().toISOString(),
+            version: '1.0',
+            data: {
+                // Configuración del sitio
+                siteConfig: JSON.parse(localStorage.getItem('siteConfig') || '{}'),
+                
+                // Contenido de páginas
+                homeContent: JSON.parse(localStorage.getItem('homeContent') || '{}'),
+                aboutContent: JSON.parse(localStorage.getItem('aboutContent') || '{}'),
+                servicesContent: JSON.parse(localStorage.getItem('servicesContent') || '{}'),
+                cultureContent: JSON.parse(localStorage.getItem('cultureContent') || '{}'),
+                documentsContent: JSON.parse(localStorage.getItem('documentsContent') || '{}'),
+                contactContent: JSON.parse(localStorage.getItem('contactContent') || '{}'),
+                
+                // Servicios
+                servicios: JSON.parse(localStorage.getItem('servicios') || '{}'),
+                
+                // Sistema de citas previas
+                appointmentSchedule: JSON.parse(localStorage.getItem('appointmentSchedule') || '{}'),
+                appointments: JSON.parse(localStorage.getItem('appointments') || '[]'),
+                
+                // Gestión de datos y enlaces
+                dataLinksConfig: JSON.parse(localStorage.getItem('dataLinksConfig') || '{}'),
+                
+                // Usuarios
+                users: JSON.parse(localStorage.getItem('users') || '[]'),
+                
+                // Documentos
+                documents: JSON.parse(localStorage.getItem('documents') || '[]'),
+                
+                // Noticias
+                news: JSON.parse(localStorage.getItem('news') || '[]'),
+                
+                // Eventos
+                events: JSON.parse(localStorage.getItem('events') || '[]'),
+                
+                // Configuración de secciones
+                sectionsConfig: JSON.parse(localStorage.getItem('sectionsConfig') || '{}')
+            }
+        };
+        
+        const dataStr = JSON.stringify(allData, null, 2);
+        const dataBlob = new Blob([dataStr], { type: 'application/json' });
+        
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(dataBlob);
+        link.download = `ayuntamiento-cobreros-backup-${new Date().toISOString().split('T')[0]}.json`;
+        link.click();
+        
+        showNotification('Datos exportados correctamente como JSON', 'success');
+        console.log('📁 Datos exportados:', allData);
+        
+    } catch (error) {
+        console.error('❌ Error al exportar datos:', error);
+        showNotification('Error al exportar datos: ' + error.message, 'error');
+    }
+}
+
+// Función para exportar datos como Excel
+function exportDataAsExcel() {
+    try {
+        // Crear un libro de trabajo con múltiples hojas
+        const workbook = {
+            'Configuración del Sitio': [
+                ['Campo', 'Valor'],
+                ['Nombre del Sitio', localStorage.getItem('siteConfig') ? JSON.parse(localStorage.getItem('siteConfig')).siteName || '' : ''],
+                ['Descripción', localStorage.getItem('siteConfig') ? JSON.parse(localStorage.getItem('siteConfig')).description || '' : ''],
+                ['Email de Contacto', localStorage.getItem('siteConfig') ? JSON.parse(localStorage.getItem('siteConfig')).contactEmail || '' : ''],
+                ['Teléfono', localStorage.getItem('siteConfig') ? JSON.parse(localStorage.getItem('siteConfig')).phone || '' : ''],
+                ['Dirección', localStorage.getItem('siteConfig') ? JSON.parse(localStorage.getItem('siteConfig')).address || '' : '']
+            ],
+            'Citas Previas': [
+                ['ID', 'Nombre', 'Email', 'Teléfono', 'Servicio', 'Fecha', 'Hora', 'Estado', 'Fecha Creación']
+            ],
+            'Usuarios': [
+                ['ID', 'Nombre', 'Email', 'Rol', 'Fecha Registro', 'Último Acceso']
+            ],
+            'Documentos': [
+                ['ID', 'Título', 'Tipo', 'Categoría', 'Fecha Subida', 'Tamaño']
+            ],
+            'Noticias': [
+                ['ID', 'Título', 'Contenido', 'Fecha', 'Autor', 'Categoría']
+            ],
+            'Eventos': [
+                ['ID', 'Título', 'Descripción', 'Fecha', 'Hora', 'Lugar', 'Categoría']
+            ]
+        };
+        
+        // Agregar datos de citas previas
+        const appointments = JSON.parse(localStorage.getItem('appointments') || '[]');
+        appointments.forEach(appointment => {
+            workbook['Citas Previas'].push([
+                appointment.id,
+                appointment.name,
+                appointment.email,
+                appointment.phone,
+                appointment.service,
+                new Date(appointment.date).toLocaleDateString('es-ES'),
+                appointment.time,
+                appointment.status,
+                new Date(appointment.createdAt).toLocaleString('es-ES')
+            ]);
+        });
+        
+        // Agregar datos de usuarios
+        const users = JSON.parse(localStorage.getItem('users') || '[]');
+        users.forEach(user => {
+            workbook['Usuarios'].push([
+                user.id,
+                user.name,
+                user.email,
+                user.role,
+                new Date(user.createdAt).toLocaleDateString('es-ES'),
+                user.lastLogin ? new Date(user.lastLogin).toLocaleString('es-ES') : 'Nunca'
+            ]);
+        });
+        
+        // Agregar datos de documentos
+        const documents = JSON.parse(localStorage.getItem('documents') || '[]');
+        documents.forEach(doc => {
+            workbook['Documentos'].push([
+                doc.id,
+                doc.title,
+                doc.type,
+                doc.category,
+                new Date(doc.uploadedAt).toLocaleDateString('es-ES'),
+                doc.size ? `${(doc.size / 1024).toFixed(2)} KB` : 'N/A'
+            ]);
+        });
+        
+        // Agregar datos de noticias
+        const news = JSON.parse(localStorage.getItem('news') || '[]');
+        news.forEach(article => {
+            workbook['Noticias'].push([
+                article.id,
+                article.title,
+                article.content.substring(0, 100) + '...',
+                new Date(article.date).toLocaleDateString('es-ES'),
+                article.author,
+                article.category
+            ]);
+        });
+        
+        // Agregar datos de eventos
+        const events = JSON.parse(localStorage.getItem('events') || '[]');
+        events.forEach(event => {
+            workbook['Eventos'].push([
+                event.id,
+                event.title,
+                event.description.substring(0, 100) + '...',
+                new Date(event.date).toLocaleDateString('es-ES'),
+                event.time,
+                event.location,
+                event.category
+            ]);
+        });
+        
+        // Convertir a CSV (formato compatible con Excel)
+        let csvContent = '';
+        Object.keys(workbook).forEach(sheetName => {
+            csvContent += `\n=== ${sheetName} ===\n`;
+            workbook[sheetName].forEach(row => {
+                csvContent += row.map(cell => `"${cell}"`).join(',') + '\n';
+            });
+        });
+        
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = `ayuntamiento-cobreros-backup-${new Date().toISOString().split('T')[0]}.csv`;
+        link.click();
+        
+        showNotification('Datos exportados correctamente como Excel (CSV)', 'success');
+        console.log('📊 Datos exportados como Excel:', workbook);
+        
+    } catch (error) {
+        console.error('❌ Error al exportar datos como Excel:', error);
+        showNotification('Error al exportar datos como Excel: ' + error.message, 'error');
+    }
+}
+
+// Función para exportar datos como documento de texto
+function exportDataAsDocument() {
+    try {
+        let documentContent = `AYUNTAMIENTO DE COBREROS - COPIA DE SEGURIDAD\n`;
+        documentContent += `Fecha de exportación: ${new Date().toLocaleString('es-ES')}\n`;
+        documentContent += `==========================================\n\n`;
+        
+        // Configuración del sitio
+        const siteConfig = JSON.parse(localStorage.getItem('siteConfig') || '{}');
+        documentContent += `CONFIGURACIÓN DEL SITIO\n`;
+        documentContent += `======================\n`;
+        documentContent += `Nombre del sitio: ${siteConfig.siteName || 'No configurado'}\n`;
+        documentContent += `Descripción: ${siteConfig.description || 'No configurado'}\n`;
+        documentContent += `Email de contacto: ${siteConfig.contactEmail || 'No configurado'}\n`;
+        documentContent += `Teléfono: ${siteConfig.phone || 'No configurado'}\n`;
+        documentContent += `Dirección: ${siteConfig.address || 'No configurado'}\n\n`;
+        
+        // Citas previas
+        const appointments = JSON.parse(localStorage.getItem('appointments') || '[]');
+        documentContent += `CITAS PREVIAS (${appointments.length} registros)\n`;
+        documentContent += `=====================================\n`;
+        appointments.forEach((appointment, index) => {
+            documentContent += `${index + 1}. ${appointment.name} - ${appointment.service}\n`;
+            documentContent += `   Email: ${appointment.email}\n`;
+            documentContent += `   Teléfono: ${appointment.phone}\n`;
+            documentContent += `   Fecha: ${new Date(appointment.date).toLocaleDateString('es-ES')} a las ${appointment.time}\n`;
+            documentContent += `   Estado: ${appointment.status}\n`;
+            documentContent += `   Fecha de solicitud: ${new Date(appointment.createdAt).toLocaleString('es-ES')}\n\n`;
+        });
+        
+        // Usuarios
+        const users = JSON.parse(localStorage.getItem('users') || '[]');
+        documentContent += `USUARIOS (${users.length} registros)\n`;
+        documentContent += `=============================\n`;
+        users.forEach((user, index) => {
+            documentContent += `${index + 1}. ${user.name} (${user.email})\n`;
+            documentContent += `   Rol: ${user.role}\n`;
+            documentContent += `   Fecha de registro: ${new Date(user.createdAt).toLocaleDateString('es-ES')}\n`;
+            documentContent += `   Último acceso: ${user.lastLogin ? new Date(user.lastLogin).toLocaleString('es-ES') : 'Nunca'}\n\n`;
+        });
+        
+        // Documentos
+        const documents = JSON.parse(localStorage.getItem('documents') || '[]');
+        documentContent += `DOCUMENTOS (${documents.length} registros)\n`;
+        documentContent += `===============================\n`;
+        documents.forEach((doc, index) => {
+            documentContent += `${index + 1}. ${doc.title}\n`;
+            documentContent += `   Tipo: ${doc.type}\n`;
+            documentContent += `   Categoría: ${doc.category}\n`;
+            documentContent += `   Fecha de subida: ${new Date(doc.uploadedAt).toLocaleDateString('es-ES')}\n`;
+            documentContent += `   Tamaño: ${doc.size ? `${(doc.size / 1024).toFixed(2)} KB` : 'N/A'}\n\n`;
+        });
+        
+        // Noticias
+        const news = JSON.parse(localStorage.getItem('news') || '[]');
+        documentContent += `NOTICIAS (${news.length} registros)\n`;
+        documentContent += `==========================\n`;
+        news.forEach((article, index) => {
+            documentContent += `${index + 1}. ${article.title}\n`;
+            documentContent += `   Autor: ${article.author}\n`;
+            documentContent += `   Categoría: ${article.category}\n`;
+            documentContent += `   Fecha: ${new Date(article.date).toLocaleDateString('es-ES')}\n`;
+            documentContent += `   Contenido: ${article.content.substring(0, 200)}...\n\n`;
+        });
+        
+        // Eventos
+        const events = JSON.parse(localStorage.getItem('events') || '[]');
+        documentContent += `EVENTOS (${events.length} registros)\n`;
+        documentContent += `========================\n`;
+        events.forEach((event, index) => {
+            documentContent += `${index + 1}. ${event.title}\n`;
+            documentContent += `   Fecha: ${new Date(event.date).toLocaleDateString('es-ES')} a las ${event.time}\n`;
+            documentContent += `   Lugar: ${event.location}\n`;
+            documentContent += `   Categoría: ${event.category}\n`;
+            documentContent += `   Descripción: ${event.description.substring(0, 200)}...\n\n`;
+        });
+        
+        const blob = new Blob([documentContent], { type: 'text/plain;charset=utf-8' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = `ayuntamiento-cobreros-backup-${new Date().toISOString().split('T')[0]}.txt`;
+        link.click();
+        
+        showNotification('Datos exportados correctamente como documento de texto', 'success');
+        console.log('📄 Datos exportados como documento:', documentContent);
+        
+    } catch (error) {
+        console.error('❌ Error al exportar datos como documento:', error);
+        showNotification('Error al exportar datos como documento: ' + error.message, 'error');
+    }
+}
+
+// Función para importar datos desde JSON
+function importDataFromJSON(file) {
+    if (!file) return;
+    
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        try {
+            const data = JSON.parse(e.target.result);
+            
+            if (!data.data) {
+                throw new Error('Formato de archivo inválido');
+            }
+            
+            // Confirmar importación
+            if (!confirm('¿Está seguro de que desea importar estos datos? Esto sobrescribirá todos los datos actuales.')) {
+                return;
+            }
+            
+            // Importar cada tipo de dato
+            if (data.data.siteConfig) {
+                localStorage.setItem('siteConfig', JSON.stringify(data.data.siteConfig));
+            }
+            
+            if (data.data.homeContent) {
+                localStorage.setItem('homeContent', JSON.stringify(data.data.homeContent));
+            }
+            
+            if (data.data.aboutContent) {
+                localStorage.setItem('aboutContent', JSON.stringify(data.data.aboutContent));
+            }
+            
+            if (data.data.servicesContent) {
+                localStorage.setItem('servicesContent', JSON.stringify(data.data.servicesContent));
+            }
+            
+            if (data.data.cultureContent) {
+                localStorage.setItem('cultureContent', JSON.stringify(data.data.cultureContent));
+            }
+            
+            if (data.data.documentsContent) {
+                localStorage.setItem('documentsContent', JSON.stringify(data.data.documentsContent));
+            }
+            
+            if (data.data.contactContent) {
+                localStorage.setItem('contactContent', JSON.stringify(data.data.contactContent));
+            }
+            
+            if (data.data.servicios) {
+                localStorage.setItem('servicios', JSON.stringify(data.data.servicios));
+            }
+            
+            if (data.data.appointmentSchedule) {
+                localStorage.setItem('appointmentSchedule', JSON.stringify(data.data.appointmentSchedule));
+            }
+            
+            if (data.data.appointments) {
+                localStorage.setItem('appointments', JSON.stringify(data.data.appointments));
+            }
+            
+            if (data.data.dataLinksConfig) {
+                localStorage.setItem('dataLinksConfig', JSON.stringify(data.data.dataLinksConfig));
+            }
+            
+            if (data.data.users) {
+                localStorage.setItem('users', JSON.stringify(data.data.users));
+            }
+            
+            if (data.data.documents) {
+                localStorage.setItem('documents', JSON.stringify(data.data.documents));
+            }
+            
+            if (data.data.news) {
+                localStorage.setItem('news', JSON.stringify(data.data.news));
+            }
+            
+            if (data.data.events) {
+                localStorage.setItem('events', JSON.stringify(data.data.events));
+            }
+            
+            if (data.data.sectionsConfig) {
+                localStorage.setItem('sectionsConfig', JSON.stringify(data.data.sectionsConfig));
+            }
+            
+            // Recargar la página para aplicar los cambios
+            showNotification('Datos importados correctamente. Recargando página...', 'success');
+            setTimeout(() => {
+                window.location.reload();
+            }, 2000);
+            
+            console.log('📁 Datos importados correctamente:', data);
+            
+        } catch (error) {
+            console.error('❌ Error al importar datos:', error);
+            showNotification('Error al importar datos: ' + error.message, 'error');
+        }
+    };
+    
+    reader.readAsText(file);
+}
+
+// Función para importar datos desde Excel/CSV
+function importDataFromExcel(file) {
+    if (!file) return;
+    
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        try {
+            const csvContent = e.target.result;
+            const lines = csvContent.split('\n');
+            
+            // Procesar el CSV (implementación básica)
+            const data = {
+                appointments: [],
+                users: [],
+                documents: [],
+                news: [],
+                events: []
+            };
+            
+            let currentSection = '';
+            let headers = [];
+            
+            lines.forEach((line, index) => {
+                if (line.startsWith('===')) {
+                    // Nueva sección
+                    currentSection = line.replace(/===/g, '').trim();
+                    headers = [];
+                } else if (line.includes(',') && headers.length === 0) {
+                    // Primera línea de datos (headers)
+                    headers = line.split(',').map(h => h.replace(/"/g, '').trim());
+                } else if (line.includes(',') && headers.length > 0) {
+                    // Línea de datos
+                    const values = line.split(',').map(v => v.replace(/"/g, '').trim());
+                    const row = {};
+                    
+                    headers.forEach((header, i) => {
+                        row[header] = values[i] || '';
+                    });
+                    
+                    // Agregar a la sección correspondiente
+                    switch (currentSection) {
+                        case 'Citas Previas':
+                            if (row.ID && row.Nombre) {
+                                data.appointments.push({
+                                    id: row.ID,
+                                    name: row.Nombre,
+                                    email: row.Email,
+                                    phone: row.Teléfono,
+                                    service: row.Servicio,
+                                    date: row.Fecha,
+                                    time: row.Hora,
+                                    status: row.Estado || 'pendiente',
+                                    createdAt: row['Fecha Creación'] || new Date().toISOString()
+                                });
+                            }
+                            break;
+                        case 'Usuarios':
+                            if (row.ID && row.Nombre) {
+                                data.users.push({
+                                    id: row.ID,
+                                    name: row.Nombre,
+                                    email: row.Email,
+                                    role: row.Rol || 'usuario',
+                                    createdAt: row['Fecha Registro'] || new Date().toISOString(),
+                                    lastLogin: row['Último Acceso'] === 'Nunca' ? null : row['Último Acceso']
+                                });
+                            }
+                            break;
+                    }
+                }
+            });
+            
+            // Confirmar importación
+            if (!confirm('¿Está seguro de que desea importar estos datos? Esto sobrescribirá los datos actuales.')) {
+                return;
+            }
+            
+            // Guardar datos importados
+            if (data.appointments.length > 0) {
+                localStorage.setItem('appointments', JSON.stringify(data.appointments));
+            }
+            
+            if (data.users.length > 0) {
+                localStorage.setItem('users', JSON.stringify(data.users));
+            }
+            
+            showNotification('Datos importados correctamente desde Excel. Recargando página...', 'success');
+            setTimeout(() => {
+                window.location.reload();
+            }, 2000);
+            
+            console.log('📊 Datos importados desde Excel:', data);
+            
+        } catch (error) {
+            console.error('❌ Error al importar datos desde Excel:', error);
+            showNotification('Error al importar datos desde Excel: ' + error.message, 'error');
+        }
+    };
+    
+    reader.readAsText(file);
+}
+
+// Función para mostrar modal de exportación
+function showExportModal() {
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.innerHTML = `
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>📁 Exportar Datos</h3>
+                <span class="close" onclick="this.closest('.modal').remove()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <p>Seleccione el formato de exportación:</p>
+                <div class="export-options">
+                    <button class="btn btn-success" onclick="exportDataAsJSON(); this.closest('.modal').remove();">
+                        <i class="fas fa-file-code"></i> Exportar como JSON
+                    </button>
+                    <button class="btn btn-primary" onclick="exportDataAsExcel(); this.closest('.modal').remove();">
+                        <i class="fas fa-file-excel"></i> Exportar como Excel (CSV)
+                    </button>
+                    <button class="btn btn-secondary" onclick="exportDataAsDocument(); this.closest('.modal').remove();">
+                        <i class="fas fa-file-alt"></i> Exportar como Documento
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+}
+
+// Función para mostrar modal de importación
+function showImportModal() {
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.innerHTML = `
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>📁 Importar Datos</h3>
+                <span class="close" onclick="this.closest('.modal').remove()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <p>Seleccione el tipo de archivo a importar:</p>
+                <div class="import-options">
+                    <button class="btn btn-success" onclick="document.getElementById('importJsonFile').click(); this.closest('.modal').remove();">
+                        <i class="fas fa-file-code"></i> Importar JSON
+                    </button>
+                    <button class="btn btn-primary" onclick="document.getElementById('importExcelFile').click(); this.closest('.modal').remove();">
+                        <i class="fas fa-file-excel"></i> Importar Excel/CSV
+                    </button>
+                </div>
+                <input type="file" id="importJsonFile" accept=".json" style="display: none;" onchange="importDataFromJSON(this.files[0])">
+                <input type="file" id="importExcelFile" accept=".csv,.xlsx,.xls" style="display: none;" onchange="importDataFromExcel(this.files[0])">
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
 }
 
  
