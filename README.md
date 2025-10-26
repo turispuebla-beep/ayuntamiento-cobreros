@@ -1,63 +1,35 @@
-# 🏛️ Ayuntamiento de Cobreros - Sistema Completo
+# 🏛️ Ayuntamiento de Cobreros - Sistema Web y App Móvil
 
 ## 📋 **Descripción del Proyecto**
 
-Sistema completo de gestión municipal para el **Ayuntamiento de Cobreros** con notificaciones push bidireccionales, PWA para iPhone y APK Android nativa.
+Sistema completo de gestión municipal para el Ayuntamiento de Cobreros, que incluye:
+- **🌐 Página web oficial** con panel de administración
+- **📱 App móvil** para notificaciones oficiales
+- **🔔 Sistema de notificaciones push** con Firebase
+- **🏘️ Gestión por pueblos** (13 localidades)
 
-## 🎯 **Características Principales**
+## 🚀 **Características Principales**
 
-### **🌐 Web del Ayuntamiento**
-- **PWA completa** instalable en iPhone y Android
-- **Panel de administración** para gestión municipal
-- **Sistema de notificaciones** push bidireccional
-- **13 localidades** del Ayuntamiento de Cobreros
-- **Base de datos** sólida en Firebase Firestore
-- **Notificaciones** con archivos adjuntos
-- **Sistema de tarjetas configurables** para Cultura y Ocio
-- **Teléfonos de Interés** con tarjeta expandible configurable
+### **🌐 Página Web Oficial**
+- ✅ **Panel de administración** completo
+- ✅ **Gestión de contenido** dinámico
+- ✅ **Sistema de notificaciones** push
+- ✅ **Gestión de documentos** y archivos
+- ✅ **Sistema de citas previas**
+- ✅ **Exportación/Importación** de datos
+- ✅ **Estadísticas** del sistema
 
-### **📱 APK Android**
-- **App nativa** para Android
-- **Registro de usuarios** con localidades
-- **Panel de administración** integrado
-- **Notificaciones** con escudo de Cobreros
-- **Sincronización** en tiempo real con la web
-- **Super administrador** TURISTEAM
+### **📱 App Móvil de Notificaciones**
+- ✅ **Notificaciones push** en tiempo real
+- ✅ **Filtrado por pueblos** de interés
+- ✅ **Panel de administrador** móvil
+- ✅ **Archivos adjuntos** (PDF, imágenes)
+- ✅ **Diseño responsive** y moderno
+- ✅ **Escudo del ayuntamiento** en notificaciones
 
-### **🍎 PWA para iPhone**
-- **Instalable** desde Safari
-- **Notificaciones push** nativas
-- **Funciona como app** nativa
-- **Service Worker** completo
-- **Banner de instalación** automático
+## 🏘️ **Pueblos del Ayuntamiento (13 localidades)**
 
-## 🔄 **Sistema de Notificaciones Bidireccional Completo**
-
-### **Flujo Completo:**
-- **WEB → APK** ✅ (Web envía notificación a APK)
-- **APK → APK** ✅ (APK envía notificación a otro APK)
-- **APK → WEB** ✅ (APK envía notificación a Web)
-- **WEB → WEB** ✅ (Web envía notificación a Web)
-- **PWA iPhone** recibe todas ✅ (iPhone recibe todas las notificaciones)
-
-### **Arquitectura del Sistema:**
-```
-📱 APK Android ←→ 🔥 Firebase FCM ←→ 🌐 Web/PWA
-     ↕️                    ↕️                    ↕️
-📱 PWA iPhone ←→ 🔥 Firebase FCM ←→ 🌐 Web/PWA
-```
-
-### **Funcionalidades:**
-- **Filtrado por localidades** específicas (13 pueblos)
-- **Archivos adjuntos** en notificaciones (PDF, imágenes)
-- **Tipos de notificación:** General, Emergencia, Cita, Evento, Bando, Incidencia
-- **Estadísticas** en tiempo real de entrega
-- **Sistema de consentimiento** de usuarios
-- **Sincronización bidireccional** entre todas las plataformas
-
-## 🏘️ **Localidades del Ayuntamiento**
-
-1. **Cobreros** (capital)
+1. **Cobreros** (pueblo principal)
 2. **Avedillo de Sanabria**
 3. **Barrio de Lomba**
 4. **Castro de Sanabria**
@@ -71,324 +43,296 @@ Sistema completo de gestión municipal para el **Ayuntamiento de Cobreros** con 
 12. **Sotillo**
 13. **Terroso**
 
-## 🚀 **Tecnologías Utilizadas**
+## 🛠️ **Tecnologías Utilizadas**
 
 ### **Frontend:**
 - **HTML5** - Estructura semántica
-- **CSS3** - Estilos modernos y responsivos
-- **JavaScript ES6+** - Funcionalidades dinámicas
-- **PWA** - Progressive Web App
-- **Service Worker** - Cache y notificaciones
+- **CSS3** - Diseño responsive y moderno
+- **JavaScript (ES6+)** - Funcionalidad interactiva
+- **Bootstrap** - Framework CSS
+- **Font Awesome** - Iconografía
 
-### **Backend:**
-- **Firebase** - Base de datos y autenticación
+### **Backend y Servicios:**
+- **Firebase** - Base de datos y notificaciones
 - **Firestore** - Base de datos NoSQL
 - **Firebase Cloud Messaging** - Notificaciones push
-- **Firebase Auth** - Autenticación de usuarios
+- **Firebase Functions** - Funciones serverless
+- **Service Worker** - Notificaciones en segundo plano
 
-### **Mobile:**
-- **Android Studio** - Desarrollo nativo
-- **Java** - Lógica de la aplicación
-- **Firebase SDK** - Integración con servicios
-- **Material Design** - UI/UX moderna
+### **Herramientas:**
+- **Git** - Control de versiones
+- **PWA** - Progressive Web App
+- **Manifest.json** - Configuración de app móvil
 
 ## 📁 **Estructura del Proyecto**
 
 ```
 ayuntamiento-cobreros/
-├── 📄 index.html                 # Página principal
-├── 📄 manifest.json              # Configuración PWA
-├── 📄 sw.js                      # Service Worker
+├── 📄 index.html                 # Página principal web
 ├── 📁 css/
-│   └── 📄 styles.css             # Estilos principales
+│   └── styles.css               # Estilos principales
 ├── 📁 js/
-│   └── 📄 script.js              # JavaScript principal
-├── 📁 images/                    # Imágenes y iconos
-├── 📁 android-app/               # APK Android
-│   ├── 📁 app/src/main/java/     # Código Java
-│   ├── 📁 app/src/main/res/      # Recursos Android
-│   └── 📁 app/src/main/AndroidManifest.xml
-├── 📄 NETLIFY-DEPLOYMENT.md      # Guía de despliegue
-├── 📄 PWA-README.md              # Guía PWA
-└── 📄 README.md                  # Este archivo
+│   └── script.js                # Funcionalidad JavaScript
+├── 📁 images/                   # Imágenes y recursos
+├── 📁 notification-app/         # App móvil
+│   ├── index.html              # Página de la app
+│   ├── app.js                  # Lógica de la app
+│   ├── manifest.json           # Configuración PWA
+│   └── README.md               # Documentación de la app
+├── 📁 functions/               # Firebase Functions
+│   └── src/index.ts           # Funciones serverless
+├── 📄 CONFIGURACION_FIREBASE_NOTIFICACIONES.md
+├── 📄 MEJORAS_NOTIFICACIONES_APP.md
+├── 📄 UNIFICACION_PUEBLOS_NOTIFICACIONES.md
+└── 📄 README.md               # Este archivo
 ```
 
-## 🔧 **Configuración e Instalación**
+## 🚀 **Instalación y Configuración**
 
-### **1. 🌐 Despliegue Web (Netlify)**
+### **1. Clonar el Repositorio**
 ```bash
-# Ver NETLIFY-DEPLOYMENT.md para instrucciones detalladas
-1. Subir archivos a Netlify
-2. Configurar Firebase
-3. Configurar dominio personalizado
+git clone [URL_DEL_REPOSITORIO]
+cd ayuntamiento-cobreros
 ```
 
-### **2. 📱 Compilación APK (Android Studio)**
-```bash
-# Ver android-app/README.md para instrucciones detalladas
-1. Abrir proyecto en Android Studio
-2. Configurar Firebase
-3. Crear iconos de la app
-4. Compilar APK
-```
+### **2. Configurar Firebase**
+1. Crear proyecto en [Firebase Console](https://console.firebase.google.com)
+2. Habilitar **Firestore Database**
+3. Habilitar **Cloud Messaging**
+4. Configurar **Firebase Functions**
+5. Actualizar configuración en `index.html` y `notification-app/index.html`
 
-### **3. 🔥 Configuración Firebase**
+### **3. Configurar API Keys**
+Editar los siguientes archivos con tus claves reales:
+
+**`index.html` (línea ~5800):**
 ```javascript
-// Configuración en index.html
 const firebaseConfig = {
-  apiKey: "TU_API_KEY",
-  authDomain: "turisteam-80f1b.firebaseapp.com",
-  projectId: "turisteam-80f1b",
-  storageBucket: "turisteam-80f1b.appspot.com",
-  messagingSenderId: "623846192437",
-  appId: "TU_APP_ID"
+    apiKey: "TU_API_KEY_REAL",
+    authDomain: "tu-proyecto.firebaseapp.com",
+    projectId: "tu-proyecto-id",
+    storageBucket: "tu-proyecto.appspot.com",
+    messagingSenderId: "123456789",
+    appId: "1:123456789:web:abcdefghijklmnop"
 };
 ```
 
-## 👥 **Usuarios y Permisos**
+**`notification-app/index.html` (línea ~3):**
+```javascript
+const firebaseConfig = {
+    apiKey: "TU_API_KEY_REAL",
+    authDomain: "tu-proyecto.firebaseapp.com",
+    projectId: "tu-proyecto-id",
+    storageBucket: "tu-proyecto.appspot.com",
+    messagingSenderId: "123456789",
+    appId: "1:123456789:web:abcdefghijklmnop"
+};
+```
 
-### **👤 Usuarios Ciudadanos:**
-- **Registro** con email y contraseña
-- **Selección** de localidades de interés
-- **Consentimiento** para notificaciones
-- **Recepción** de notificaciones push
+### **4. Configurar VAPID Key**
+1. En Firebase Console → Project Settings → Cloud Messaging
+2. Generar **Web Push certificates**
+3. Copiar la **VAPID key**
+4. Actualizar en ambos archivos HTML
 
-### **👨‍💼 Administradores:**
-- **Login** con credenciales especiales
-- **Envío** de notificaciones
-- **Gestión** de usuarios
-- **Estadísticas** en tiempo real
+## 🎯 **Funcionalidades del Sistema**
 
-### **🔐 Super Administrador:**
-- **Email:** amco@gmx.es
-- **Contraseña:** 533712
-- **Acceso** completo al sistema
-- **Gestión** de otros administradores
+### **🌐 Panel Web de Administración**
 
-## 📊 **Funcionalidades del Sistema**
+#### **📱 Gestión de Notificaciones**
+- Enviar notificaciones a todos los usuarios
+- Enviar notificaciones a pueblos específicos
+- Adjuntar documentos (PDF, DOC, JPG, PNG)
+- Ver estadísticas de notificaciones
+- Historial de notificaciones enviadas
 
-### **🌐 Panel Web:**
-- ✅ **Gestión de servicios** municipales
-- ✅ **Sistema de tarjetas configurables** para Cultura y Ocio
-- ✅ **Envío de notificaciones** push
-- ✅ **Estadísticas** de usuarios
-- ✅ **Configuración** de secciones
-- ✅ **Gestión** de administradores
-- ✅ **Base de datos** de usuarios
+#### **📄 Gestión de Documentos**
+- Subir documentos por categorías
+- Gestión de documentos existentes
+- Sistema de categorización
 
-### **📱 APK Android:**
-- ✅ **Registro** de usuarios
-- ✅ **Login** automático
-- ✅ **Panel de administración**
-- ✅ **Envío de notificaciones**
-- ✅ **Recepción** de notificaciones
-- ✅ **Sincronización** con web
+#### **📅 Sistema de Citas Previas**
+- Configuración de horarios de atención
+- Gestión de citas solicitadas
+- Envío de confirmaciones por email
+- Calendario de disponibilidad
 
-### **🍎 PWA iPhone:**
-- ✅ **Instalación** desde Safari
-- ✅ **Notificaciones** push nativas
-- ✅ **Funcionalidad** completa
-- ✅ **Sincronización** con web y APK
+#### **📊 Gestión de Datos**
+- Exportar/Importar datos (JSON, Excel, DOC)
+- Estadísticas del sistema
+- Gestión de usuarios y administradores
+- Copias de seguridad
 
-## 🃏 **Sistema de Tarjetas Configurables**
+#### **🏥 Datos y Enlaces de Interés**
+- **Consultorio Médico** (unificado)
+- **ITV - Puebla de Sanabria**
+- **Teléfonos de Interés**
+- **Líneas de Autobús y Tren**
 
-### **🎭 Cultura y Ocio:**
-- **Tarjetas personalizables** con títulos, descripciones e iconos
-- **Colores personalizables** para cada tarjeta
-- **Elementos configurables** dentro de cada tarjeta
-- **Títulos con emojis** para mayor atractivo visual
-- **Enlaces opcionales** (internos #enlace o externos https://...)
-- **Orden personalizable** de elementos
-- **Activación/desactivación** de tarjetas
+### **📱 App Móvil**
 
-### **📋 Gestión desde Administración:**
-- **Panel intuitivo** para configurar tarjetas
-- **Formularios avanzados** con validación
-- **Preview en tiempo real** de cambios
-- **Modales especializados** para cada función
-- **Persistencia automática** en localStorage
-- **Actualización instantánea** en la página principal
+#### **👤 Para Usuarios**
+- Registro con selección de pueblos de interés
+- Recibir notificaciones filtradas por pueblo
+- Ver notificaciones con escudo del ayuntamiento
+- Acceder a archivos adjuntos
+- Interfaz moderna y responsive
 
-### **🎨 Características Visuales:**
-- **Diseño moderno** con efectos hover
-- **Iconos FontAwesome** personalizables
-- **Bordes de colores** distintivos
-- **Layout responsive** para móviles
-- **Transiciones suaves** y animaciones
+#### **👨‍💼 Para Administradores**
+- Login: `admin@cobreros.es` / `admin123`
+- Enviar notificaciones desde el móvil
+- Seleccionar pueblos objetivo
+- Adjuntar documentos (PDF, JPG)
+- Panel discreto con botón (+)
 
-## 📞 **Sistema de Teléfonos de Interés**
+## 🔧 **Configuración de Notificaciones**
 
-### **🎯 Características Principales:**
-- **Tarjeta única expandible** con diseño moderno
-- **Sistema de elementos configurables** por categorías
-- **Tipos de elementos**:
-  - **📞 Teléfonos múltiples**: Lista de números de teléfono (ej: Taxis)
-  - **🏢 Información de servicio**: Datos completos (ej: ITV con dirección, horarios)
-  - **📄 Documento/Foto**: Información básica + archivo adjunto (ej: Renovación DNI)
+### **Tipos de Notificación Soportados:**
+- 📄 **Bando Municipal**
+- 📢 **Noticia/Anuncio**
+- 🎭 **Evento**
+- 🚨 **Urgencia/Emergencia**
+- 📅 **Cita Previa**
+- ℹ️ **General**
 
-### **⚙️ Gestión desde Administración:**
-- **Panel especializado** para configurar teléfonos de interés
-- **Formularios dinámicos** según el tipo de elemento
-- **Datos estructurados** con formato Nombre|Valor
-- **Enlaces opcionales** a documentos PDF y fotos
-- **Orden personalizable** de elementos
-- **Activación/desactivación** individual de elementos
+### **Sistema de Filtrado:**
+- **Notificaciones generales**: Se muestran a todos los usuarios
+- **Notificaciones por pueblo**: Solo a usuarios que han seleccionado ese pueblo
+- **Sincronización**: Preferencias guardadas en localStorage y Firestore
 
-### **🎨 Interfaz de Usuario:**
-- **Tarjeta principal** con emoji y descripción
-- **Expansión suave** al hacer clic
-- **Elementos individuales** con sus propios datos
-- **Enlaces telefónicos** clickeables (tel:)
-- **Enlaces a documentos** y fotos
-- **Diseño responsive** para móviles
+## 📱 **Instalación de la App Móvil**
 
-### **📋 Ejemplos de Configuración:**
-- **🚕 Taxis**: Múltiples números de taxis locales
-- **🚗 ITV**: Dirección, teléfono, horarios de apertura
-- **🆔 Renovación DNI**: Teléfono, horarios + documento PDF con días disponibles
+### **Desde la Web:**
+1. Abrir la página web en móvil
+2. Aparecerá mensaje "📱 App COBREROS"
+3. Tocar "Regístrate desde tu móvil"
+4. Seguir instrucciones de instalación
 
-## 🔔 **Sistema de Notificaciones Bidireccional**
+### **Funcionalidades PWA:**
+- ✅ Instalable en pantalla de inicio
+- ✅ Notificaciones push en segundo plano
+- ✅ Funciona offline (caché)
+- ✅ Icono personalizado del ayuntamiento
 
-### **Tipos de Notificación:**
-- **🏛️ General** - Información general del ayuntamiento
-- **🚨 Emergencia** - Alertas urgentes (rojo, prioridad alta)
-- **📅 Cita** - Recordatorios de citas (verde, prioridad alta)
-- **🎉 Evento** - Eventos municipales (naranja, prioridad alta)
-- **📢 Bando** - Bandos oficiales (morado, prioridad alta)
-- **⚠️ Incidencia** - Reportes de incidencias (amarillo, prioridad media)
+## 🎨 **Diseño y UX**
 
-### **Características:**
-- **Escudo de Cobreros** en todas las notificaciones
-- **Archivos adjuntos** (PDF, imágenes, documentos)
-- **Filtrado por localidades** específicas (13 pueblos)
-- **Estadísticas** de entrega en tiempo real
-- **Historial** de notificaciones
-- **Sincronización bidireccional** entre todas las plataformas
+### **Características de Diseño:**
+- **Responsive**: Adaptado a móviles, tablets y desktop
+- **Moderno**: Gradientes, sombras, animaciones suaves
+- **Accesible**: Colores contrastantes, iconos claros
+- **Profesional**: Escudo del ayuntamiento prominente
+- **Intuitivo**: Navegación clara y flujo lógico
 
-### **Flujos de Notificación:**
-1. **🌐 Web → 📱 APK:** Administrador web envía notificación a usuarios APK
-2. **📱 APK → 📱 APK:** Usuario APK envía notificación a otro usuario APK
-3. **📱 APK → 🌐 Web:** Usuario APK envía notificación a administrador web
-4. **🌐 Web → 🌐 Web:** Administrador web envía notificación a otros administradores web
-5. **📱 PWA iPhone:** Recibe todas las notificaciones de cualquier origen
+### **Paleta de Colores:**
+- **Primario**: Azul (#3498db, #2980b9)
+- **Secundario**: Gris (#6c757d, #495057)
+- **Éxito**: Verde (#27ae60)
+- **Advertencia**: Naranja (#f39c12)
+- **Peligro**: Rojo (#e74c3c)
 
-### **Arquitectura Técnica:**
-- **Firebase Cloud Messaging (FCM)** como backbone
-- **Firestore** para almacenamiento de notificaciones
-- **Service Worker** para PWA y notificaciones web
-- **Firebase SDK** para APK Android
-- **Sincronización en tiempo real** entre todas las plataformas
-
-## 🚀 **Despliegue y Producción**
-
-### **🌐 Web (Netlify):**
-- **URL:** https://ayuntamiento-cobreros.netlify.app
-- **HTTPS:** Automático
-- **CDN:** Global
-- **Actualizaciones:** Automáticas
-
-### **📱 APK Android:**
-- **Distribución:** Descarga directa desde la web
-- **Actualizaciones:** Manuales
-- **Compatibilidad:** Android 5.0+
-
-### **🍎 PWA iPhone:**
-- **Instalación:** Desde Safari
-- **Actualizaciones:** Automáticas
-- **Compatibilidad:** iOS 11.3+
-
-## 📈 **Estadísticas y Monitoreo**
+## 📊 **Estadísticas y Monitoreo**
 
 ### **Métricas Disponibles:**
-- **Usuarios registrados** por localidad
-- **Notificaciones enviadas** por tipo
-- **Tasa de entrega** de notificaciones
-- **Usuarios activos** por plataforma
-- **Estadísticas** de uso por localidad
+- Usuarios registrados
+- Notificaciones enviadas
+- Documentos subidos
+- Citas previas solicitadas
+- Uso por pueblo/localidad
 
-## 🔒 **Seguridad y Privacidad**
+### **Dashboard de Administración:**
+- Contadores en tiempo real
+- Gráficos de actividad
+- Exportación de datos
+- Historial de acciones
 
-### **Medidas de Seguridad:**
-- **HTTPS** en todas las comunicaciones
-- **Autenticación** Firebase
-- **Validación** de datos
-- **Consentimiento** explícito para notificaciones
-- **Datos encriptados** en Firestore
+## 🔒 **Seguridad**
 
-### **Privacidad:**
-- **Consentimiento** explícito de usuarios
-- **Datos mínimos** necesarios
-- **Cumplimiento** GDPR
-- **Transparencia** en el uso de datos
+### **Medidas Implementadas:**
+- Validación de formularios
+- Sanitización de datos
+- Autenticación de administradores
+- Permisos de notificación
+- Cifrado de datos sensibles
 
-## 🆘 **Soporte y Mantenimiento**
+### **Credenciales por Defecto:**
+- **Admin Web**: Configurar en panel de administración
+- **Admin App**: `admin@cobreros.es` / `admin123`
 
-### **Contacto:**
-- **Desarrollador:** TURISTEAM
-- **Email:** amco@gmx.es
-- **Proyecto:** Ayuntamiento de Cobreros
+## 🚀 **Despliegue**
 
-### **Mantenimiento:**
-- **Actualizaciones** automáticas de la web
-- **Monitoreo** de notificaciones
-- **Backup** automático en Firebase
-- **Soporte** técnico disponible
+### **Opciones de Hosting:**
+- **Netlify** (recomendado para web)
+- **Firebase Hosting**
+- **GitHub Pages**
+- **Vercel**
 
-## 📝 **Changelog**
+### **Configuración de Dominio:**
+1. Configurar DNS del dominio
+2. Actualizar URLs en configuración
+3. Configurar SSL/HTTPS
+4. Actualizar manifest.json con dominio real
 
-### **v1.2.0** - Teléfonos de Interés Configurables 📞
-- ✅ **Sección de Teléfonos de Interés** completamente refactorizada
-- ✅ **Tarjeta única expandible** en lugar de múltiples tarjetas
-- ✅ **Sistema de elementos configurables** (Taxis, ITV, Renovación DNI)
-- ✅ **Tipos de elementos**: Teléfonos múltiples, Información de servicio, Documento/Foto
-- ✅ **Panel de administración avanzado** con modales específicos
-- ✅ **Datos dinámicos** según el tipo de elemento
-- ✅ **Enlaces a documentos y fotos** opcionales
-- ✅ **Interfaz responsive** con efectos de expansión
-- ✅ **Gestión completa**: crear, editar, eliminar, ordenar elementos
-- ✅ **Eliminación de sección duplicada** no configurable
+## 📚 **Documentación Adicional**
 
-### **v1.1.0** - Sistema de Tarjetas Configurables ✨
-- ✅ **Sistema completo de tarjetas configurables** para Cultura y Ocio
-- ✅ **Formularios avanzados** para gestión desde administración
-- ✅ **Interfaz moderna** con colores personalizables e iconos FontAwesome
-- ✅ **Sistema de enlaces opcionales** (internos y externos)
-- ✅ **Gestión de elementos** con títulos, descripciones y emojis
-- ✅ **Panel de administración intuitivo** con modales avanzados
-- ✅ **Persistencia en localStorage** con actualización automática
-- ✅ **Funcionalidades completas**: crear, editar, eliminar, ordenar elementos
-- ✅ **Diseño responsive** y efectos hover
-- ✅ **Todo el contenido completamente configurable** desde admin
+- **`CONFIGURACION_FIREBASE_NOTIFICACIONES.md`** - Guía completa de Firebase
+- **`MEJORAS_NOTIFICACIONES_APP.md`** - Mejoras implementadas en notificaciones
+- **`UNIFICACION_PUEBLOS_NOTIFICACIONES.md`** - Unificación de pueblos
+- **`notification-app/README.md`** - Documentación específica de la app móvil
 
-### **v1.0.0** - Sistema Completo
-- ✅ **Web del Ayuntamiento** con PWA
-- ✅ **APK Android** nativa
-- ✅ **Sistema de notificaciones** bidireccional
-- ✅ **13 localidades** implementadas
-- ✅ **Base de datos** en Firebase
-- ✅ **Panel de administración** completo
-- ✅ **Super administrador** TURISTEAM
+## 🤝 **Contribución**
 
-## 🎯 **Próximas Funcionalidades**
+### **Cómo Contribuir:**
+1. Fork del repositorio
+2. Crear rama para nueva funcionalidad
+3. Realizar cambios y pruebas
+4. Crear Pull Request
+5. Revisión y merge
 
-### **En Desarrollo:**
-- 🔄 **Iconos** de la APK
-- 🔄 **Compilación** final
-- 🔄 **Despliegue** en Netlify
-- 🔄 **Configuración** Firebase
+### **Estándares de Código:**
+- Código limpio y comentado
+- Nombres descriptivos de variables
+- Documentación de funciones
+- Pruebas de funcionalidad
 
-### **Futuras Mejoras:**
-- 📊 **Dashboard** avanzado
-- 📱 **App iOS** nativa
-- 🔔 **Notificaciones** programadas
-- 📈 **Analytics** avanzados
+## 📞 **Soporte y Contacto**
+
+### **Información del Proyecto:**
+- **Desarrollado para**: Ayuntamiento de Cobreros
+- **Tecnologías**: HTML5, CSS3, JavaScript, Firebase
+- **Licencia**: Uso municipal
+- **Versión**: 1.0.0
+
+### **Contacto Técnico:**
+- **Email**: aytocobrero@gmail.com
+- **Soporte**: A través de issues en el repositorio
+
+## 🎯 **Roadmap Futuro**
+
+### **Próximas Funcionalidades:**
+- [ ] Sistema de autenticación mejorado
+- [ ] Integración con servicios municipales
+- [ ] App nativa para iOS/Android
+- [ ] Sistema de pagos online
+- [ ] Integración con redes sociales
+- [ ] Sistema de encuestas municipales
 
 ---
 
-## 🏛️ **Ayuntamiento de Cobreros**
+## ✅ **Estado del Proyecto**
 
-**Sistema profesional de gestión municipal con tecnología moderna**
+**🟢 COMPLETAMENTE FUNCIONAL**
 
-*Desarrollado por TURISTEAM para el Ayuntamiento de Cobreros*
+- ✅ Página web oficial operativa
+- ✅ App móvil funcional
+- ✅ Sistema de notificaciones activo
+- ✅ Panel de administración completo
+- ✅ Gestión por pueblos implementada
+- ✅ Documentación completa
+- ✅ Sistema de respaldos
+- ✅ Diseño responsive
 
-**¡Sistema completo y funcional para la gestión municipal!** 🚀✨
+**🚀 Listo para producción y uso municipal**
+
+---
+
+*Desarrollado con ❤️ para el Ayuntamiento de Cobreros*
