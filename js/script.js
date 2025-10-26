@@ -778,7 +778,22 @@ function checkDesktopAppMessage() {
     }
 }
 
-// Cerrar el mensaje de la app en desktop
+// Cerrar el mensaje de la app en móviles
+function closeMobileInfo() {
+    const mobileInfoElement = document.getElementById('mobileAppInfo');
+    
+    if (mobileInfoElement) {
+        // Añadir clase de animación de salida
+        mobileInfoElement.classList.add('closing');
+        
+        // Remover el elemento después de la animación
+        setTimeout(() => {
+            mobileInfoElement.remove();
+        }, 300);
+    }
+}
+
+// Cerrar el mensaje de la app en desktop (mantener por compatibilidad)
 function closeDesktopInfo() {
     const desktopInfoElement = document.getElementById('desktopAppInfo');
     
@@ -921,8 +936,11 @@ function initializeApp() {
         // Forzar scroll al inicio de la página
         window.scrollTo(0, 0);
         
-        // Cargar servicios
+        // Cargar servicios (sistema antiguo)
         loadServicios();
+        
+        // Inicializar gestión de datos y enlaces (sistema nuevo)
+        initializeDataLinksManagement();
     }, 100);
     
     // Limpiar formularios cuando se cierre la página
@@ -6251,6 +6269,8 @@ function deleteConsultorioDocument(index) {
         consultorioConfig.documentos.splice(index, 1);
         saveConsultorioConfig();
         loadConsultorioDocumentosInModal();
+        loadConsultorioList();
+        updateMainPageContent(); // Actualizar página principal
         renderServicios();
     }
 }
@@ -6261,150 +6281,193 @@ function deleteConsultorioFoto(index) {
         consultorioConfig.fotos.splice(index, 1);
         saveConsultorioConfig();
         loadConsultorioFotosInModal();
+        loadConsultorioList();
+        updateMainPageContent(); // Actualizar página principal
         renderServicios();
     }
 }
 
 
-// Renderizar servicios en la página
+// Renderizar servicios en la página (SISTEMA UNIFICADO)
 function renderServicios() {
     const container = document.getElementById('serviciosContent');
     if (!container) return;
     
-    let html = '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 2rem;">';
+    let html = '<div class="servicios-grid">';
     
-    // CONSULTORIO MÉDICO
-    html += `<div class="admin-section"><h3>${seccionesConfig.medical.icon} ${seccionesConfig.medical.title}</h3>`;
-    html += '<div class="consultorio-simple">';
-    
-    if (consultorioConfig.documentos.length > 0 || consultorioConfig.fotos.length > 0) {
-        html += '<div class="consultorio-enlaces">';
+    // CONSULTORIO MÉDICO (UNIFICADO)
+    if (dataLinksConfig.medical.enabled) {
+        html += `<div class="service-card medical-card">`;
+        html += `<div class="service-header">`;
+        html += `<h3>${dataLinksConfig.medical.icon} ${dataLinksConfig.medical.title}</h3>`;
+        html += `</div>`;
+        html += `<div class="service-content">`;
         
-        if (consultorioConfig.documentos.length > 0) {
-            html += `<a href="#" class="btn btn-outline" onclick="viewConsultorioDocument()">📋 Ver Documento</a>`;
-        }
-        
-        if (consultorioConfig.fotos.length > 0) {
-            html += `<a href="#" class="btn btn-outline" onclick="viewConsultorioPhoto()">📸 Ver Foto</a>`;
-        }
-        
-    html += '</div>';
-    } else {
-        html += '<p class="no-content">No hay contenido disponible</p>';
-    }
-    
-    html += '</div>';
-    html += '</div>';
-    
-    // ITV - PUEBLA DE SANABRIA
-    html += `<div class="admin-section"><h3>${seccionesConfig.itv.icon} ${seccionesConfig.itv.title}</h3>`;
-    html += '<div class="itv-puebla">';
-    html += '<h4>🏘️ PUEBLA DE SANABRIA</h4>';
-    
-    if (consultorioConfig.documentos.length > 0 || consultorioConfig.fotos.length > 0) {
-        html += '<div class="itv-enlaces">';
-        
-        if (consultorioConfig.documentos.length > 0) {
-            html += `<a href="#" class="btn btn-outline" onclick="viewItvDocument()">📋 Ver Documento</a>`;
-        }
-        
-        if (consultorioConfig.fotos.length > 0) {
-            html += `<a href="#" class="btn btn-outline" onclick="viewItvPhoto()">📸 Ver Foto</a>`;
-        }
-        
-    html += '</div>';
-    } else {
-        html += '<p class="no-content">No hay contenido disponible</p>';
-    }
-    
-    html += '</div>';
-    html += '</div>';
-    
-    
-    // Teléfonos de Interés
-    html += `<div class="admin-section"><h3>${telefonosInteresConfig.icono} ${telefonosInteresConfig.titulo}</h3>`;
-    html += '<div class="telefonos-interes-container">';
-    html += `<p>${telefonosInteresConfig.descripcion}</p>`;
-    
-    // Tarjeta principal expandible
-    html += `
-        <div class="telefono-tarjeta-principal" onclick="toggleTelefonoExpansion()">
-            <div class="telefono-tarjeta-header">
-                <span class="telefono-emoji">${telefonosInteresConfig.tarjeta.emoji}</span>
-                <div class="telefono-details">
-                    <h4>${telefonosInteresConfig.tarjeta.nombre}</h4>
-                    <p>${telefonosInteresConfig.tarjeta.descripcion}</p>
-                </div>
-                <span class="telefono-expand-icon" id="telefonoExpandIcon">▼</span>
-            </div>
-        </div>
-    `;
-    
-    // Contenido expandible
-    html += '<div class="telefonos-dropdown-content" id="telefonosDropdownContent" style="display: none;">';
-    
-    telefonosInteresConfig.tarjeta.elementos
-        .filter(elemento => elemento.isActive)
-        .sort((a, b) => a.orden - b.orden)
-        .forEach(elemento => {
-            html += `
-                <div class="telefono-elemento" onclick="toggleElementoExpansion(${elemento.id})">
-                    <div class="telefono-elemento-header">
-                        <span class="telefono-emoji">${elemento.emoji}</span>
-                        <div class="telefono-details">
-                            <h4>${elemento.nombre}</h4>
-                            <p>${elemento.descripcion}</p>
-                        </div>
-                        <span class="telefono-expand-icon" id="elementoExpandIcon${elemento.id}">▼</span>
-                    </div>
-                    <div class="telefono-elemento-content" id="elementoContent${elemento.id}" style="display: none;">
-                        ${renderTelefonoElementoContent(elemento)}
-                    </div>
-                </div>
-            `;
-        });
-    
-    html += '</div>';
-    html += '</div>';
-    html += '</div>';
-    
-    // LÍNEAS DE AUTOBÚS Y TREN
-    html += `<div class="admin-section"><h3>${seccionesConfig.transporte.icon} ${seccionesConfig.transporte.title}</h3>`;
-    html += '<div class="transporte-lines">';
-    
-    if (transporteConfig.lineas.length > 0) {
-        html += '<div class="transporte-lines-list">';
-        
-        transporteConfig.lineas
-            .filter(linea => linea.isActive)
-            .sort((a, b) => a.orden - b.orden)
-            .forEach(linea => {
+        // Mostrar contenido del sistema nuevo
+        if (dataLinksConfig.medical.content.length > 0) {
+            dataLinksConfig.medical.content.forEach(item => {
                 html += `
-                    <div class="transporte-linea" onclick="toggleLineaExpansion(${linea.id})">
-                        <div class="transporte-linea-header">
-                            <span class="transporte-emoji">${linea.emoji}</span>
-                            <div class="transporte-details">
-                                <h4>${linea.nombre}</h4>
-                                <p>${linea.descripcion}</p>
-                            </div>
-                            <span class="transporte-expand-icon" id="lineaExpandIcon${linea.id}">▼</span>
-                        </div>
-                        <div class="transporte-linea-content" id="lineaContent${linea.id}" style="display: none;">
-                            ${renderTransporteLineaContent(linea)}
+                    <div class="service-item">
+                        <div class="item-content">
+                            <h4>${item.title}</h4>
+                            <p>${item.description}</p>
+                            ${item.schedule ? `<p><strong>📅 Horario:</strong> ${item.schedule}</p>` : ''}
+                            ${item.phone ? `<p><strong>📞 Teléfono:</strong> <a href="tel:${item.phone}">${item.phone}</a></p>` : ''}
+                            ${item.address ? `<p><strong>📍 Dirección:</strong> ${item.address}</p>` : ''}
                         </div>
                     </div>
                 `;
             });
+        }
         
-        html += '</div>';
-    } else {
-        html += '<p class="no-content">No hay líneas de transporte configuradas</p>';
+        // Mostrar documentos del sistema antiguo
+        if (consultorioConfig.documentos.length > 0) {
+            consultorioConfig.documentos.forEach(doc => {
+                html += `
+                    <div class="service-item document-item">
+                        <div class="item-content">
+                            <h4>📄 ${doc.nombre || doc.titulo || 'Documento'}</h4>
+                            <p>${doc.descripcion || 'Documento del consultorio médico'}</p>
+                            <p><strong>📁 Archivo:</strong> ${doc.fileName || doc.nombreArchivo || 'Sin archivo'}</p>
+                        </div>
+                        <div class="item-actions">
+                            <button class="btn btn-sm btn-outline" onclick="window.open('${doc.url}', '_blank')" title="Ver documento">
+                                <i class="fas fa-eye"></i> Ver
+                            </button>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+        
+        // Mostrar fotos del sistema antiguo
+        if (consultorioConfig.fotos.length > 0) {
+            consultorioConfig.fotos.forEach(foto => {
+                html += `
+                    <div class="service-item photo-item">
+                        <div class="item-content">
+                            <h4>📸 ${foto.nombre || foto.titulo || 'Foto'}</h4>
+                            <p>${foto.descripcion || 'Foto del consultorio médico'}</p>
+                            <p><strong>📁 Archivo:</strong> ${foto.fileName || 'Sin archivo'}</p>
+                        </div>
+                        <div class="item-actions">
+                            <button class="btn btn-sm btn-outline" onclick="window.open('${foto.url}', '_blank')" title="Ver foto">
+                                <i class="fas fa-eye"></i> Ver
+                            </button>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+        
+        // Si no hay contenido
+        if (dataLinksConfig.medical.content.length === 0 && consultorioConfig.documentos.length === 0 && consultorioConfig.fotos.length === 0) {
+            html += '<p class="no-content">No hay contenido disponible</p>';
+        }
+        
+        html += `</div></div>`;
     }
     
-    html += '</div>';
+    // ITV - PUEBLA DE SANABRIA
+    if (dataLinksConfig.itv.enabled) {
+        html += `<div class="service-card itv-card">`;
+        html += `<div class="service-header">`;
+        html += `<h3>${dataLinksConfig.itv.icon} ${dataLinksConfig.itv.title}</h3>`;
+        html += `</div>`;
+        html += `<div class="service-content">`;
+        
+        // Mostrar contenido del sistema nuevo
+        if (dataLinksConfig.itv.content.length > 0) {
+            dataLinksConfig.itv.content.forEach(item => {
+                html += `
+                    <div class="service-item">
+                        <div class="item-content">
+                            <h4>${item.title}</h4>
+                            <p>${item.description}</p>
+                            ${item.address ? `<p><strong>📍 Dirección:</strong> ${item.address}</p>` : ''}
+                            ${item.phone ? `<p><strong>📞 Teléfono:</strong> <a href="tel:${item.phone}">${item.phone}</a></p>` : ''}
+                            ${item.schedule ? `<p><strong>📅 Horario:</strong> ${item.schedule}</p>` : ''}
+                        </div>
+                    </div>
+                `;
+            });
+        }
+        
+        // Si no hay contenido
+        if (dataLinksConfig.itv.content.length === 0) {
+            html += '<p class="no-content">No hay información disponible de ITV</p>';
+        }
+        
+        html += `</div></div>`;
+    }
+    
+    
+    // Teléfonos de Interés
+    if (dataLinksConfig.phones.enabled) {
+        html += `<div class="service-card phones-card">`;
+        html += `<div class="service-header">`;
+        html += `<h3>${dataLinksConfig.phones.icon} ${dataLinksConfig.phones.title}</h3>`;
+        html += `</div>`;
+        html += `<div class="service-content">`;
+        
+        // Mostrar contenido del sistema nuevo
+        if (dataLinksConfig.phones.content.length > 0) {
+            dataLinksConfig.phones.content.forEach(item => {
+                html += `
+                    <div class="service-item">
+                        <div class="item-content">
+                            <h4>${item.icon} ${item.title}</h4>
+                            <p>${item.description}</p>
+                            <p><strong>Tipo:</strong> ${item.type}</p>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+        
+        // Si no hay contenido
+        if (dataLinksConfig.phones.content.length === 0) {
+            html += '<p class="no-content">No hay teléfonos de interés configurados</p>';
+        }
+        
+        html += `</div></div>`;
+    }
+    
+    // LÍNEAS DE AUTOBÚS Y TREN
+    if (dataLinksConfig.transport.enabled) {
+        html += `<div class="service-card transport-card">`;
+        html += `<div class="service-header">`;
+        html += `<h3>${dataLinksConfig.transport.icon} ${dataLinksConfig.transport.title}</h3>`;
+        html += `</div>`;
+        html += `<div class="service-content">`;
+        
+        // Mostrar contenido del sistema nuevo
+        if (dataLinksConfig.transport.content.length > 0) {
+            dataLinksConfig.transport.content.forEach(item => {
+                html += `
+                    <div class="service-item">
+                        <div class="item-content">
+                            <h4>${item.icon} ${item.title}</h4>
+                            <p>${item.description}</p>
+                            ${item.route ? `<p><strong>Ruta:</strong> ${item.route}</p>` : ''}
+                            ${item.schedule ? `<p><strong>Horario:</strong> ${item.schedule}</p>` : ''}
+                        </div>
+                    </div>
+                `;
+            });
+        }
+        
+        // Si no hay contenido
+        if (dataLinksConfig.transport.content.length === 0) {
+            html += '<p class="no-content">No hay líneas de transporte configuradas</p>';
+        }
+        
+        html += `</div></div>`;
+    }
+    
+    // Cerrar contenedor principal
     html += '</div>';
     
-    html += '</div>';
     container.innerHTML = html;
 }
 
@@ -12566,39 +12629,116 @@ function crearSeccionDescargaAPK(config) {
 // ===== FUNCIONES DE ADMINISTRACIÓN PARA DATOS Y ENLACES =====
 
 // Cargar lista del consultorio médico
+// Función para cargar lista del consultorio médico (UNIFICADA)
 function loadConsultorioList() {
-    const container = document.getElementById('consultorioList');
-    if (!container) return;
+    const consultorioList = document.getElementById('consultorioList');
+    if (!consultorioList) return;
     
-    container.innerHTML = '';
+    consultorioList.innerHTML = '';
     
-    if (consultorioConfig.documentos.length === 0 && consultorioConfig.fotos.length === 0) {
-        container.innerHTML = '<p>No hay contenido disponible para el consultorio médico.</p>';
+    // Verificar si hay contenido
+    const hasContent = dataLinksConfig.medical.content.length > 0;
+    const hasDocuments = consultorioConfig.documentos.length > 0;
+    const hasPhotos = consultorioConfig.fotos.length > 0;
+    
+    if (!hasContent && !hasDocuments && !hasPhotos) {
+        consultorioList.innerHTML = '<p>No hay contenido disponible para el consultorio médico.</p>';
         return;
     }
     
-    let html = '<div class="content-items">';
+    let html = '<div class="consultorio-unified">';
     
-    // Mostrar documentos
-    if (consultorioConfig.documentos.length > 0) {
-        html += '<div class="content-item"><h5>📋 Documentos:</h5><ul>';
-        consultorioConfig.documentos.forEach((doc, index) => {
-            html += `<li>${doc.nombre} <button class="btn btn-danger btn-small" onclick="deleteConsultorioDocument(${index})">Eliminar</button></li>`;
+    // Mostrar elementos del consultorio (sistema nuevo)
+    if (hasContent) {
+        html += '<div class="consultorio-content-section">';
+        html += '<h5>🏥 Información del Consultorio:</h5>';
+        html += '<div class="content-items">';
+        
+        dataLinksConfig.medical.content.forEach(item => {
+            html += `
+                <div class="service-item">
+                    <div class="service-content">
+                        <h6>${item.title}</h6>
+                        <p>${item.description}</p>
+                        ${item.schedule ? `<p><strong>📅 Horario:</strong> ${item.schedule}</p>` : ''}
+                        ${item.phone ? `<p><strong>📞 Teléfono:</strong> <a href="tel:${item.phone}">${item.phone}</a></p>` : ''}
+                        ${item.address ? `<p><strong>📍 Dirección:</strong> ${item.address}</p>` : ''}
+                    </div>
+                    <div class="service-actions">
+                        <button class="btn btn-sm btn-primary" onclick="editConsultorioItem('${item.id}')" title="Editar elemento">
+                            <i class="fas fa-edit"></i> Editar
+                        </button>
+                        <button class="btn btn-sm btn-danger" onclick="deleteConsultorioItem('${item.id}')" title="Eliminar elemento">
+                            <i class="fas fa-trash"></i> Eliminar
+                        </button>
+                    </div>
+                </div>
+            `;
         });
-        html += '</ul></div>';
+        
+        html += '</div></div>';
     }
     
-    // Mostrar fotos
-    if (consultorioConfig.fotos.length > 0) {
-        html += '<div class="content-item"><h5>📸 Fotos:</h5><ul>';
-        consultorioConfig.fotos.forEach((foto, index) => {
-            html += `<li>${foto.nombre} <button class="btn btn-danger btn-small" onclick="deleteConsultorioFoto(${index})">Eliminar</button></li>`;
+    // Mostrar documentos (sistema antiguo)
+    if (hasDocuments) {
+        html += '<div class="consultorio-documents-section">';
+        html += '<h5>📄 Documentos del Consultorio:</h5>';
+        html += '<div class="content-items">';
+        
+        consultorioConfig.documentos.forEach((doc, index) => {
+            html += `
+                <div class="document-item">
+                    <div class="document-content">
+                        <h6>${doc.nombre || doc.titulo || 'Documento sin nombre'}</h6>
+                        <p>Archivo: ${doc.fileName || doc.nombreArchivo || 'Sin archivo'}</p>
+                        ${doc.descripcion ? `<p>${doc.descripcion}</p>` : ''}
+                    </div>
+                    <div class="document-actions">
+                        <button class="btn btn-sm btn-outline" onclick="window.open('${doc.url}', '_blank')" title="Ver documento">
+                            <i class="fas fa-eye"></i> Ver
+                        </button>
+                        <button class="btn btn-sm btn-danger" onclick="deleteConsultorioDocument(${index})" title="Eliminar documento">
+                            <i class="fas fa-trash"></i> Eliminar
+                        </button>
+                    </div>
+                </div>
+            `;
         });
-        html += '</ul></div>';
+        
+        html += '</div></div>';
+    }
+    
+    // Mostrar fotos (sistema antiguo)
+    if (hasPhotos) {
+        html += '<div class="consultorio-photos-section">';
+        html += '<h5>📸 Fotos del Consultorio:</h5>';
+        html += '<div class="content-items">';
+        
+        consultorioConfig.fotos.forEach((foto, index) => {
+            html += `
+                <div class="photo-item">
+                    <div class="photo-content">
+                        <h6>${foto.nombre || foto.titulo || 'Foto sin nombre'}</h6>
+                        <p>Archivo: ${foto.fileName || 'Sin archivo'}</p>
+                        ${foto.descripcion ? `<p>${foto.descripcion}</p>` : ''}
+                    </div>
+                    <div class="photo-actions">
+                        <button class="btn btn-sm btn-outline" onclick="window.open('${foto.url}', '_blank')" title="Ver foto">
+                            <i class="fas fa-eye"></i> Ver
+                        </button>
+                        <button class="btn btn-sm btn-danger" onclick="deleteConsultorioFoto(${index})" title="Eliminar foto">
+                            <i class="fas fa-trash"></i> Eliminar
+                        </button>
+                    </div>
+                </div>
+            `;
+        });
+        
+        html += '</div></div>';
     }
     
     html += '</div>';
-    container.innerHTML = html;
+    consultorioList.innerHTML = html;
 }
 
 // Cargar lista de ITV
@@ -12638,43 +12778,6 @@ function loadItvList() {
 }
 
 // Abrir modal del consultorio médico
-function openConsultorioModal() {
-    const modal = document.createElement('div');
-    modal.className = 'modal';
-    modal.style.display = 'block';
-    modal.innerHTML = `
-        <div class="modal-content">
-            <span class="close" onclick="closeModalOnly(this.closest('.modal'))">&times;</span>
-            <h2>🏥 Editar Consultorio Médico</h2>
-            <div class="modal-tabs">
-                <button class="tab-btn active" onclick="showConsultorioTab('documentos')">📋 Documentos</button>
-                <button class="tab-btn" onclick="showConsultorioTab('fotos')">📸 Fotos</button>
-            </div>
-            <div id="consultorioDocumentosTab" class="tab-content active">
-                <h3>Documentos del Consultorio</h3>
-                <div class="content-actions">
-                    <button class="btn btn-primary" onclick="openConsultorioDocumentModal()">
-                        <i class="fas fa-plus"></i> Añadir Documento
-                    </button>
-                </div>
-                <div id="consultorioDocumentosList"></div>
-            </div>
-            <div id="consultorioFotosTab" class="tab-content">
-                <h3>Fotos del Consultorio</h3>
-                <div class="content-actions">
-                    <button class="btn btn-primary" onclick="openConsultorioFotoModal()">
-                        <i class="fas fa-plus"></i> Añadir Foto
-                    </button>
-                </div>
-                <div id="consultorioFotosList"></div>
-            </div>
-        </div>
-    `;
-    document.body.appendChild(modal);
-    
-    loadConsultorioDocumentosInModal();
-    loadConsultorioFotosInModal();
-}
 
 // Abrir modal de ITV
 function openItvModal() {
@@ -12942,6 +13045,7 @@ function openConsultorioDocumentModal() {
         saveConsultorioConfig();
         loadConsultorioDocumentosInModal();
         loadConsultorioList();
+        updateMainPageContent(); // Actualizar página principal
         renderServicios();
         
         modal.remove();
@@ -13014,6 +13118,7 @@ function openConsultorioFotoModal() {
         saveConsultorioConfig();
         loadConsultorioFotosInModal();
         loadConsultorioList();
+        updateMainPageContent(); // Actualizar página principal
         renderServicios();
         
         modal.remove();
@@ -15581,35 +15686,6 @@ function saveDataLinksConfig() {
     localStorage.setItem('dataLinksConfig', JSON.stringify(dataLinksConfig));
 }
 
-// Función para cargar lista del consultorio médico
-function loadConsultorioList() {
-    const consultorioList = document.getElementById('consultorioList');
-    if (!consultorioList) return;
-    
-    const medicalContent = dataLinksConfig.medical.content;
-    
-    if (medicalContent.length === 0) {
-        consultorioList.innerHTML = '<div class="no-data">No hay contenido disponible para el consultorio médico.</div>';
-    } else {
-        consultorioList.innerHTML = medicalContent.map(item => `
-            <div class="content-item">
-                <div class="content-info">
-                    <h5>${item.title}</h5>
-                    <p>${item.description}</p>
-                    ${item.schedule ? `<small>📅 ${item.schedule}</small>` : ''}
-                </div>
-                <div class="content-actions">
-                    <button class="btn btn-sm btn-primary" onclick="editConsultorioItem('${item.id}')">
-                        <i class="fas fa-edit"></i> Editar
-                    </button>
-                    <button class="btn btn-sm btn-danger" onclick="deleteConsultorioItem('${item.id}')">
-                        <i class="fas fa-trash"></i> Eliminar
-                    </button>
-                </div>
-            </div>
-        `).join('');
-    }
-}
 
 // Función para cargar lista de ITV
 function loadItvList() {
@@ -15706,56 +15782,309 @@ function loadTransporteLinesList() {
 
 // Función para abrir modal del consultorio médico
 function openConsultorioModal() {
+    console.log('🏥 Abriendo modal de configuración del consultorio...');
+    
     const modal = document.createElement('div');
     modal.className = 'modal';
+    modal.style.display = 'block';
     modal.innerHTML = `
-        <div class="modal-content">
+        <div class="modal-content" style="max-width: 600px;">
             <div class="modal-header">
-                <h3>🏥 Editar Consultorio Médico</h3>
+                <h3>🏥 Configurar Consultorio Médico</h3>
                 <span class="close" onclick="this.closest('.modal').remove()">&times;</span>
             </div>
             <div class="modal-body">
                 <form id="consultorioForm">
                     <div class="form-group">
-                        <label for="consultorioTitle">Título:</label>
-                        <input type="text" id="consultorioTitle" name="title" value="${dataLinksConfig.medical.title}" required>
+                        <label for="consultorioTitle">Título de la sección:</label>
+                        <input type="text" id="consultorioTitle" name="title" value="${dataLinksConfig.medical.title}" required maxlength="50">
+                        <small class="form-help">Título que aparecerá en la página principal</small>
                     </div>
                     <div class="form-group">
                         <label for="consultorioIcon">Icono:</label>
-                        <input type="text" id="consultorioIcon" name="icon" value="${dataLinksConfig.medical.icon}" required>
+                        <input type="text" id="consultorioIcon" name="icon" value="${dataLinksConfig.medical.icon}" required maxlength="2">
+                        <small class="form-help">Emoji que representará la sección (máximo 2 caracteres)</small>
                     </div>
                     <div class="form-group">
                         <label>
                             <input type="checkbox" id="consultorioEnabled" name="enabled" ${dataLinksConfig.medical.enabled ? 'checked' : ''}>
-                            Sección habilitada
+                            Mostrar sección en la página principal
                         </label>
                     </div>
                 </form>
+                
+                <div class="content-actions" style="margin-top: 2rem; padding-top: 1rem; border-top: 1px solid var(--border-color);">
+                    <h4>Gestionar Contenido del Consultorio</h4>
+                    <p>Aquí puedes agregar, editar o eliminar elementos del consultorio médico.</p>
+                    <div style="display: flex; gap: 1rem; margin-top: 1rem;">
+                        <button class="btn btn-primary" onclick="addNewConsultorioItem()">
+                            <i class="fas fa-plus"></i> Agregar Elemento
+                        </button>
+                        <button class="btn btn-secondary" onclick="viewConsultorioContent()">
+                            <i class="fas fa-list"></i> Ver Contenido
+                        </button>
+                    </div>
+                </div>
             </div>
             <div class="modal-footer">
-                <button class="btn btn-primary" onclick="saveConsultorioConfig()">Guardar</button>
-                <button class="btn btn-secondary" onclick="this.closest('.modal').remove()">Cancelar</button>
+                <button class="btn btn-primary" onclick="saveConsultorioConfig()">
+                    <i class="fas fa-save"></i> Guardar Configuración
+                </button>
+                <button class="btn btn-secondary" onclick="this.closest('.modal').remove()">
+                    <i class="fas fa-times"></i> Cancelar
+                </button>
             </div>
         </div>
     `;
     document.body.appendChild(modal);
+    
+    // Enfocar el primer campo
+    setTimeout(() => {
+        const firstInput = modal.querySelector('#consultorioTitle');
+        if (firstInput) firstInput.focus();
+    }, 100);
 }
 
 // Función para guardar configuración del consultorio
 function saveConsultorioConfig() {
-    const title = document.getElementById('consultorioTitle').value;
-    const icon = document.getElementById('consultorioIcon').value;
-    const enabled = document.getElementById('consultorioEnabled').checked;
+    console.log('💾 Guardando configuración del consultorio...');
     
-    dataLinksConfig.medical.title = title;
-    dataLinksConfig.medical.icon = icon;
-    dataLinksConfig.medical.enabled = enabled;
+    try {
+        const title = document.getElementById('consultorioTitle').value.trim();
+        const icon = document.getElementById('consultorioIcon').value.trim();
+        const enabled = document.getElementById('consultorioEnabled').checked;
+        
+        // Validar datos
+        if (!title) {
+            showNotification('❌ El título es obligatorio', 'error');
+            return;
+        }
+        
+        if (!icon) {
+            showNotification('❌ El icono es obligatorio', 'error');
+            return;
+        }
+        
+        // Actualizar configuración
+        dataLinksConfig.medical.title = title;
+        dataLinksConfig.medical.icon = icon;
+        dataLinksConfig.medical.enabled = enabled;
+        
+        console.log('✅ Configuración actualizada:', { title, icon, enabled });
+        
+        // Guardar en localStorage
+        saveDataLinksConfig();
+        console.log('💾 Configuración guardada en localStorage');
+        
+        // Actualizar todas las vistas
+        updateMainPageSections();
+        updateMainPageContent();
+        loadConsultorioList();
+        console.log('🔄 Todas las vistas actualizadas');
+        
+        // Cerrar modal
+        const modal = document.querySelector('.modal');
+        if (modal) {
+            modal.remove();
+        }
+        
+        // Mostrar notificación de éxito
+        showNotification('✅ Configuración del consultorio guardada correctamente', 'success');
+        console.log('🎉 Configuración guardada exitosamente');
+        
+    } catch (error) {
+        console.error('❌ Error guardando configuración del consultorio:', error);
+        showNotification('❌ Error inesperado al guardar la configuración', 'error');
+    }
+}
+
+// Función para agregar nuevo elemento al consultorio
+function addNewConsultorioItem() {
+    console.log('➕ Agregando nuevo elemento al consultorio...');
     
-    saveDataLinksConfig();
-    updateMainPageSections();
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.style.display = 'block';
+    modal.innerHTML = `
+        <div class="modal-content" style="max-width: 600px;">
+            <div class="modal-header">
+                <h3>🏥 Agregar Elemento al Consultorio</h3>
+                <span class="close" onclick="this.closest('.modal').remove()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form id="newConsultorioItemForm">
+                    <div class="form-group">
+                        <label for="newConsultorioTitle">Título: <span class="required">*</span></label>
+                        <input type="text" id="newConsultorioTitle" name="title" required maxlength="100" placeholder="Ej: Centro de Salud de Cobreros">
+                        <small class="form-help">Máximo 100 caracteres</small>
+                    </div>
+                    <div class="form-group">
+                        <label for="newConsultorioDescription">Descripción: <span class="required">*</span></label>
+                        <textarea id="newConsultorioDescription" name="description" required maxlength="500" rows="4" placeholder="Ej: Atención médica primaria para todos los vecinos"></textarea>
+                        <small class="form-help">Máximo 500 caracteres</small>
+                    </div>
+                    <div class="form-group">
+                        <label for="newConsultorioSchedule">Horario:</label>
+                        <input type="text" id="newConsultorioSchedule" name="schedule" maxlength="200" placeholder="Ej: Lunes a Viernes - 08:00-15:00">
+                        <small class="form-help">Opcional. Ejemplo: Lunes a Viernes - 08:00-15:00</small>
+                    </div>
+                    <div class="form-group">
+                        <label for="newConsultorioPhone">Teléfono:</label>
+                        <input type="tel" id="newConsultorioPhone" name="phone" maxlength="20" placeholder="Ej: 980 62 26 18">
+                        <small class="form-help">Opcional. Número de teléfono de contacto</small>
+                    </div>
+                    <div class="form-group">
+                        <label for="newConsultorioAddress">Dirección:</label>
+                        <input type="text" id="newConsultorioAddress" name="address" maxlength="200" placeholder="Ej: Calle Principal, 123">
+                        <small class="form-help">Opcional. Dirección del consultorio</small>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-primary" onclick="saveNewConsultorioItem()">
+                    <i class="fas fa-save"></i> Guardar Elemento
+                </button>
+                <button class="btn btn-secondary" onclick="this.closest('.modal').remove()">
+                    <i class="fas fa-times"></i> Cancelar
+                </button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
     
-    document.querySelector('.modal').remove();
-    showNotification('Configuración del consultorio médico guardada', 'success');
+    // Enfocar el primer campo
+    setTimeout(() => {
+        const firstInput = modal.querySelector('#newConsultorioTitle');
+        if (firstInput) firstInput.focus();
+    }, 100);
+}
+
+// Función para guardar nuevo elemento del consultorio
+function saveNewConsultorioItem() {
+    console.log('💾 Guardando nuevo elemento del consultorio...');
+    
+    try {
+        const title = document.getElementById('newConsultorioTitle').value.trim();
+        const description = document.getElementById('newConsultorioDescription').value.trim();
+        const schedule = document.getElementById('newConsultorioSchedule').value.trim();
+        const phone = document.getElementById('newConsultorioPhone').value.trim();
+        const address = document.getElementById('newConsultorioAddress').value.trim();
+        
+        // Validar campos obligatorios
+        if (!title) {
+            showNotification('❌ El título es obligatorio', 'error');
+            return;
+        }
+        
+        if (!description) {
+            showNotification('❌ La descripción es obligatoria', 'error');
+            return;
+        }
+        
+        // Crear nuevo elemento
+        const newItem = {
+            id: 'medical_' + Date.now(),
+            title: title,
+            description: description,
+            schedule: schedule || null,
+            phone: phone || null,
+            address: address || null,
+            createdAt: new Date().toISOString()
+        };
+        
+        // Agregar al array
+        dataLinksConfig.medical.content.push(newItem);
+        
+        console.log('✅ Nuevo elemento agregado:', newItem);
+        
+        // Guardar configuración
+        saveDataLinksConfig();
+        console.log('💾 Configuración guardada en localStorage');
+        
+        // Actualizar todas las vistas
+        loadConsultorioList();
+        updateMainPageSections();
+        updateMainPageContent();
+        console.log('🔄 Todas las vistas actualizadas');
+        
+        // Cerrar modal
+        const modal = document.querySelector('.modal');
+        if (modal) {
+            modal.remove();
+        }
+        
+        // Mostrar notificación de éxito
+        showNotification('✅ Elemento agregado al consultorio correctamente', 'success');
+        console.log('🎉 Elemento agregado exitosamente');
+        
+    } catch (error) {
+        console.error('❌ Error agregando elemento al consultorio:', error);
+        showNotification('❌ Error inesperado al agregar el elemento', 'error');
+    }
+}
+
+// Función para ver contenido del consultorio
+function viewConsultorioContent() {
+    console.log('👁️ Mostrando contenido del consultorio...');
+    
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.style.display = 'block';
+    modal.innerHTML = `
+        <div class="modal-content" style="max-width: 800px;">
+            <div class="modal-header">
+                <h3>🏥 Contenido del Consultorio Médico</h3>
+                <span class="close" onclick="this.closest('.modal').remove()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div id="consultorioContentList">
+                    <!-- Se llenará dinámicamente -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="this.closest('.modal').remove()">
+                    <i class="fas fa-times"></i> Cerrar
+                </button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+    
+    // Cargar contenido
+    loadConsultorioContentInModal();
+}
+
+// Función para cargar contenido del consultorio en el modal
+function loadConsultorioContentInModal() {
+    const container = document.getElementById('consultorioContentList');
+    if (!container) return;
+    
+    const content = dataLinksConfig.medical.content;
+    
+    if (content.length === 0) {
+        container.innerHTML = '<p>No hay elementos en el consultorio médico.</p>';
+        return;
+    }
+    
+    container.innerHTML = content.map(item => `
+        <div class="service-item">
+            <div class="service-content">
+                <h4>${item.title}</h4>
+                <p>${item.description}</p>
+                ${item.schedule ? `<p><strong>📅 Horario:</strong> ${item.schedule}</p>` : ''}
+                ${item.phone ? `<p><strong>📞 Teléfono:</strong> <a href="tel:${item.phone}">${item.phone}</a></p>` : ''}
+                ${item.address ? `<p><strong>📍 Dirección:</strong> ${item.address}</p>` : ''}
+            </div>
+            <div class="service-actions">
+                <button class="btn btn-sm btn-primary" onclick="editConsultorioItem('${item.id}')" title="Editar elemento">
+                    <i class="fas fa-edit"></i> Editar
+                </button>
+                <button class="btn btn-sm btn-danger" onclick="deleteConsultorioItem('${item.id}')" title="Eliminar elemento">
+                    <i class="fas fa-trash"></i> Eliminar
+                </button>
+            </div>
+        </div>
+    `).join('');
 }
 
 // Función para abrir modal de ITV
@@ -16141,72 +16470,12 @@ function initializeDataLinksManagement() {
 
 // Función para actualizar el contenido de la página principal
 function updateMainPageContent() {
-    // Actualizar sección de consultorio médico
-    const medicalList = document.getElementById('medicalList');
-    if (medicalList && dataLinksConfig.medical.enabled) {
-        if (dataLinksConfig.medical.content.length > 0) {
-            medicalList.innerHTML = dataLinksConfig.medical.content.map(item => `
-                <div class="service-item">
-                    <h4>${item.title}</h4>
-                    <p>${item.description}</p>
-                    ${item.schedule ? `<p><strong>Horario:</strong> ${item.schedule}</p>` : ''}
-                </div>
-            `).join('');
-        } else {
-            medicalList.innerHTML = '<p>No hay información disponible del consultorio médico.</p>';
-        }
-    }
+    console.log('🔄 Actualizando contenido de la página principal...');
     
-    // Actualizar sección de ITV
-    const itvListMain = document.getElementById('itvList');
-    if (itvListMain && dataLinksConfig.itv.enabled) {
-        if (dataLinksConfig.itv.content.length > 0) {
-            itvListMain.innerHTML = dataLinksConfig.itv.content.map(item => `
-                <div class="service-item">
-                    <h4>${item.title}</h4>
-                    <p>${item.description}</p>
-                    ${item.address ? `<p><strong>Dirección:</strong> ${item.address}</p>` : ''}
-                    ${item.phone ? `<p><strong>Teléfono:</strong> ${item.phone}</p>` : ''}
-                    ${item.schedule ? `<p><strong>Horario:</strong> ${item.schedule}</p>` : ''}
-                </div>
-            `).join('');
-        } else {
-            itvListMain.innerHTML = '<p>No hay información disponible de ITV.</p>';
-        }
-    }
+    // Llamar a renderServicios que es la función que realmente actualiza la página principal
+    renderServicios();
     
-    // Actualizar sección de teléfonos de interés
-    const phoneListMain = document.getElementById('phoneList');
-    if (phoneListMain && dataLinksConfig.phones.enabled) {
-        if (dataLinksConfig.phones.content.length > 0) {
-            phoneListMain.innerHTML = dataLinksConfig.phones.content.map(item => `
-                <div class="service-item">
-                    <h4>${item.icon} ${item.title}</h4>
-                    <p>${item.description}</p>
-                    <p><strong>Tipo:</strong> ${item.type}</p>
-                </div>
-            `).join('');
-        } else {
-            phoneListMain.innerHTML = '<p>No hay teléfonos de interés configurados.</p>';
-        }
-    }
-    
-    // Actualizar sección de transporte
-    const transportListMain = document.getElementById('transporteLinesList');
-    if (transportListMain && dataLinksConfig.transport.enabled) {
-        if (dataLinksConfig.transport.content.length > 0) {
-            transportListMain.innerHTML = dataLinksConfig.transport.content.map(item => `
-                <div class="service-item">
-                    <h4>${item.icon} ${item.title}</h4>
-                    <p>${item.description}</p>
-                    ${item.route ? `<p><strong>Ruta:</strong> ${item.route}</p>` : ''}
-                    ${item.schedule ? `<p><strong>Horario:</strong> ${item.schedule}</p>` : ''}
-                </div>
-            `).join('');
-        } else {
-            transportListMain.innerHTML = '<p>No hay líneas de transporte configuradas.</p>';
-        }
-    }
+    console.log('✅ Contenido de la página principal actualizado');
 }
 
 // Funciones adicionales para editar y eliminar elementos
@@ -16214,10 +16483,14 @@ function updateMainPageContent() {
 // Función para editar elemento del consultorio
 function editConsultorioItem(itemId) {
     const item = dataLinksConfig.medical.content.find(i => i.id === itemId);
-    if (!item) return;
+    if (!item) {
+        showNotification('Error: No se encontró el elemento a editar', 'error');
+        return;
+    }
     
     const modal = document.createElement('div');
     modal.className = 'modal';
+    modal.style.display = 'block';
     modal.innerHTML = `
         <div class="modal-content">
             <div class="modal-header">
@@ -16225,62 +16498,258 @@ function editConsultorioItem(itemId) {
                 <span class="close" onclick="this.closest('.modal').remove()">&times;</span>
             </div>
             <div class="modal-body">
-                <form id="editConsultorioForm">
+                <form id="editConsultorioForm" onsubmit="return validateEditConsultorioForm(event)">
                     <div class="form-group">
-                        <label for="editConsultorioTitle">Título:</label>
-                        <input type="text" id="editConsultorioTitle" name="title" value="${item.title}" required>
+                        <label for="editConsultorioTitle">Título: <span class="required">*</span></label>
+                        <input type="text" id="editConsultorioTitle" name="title" value="${item.title}" required maxlength="100">
+                        <small class="form-help">Máximo 100 caracteres</small>
                     </div>
                     <div class="form-group">
-                        <label for="editConsultorioDescription">Descripción:</label>
-                        <textarea id="editConsultorioDescription" name="description" required>${item.description}</textarea>
+                        <label for="editConsultorioDescription">Descripción: <span class="required">*</span></label>
+                        <textarea id="editConsultorioDescription" name="description" required maxlength="500" rows="4">${item.description}</textarea>
+                        <small class="form-help">Máximo 500 caracteres</small>
                     </div>
                     <div class="form-group">
                         <label for="editConsultorioSchedule">Horario:</label>
-                        <input type="text" id="editConsultorioSchedule" name="schedule" value="${item.schedule || ''}">
+                        <input type="text" id="editConsultorioSchedule" name="schedule" value="${item.schedule || ''}" maxlength="200" placeholder="Ej: Lunes a Viernes - 08:00-15:00">
+                        <small class="form-help">Opcional. Ejemplo: Lunes a Viernes - 08:00-15:00</small>
+                    </div>
+                    <div class="form-group">
+                        <label for="editConsultorioPhone">Teléfono:</label>
+                        <input type="tel" id="editConsultorioPhone" name="phone" value="${item.phone || ''}" maxlength="20" placeholder="Ej: 980 62 26 18">
+                        <small class="form-help">Opcional. Número de teléfono de contacto</small>
+                    </div>
+                    <div class="form-group">
+                        <label for="editConsultorioAddress">Dirección:</label>
+                        <input type="text" id="editConsultorioAddress" name="address" value="${item.address || ''}" maxlength="200" placeholder="Ej: Calle Principal, 123">
+                        <small class="form-help">Opcional. Dirección del consultorio</small>
                     </div>
                 </form>
             </div>
             <div class="modal-footer">
-                <button class="btn btn-primary" onclick="saveEditConsultorioItem('${itemId}')">Guardar</button>
-                <button class="btn btn-secondary" onclick="this.closest('.modal').remove()">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="saveEditConsultorioItem('${itemId}')">
+                    <i class="fas fa-save"></i> Guardar Cambios
+                </button>
+                <button type="button" class="btn btn-secondary" onclick="this.closest('.modal').remove()">
+                    <i class="fas fa-times"></i> Cancelar
+                </button>
             </div>
         </div>
     `;
     document.body.appendChild(modal);
+    
+    // Enfocar el primer campo
+    setTimeout(() => {
+        const firstInput = modal.querySelector('#editConsultorioTitle');
+        if (firstInput) firstInput.focus();
+    }, 100);
+    
+    // Agregar event listener para cerrar con Escape
+    const handleEscapeKey = (event) => {
+        if (event.key === 'Escape') {
+            console.log('⌨️ Tecla Escape presionada, cerrando modal...');
+            modal.remove();
+            document.removeEventListener('keydown', handleEscapeKey);
+        }
+    };
+    document.addEventListener('keydown', handleEscapeKey);
+    
+    // Agregar event listener para cerrar al hacer clic fuera del modal
+    const handleClickOutside = (event) => {
+        if (event.target === modal) {
+            console.log('🖱️ Clic fuera del modal, cerrando...');
+            modal.remove();
+            modal.removeEventListener('click', handleClickOutside);
+        }
+    };
+    modal.addEventListener('click', handleClickOutside);
 }
 
 // Función para guardar edición del consultorio
 function saveEditConsultorioItem(itemId) {
-    const title = document.getElementById('editConsultorioTitle').value;
-    const description = document.getElementById('editConsultorioDescription').value;
-    const schedule = document.getElementById('editConsultorioSchedule').value;
+    console.log('💾 Guardando cambios del consultorio...', itemId);
     
-    const itemIndex = dataLinksConfig.medical.content.findIndex(i => i.id === itemId);
-    if (itemIndex !== -1) {
-        dataLinksConfig.medical.content[itemIndex] = {
+    try {
+        // Validar formulario antes de guardar
+        if (!validateEditConsultorioForm()) {
+            console.log('❌ Validación del formulario falló');
+            return false;
+        }
+        
+        // Obtener valores del formulario
+        const title = document.getElementById('editConsultorioTitle').value.trim();
+        const description = document.getElementById('editConsultorioDescription').value.trim();
+        const schedule = document.getElementById('editConsultorioSchedule').value.trim();
+        const phone = document.getElementById('editConsultorioPhone').value.trim();
+        const address = document.getElementById('editConsultorioAddress').value.trim();
+        
+        console.log('📝 Datos a guardar:', { title, description, schedule, phone, address });
+        
+        // Buscar el elemento a actualizar
+        const itemIndex = dataLinksConfig.medical.content.findIndex(i => i.id === itemId);
+        if (itemIndex === -1) {
+            console.error('❌ No se encontró el elemento con ID:', itemId);
+            showNotification('❌ Error: No se encontró el elemento a actualizar', 'error');
+            return false;
+        }
+        
+        // Crear objeto actualizado
+        const updatedItem = {
             ...dataLinksConfig.medical.content[itemIndex],
             title: title,
             description: description,
-            schedule: schedule
+            schedule: schedule || null,
+            phone: phone || null,
+            address: address || null,
+            updatedAt: new Date().toISOString()
         };
         
+        // Actualizar el elemento
+        dataLinksConfig.medical.content[itemIndex] = updatedItem;
+        console.log('✅ Elemento actualizado en memoria:', updatedItem);
+        
+        // Guardar configuración en localStorage
         saveDataLinksConfig();
+        console.log('💾 Configuración guardada en localStorage');
+        
+        // Actualizar todas las vistas
         loadConsultorioList();
         updateMainPageSections();
+        updateMainPageContent();
+        console.log('🔄 Todas las vistas actualizadas');
         
-        document.querySelector('.modal').remove();
-        showNotification('Consultorio actualizado correctamente', 'success');
+        // Cerrar modal
+        const modal = document.querySelector('.modal');
+        if (modal) {
+            modal.remove();
+            console.log('🔒 Modal cerrado');
+        }
+        
+        // Mostrar notificación de éxito
+        showNotification('✅ Consultorio actualizado correctamente', 'success');
+        console.log('🎉 Proceso completado exitosamente');
+        
+        return true;
+        
+    } catch (error) {
+        console.error('❌ Error guardando consultorio:', error);
+        showNotification('❌ Error inesperado al guardar los cambios', 'error');
+        return false;
+    }
+}
+
+// Función para validar formulario de edición del consultorio
+function validateEditConsultorioForm(event = null) {
+    if (event) {
+        event.preventDefault();
+    }
+    
+    const title = document.getElementById('editConsultorioTitle');
+    const description = document.getElementById('editConsultorioDescription');
+    
+    let isValid = true;
+    let errorMessage = '';
+    
+    // Validar título
+    if (!title.value.trim()) {
+        title.style.borderColor = '#ef4444';
+        errorMessage += '• El título es obligatorio\n';
+        isValid = false;
+    } else if (title.value.trim().length > 100) {
+        title.style.borderColor = '#ef4444';
+        errorMessage += '• El título no puede exceder 100 caracteres\n';
+        isValid = false;
+    } else {
+        title.style.borderColor = '#10b981';
+    }
+    
+    // Validar descripción
+    if (!description.value.trim()) {
+        description.style.borderColor = '#ef4444';
+        errorMessage += '• La descripción es obligatoria\n';
+        isValid = false;
+    } else if (description.value.trim().length > 500) {
+        description.style.borderColor = '#ef4444';
+        errorMessage += '• La descripción no puede exceder 500 caracteres\n';
+        isValid = false;
+    } else {
+        description.style.borderColor = '#10b981';
+    }
+    
+    if (!isValid) {
+        showNotification('❌ Errores en el formulario:\n' + errorMessage, 'error');
+        return false;
+    }
+    
+    return true;
+}
+
+// Función para cerrar modal de edición del consultorio
+function closeEditConsultorioModal() {
+    console.log('🔒 Cerrando modal de edición del consultorio...');
+    
+    // Buscar el modal específico del consultorio
+    const modals = document.querySelectorAll('.modal');
+    let consultorioModal = null;
+    
+    // Buscar el modal que contiene el formulario de edición del consultorio
+    for (let modal of modals) {
+        if (modal.innerHTML.includes('editConsultorioForm') || modal.innerHTML.includes('Editar Consultorio')) {
+            consultorioModal = modal;
+            break;
+        }
+    }
+    
+    if (consultorioModal) {
+        console.log('✅ Modal de consultorio encontrado, cerrando...');
+        consultorioModal.remove();
+        
+        // Limpiar cualquier estado del formulario
+        const form = document.getElementById('editConsultorioForm');
+        if (form) {
+            form.reset();
+        }
+        
+        // Restaurar el scroll del body si es necesario
+        document.body.style.overflow = 'auto';
+        
+        console.log('✅ Modal de consultorio cerrado correctamente');
+    } else {
+        console.log('⚠️ No se encontró el modal de consultorio específico');
+        
+        // Fallback: cerrar cualquier modal abierto
+        const anyModal = document.querySelector('.modal');
+        if (anyModal) {
+            console.log('🔄 Cerrando cualquier modal abierto como fallback...');
+            anyModal.remove();
+            document.body.style.overflow = 'auto';
+        }
     }
 }
 
 // Función para eliminar elemento del consultorio
 function deleteConsultorioItem(itemId) {
-    if (confirm('¿Está seguro de que desea eliminar este elemento?')) {
-        dataLinksConfig.medical.content = dataLinksConfig.medical.content.filter(i => i.id !== itemId);
-        saveDataLinksConfig();
-        loadConsultorioList();
-        updateMainPageSections();
-        showNotification('Elemento eliminado correctamente', 'success');
+    if (confirm('¿Está seguro de que desea eliminar este elemento?\n\nEsta acción no se puede deshacer.')) {
+        const itemIndex = dataLinksConfig.medical.content.findIndex(i => i.id === itemId);
+        if (itemIndex !== -1) {
+            const deletedItem = dataLinksConfig.medical.content[itemIndex];
+            dataLinksConfig.medical.content = dataLinksConfig.medical.content.filter(i => i.id !== itemId);
+            
+            // Guardar configuración
+            saveDataLinksConfig();
+            
+            // Actualizar todas las vistas
+            loadConsultorioList();
+            updateMainPageSections();
+            updateMainPageContent();
+            
+            // Mostrar notificación de éxito
+            showNotification(`✅ "${deletedItem.title}" eliminado correctamente`, 'success');
+            
+            console.log('🗑️ Consultorio eliminado:', deletedItem);
+        } else {
+            showNotification('❌ Error: No se encontró el elemento a eliminar', 'error');
+        }
     }
 }
 

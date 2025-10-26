@@ -7455,3 +7455,469 @@ function crearSeccionDescargaAPK(config) {
 
 
  
+    const titulo = prompt('Título de la notificación de cita:', 'Cita Confirmada - Ayuntamiento de Cobreros');
+    if (titulo) {
+        const mensaje = prompt('Mensaje de la notificación:', 'Su cita ha sido confirmada. Por favor, acuda a la hora indicada.');
+        if (mensaje) {
+            enviarNotificacionPush(titulo, mensaje, 'cita');
+        }
+    }
+}
+
+// Enviar notificación de evento
+function enviarNotificacionEvento() {
+    const titulo = prompt('Título del evento:', 'Nuevo Evento - Ayuntamiento de Cobreros');
+    if (titulo) {
+        const mensaje = prompt('Descripción del evento:', 'Se ha programado un nuevo evento municipal. Más información próximamente.');
+        if (mensaje) {
+            enviarNotificacionPush(titulo, mensaje, 'evento');
+        }
+    }
+}
+
+// Enviar notificación de bando
+function enviarNotificacionBando() {
+    const titulo = prompt('Título del bando:', 'Nuevo Bando Municipal');
+    if (titulo) {
+        const mensaje = prompt('Descripción del bando:', 'Se ha publicado un nuevo bando municipal. Consulte la información completa en la web.');
+        if (mensaje) {
+            enviarNotificacionPush(titulo, mensaje, 'bando');
+        }
+    }
+}
+
+// Enviar notificación de emergencia
+function enviarNotificacionEmergencia(mensaje) {
+    if (!mensaje) {
+        mensaje = prompt('Mensaje de emergencia:', 'Comunicado urgente del Ayuntamiento. Por favor, preste atención a esta información.');
+    }
+    if (mensaje) {
+        const titulo = '🚨 EMERGENCIA - Ayuntamiento de Cobreros';
+        enviarNotificacionPush(titulo, mensaje, 'emergencia');
+    }
+}
+
+// Configurar formulario de notificaciones
+function setupNotificationForm() {
+    // Mostrar/ocultar localidades según selección
+    const destinatariosRadios = document.querySelectorAll('input[name="destinatarios"]');
+    const localidadesGroup = document.getElementById('localidadesGroup');
+    
+    destinatariosRadios.forEach(radio => {
+        radio.addEventListener('change', function() {
+            if (this.value === 'localidades') {
+                localidadesGroup.style.display = 'block';
+            } else {
+                localidadesGroup.style.display = 'none';
+                // Desmarcar todas las localidades
+                document.querySelectorAll('input[name="localidades"]').forEach(checkbox => {
+                    checkbox.checked = false;
+                });
+            }
+        });
+    });
+    
+    // Configurar envío del formulario
+    const form = document.getElementById('notificationForm');
+    if (form) {
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            enviarNotificacionDesdeFormulario();
+        });
+    }
+}
+
+// Enviar notificación desde el formulario
+function enviarNotificacionDesdeFormulario() {
+    const titulo = document.getElementById('notifTitle').value.trim();
+    const mensaje = document.getElementById('notifMessage').value.trim();
+    const tipo = document.getElementById('notifType').value;
+    const archivo = document.getElementById('notifAttachment').files[0];
+    const destinatarios = document.querySelector('input[name="destinatarios"]:checked').value;
+    
+    // Validaciones
+    if (!titulo) {
+        alert('Por favor, ingrese un título para la notificación.');
+        return;
+    }
+    
+    if (!tipo) {
+        alert('Por favor, seleccione un tipo de notificación.');
+        return;
+    }
+    
+    if (destinatarios === 'localidades') {
+        const localidadesSeleccionadas = Array.from(document.querySelectorAll('input[name="localidades"]:checked'));
+        if (localidadesSeleccionadas.length === 0) {
+            alert('Por favor, seleccione al menos una localidad.');
+            return;
+        }
+    }
+    
+    // Obtener localidades seleccionadas
+    let localidades = [];
+    if (destinatarios === 'localidades') {
+        localidades = Array.from(document.querySelectorAll('input[name="localidades"]:checked')).map(cb => cb.value);
+    }
+    
+    // Enviar notificación
+    enviarNotificacionPushConLocalidades(titulo, mensaje, tipo, destinatarios, localidades, archivo);
+    
+    // Limpiar formulario después del envío
+    limpiarFormularioNotificacion();
+    
+    alert('Notificación enviada correctamente.');
+}
+
+// Limpiar formulario de notificación
+function limpiarFormularioNotificacion() {
+    document.getElementById('notificationForm').reset();
+    document.getElementById('localidadesGroup').style.display = 'none';
+    document.querySelector('input[name="destinatarios"][value="todos"]').checked = true;
+}
+
+// Abrir modal para enviar notificación personalizada
+function abrirModalNotificacion() {
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.style.display = 'block';
+    modal.innerHTML = `
+        <div class="modal-content">
+            <span class="close" onclick="this.closest('.modal').remove()">&times;</span>
+            <h2>📱 Enviar Notificación Push</h2>
+            <form id="notificacionForm">
+                <div class="form-group">
+                    <label for="notifTitulo">Título:</label>
+                    <input type="text" id="notifTitulo" required placeholder="Ej: Nueva noticia importante">
+                </div>
+                
+                <div class="form-group">
+                    <label for="notifMensaje">Mensaje:</label>
+                    <textarea id="notifMensaje" rows="3" required placeholder="Escribe el mensaje que quieres enviar..."></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label for="notifTipo">Tipo de notificación:</label>
+                    <select id="notifTipo">
+                        <option value="general">General</option>
+                        <option value="cita">Cita</option>
+                        <option value="evento">Evento</option>
+                        <option value="bando">Bando</option>
+                        <option value="emergencia">Emergencia</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="notifArchivo">Archivo adjunto (opcional):</label>
+                    <input type="file" id="notifArchivo" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.gif">
+                    <small style="color: #666;">Puedes adjuntar documentos, imágenes o archivos PDF</small>
+                </div>
+                
+                <div class="form-group">
+                    <label for="notifAlcance">Alcance de la notificación:</label>
+                    <select id="notifAlcance" onchange="toggleLocalidadesSelection()">
+                        <option value="todos">Todos los usuarios</option>
+                        <option value="localidades">Localidades específicas</option>
+                    </select>
+                </div>
+                
+                <div class="form-group" id="localidadesSelection" style="display: none;">
+                    <label>Seleccionar localidades:</label>
+                    <div class="localities-controls" style="margin-bottom: 1rem;">
+                        <button type="button" class="btn btn-outline btn-small" onclick="seleccionarTodasLocalidades()">
+                            <i class="fas fa-check-square"></i> Seleccionar Todas
+                        </button>
+                        <button type="button" class="btn btn-outline btn-small" onclick="deseleccionarTodasLocalidades()">
+                            <i class="fas fa-square"></i> Deseleccionar Todas
+                        </button>
+                    </div>
+                    <div class="localities-selection">
+                        <div class="localities-grid">
+                            <label class="locality-checkbox">
+                                <input type="checkbox" name="notifLocalities" value="Cobreros">
+                                <span>Cobreros</span>
+                            </label>
+                            <label class="locality-checkbox">
+                                <input type="checkbox" name="notifLocalities" value="Avedillo de Sanabria">
+                                <span>Avedillo de Sanabria</span>
+                            </label>
+                            <label class="locality-checkbox">
+                                <input type="checkbox" name="notifLocalities" value="Barrio de Lomba">
+                                <span>Barrio de Lomba</span>
+                            </label>
+                            <label class="locality-checkbox">
+                                <input type="checkbox" name="notifLocalities" value="Castro de Sanabria">
+                                <span>Castro de Sanabria</span>
+                            </label>
+                            <label class="locality-checkbox">
+                                <input type="checkbox" name="notifLocalities" value="Limianos">
+                                <span>Limianos</span>
+                            </label>
+                            <label class="locality-checkbox">
+                                <input type="checkbox" name="notifLocalities" value="Quintana de Sanabria">
+                                <span>Quintana de Sanabria</span>
+                            </label>
+                            <label class="locality-checkbox">
+                                <input type="checkbox" name="notifLocalities" value="Riego de Lomba">
+                                <span>Riego de Lomba</span>
+                            </label>
+                            <label class="locality-checkbox">
+                                <input type="checkbox" name="notifLocalities" value="San Martín del Terroso">
+                                <span>San Martín del Terroso</span>
+                            </label>
+                            <label class="locality-checkbox">
+                                <input type="checkbox" name="notifLocalities" value="San Miguel de Lomba">
+                                <span>San Miguel de Lomba</span>
+                            </label>
+                            <label class="locality-checkbox">
+                                <input type="checkbox" name="notifLocalities" value="San Román de Sanabria">
+                                <span>San Román de Sanabria</span>
+                            </label>
+                            <label class="locality-checkbox">
+                                <input type="checkbox" name="notifLocalities" value="Santa Colomba">
+                                <span>Santa Colomba</span>
+                            </label>
+                            <label class="locality-checkbox">
+                                <input type="checkbox" name="notifLocalities" value="Sotillo">
+                                <span>Sotillo</span>
+                            </label>
+                            <label class="locality-checkbox">
+                                <input type="checkbox" name="notifLocalities" value="Terroso">
+                                <span>Terroso</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline" onclick="this.closest('.modal').remove()">Cancelar</button>
+                    <button type="button" class="btn btn-primary" onclick="enviarNotificacionPersonalizada(this)">Enviar</button>
+                </div>
+            </form>
+        </div>
+    `;
+    document.body.appendChild(modal);
+}
+
+// Toggle para mostrar/ocultar selección de localidades
+function toggleLocalidadesSelection() {
+    const alcance = document.getElementById('notifAlcance').value;
+    const localidadesDiv = document.getElementById('localidadesSelection');
+    
+    if (alcance === 'localidades') {
+        localidadesDiv.style.display = 'block';
+    } else {
+        localidadesDiv.style.display = 'none';
+    }
+}
+
+// Seleccionar todas las localidades
+function seleccionarTodasLocalidades() {
+    const checkboxes = document.querySelectorAll('input[name="notifLocalities"]');
+    checkboxes.forEach(checkbox => {
+        checkbox.checked = true;
+    });
+    showNotification('Todas las localidades seleccionadas', 'success');
+}
+
+// Deseleccionar todas las localidades
+function deseleccionarTodasLocalidades() {
+    const checkboxes = document.querySelectorAll('input[name="notifLocalities"]');
+    checkboxes.forEach(checkbox => {
+        checkbox.checked = false;
+    });
+    showNotification('Todas las localidades deseleccionadas', 'success');
+}
+
+// Enviar notificación personalizada
+function enviarNotificacionPersonalizada(button) {
+    const modal = button.closest('.modal');
+    const titulo = document.getElementById('notifTitulo').value.trim();
+    const mensaje = document.getElementById('notifMensaje').value.trim();
+    const tipo = document.getElementById('notifTipo').value;
+    const alcance = document.getElementById('notifAlcance').value;
+    const archivoAdjunto = document.getElementById('notifArchivo');
+    
+    if (!titulo || !mensaje) {
+        alert('Por favor, completa todos los campos');
+        return;
+    }
+    
+    // Obtener localidades seleccionadas si es necesario
+    let localidadesSeleccionadas = [];
+    if (alcance === 'localidades') {
+        const localityCheckboxes = modal.querySelectorAll('input[name="notifLocalities"]:checked');
+        localityCheckboxes.forEach(checkbox => {
+            localidadesSeleccionadas.push(checkbox.value);
+        });
+        
+        if (localidadesSeleccionadas.length === 0) {
+            alert('Por favor, selecciona al menos una localidad');
+            return;
+        }
+    }
+    
+    // Verificar si hay archivo adjunto
+    let hasAttachments = false;
+    let attachmentUrl = null;
+    let attachmentType = null;
+    
+    if (archivoAdjunto && archivoAdjunto.files.length > 0) {
+        hasAttachments = true;
+        // Aquí se subiría el archivo a Firebase Storage
+        // Por ahora simulamos la URL
+        attachmentUrl = "https://firebasestorage.googleapis.com/...";
+        attachmentType = archivoAdjunto.files[0].type;
+    }
+    
+    enviarNotificacionPushConLocalidades(titulo, mensaje, tipo, alcance, localidadesSeleccionadas, hasAttachments, attachmentUrl, attachmentType);
+    modal.remove();
+}
+
+// Actualizar estadísticas de notificaciones
+function actualizarEstadisticasNotificaciones() {
+    const usuariosConNotificaciones = users.filter(user => 
+        user.notificationConsent && user.fcmToken
+    );
+    
+    const contador = document.getElementById('contadorUsuarios');
+    if (contador) {
+        contador.textContent = usuariosConNotificaciones.length;
+    }
+    
+    // Mostrar estadísticas por localidad
+    const estadisticasPorLocalidad = {};
+    usuariosConNotificaciones.forEach(usuario => {
+        if (usuario.localities) {
+            usuario.localities.forEach(localidad => {
+                if (!estadisticasPorLocalidad[localidad]) {
+                    estadisticasPorLocalidad[localidad] = 0;
+                }
+                estadisticasPorLocalidad[localidad]++;
+            });
+        }
+    });
+    
+    console.log('Estadísticas por localidad:', estadisticasPorLocalidad);
+    
+    showNotification(`Estadísticas actualizadas: ${usuariosConNotificaciones.length} usuarios con notificaciones activadas`, 'success');
+}
+
+// Mostrar modal de descarga de APK
+function mostrarDescargaAPK() {
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.style.display = 'block';
+    modal.innerHTML = `
+        <div class="modal-content">
+            <span class="close" onclick="this.closest('.modal').remove()">&times;</span>
+            <h2>📲 Configurar Descarga de APK</h2>
+            <form id="apkConfigForm">
+                <div class="form-group">
+                    <label for="apkUrl">URL de descarga de la APK:</label>
+                    <input type="url" id="apkUrl" placeholder="https://tu-dominio.com/app.apk">
+                    <small style="color: #666;">URL donde estará alojada la aplicación APK</small>
+                </div>
+                
+                <div class="form-group">
+                    <label for="apkVersion">Versión de la APK:</label>
+                    <input type="text" id="apkVersion" placeholder="1.0.0">
+                </div>
+                
+                <div class="form-group">
+                    <label for="apkDescripcion">Descripción de la aplicación:</label>
+                    <textarea id="apkDescripcion" rows="3" placeholder="Aplicación oficial del Ayuntamiento de Cobreros para recibir notificaciones push..."></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label for="apkTamaño">Tamaño de la APK:</label>
+                    <input type="text" id="apkTamaño" placeholder="15 MB">
+                </div>
+                
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline" onclick="this.closest('.modal').remove()">Cancelar</button>
+                    <button type="button" class="btn btn-primary" onclick="guardarConfiguracionAPK(this)">Guardar</button>
+                </div>
+            </form>
+        </div>
+    `;
+    document.body.appendChild(modal);
+}
+
+// Guardar configuración de APK
+function guardarConfiguracionAPK(button) {
+    const modal = button.closest('.modal');
+    const apkUrl = document.getElementById('apkUrl').value.trim();
+    const apkVersion = document.getElementById('apkVersion').value.trim();
+    const apkDescripcion = document.getElementById('apkDescripcion').value.trim();
+    const apkTamaño = document.getElementById('apkTamaño').value.trim();
+    
+    if (!apkUrl || !apkVersion) {
+        alert('Por favor, completa la URL y la versión de la APK');
+        return;
+    }
+    
+    // Guardar configuración en localStorage
+    const apkConfig = {
+        url: apkUrl,
+        version: apkVersion,
+        descripcion: apkDescripcion,
+        tamaño: apkTamaño,
+        fechaActualizacion: new Date().toISOString()
+    };
+    
+    localStorage.setItem('apkConfig', JSON.stringify(apkConfig));
+    
+    // Crear sección de descarga en la página principal
+    crearSeccionDescargaAPK(apkConfig);
+    
+    modal.remove();
+    showNotification('Configuración de APK guardada correctamente', 'success');
+}
+
+// Crear sección de descarga de APK en la página principal
+function crearSeccionDescargaAPK(config) {
+    // Buscar si ya existe la sección
+    let seccionAPK = document.getElementById('descargaAPK');
+    
+    if (!seccionAPK) {
+        // Crear nueva sección
+        seccionAPK = document.createElement('section');
+        seccionAPK.id = 'descargaAPK';
+        seccionAPK.className = 'content-section';
+        seccionAPK.innerHTML = `
+            <div class="container">
+                <h2>📲 Aplicación Móvil</h2>
+                <div class="app-download-card">
+                    <div class="app-info">
+                        <h3>Ayuntamiento de Cobreros</h3>
+                        <p>Versión ${config.version}</p>
+                        <p>${config.descripcion}</p>
+                        <p><strong>Tamaño:</strong> ${config.tamaño}</p>
+                        <a href="${config.url}" class="btn btn-primary download-btn" download>
+                            <i class="fas fa-download"></i> Descargar APK
+                        </a>
+                    </div>
+                    <div class="app-icon">
+                        <img src="images/escudo-cobreros.png" alt="Ayuntamiento de Cobreros" style="width: 100px; height: 100px;">
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        // Insertar después de la sección de servicios
+        const serviciosSection = document.getElementById('servicios');
+        if (serviciosSection) {
+            serviciosSection.parentNode.insertBefore(seccionAPK, serviciosSection.nextSibling);
+        }
+    } else {
+        // Actualizar sección existente
+        seccionAPK.querySelector('h3').textContent = 'Ayuntamiento de Cobreros';
+        seccionAPK.querySelector('p').textContent = `Versión ${config.version}`;
+        seccionAPK.querySelector('.download-btn').href = config.url;
+    }
+}
+
+
+
+ 
