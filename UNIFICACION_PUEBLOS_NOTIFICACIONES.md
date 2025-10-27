@@ -99,3 +99,4 @@ const pueblos = [
 ---
 
 **✅ Sistema completamente unificado y funcional para notificaciones por pueblos específicos.**
+

@@ -2122,6 +2122,28 @@ a.btn {
     }
 }
 
+/* Estilos para elementos solo de super administrador */
+.super-admin-only {
+    display: none !important;
+}
+
+.super-admin-only.show {
+    display: block !important;
+}
+
+/* Estilo especial para pestaña de super admin */
+.tab-btn.super-admin-only {
+    background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+    color: white;
+    border: 2px solid #6d28d9;
+}
+
+.tab-btn.super-admin-only:hover {
+    background: linear-gradient(135deg, #7c3aed, #6d28d9);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);
+}
+
 /* Mensaje flotante para desktop */
 .floating-desktop-info {
     position: fixed;

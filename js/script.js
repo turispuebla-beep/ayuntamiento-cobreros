@@ -2218,6 +2218,12 @@ function updateAdminContent() {
         adminsTab.style.display = isSuperAdmin ? 'block' : 'none';
     }
 
+    // Mostrar/ocultar pestaña de Backup & Persistencia solo para super admin
+    const backupTab = document.querySelector('[data-tab="backup"]');
+    if (backupTab) {
+        backupTab.style.display = isSuperAdmin ? 'block' : 'none';
+    }
+
     loadNewsList();
     loadBandoList();
     loadUsersList();
@@ -4409,8 +4415,8 @@ function exportAllData() {
 function handleDataImport(e) {
     e.preventDefault();
     
-    if (!isAdmin) {
-        showNotification('Solo los administradores pueden importar datos', 'error');
+    if (!isSuperAdmin) {
+        showNotification('Solo el super administrador puede importar datos', 'error');
         return;
     }
     
@@ -17018,6 +17024,11 @@ function deleteTransporteItem(itemId) {
 
 // Función para exportar todos los datos como JSON
 function exportDataAsJSON() {
+    if (!isSuperAdmin) {
+        showNotification('Solo el super administrador puede exportar datos', 'error');
+        return;
+    }
+    
     try {
         const allData = {
             timestamp: new Date().toISOString(),
@@ -17080,6 +17091,11 @@ function exportDataAsJSON() {
 
 // Función para exportar datos como Excel
 function exportDataAsExcel() {
+    if (!isSuperAdmin) {
+        showNotification('Solo el super administrador puede exportar datos', 'error');
+        return;
+    }
+    
     try {
         // Crear un libro de trabajo con múltiples hojas
         const workbook = {
@@ -17203,6 +17219,11 @@ function exportDataAsExcel() {
 
 // Función para exportar datos como documento de texto
 function exportDataAsDocument() {
+    if (!isSuperAdmin) {
+        showNotification('Solo el super administrador puede exportar datos', 'error');
+        return;
+    }
+    
     try {
         let documentContent = `AYUNTAMIENTO DE COBREROS - COPIA DE SEGURIDAD\n`;
         documentContent += `Fecha de exportación: ${new Date().toLocaleString('es-ES')}\n`;
@@ -17497,6 +17518,11 @@ function importDataFromExcel(file) {
 
 // Función para mostrar modal de exportación
 function showExportModal() {
+    if (!isSuperAdmin) {
+        showNotification('Solo el super administrador puede exportar datos', 'error');
+        return;
+    }
+    
     const modal = document.createElement('div');
     modal.className = 'modal';
     modal.innerHTML = `
@@ -17526,6 +17552,11 @@ function showExportModal() {
 
 // Función para mostrar modal de importación
 function showImportModal() {
+    if (!isSuperAdmin) {
+        showNotification('Solo el super administrador puede importar datos', 'error');
+        return;
+    }
+    
     const modal = document.createElement('div');
     modal.className = 'modal';
     modal.innerHTML = `
