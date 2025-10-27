@@ -2307,36 +2307,52 @@ function loadBandoList() {
     });
 }
 
-// Cargar lista de usuarios
+// Cargar lista de usuarios (FUNCIÓN UNIFICADA)
 function loadUsersList() {
     const usersList = document.getElementById('usersList');
     if (!usersList) return;
 
-    usersList.innerHTML = '';
+    // Obtener usuarios de localStorage
+    const allUsers = JSON.parse(localStorage.getItem('users') || '[]');
     
     // Filtrar usuarios ocultos (super admin no debe aparecer en la lista)
-    const visibleUsers = users.filter(user => !user.isHidden && !user.isSuperAdmin);
+    const visibleUsers = allUsers.filter(user => !user.isHidden && !user.isSuperAdmin);
+    
+    if (visibleUsers.length === 0) {
+        usersList.innerHTML = '<div class="no-data" style="text-align: center; color: #666; padding: 2rem; background: #f8f9fa; border-radius: 8px; margin: 1rem 0;">No hay usuarios registrados</div>';
+        return;
+    }
+    
+    usersList.innerHTML = '';
     
     visibleUsers.forEach(user => {
         const userItem = document.createElement('div');
         userItem.className = 'user-item';
         userItem.innerHTML = `
-            <div>
-                <h4>${user.name}</h4>
-                <p>${user.email}</p>
-                <p>Registrado: ${formatDate(user.registeredAt)}</p>
+            <div class="user-info">
+                <h4>${user.name || 'Usuario sin nombre'}</h4>
+                <p><strong>Email:</strong> ${user.email}</p>
+                <p><strong>Registrado:</strong> ${user.registeredAt ? formatDate(user.registeredAt) : 'Fecha no disponible'}</p>
+                ${user.localities && user.localities.length > 0 ? `<p><strong>Pueblos:</strong> ${user.localities.join(', ')}</p>` : ''}
             </div>
-            <div>
+            <div class="user-badges">
                 <span class="badge ${user.consent ? 'badge-success' : 'badge-warning'}">
                     ${user.consent ? 'Consentimiento dado' : 'Sin consentimiento'}
                 </span>
                 ${user.notificationConsent ? '<span class="badge badge-info">Notificaciones</span>' : ''}
+                ${user.fcmToken ? '<span class="badge badge-primary">App móvil</span>' : ''}
+            </div>
+            <div class="user-actions">
+                <button class="btn btn-sm btn-outline" onclick="sendNotificationToUser('${user.email}')" title="Enviar notificación">
+                    <i class="fas fa-bell"></i>
+                </button>
+                <button class="btn btn-sm btn-danger" onclick="deleteUser('${user.email}')" title="Eliminar usuario">
+                    <i class="fas fa-trash"></i>
+                </button>
             </div>
         `;
         usersList.appendChild(userItem);
     });
-    
-    // Super administrador oculto - no se muestra en la lista
 }
 
 // Cargar lista de administradores
@@ -17581,6 +17597,195 @@ function showImportModal() {
         </div>
     `;
     document.body.appendChild(modal);
+}
+
+// ===== FUNCIONES DE GESTIÓN DE USUARIOS MEJORADAS =====
+
+// Enviar notificación a un usuario específico
+function sendNotificationToUser(userEmail) {
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.innerHTML = `
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>📱 Enviar Notificación a Usuario</h3>
+                <span class="close" onclick="this.closest('.modal').remove()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form id="userNotificationForm">
+                    <div class="form-group">
+                        <label for="userNotifTitle">Título:</label>
+                        <input type="text" id="userNotifTitle" name="title" placeholder="Título de la notificación" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="userNotifMessage">Mensaje:</label>
+                        <textarea id="userNotifMessage" name="message" rows="3" placeholder="Contenido de la notificación" required></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="userNotifType">Tipo:</label>
+                        <select id="userNotifType" name="type" required>
+                            <option value="general">General</option>
+                            <option value="bando">Bando Municipal</option>
+                            <option value="noticia">Noticia</option>
+                            <option value="evento">Evento</option>
+                            <option value="urgencia">Urgente</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="userNotifAttachment">Documento adjunto (opcional):</label>
+                        <input type="file" id="userNotifAttachment" name="attachment" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png">
+                    </div>
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-paper-plane"></i> Enviar Notificación
+                        </button>
+                        <button type="button" class="btn btn-secondary" onclick="this.closest('.modal').remove()">
+                            Cancelar
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    
+    // Manejar envío del formulario
+    modal.querySelector('#userNotificationForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const formData = new FormData(e.target);
+        const title = formData.get('title');
+        const message = formData.get('message');
+        const type = formData.get('type');
+        const attachment = formData.get('attachment');
+        
+        if (!title || !message) {
+            showNotification('Por favor, complete título y mensaje', 'error');
+            return;
+        }
+        
+        // Enviar notificación al usuario específico
+        enviarNotificacionPushConLocalidades(title, message, type, 'usuario', [userEmail], attachment);
+        
+        modal.remove();
+        showNotification(`Notificación enviada a ${userEmail}`, 'success');
+    });
+}
+
+// Función mejorada para mostrar estadísticas de usuarios
+function showUserStats() {
+    const allUsers = JSON.parse(localStorage.getItem('users') || '[]');
+    const visibleUsers = allUsers.filter(user => !user.isHidden && !user.isSuperAdmin);
+    
+    const totalUsers = visibleUsers.length;
+    const usersWithConsent = visibleUsers.filter(u => u.consent).length;
+    const usersWithNotifications = visibleUsers.filter(u => u.notificationConsent).length;
+    const usersWithApp = visibleUsers.filter(u => u.fcmToken).length;
+    
+    // Estadísticas por pueblo
+    const pueblosStats = {};
+    visibleUsers.forEach(user => {
+        if (user.localities) {
+            user.localities.forEach(pueblo => {
+                pueblosStats[pueblo] = (pueblosStats[pueblo] || 0) + 1;
+            });
+        }
+    });
+    
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.innerHTML = `
+        <div class="modal-content" style="max-width: 600px;">
+            <div class="modal-header">
+                <h3>📊 Estadísticas de Usuarios</h3>
+                <span class="close" onclick="this.closest('.modal').remove()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="stats-grid" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; margin-bottom: 2rem;">
+                    <div class="stat-card" style="background: #e3f2fd; padding: 1rem; border-radius: 8px; text-align: center;">
+                        <h4 style="color: #1976d2; margin: 0;">${totalUsers}</h4>
+                        <p style="margin: 0.5rem 0 0 0; color: #666;">Total Usuarios</p>
+                    </div>
+                    <div class="stat-card" style="background: #e8f5e8; padding: 1rem; border-radius: 8px; text-align: center;">
+                        <h4 style="color: #388e3c; margin: 0;">${usersWithConsent}</h4>
+                        <p style="margin: 0.5rem 0 0 0; color: #666;">Con Consentimiento</p>
+                    </div>
+                    <div class="stat-card" style="background: #fff3e0; padding: 1rem; border-radius: 8px; text-align: center;">
+                        <h4 style="color: #f57c00; margin: 0;">${usersWithNotifications}</h4>
+                        <p style="margin: 0.5rem 0 0 0; color: #666;">Con Notificaciones</p>
+                    </div>
+                    <div class="stat-card" style="background: #f3e5f5; padding: 1rem; border-radius: 8px; text-align: center;">
+                        <h4 style="color: #7b1fa2; margin: 0;">${usersWithApp}</h4>
+                        <p style="margin: 0.5rem 0 0 0; color: #666;">Con App Móvil</p>
+                    </div>
+                </div>
+                
+                ${Object.keys(pueblosStats).length > 0 ? `
+                    <h4>Usuarios por Pueblo:</h4>
+                    <div class="pueblos-stats" style="margin-top: 1rem;">
+                        ${Object.entries(pueblosStats).map(([pueblo, count]) => `
+                            <div style="display: flex; justify-content: space-between; padding: 0.5rem; background: #f8f9fa; margin-bottom: 0.5rem; border-radius: 4px;">
+                                <span><strong>${pueblo}</strong></span>
+                                <span class="badge badge-primary">${count} usuarios</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                ` : ''}
+                
+                <div class="modal-footer" style="margin-top: 2rem; text-align: center;">
+                    <button class="btn btn-secondary" onclick="this.closest('.modal').remove()">
+                        Cerrar
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+}
+
+// Función mejorada para exportar usuarios
+function exportUsers() {
+    try {
+        const allUsers = JSON.parse(localStorage.getItem('users') || '[]');
+        const visibleUsers = allUsers.filter(user => !user.isHidden && !user.isSuperAdmin);
+        
+        if (visibleUsers.length === 0) {
+            showNotification('No hay usuarios para exportar', 'warning');
+            return;
+        }
+        
+        const usersData = visibleUsers.map(user => ({
+            'ID': user.id || 'N/A',
+            'Nombre': user.name || 'Sin nombre',
+            'Email': user.email,
+            'Fecha Registro': user.registeredAt || 'N/A',
+            'Consentimiento': user.consent ? 'Sí' : 'No',
+            'Notificaciones': user.notificationConsent ? 'Sí' : 'No',
+            'App Móvil': user.fcmToken ? 'Sí' : 'No',
+            'Pueblos': user.localities ? user.localities.join(', ') : 'Ninguno'
+        }));
+        
+        // Crear CSV
+        const headers = Object.keys(usersData[0] || {});
+        const csvContent = [
+            headers.join(','),
+            ...usersData.map(user => headers.map(header => `"${user[header] || ''}"`).join(','))
+        ].join('\n');
+        
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = `usuarios_cobreros_${new Date().toISOString().split('T')[0]}.csv`;
+        link.click();
+        
+        showNotification(`Exportados ${visibleUsers.length} usuarios correctamente`, 'success');
+        
+    } catch (error) {
+        console.error('Error al exportar usuarios:', error);
+        showNotification('Error al exportar usuarios', 'error');
+    }
 }
 
  
