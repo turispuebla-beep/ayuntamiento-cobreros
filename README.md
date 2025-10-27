@@ -1,5 +1,14 @@
 # 🏛️ Ayuntamiento de Cobreros - Sistema Web y App Móvil
 
+## ©️ **Copyright y Propiedad**
+
+**© 2024 Turisteam Platform System**  
+*Todos los derechos reservados*
+
+Este sistema pertenece y está registrado bajo el **Turisteam Platform System**, una plataforma integral de gestión turística y municipal desarrollada para optimizar la comunicación y administración de entidades públicas.
+
+---
+
 ## 📋 **Descripción del Proyecto**
 
 Sistema completo de gestión municipal para el Ayuntamiento de Cobreros, que incluye:
