@@ -855,17 +855,33 @@ function initializeApp() {
         updateUserInterface();
     }
 
-    // Verificar si es admin
+    // 🔒 SEGURIDAD: Verificar si es admin PERO NO abrir panel automáticamente
+    // Solo mostrar el botón de admin si hay sesión guardada
     const savedAdmin = localStorage.getItem('isAdmin');
     const savedSuperAdmin = localStorage.getItem('isSuperAdmin');
     if (savedAdmin === 'true') {
         isAdmin = true;
-        document.getElementById('adminBtn').style.display = 'block';
+        // Solo mostrar el botón, NO abrir el panel
+        const adminBtn = document.getElementById('adminBtn');
+        if (adminBtn) {
+            adminBtn.style.display = 'block';
+        }
     }
     if (savedSuperAdmin === 'true') {
         isSuperAdmin = true;
         isAdmin = true; // Super admin también es admin
-        document.getElementById('adminBtn').style.display = 'block';
+        // Solo mostrar el botón, NO abrir el panel
+        const adminBtn = document.getElementById('adminBtn');
+        if (adminBtn) {
+            adminBtn.style.display = 'block';
+        }
+    }
+    
+    // 🔒 SEGURIDAD CRÍTICA: Asegurar que el panel de admin NUNCA esté abierto al cargar
+    const adminModal = document.getElementById('adminModal');
+    if (adminModal) {
+        adminModal.style.display = 'none';
+        adminModal.classList.remove('show');
     }
 
     // Inicializar configuración del consultorio médico
@@ -2209,8 +2225,16 @@ function updateUserInterface() {
 }
 
 // Actualizar contenido del admin
+// 🔒 SEGURIDAD: Esta función solo actualiza contenido, NO abre el panel
 function updateAdminContent() {
     if (!isAdmin) return;
+    
+    // 🔒 SEGURIDAD: Asegurar que el panel NO se abra automáticamente
+    const adminModal = document.getElementById('adminModal');
+    if (adminModal && adminModal.style.display === 'block' && !document.getElementById('adminModal').classList.contains('user-opened')) {
+        // Solo cerrar si no fue abierto explícitamente por el usuario
+        adminModal.style.display = 'none';
+    }
 
     // Ocultar pestaña de administradores si no es super admin
     const adminsTab = document.querySelector('[data-tab="admins"]');
