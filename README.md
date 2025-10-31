@@ -139,10 +139,16 @@ const firebaseConfig = {
 ```
 
 ### **4. Configurar VAPID Key**
+⚠️ **IMPORTANTE:** La VAPID key debe ser la misma en `index.html` y `notification-app/app.js`
+
 1. En Firebase Console → Project Settings → Cloud Messaging
 2. Generar **Web Push certificates**
 3. Copiar la **VAPID key**
-4. Actualizar en ambos archivos HTML
+4. Actualizar en ambos archivos:
+   - `index.html` (línea ~58) - Constante `VAPID_KEY`
+   - `notification-app/app.js` (línea ~14) - Constante `VAPID_KEY`
+
+📚 **Guía detallada:** Ver `VAPID_KEY_CONFIGURATION.md` para instrucciones completas
 
 ## 🎯 **Funcionalidades del Sistema**
 

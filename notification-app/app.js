@@ -8,6 +8,11 @@ const firebaseConfig = {
     appId: "1:123456789012:web:abcdefghijklmnop"
 };
 
+// ⚙️ CONFIGURACIÓN VAPID KEY PARA NOTIFICACIONES PUSH
+// 🔑 Obtener esta clave en: Firebase Console → Project Settings → Cloud Messaging → Web Push certificates
+// ⚠️ IMPORTANTE: Usa la misma VAPID key en index.html para mantener consistencia
+const VAPID_KEY = 'BEl62iUYgUivxIkv69yViEuiBIa40HI8lF7vQyVpX4Bw';
+
 // Inicializar Firebase
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
@@ -61,7 +66,7 @@ async function requestNotificationPermission() {
             
             // Obtener token FCM
             const token = await messaging.getToken({
-                vapidKey: 'BEl62iUYgUivxIkv69yViEuiBIa40HI8lF7vQyVpX4Bw'
+                vapidKey: VAPID_KEY
             });
             
             if (token) {
@@ -836,7 +841,7 @@ async function requestNotificationPermission() {
             
             // Obtener token FCM
             const token = await messaging.getToken({
-                vapidKey: 'BEl62iUYgUivxIkv69yViEuiBIa40HI8lF7vQyVpX4Bw'
+                vapidKey: VAPID_KEY
             });
             
             if (token) {

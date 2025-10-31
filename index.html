@@ -52,11 +52,16 @@
             }
         }
         
+        // ⚙️ CONFIGURACIÓN VAPID KEY
+        // 🔑 Obtener esta clave en: Firebase Console → Project Settings → Cloud Messaging → Web Push certificates
+        // ⚠️ IMPORTANTE: Usa la misma VAPID key que en notification-app/app.js para mantener consistencia
+        const VAPID_KEY = 'BEl62iUYgUivxIkv69yViEuiBIa40HI8lF7vQyVpX4Bw';
+        
         // Obtener token de FCM
         async function getFCMToken() {
             try {
                 const token = await getToken(messaging, {
-                    vapidKey: 'TU_VAPID_KEY_AQUI' // ⚠️ CONFIGURAR: Genera una VAPID key en Firebase Console
+                    vapidKey: VAPID_KEY
                 });
                 console.log('FCM Token:', token);
                 return token;

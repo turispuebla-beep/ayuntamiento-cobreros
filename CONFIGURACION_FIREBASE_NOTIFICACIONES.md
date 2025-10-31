@@ -33,15 +33,40 @@ const firebaseConfig = {
 };
 ```
 
-### **Paso 3: Generar VAPID Key**
+### **Paso 3: Generar y Configurar VAPID Key**
+
+⚠️ **IMPORTANTE:** La VAPID key debe ser la misma en ambos archivos para mantener consistencia.
+
 1. En Firebase Console, ve a **Cloud Messaging**
 2. En la pestaña **Web Push certificates**
 3. Haz clic en **Generate key pair**
 4. Copia la clave generada
-5. Actualiza en `index.html`:
+5. Actualiza en **ambos archivos**:
+
+#### **En `index.html` (línea ~58):**
 ```javascript
-vapidKey: 'TU_VAPID_KEY_REAL_AQUI' // ⚠️ Reemplazar
+// ⚙️ CONFIGURACIÓN VAPID KEY
+const VAPID_KEY = 'TU_VAPID_KEY_REAL_AQUI'; // ⚠️ Reemplazar aquí
+
+async function getFCMToken() {
+    const token = await getToken(messaging, {
+        vapidKey: VAPID_KEY  // Usa la constante
+    });
+}
 ```
+
+#### **En `notification-app/app.js` (línea ~14):**
+```javascript
+// ⚙️ CONFIGURACIÓN VAPID KEY PARA NOTIFICACIONES PUSH
+const VAPID_KEY = 'TU_VAPID_KEY_REAL_AQUI'; // ⚠️ Reemplazar aquí (misma key que en index.html)
+
+// Luego se usa así:
+const token = await messaging.getToken({
+    vapidKey: VAPID_KEY  // Usa la constante
+});
+```
+
+✅ **Nota:** Actualmente el sistema tiene una VAPID key configurada (`BEl62iUYgUivxIkv69yViEuiBIa40HI8lF7vQyVpX4Bw`) que está centralizada en ambos archivos. Si necesitas generar una nueva, reemplázala en ambos lugares.
 
 ## 📱 **2. Configurar App Móvil**
 
@@ -123,4 +148,5 @@ firebase deploy --only functions
 - [Firebase Console](https://console.firebase.google.com/)
 - [Documentación FCM](https://firebase.google.com/docs/cloud-messaging)
 - [Service Worker Guide](https://developers.google.com/web/fundamentals/primers/service-workers)
+
 

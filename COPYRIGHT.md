@@ -63,3 +63,4 @@ Para consultas sobre derechos de autor, licencias o uso del sistema:
 ---
 
 *Este documento establece los derechos de propiedad intelectual del sistema desarrollado por Turisteam Platform System para el Ayuntamiento de Cobreros.*
+
