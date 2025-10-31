@@ -1,0 +1,63 @@
+# Configuración de Netlify para Ayuntamiento de Cobreros
+# Turisteam Platform System
+
+[build]
+  # Directorio de publicación (raíz)
+  publish = "."
+  # Sin comando de build necesario (sitio estático)
+  command = ""
+
+# Headers de seguridad y optimización
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-XSS-Protection = "1; mode=block"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Permissions-Policy = "camera=(), microphone=(), geolocation=()"
+    
+    # Permitir Service Worker en todo el sitio
+    Service-Worker-Allowed = "/"
+
+# Headers específicos para Service Worker
+[[headers]]
+  for = "/sw.js"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
+    Content-Type = "application/javascript"
+    Service-Worker-Allowed = "/"
+
+# Headers para Manifest (PWA)
+[[headers]]
+  for = "/manifest.json"
+  [headers.values]
+    Content-Type = "application/manifest+json"
+    Cache-Control = "public, max-age=3600"
+
+# Headers para archivos JavaScript
+[[headers]]
+  for = "/js/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+    Content-Type = "application/javascript"
+
+# Headers para archivos CSS
+[[headers]]
+  for = "/css/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+    Content-Type = "text/css"
+
+# Headers para imágenes
+[[headers]]
+  for = "/images/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+# Redirecciones (backup del archivo _redirects)
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
