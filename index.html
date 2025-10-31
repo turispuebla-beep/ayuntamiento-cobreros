@@ -26,14 +26,16 @@
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
         import { getMessaging, getToken, onMessage } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging.js';
         
-        // Configuración de Firebase
+        // ⚙️ CONFIGURACIÓN DE FIREBASE
+        // 🔥 Obtener valores en: Firebase Console → Proyecto TURISTEAM → ⚙️ Configuración → General
+        // 📋 Instrucciones completas en: CONFIGURAR_FIREBASE_PASO_A_PASO.md
         const firebaseConfig = {
-            apiKey: "AIzaSyBXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX", // ⚠️ CONFIGURAR: Tu API key real de Firebase
-            authDomain: "turisteam-80f1b.firebaseapp.com",
-            projectId: "turisteam-80f1b",
-            storageBucket: "turisteam-80f1b.appspot.com",
-            messagingSenderId: "623846192437",
-            appId: "1:623846192437:web:XXXXXXXXXXXXXXXX" // ⚠️ CONFIGURAR: Tu App ID real
+            apiKey: "AIzaSyBXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX", // ⚠️ PASO 1: Copiar desde Firebase Console (después de crear app web)
+            authDomain: "turisteam-80f1b.firebaseapp.com", // ✅ Ya configurado
+            projectId: "turisteam-80f1b", // ✅ Ya configurado
+            storageBucket: "turisteam-80f1b.appspot.com", // ✅ Ya configurado
+            messagingSenderId: "623846192437", // ✅ Ya configurado
+            appId: "1:623846192437:web:XXXXXXXXXXXXXXXX" // ⚠️ PASO 2: Copiar desde Firebase Console (después de crear app web)
         };
         
         // Inicializar Firebase
@@ -52,10 +54,11 @@
             }
         }
         
-        // ⚙️ CONFIGURACIÓN VAPID KEY
-        // 🔑 Obtener esta clave en: Firebase Console → Project Settings → Cloud Messaging → Web Push certificates
+        // ⚙️ CONFIGURACIÓN VAPID KEY PARA NOTIFICACIONES PUSH
+        // 🔑 PASO 3: Obtener en: Firebase Console → Cloud Messaging → Web Push certificates
         // ⚠️ IMPORTANTE: Usa la misma VAPID key que en notification-app/app.js para mantener consistencia
-        const VAPID_KEY = 'BEl62iUYgUivxIkv69yViEuiBIa40HI8lF7vQyVpX4Bw';
+        // 💡 Si ya existe una VAPID key en Firebase, copia esa. Si no, genera una nueva con "Generate key pair"
+        const VAPID_KEY = 'BEl62iUYgUivxIkv69yViEuiBIa40HI8lF7vQyVpX4Bw'; // ⚠️ Actualizar con la VAPID key de Firebase Console
         
         // Obtener token de FCM
         async function getFCMToken() {
