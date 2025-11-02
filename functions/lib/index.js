@@ -1,100 +1,115 @@
-import * as functions from 'firebase-functions';
-import * as admin from 'firebase-admin';
-import * as nodemailer from 'nodemailer';
-import cors from 'cors';
-
+"use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+var _a;
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.sendEmail = void 0;
+const functions = __importStar(require("firebase-functions"));
+const admin = __importStar(require("firebase-admin"));
+const nodemailer = __importStar(require("nodemailer"));
+const cors_1 = __importDefault(require("cors"));
 // Inicializar Firebase Admin
 admin.initializeApp();
-
 // Configurar CORS
-const corsHandler = cors({ origin: true });
-
+const corsHandler = (0, cors_1.default)({ origin: true });
 // ⚙️ CONFIGURACIÓN DE EMAIL PARA CITAS PREVIAS
 // Email dedicado exclusivamente para citas previas
 const APPOINTMENT_EMAIL = 'u2389387944@gmail.com';
-
 // Configurar Nodemailer para Gmail
 // Usar variables de entorno (método moderno) o fallback a config deprecated
-const gmailPassword = process.env.GMAIL_PASSWORD || functions.config().gmail?.password;
-
+const gmailPassword = process.env.GMAIL_PASSWORD || ((_a = functions.config().gmail) === null || _a === void 0 ? void 0 : _a.password);
 const transporter = nodemailer.createTransport({
-  service: 'gmail',
-  auth: {
-    user: APPOINTMENT_EMAIL,
-    pass: gmailPassword
-  }
+    service: 'gmail',
+    auth: {
+        user: APPOINTMENT_EMAIL,
+        pass: gmailPassword
+    }
 });
-
 // Función para enviar emails
-export const sendEmail = functions.https.onRequest((req, res) => {
-  return corsHandler(req, res, async () => {
-    if (req.method !== 'POST') {
-      return res.status(405).json({ error: 'Método no permitido' });
-    }
-
-    try {
-      const { to, from, subject, template, data } = req.body;
-
-      if (!to || !subject) {
-        return res.status(400).json({ error: 'Faltan campos requeridos' });
-      }
-
-      // Generar contenido del email según el template
-      let htmlContent = '';
-      let textContent = '';
-
-      switch (template) {
-        case 'appointment_confirmation':
-          htmlContent = generateAppointmentConfirmationHTML(data);
-          textContent = generateAppointmentConfirmationText(data);
-          break;
-        case 'appointment_notification_admin':
-          htmlContent = generateAdminNotificationHTML(data);
-          textContent = generateAdminNotificationText(data);
-          break;
-        case 'appointment_status_change':
-          htmlContent = generateStatusChangeHTML(data);
-          textContent = generateStatusChangeText(data);
-          break;
-        default:
-          htmlContent = '<p>Email del Ayuntamiento de Cobreros</p>';
-          textContent = 'Email del Ayuntamiento de Cobreros';
-      }
-
-      // Configurar el email
-      const mailOptions = {
-        from: from || APPOINTMENT_EMAIL,
-        to: to,
-        subject: subject,
-        text: textContent,
-        html: htmlContent
-      };
-
-      // Enviar email
-      const info = await transporter.sendMail(mailOptions);
-      
-      console.log('✅ Email enviado:', info.messageId);
-      
-      return res.status(200).json({
-        success: true,
-        messageId: info.messageId,
-        message: 'Email enviado correctamente'
-      });
-
-    } catch (error: any) {
-      console.error('❌ Error al enviar email:', error);
-      return res.status(500).json({
-        success: false,
-        error: 'Error interno del servidor',
-        details: error.message
-      });
-    }
-  });
+exports.sendEmail = functions.https.onRequest((req, res) => {
+    return corsHandler(req, res, async () => {
+        if (req.method !== 'POST') {
+            return res.status(405).json({ error: 'Método no permitido' });
+        }
+        try {
+            const { to, from, subject, template, data } = req.body;
+            if (!to || !subject) {
+                return res.status(400).json({ error: 'Faltan campos requeridos' });
+            }
+            // Generar contenido del email según el template
+            let htmlContent = '';
+            let textContent = '';
+            switch (template) {
+                case 'appointment_confirmation':
+                    htmlContent = generateAppointmentConfirmationHTML(data);
+                    textContent = generateAppointmentConfirmationText(data);
+                    break;
+                case 'appointment_notification_admin':
+                    htmlContent = generateAdminNotificationHTML(data);
+                    textContent = generateAdminNotificationText(data);
+                    break;
+                case 'appointment_status_change':
+                    htmlContent = generateStatusChangeHTML(data);
+                    textContent = generateStatusChangeText(data);
+                    break;
+                default:
+                    htmlContent = '<p>Email del Ayuntamiento de Cobreros</p>';
+                    textContent = 'Email del Ayuntamiento de Cobreros';
+            }
+            // Configurar el email
+            const mailOptions = {
+                from: from || APPOINTMENT_EMAIL,
+                to: to,
+                subject: subject,
+                text: textContent,
+                html: htmlContent
+            };
+            // Enviar email
+            const info = await transporter.sendMail(mailOptions);
+            console.log('✅ Email enviado:', info.messageId);
+            return res.status(200).json({
+                success: true,
+                messageId: info.messageId,
+                message: 'Email enviado correctamente'
+            });
+        }
+        catch (error) {
+            console.error('❌ Error al enviar email:', error);
+            return res.status(500).json({
+                success: false,
+                error: 'Error interno del servidor',
+                details: error.message
+            });
+        }
+    });
 });
-
 // Función para generar HTML de confirmación de cita
-function generateAppointmentConfirmationHTML(data: any): string {
-  return `
+function generateAppointmentConfirmationHTML(data) {
+    return `
     <!DOCTYPE html>
     <html>
     <head>
@@ -152,10 +167,9 @@ function generateAppointmentConfirmationHTML(data: any): string {
     </html>
   `;
 }
-
 // Función para generar texto plano de confirmación de cita
-function generateAppointmentConfirmationText(data: any): string {
-  return `
+function generateAppointmentConfirmationText(data) {
+    return `
 AYUNTAMIENTO DE COBREROS - CONFIRMACIÓN DE CITA PREVIA
 
 Estimado/a ${data.name},
@@ -182,10 +196,9 @@ Teléfono: 980 62 26 18
 Este es un email automático, por favor no responda a este mensaje.
   `;
 }
-
 // Función para generar HTML de notificación al administrador
-function generateAdminNotificationHTML(data: any): string {
-  return `
+function generateAdminNotificationHTML(data) {
+    return `
     <!DOCTYPE html>
     <html>
     <head>
@@ -260,10 +273,9 @@ function generateAdminNotificationHTML(data: any): string {
     </html>
   `;
 }
-
 // Función para generar texto plano de notificación al administrador
-function generateAdminNotificationText(data: any): string {
-  return `
+function generateAdminNotificationText(data) {
+    return `
 NUEVA SOLICITUD DE CITA PREVIA - AYUNTAMIENTO DE COBREROS
 
 ⚠️ ACCIÓN REQUERIDA: Se ha recibido una nueva solicitud de cita previa que requiere confirmación.
@@ -294,27 +306,23 @@ Teléfono: 980 62 26 18
 Este es un email automático del sistema de citas previas.
   `;
 }
-
 // Función para generar HTML de cambio de estado
-function generateStatusChangeHTML(data: any): string {
-  const statusTexts: any = {
-    'pending': 'Pendiente',
-    'confirmed': 'Confirmada',
-    'cancelled': 'Cancelada',
-    'completed': 'Completada'
-  };
-  
-  const statusColors: any = {
-    'pending': '#f39c12',
-    'confirmed': '#27ae60',
-    'cancelled': '#e74c3c',
-    'completed': '#3498db'
-  };
-
-  const statusText = statusTexts[data.newStatus] || data.newStatus;
-  const statusColor = statusColors[data.newStatus] || '#333';
-
-  return `
+function generateStatusChangeHTML(data) {
+    const statusTexts = {
+        'pending': 'Pendiente',
+        'confirmed': 'Confirmada',
+        'cancelled': 'Cancelada',
+        'completed': 'Completada'
+    };
+    const statusColors = {
+        'pending': '#f39c12',
+        'confirmed': '#27ae60',
+        'cancelled': '#e74c3c',
+        'completed': '#3498db'
+    };
+    const statusText = statusTexts[data.newStatus] || data.newStatus;
+    const statusColor = statusColors[data.newStatus] || '#333';
+    return `
     <!DOCTYPE html>
     <html>
     <head>
@@ -371,19 +379,16 @@ function generateStatusChangeHTML(data: any): string {
     </html>
   `;
 }
-
 // Función para generar texto plano de cambio de estado
-function generateStatusChangeText(data: any): string {
-  const statusTexts: any = {
-    'pending': 'Pendiente',
-    'confirmed': 'Confirmada',
-    'cancelled': 'Cancelada',
-    'completed': 'Completada'
-  };
-  
-  const statusText = statusTexts[data.newStatus] || data.newStatus;
-
-  return `
+function generateStatusChangeText(data) {
+    const statusTexts = {
+        'pending': 'Pendiente',
+        'confirmed': 'Confirmada',
+        'cancelled': 'Cancelada',
+        'completed': 'Completada'
+    };
+    const statusText = statusTexts[data.newStatus] || data.newStatus;
+    return `
 ACTUALIZACIÓN DE CITA PREVIA - AYUNTAMIENTO DE COBREROS
 
 Estimado/a ${data.name},
@@ -410,4 +415,4 @@ Teléfono: 980 62 26 18
 Este es un email automático, por favor no responda a este mensaje.
   `;
 }
-
+//# sourceMappingURL=index.js.map
