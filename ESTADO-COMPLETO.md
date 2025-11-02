@@ -198,3 +198,5 @@ Abre: `PROBAR-EMAIL.html` para probar el sistema de emails
 
 **¡Sistema completado y funcionando al 100%!** 🚀✨
 
+
+

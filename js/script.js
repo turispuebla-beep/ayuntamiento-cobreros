@@ -36,9 +36,10 @@ let appointmentSchedule = {
 // Email que se usará para enviar y recibir confirmaciones de citas
 const APPOINTMENT_EMAIL = 'u2389387944@gmail.com';
 
-// ⚙️ URL de Firebase Functions para envío de emails
-// 🔧 Actualizar con la URL de tu función desplegada (después de: firebase deploy --only functions)
+// ⚙️ URLs de Firebase Functions
+// 🔧 Actualizar con las URLs de tus funciones desplegadas
 const FIREBASE_FUNCTIONS_URL = 'https://us-central1-turisteam-80f1b.cloudfunctions.net/sendEmail';
+const FIREBASE_PUSH_NOTIFICATION_URL = 'https://us-central1-turisteam-80f1b.cloudfunctions.net/sendPushNotification';
 
 // Función para enviar email usando Firebase Functions
 async function sendEmailViaFirebase(emailData) {
@@ -8102,141 +8103,68 @@ function getFormatoTextoHTML(prefix = 'text', includeLabel = true) {
 
 // ===== SISTEMA DE NOTIFICACIONES PUSH - TURISTEAM =====
 
-// Enviar notificación push con filtrado por localidades (SOLO DESDE WEB)
+// Enviar notificación push con filtrado por localidades (MEJORADO CON FIREBASE FUNCTIONS)
 async function enviarNotificacionPushConLocalidades(titulo, mensaje, tipo = 'general', alcance = 'todos', localidadesSeleccionadas = [], hasAttachments = false, attachmentUrl = null, attachmentType = null, textFont = null, textSize = null, textColor = null) {
     try {
-        // Verificar que se está enviando desde la web
-        console.log('🌐 Enviando notificación desde la WEB hacia la APK');
+        console.log('🔔 Enviando notificación push mejorada desde Firebase Functions');
         
-        // Obtener usuarios que han dado consentimiento para notificaciones
-        let usuariosConNotificaciones = users.filter(user => 
-            user.notificationConsent && user.fcmToken
-        );
+        // Determinar el scope correcto
+        const scope = (alcance === 'localidades' && localidadesSeleccionadas.length > 0) ? 'localities' : 'all';
         
-        // Filtrar por localidades si es necesario
-        if (alcance === 'localidades' && localidadesSeleccionadas.length > 0) {
-            usuariosConNotificaciones = usuariosConNotificaciones.filter(user => 
-                user.localities && user.localities.some(localidad => 
-                    localidadesSeleccionadas.includes(localidad)
-                )
-            );
-        }
-        
-        if (usuariosConNotificaciones.length === 0) {
-            if (alcance === 'localidades') {
-                alert('No hay usuarios registrados en las localidades seleccionadas que hayan dado consentimiento para recibir notificaciones.');
-            } else {
-                alert('No hay usuarios registrados que hayan dado consentimiento para recibir notificaciones.');
-            }
-            return;
-        }
-
-        // Datos de la notificación
-        const notificationData = {
-            titulo: titulo,
-            mensaje: mensaje,
-            tipo: tipo,
-            timestamp: new Date().toISOString(),
-            enviadoPor: currentUser ? currentUser.name : 'Administrador',
-            proyecto: 'Ayuntamiento de Cobreros',
+        // Preparar datos para la función
+        const requestData = {
+            title: titulo,
+            message: mensaje,
+            type: tipo,
+            scope: scope,
+            localities: localidadesSeleccionadas,
             textFont: textFont,
             textSize: textSize,
-            textColor: textColor
+            textColor: textColor,
+            adminEmail: currentUser ? currentUser.email : 'admin@ayuntamiento.es'
         };
 
-        let notificacionesEnviadas = 0;
-        let notificacionesFallidas = 0;
-
-        // Enviar a cada usuario individualmente
-        for (const usuario of usuariosConNotificaciones) {
-            try {
-                const response = await fetch('https://fcm.googleapis.com/fcm/send', {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': 'key=TU_SERVER_KEY_AQUI', // Necesitas tu Server Key de Firebase
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        to: usuario.fcmToken,
-                        notification: {
-                            title: titulo,
-                            body: mensaje,
-                            icon: 'images/escudo-cobreros.png',
-                            badge: 'images/escudo-cobreros.png',
-                            click_action: window.location.origin
-                        },
-                        data: {
-                            ...notificationData,
-                            destinatario: usuario.email,
-                            has_attachments: hasAttachments,
-                            attachment_url: attachmentUrl,
-                            attachment_type: attachmentType,
-                            sent_from: 'WEB',
-                            sent_to: 'APK'
-                        }
-                    })
-                });
-
-                if (response.ok) {
-                    notificacionesEnviadas++;
-                    
-                    // Guardar notificación en Firestore para sincronización
-                    if (window.firebase && window.firebase.firestore) {
-                        window.firebase.firestore().collection('notifications').add({
-                            userId: usuario.id,
-                            userEmail: usuario.email,
-                            title: titulo,
-                            message: mensaje,
-                            type: tipo,
-                            localities: localidadesSeleccionadas.length > 0 ? localidadesSeleccionadas.join(', ') : 'Todas',
-                            hasAttachments: hasAttachments,
-                            attachmentUrl: attachmentUrl,
-                            attachmentType: attachmentType,
-                            timestamp: new Date(),
-                            read: false,
-                            sentFrom: 'WEB',
-                            sentTo: 'APK',
-                            fcmToken: usuario.fcmToken,
-                            textFont: textFont,
-                            textSize: textSize,
-                            textColor: textColor
-                        }).catch(error => {
-                            console.error('Error guardando notificación en Firestore:', error);
-                        });
-                    }
-                } else {
-                    notificacionesFallidas++;
-                }
-            } catch (error) {
-                console.error(`Error enviando notificación a ${usuario.email}:`, error);
-                notificacionesFallidas++;
-            }
-        }
-
-        // Mostrar resultado
-        if (notificacionesEnviadas > 0) {
-            let mensaje = `Notificación enviada a ${notificacionesEnviadas} usuarios`;
-            if (alcance === 'localidades' && localidadesSeleccionadas.length > 0) {
-                mensaje += ` en: ${localidadesSeleccionadas.join(', ')}`;
-            }
-            showNotification(mensaje, 'success');
-        }
-        if (notificacionesFallidas > 0) {
-            showNotification(`${notificacionesFallidas} notificaciones fallaron`, 'warning');
-        }
-
-        console.log('Notificación enviada:', {
-            ...notificationData,
-            alcance: alcance,
-            localidades: localidadesSeleccionadas,
-            totalUsuarios: usuariosConNotificaciones.length,
-            enviadas: notificacionesEnviadas,
-            fallidas: notificacionesFallidas
+        // Llamar a la Firebase Function
+        const response = await fetch(FIREBASE_PUSH_NOTIFICATION_URL, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(requestData)
         });
 
+        const result = await response.json();
+
+        if (result.success) {
+            // Notificación enviada exitosamente
+            const stats = result.stats || {};
+            
+            let mensajeExito = `✅ Notificación enviada: ${stats.sent || 0} exitosos`;
+            if (stats.failed && stats.failed > 0) {
+                mensajeExito += `, ${stats.failed} fallidos`;
+            }
+            
+            if (alcance === 'localidades' && localidadesSeleccionadas.length > 0) {
+                mensajeExito += ` en: ${localidadesSeleccionadas.join(', ')}`;
+            }
+            
+            showNotification(mensajeExito, 'success');
+            
+            console.log('📊 Estadísticas de notificación:', stats);
+            
+            // Mostrar información adicional si hay tokens inválidos limpiados
+            if (stats.invalidTokens && stats.invalidTokens > 0) {
+                console.log(`🧹 Tokens inválidos limpiados automáticamente: ${stats.invalidTokens}`);
+            }
+        } else {
+            // Error en el envío
+            console.error('❌ Error:', result.error);
+            showNotification(`Error: ${result.error || 'Error desconocido'}`, 'error');
+        }
+
     } catch (error) {
-        console.error('Error enviando notificación push:', error);
-        showNotification('Error al enviar notificación push', 'error');
+        console.error('❌ Error enviando notificación push:', error);
+        showNotification('Error al enviar notificación push. Intenta más tarde.', 'error');
     }
 }
 

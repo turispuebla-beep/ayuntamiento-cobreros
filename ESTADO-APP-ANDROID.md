@@ -344,3 +344,5 @@ async function loadUsersFromFirestore() {
 **Fecha**: 01/11/2025
 **Estado**: ✅ SINCRONIZACIÓN COMPLETA
 
+
+

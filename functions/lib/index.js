@@ -25,9 +25,9 @@ var __importStar = (this && this.__importStar) || function (mod) {
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
-var _a;
+var _a, _b;
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.sendEmail = void 0;
+exports.sendPushNotification = exports.sendEmail = void 0;
 const functions = __importStar(require("firebase-functions"));
 const admin = __importStar(require("firebase-admin"));
 const nodemailer = __importStar(require("nodemailer"));
@@ -36,12 +36,16 @@ const cors_1 = __importDefault(require("cors"));
 admin.initializeApp();
 // Configurar CORS
 const corsHandler = (0, cors_1.default)({ origin: true });
+// Obtener Server Key de FCM desde variables de entorno o config
+const FCM_SERVER_KEY = process.env.FCM_SERVER_KEY || ((_a = functions.config().fcm) === null || _a === void 0 ? void 0 : _a.server_key);
+// Tamaño de lote para envío masivo (máximo recomendado de FCM)
+const BATCH_SIZE = 500;
 // ⚙️ CONFIGURACIÓN DE EMAIL PARA CITAS PREVIAS
 // Email dedicado exclusivamente para citas previas
 const APPOINTMENT_EMAIL = 'u2389387944@gmail.com';
 // Configurar Nodemailer para Gmail
 // Usar variables de entorno (método moderno) o fallback a config deprecated
-const gmailPassword = process.env.GMAIL_PASSWORD || ((_a = functions.config().gmail) === null || _a === void 0 ? void 0 : _a.password);
+const gmailPassword = process.env.GMAIL_PASSWORD || ((_b = functions.config().gmail) === null || _b === void 0 ? void 0 : _b.password);
 const transporter = nodemailer.createTransport({
     service: 'gmail',
     auth: {
@@ -99,6 +103,200 @@ exports.sendEmail = functions.https.onRequest((req, res) => {
         }
         catch (error) {
             console.error('❌ Error al enviar email:', error);
+            return res.status(500).json({
+                success: false,
+                error: 'Error interno del servidor',
+                details: error.message
+            });
+        }
+    });
+});
+// ===== SISTEMA DE NOTIFICACIONES PUSH MEJORADO =====
+/**
+ * 🔔 Función para enviar notificaciones push masivas
+ *
+ * Esta función implementa:
+ * - Batch sending (500 usuarios por request)
+ * - Limpieza automática de tokens inválidos
+ * - Manejo de errores FCM
+ * - Estadísticas de entrega
+ * - Logging completo
+ *
+ * Endpoint: https://us-central1-turisteam-80f1b.cloudfunctions.net/sendPushNotification
+ */
+exports.sendPushNotification = functions.https.onRequest((req, res) => {
+    return corsHandler(req, res, async () => {
+        if (req.method !== 'POST') {
+            return res.status(405).json({ error: 'Método no permitido' });
+        }
+        try {
+            const { title, message, type, scope, localities, textFont, textSize, textColor, adminEmail } = req.body;
+            // Validaciones
+            if (!title || !message) {
+                return res.status(400).json({ error: 'Título y mensaje son requeridos' });
+            }
+            if (!FCM_SERVER_KEY) {
+                console.error('❌ FCM_SERVER_KEY no configurada');
+                return res.status(500).json({ error: 'Configuración de FCM faltante' });
+            }
+            console.log('🔔 Iniciando envío de notificación push:', { title, type, scope });
+            // Obtener usuarios que han dado consentimiento
+            let usersQuery = admin.firestore().collection('users')
+                .where('notificationConsent', '==', true);
+            const usersSnapshot = await usersQuery.get();
+            if (usersSnapshot.empty) {
+                return res.status(200).json({
+                    success: true,
+                    message: 'No hay usuarios con notificaciones activas',
+                    stats: { totalUsers: 0, sent: 0, failed: 0, invalidTokens: 0 }
+                });
+            }
+            // Filtrar usuarios por localidades si es necesario
+            let usersToNotify = [];
+            if (scope === 'localities' && localities && Array.isArray(localities) && localities.length > 0) {
+                usersSnapshot.forEach(doc => {
+                    const userData = doc.data();
+                    const userLocalities = userData.localities || [];
+                    // Verificar si el usuario está en alguna de las localidades seleccionadas
+                    const userInLocalities = localities.some((locality) => userLocalities.includes(locality));
+                    if (userInLocalities && userData.fcmToken) {
+                        usersToNotify.push(doc);
+                    }
+                });
+            }
+            else {
+                // Todos los usuarios
+                usersSnapshot.forEach(doc => {
+                    if (doc.data().fcmToken) {
+                        usersToNotify.push(doc);
+                    }
+                });
+            }
+            console.log(`📊 Usuarios a notificar: ${usersToNotify.length}`);
+            if (usersToNotify.length === 0) {
+                return res.status(200).json({
+                    success: true,
+                    message: 'No hay usuarios para notificar con los filtros aplicados',
+                    stats: { totalUsers: 0, sent: 0, failed: 0, invalidTokens: 0 }
+                });
+            }
+            // Estadísticas
+            let sentCount = 0;
+            let failedCount = 0;
+            let invalidTokensCount = 0;
+            const invalidTokens = [];
+            // Procesar en lotes
+            for (let i = 0; i < usersToNotify.length; i += BATCH_SIZE) {
+                const batch = usersToNotify.slice(i, i + BATCH_SIZE);
+                const tokens = batch.map(doc => doc.data().fcmToken).filter(Boolean);
+                if (tokens.length === 0)
+                    continue;
+                try {
+                    // Enviar notificación batch usando Firebase Admin SDK
+                    const response = await admin.messaging().sendEachForMulticast({
+                        tokens: tokens,
+                        notification: {
+                            title: title,
+                            body: message,
+                        },
+                        data: {
+                            type: type || 'general',
+                            scope: scope || 'all',
+                            localities: localities ? localities.join(',') : '',
+                            textFont: textFont || '',
+                            textSize: textSize || '',
+                            textColor: textColor || '',
+                            adminEmail: adminEmail || '',
+                            timestamp: new Date().toISOString(),
+                        },
+                        android: {
+                            priority: 'high',
+                            notification: {
+                                icon: 'ic_escudo_cobreros',
+                                sound: 'default',
+                                clickAction: 'FLUTTER_NOTIFICATION_CLICK',
+                            },
+                        },
+                        apns: {
+                            payload: {
+                                aps: {
+                                    sound: 'default',
+                                    badge: 1,
+                                },
+                            },
+                        },
+                        webpush: {
+                            notification: {
+                                icon: '/images/escudo-cobreros.png',
+                                badge: '/images/escudo-cobreros.png',
+                            },
+                        },
+                    });
+                    // Procesar respuestas
+                    if (response.responses) {
+                        response.responses.forEach((resp, idx) => {
+                            var _a, _b;
+                            if (resp.success) {
+                                sentCount++;
+                            }
+                            else {
+                                failedCount++;
+                                // Detectar tokens inválidos
+                                if (((_a = resp.error) === null || _a === void 0 ? void 0 : _a.code) === 'messaging/invalid-registration-token' ||
+                                    ((_b = resp.error) === null || _b === void 0 ? void 0 : _b.code) === 'messaging/registration-token-not-registered') {
+                                    invalidTokensCount++;
+                                    const invalidToken = tokens[idx];
+                                    if (invalidToken) {
+                                        invalidTokens.push(invalidToken);
+                                    }
+                                }
+                            }
+                        });
+                    }
+                    console.log(`✅ Batch ${Math.floor(i / BATCH_SIZE) + 1} procesado: ${response.successCount} enviados, ${response.failureCount} fallidos`);
+                }
+                catch (error) {
+                    console.error('❌ Error en batch:', error);
+                    failedCount += tokens.length;
+                }
+            }
+            // Limpiar tokens inválidos de la base de datos
+            if (invalidTokens.length > 0) {
+                console.log(`🧹 Limpiando ${invalidTokens.length} tokens inválidos`);
+                const cleanPromises = usersToNotify
+                    .filter(doc => invalidTokens.includes(doc.data().fcmToken))
+                    .map(doc => doc.ref.update({
+                    fcmToken: admin.firestore.FieldValue.delete(),
+                    lastNotificationError: 'Token inválido',
+                    notificationConsent: false
+                }).catch(err => console.error('Error limpiando token:', err)));
+                await Promise.all(cleanPromises);
+                console.log('✅ Tokens inválidos eliminados');
+            }
+            // Guardar estadísticas en Firestore
+            const stats = {
+                totalUsers: usersToNotify.length,
+                sent: sentCount,
+                failed: failedCount,
+                invalidTokens: invalidTokensCount,
+                successRate: usersToNotify.length > 0 ? ((sentCount / usersToNotify.length) * 100).toFixed(2) + '%' : '0%',
+                timestamp: admin.firestore.FieldValue.serverTimestamp(),
+                title: title,
+                type: type,
+                scope: scope,
+                localities: scope === 'localities' ? localities : [],
+                adminEmail: adminEmail
+            };
+            await admin.firestore().collection('notification_stats').add(stats);
+            console.log('📊 Estadísticas guardadas:', stats);
+            return res.status(200).json({
+                success: true,
+                message: `Notificación enviada: ${sentCount} exitosos, ${failedCount} fallidos`,
+                stats: stats
+            });
+        }
+        catch (error) {
+            console.error('❌ Error al enviar notificación push:', error);
             return res.status(500).json({
                 success: false,
                 error: 'Error interno del servidor',

@@ -212,3 +212,5 @@ cd android-app
 
 **Solo falta configurar la sección de descarga desde el panel de administración.**
 
+
+

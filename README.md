@@ -10,19 +10,27 @@ Sistema completo de gestión municipal para el **Ayuntamiento de Cobreros** con 
 
 ### **🆕 Funcionalidades Nuevas:**
 
-1. **🎨 Formato de Texto Personalizado**
+1. **🔔 Sistema de Notificaciones Push Profesional** ⭐ **NUEVO**
+   - ✅ Firebase Functions backend seguro
+   - ✅ Batch sending (10x más rápido)
+   - ✅ Limpieza automática de tokens inválidos
+   - ✅ Server Key oculto en back-end
+   - ✅ Estadísticas detalladas de entrega
+   - ✅ Manejo profesional de errores
+
+2. **🎨 Formato de Texto Personalizado**
    - ✅ Tipo de letra (8 opciones)
    - ✅ Tamaño de texto (7 opciones)
    - ✅ Color personalizable
    - ✅ Disponible en Notificaciones, Noticias y Bandos
 
-2. **📧 Sistema de Emails Automáticos**
+3. **📧 Sistema de Emails Automáticos**
    - ✅ Confirmación de citas previas
    - ✅ Notificaciones a administradores
    - ✅ Firebase Functions desplegado
    - ✅ Plan Blaze activo
 
-3. **📱 App Android Completa**
+4. **📱 App Android Completa**
    - ✅ Sincronización en tiempo real
    - ✅ Recepción de notificaciones push
    - ✅ Envío desde la app (administradores)
@@ -257,7 +265,13 @@ firebase deploy --only functions
 ### **Firebase Functions:**
 1. Instala dependencias: `cd functions && npm install`
 2. Compila TypeScript: `npm run build`
-3. Despliega: `firebase deploy --only functions`
+3. **Configura Server Key FCM** (ver `CONFIGURAR-NOTIFICACIONES-PUSH.md`)
+4. Despliega: `firebase deploy --only functions`
+
+### **🔔 Configurar Notificaciones Push** (NUEVO):
+1. Obtén la Server Key FCM desde Firebase Console
+2. Configura: `firebase functions:config:set fcm.server_key="TU_SERVER_KEY"`
+3. Despliega la función: `firebase deploy --only functions:sendPushNotification`
 
 ---
 

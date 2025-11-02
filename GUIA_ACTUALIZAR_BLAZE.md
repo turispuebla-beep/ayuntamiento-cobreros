@@ -261,3 +261,5 @@ La función ya incluye configuración CORS automática. Si persiste:
 Ahora tu sistema de citas previas puede enviar emails automáticamente usando Firebase Blaze.
 
 
+
+

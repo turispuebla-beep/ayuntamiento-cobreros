@@ -27,32 +27,35 @@ Para que las notificaciones push funcionen, necesitas obtener la **Server Key** 
 
 ---
 
-## ⚙️ **Configurar en el Código**
+## ⚙️ **Configurar en Firebase Functions** (NUEVO - RECOMENDADO)
 
-### **Opción 1: Reemplazar Directamente**
+### **📋 Método: Variables de Configuración**
 
-Busca en `js/script.js` línea **8087**:
+Ahora el Server Key se configura **solo en Firebase Functions** (seguro):
 
-```javascript
-'Authorization': 'key=TU_SERVER_KEY_AQUI',
+```bash
+cd "C:\Users\USUARIO\Desktop\COBREROS\TU AYUNTAMIENTO\ayuntamiento-cobreros"
+firebase functions:config:set fcm.server_key="TU_SERVER_KEY_DE_FIREBASE_AQUI"
 ```
 
-Reemplaza `TU_SERVER_KEY_AQUI` con tu Server Key real.
+**Después de configurar, desplegar la función:**
 
-### **Opción 2: Variable Global (Recomendado)**
-
-Agrega al inicio de `js/script.js` (después de la línea 33):
-
-```javascript
-// ⚙️ CONFIGURACIÓN DE NOTIFICACIONES PUSH
-const FCM_SERVER_KEY = 'TU_SERVER_KEY_DE_FIREBASE_AQUI';
+```bash
+firebase deploy --only functions:sendPushNotification
 ```
 
-Luego usa esta variable en línea 8087:
+### **✅ Ventajas del Nuevo Método:**
 
-```javascript
-'Authorization': 'key=' + FCM_SERVER_KEY,
-```
+- ✅ **Server Key oculto**: No está en el código del navegador
+- ✅ **Seguro**: Imposible de robar desde el front-end
+- ✅ **Centralizado**: Una sola configuración
+- ✅ **Profesional**: Como sistemas reales (WhatsApp, Telegram)
+
+---
+
+## ⚠️ **MÉTODO VIEJO (DEPRECADO - NO USAR)**
+
+⚠️ **Ya no necesitas configurar en `js/script.js`** - El sistema ahora usa Firebase Functions automáticamente.
 
 ---
 
@@ -104,4 +107,6 @@ echo "js/script.js" >> .gitignore
 ---
 
 **Una vez configurada la Server Key, las notificaciones push funcionarán al 100%.** 🎉
+
+
 
