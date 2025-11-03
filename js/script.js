@@ -2157,25 +2157,51 @@ function openNewsEditor(newsId = null) {
     `;
     document.body.appendChild(modal);
     
-    // Inicializar editor WYSIWYG Quill
-    const quillEditor = new Quill('#newsContentEditor', {
-        theme: 'snow',
-        modules: {
-            toolbar: [
-                [{ 'header': [1, 2, 3, false] }],
-                ['bold', 'italic', 'underline'],
-                [{ 'align': [] }],
-                [{ 'list': 'ordered'}, { 'list': 'bullet' }],
-                [{ 'color': [] }, { 'background': [] }],
-                ['link', 'image'],
-                ['blockquote', 'code-block'],
-                ['clean']
-            ]
+    // Esperar a que el modal se renderice antes de inicializar Quill
+    setTimeout(() => {
+        // Verificar que Quill esté disponible
+        if (typeof Quill === 'undefined') {
+            console.error('Quill no está disponible. Verifica que el script de Quill se haya cargado.');
+            alert('Error: El editor no está disponible. Por favor, recarga la página.');
+            return;
         }
-    });
+        
+        // Inicializar editor WYSIWYG Quill
+        const editorElement = document.getElementById('newsContentEditor');
+        if (!editorElement) {
+            console.error('No se encontró el elemento newsContentEditor');
+            return;
+        }
+        
+        const quillEditor = new Quill('#newsContentEditor', {
+            theme: 'snow',
+            modules: {
+                toolbar: [
+                    [{ 'header': [1, 2, 3, false] }],
+                    ['bold', 'italic', 'underline'],
+                    [{ 'align': [] }],
+                    [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                    [{ 'color': [] }, { 'background': [] }],
+                    ['link', 'image'],
+                    ['blockquote', 'code-block'],
+                    ['clean']
+                ]
+            }
+        });
+        
+        // Guardar referencia del editor para usarlo en el submit
+        modal.quillEditor = quillEditor;
+    }, 100);
     
     document.getElementById('newsForm').addEventListener('submit', function(e) {
         e.preventDefault();
+        
+        // Obtener el editor Quill del modal
+        const quillEditor = modal.quillEditor;
+        if (!quillEditor) {
+            showNotification('Error: El editor no está inicializado. Por favor, recarga la página.', 'error');
+            return;
+        }
         
         const newsData = {
             title: document.getElementById('newsTitle').value,
@@ -2253,25 +2279,51 @@ function openBandoEditor(bandoId = null) {
     `;
     document.body.appendChild(modal);
     
-    // Inicializar editor WYSIWYG Quill
-    const quillEditor = new Quill('#bandoContentEditor', {
-        theme: 'snow',
-        modules: {
-            toolbar: [
-                [{ 'header': [1, 2, 3, false] }],
-                ['bold', 'italic', 'underline'],
-                [{ 'align': [] }],
-                [{ 'list': 'ordered'}, { 'list': 'bullet' }],
-                [{ 'color': [] }, { 'background': [] }],
-                ['link', 'image'],
-                ['blockquote', 'code-block'],
-                ['clean']
-            ]
+    // Esperar a que el modal se renderice antes de inicializar Quill
+    setTimeout(() => {
+        // Verificar que Quill esté disponible
+        if (typeof Quill === 'undefined') {
+            console.error('Quill no está disponible. Verifica que el script de Quill se haya cargado.');
+            alert('Error: El editor no está disponible. Por favor, recarga la página.');
+            return;
         }
-    });
+        
+        // Inicializar editor WYSIWYG Quill
+        const editorElement = document.getElementById('bandoContentEditor');
+        if (!editorElement) {
+            console.error('No se encontró el elemento bandoContentEditor');
+            return;
+        }
+        
+        const quillEditor = new Quill('#bandoContentEditor', {
+            theme: 'snow',
+            modules: {
+                toolbar: [
+                    [{ 'header': [1, 2, 3, false] }],
+                    ['bold', 'italic', 'underline'],
+                    [{ 'align': [] }],
+                    [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                    [{ 'color': [] }, { 'background': [] }],
+                    ['link', 'image'],
+                    ['blockquote', 'code-block'],
+                    ['clean']
+                ]
+            }
+        });
+        
+        // Guardar referencia del editor para usarlo en el submit
+        modal.quillEditor = quillEditor;
+    }, 100);
     
     document.getElementById('bandoForm').addEventListener('submit', function(e) {
         e.preventDefault();
+        
+        // Obtener el editor Quill del modal
+        const quillEditor = modal.quillEditor;
+        if (!quillEditor) {
+            showNotification('Error: El editor no está inicializado. Por favor, recarga la página.', 'error');
+            return;
+        }
         
         const bandoData = {
             title: document.getElementById('bandoTitle').value,
