@@ -2317,9 +2317,11 @@ function openNewsEditor(newsId = null) {
             toolbar: [
                 [{ 'header': [1, 2, 3, false] }],
                 ['bold', 'italic', 'underline'],
+                [{ 'align': [] }],
                 [{ 'list': 'ordered'}, { 'list': 'bullet' }],
                 [{ 'color': [] }, { 'background': [] }],
-                ['link'],
+                ['link', 'image'],
+                ['blockquote', 'code-block'],
                 ['clean']
             ]
         }
@@ -2411,9 +2413,11 @@ function openBandoEditor(bandoId = null) {
             toolbar: [
                 [{ 'header': [1, 2, 3, false] }],
                 ['bold', 'italic', 'underline'],
+                [{ 'align': [] }],
                 [{ 'list': 'ordered'}, { 'list': 'bullet' }],
                 [{ 'color': [] }, { 'background': [] }],
-                ['link'],
+                ['link', 'image'],
+                ['blockquote', 'code-block'],
                 ['clean']
             ]
         }
@@ -9971,4 +9975,4 @@ function exportStatisticsPDF() {
     showNotification('Función de exportación PDF en desarrollo', 'info');
     // Aquí se implementaría la exportación real a PDF usando jsPDF
 }
- 
+   
