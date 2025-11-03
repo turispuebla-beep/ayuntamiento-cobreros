@@ -363,8 +363,8 @@ firebase deploy --only functions
 ### **⏳ Mejoras Futuras:**
 - ⏳ Más opciones de formato avanzado
 - ⏳ Plantillas predefinidas
-- ⏳ Estadísticas avanzadas
 - ⏳ Sistema de programación de notificaciones
+- ⏳ Multi-idioma
 
 ---
 
