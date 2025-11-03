@@ -1,10 +1,3 @@
-
-
-
-
-
-
-
 // Variables globales
 let currentUser = null;
 let isAdmin = false;
@@ -21,53 +14,6 @@ let quickAccess = []; // Lista de tarjetas de acceso rápido
 let appointmentsEnabled = null; // Se inicializa en loadAppointmentSettings()
 let appointments = []; // Lista de citas previas solicitadas
 let publicNotifications = []; // Lista de notificaciones públicas
-
-// Variables globales para el calendario de citas
-let currentCalendarMonth = new Date().getMonth();
-let currentCalendarYear = new Date().getFullYear();
-let selectedAppointmentDate = null;
-let selectedAppointmentTime = null;
-let appointmentSchedule = {
-    days: [1, 2, 3, 4, 5], // Lunes a Viernes por defecto (0=Dom, 1=Lun, ..., 6=Sáb)
-    hours: ['09:00', '10:00', '11:00', '12:00', '16:00', '17:00', '18:00'] // Horas por defecto
-};
-
-// ⚙️ CONFIGURACIÓN DE EMAIL PARA CITAS PREVIAS
-// Email que se usará para enviar y recibir confirmaciones de citas
-const APPOINTMENT_EMAIL = 'u2389387944@gmail.com';
-
-// ⚙️ URLs de Firebase Functions
-// 🔧 Actualizar con las URLs de tus funciones desplegadas
-const FIREBASE_FUNCTIONS_URL = 'https://us-central1-turisteam-80f1b.cloudfunctions.net/sendEmail';
-const FIREBASE_PUSH_NOTIFICATION_URL = 'https://us-central1-turisteam-80f1b.cloudfunctions.net/sendPushNotification';
-
-// Función para enviar email usando Firebase Functions
-async function sendEmailViaFirebase(emailData) {
-    try {
-        const response = await fetch(FIREBASE_FUNCTIONS_URL, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(emailData)
-        });
-
-        const result = await response.json();
-        
-        if (result.success) {
-            console.log('✅ Email enviado correctamente:', result.messageId);
-            return true;
-        } else {
-            console.error('❌ Error al enviar email:', result.error);
-            return false;
-        }
-    } catch (error) {
-        console.error('❌ Error de conexión con Firebase Functions:', error);
-        // Fallback: retornar true para no bloquear el flujo si Firebase no está disponible
-        // En producción, deberías manejar esto de manera diferente
-        return true;
-    }
-}
 
 // Super administrador oculto - TURISTEAM
 const SUPER_ADMIN = {
@@ -181,19 +127,8 @@ function initializeApp() {
     // Cargar configuración de citas previas
     loadAppointmentSettings();
     
-    // Cargar configuración de horarios de citas
-    loadAppointmentSchedule();
-    
     // Cargar citas previas
     loadAppointments();
-    
-    // Inicializar calendario si las citas están habilitadas
-    if (appointmentsEnabled) {
-        setTimeout(() => {
-            initializeCalendar();
-            updateCalendarVisibility();
-        }, 500);
-    }
     
     // Cargar notificaciones públicas
     loadPublicNotifications();
@@ -715,13 +650,6 @@ function updateContent() {
     updateAdminContent();
 }
 
-// Función auxiliar para extraer texto plano de HTML
-function stripHtml(html) {
-    const tmp = document.createElement('div');
-    tmp.innerHTML = html;
-    return tmp.textContent || tmp.innerText || '';
-}
-
 // Actualizar sección de noticias
 function updateNewsSection() {
     const newsGrid = document.getElementById('newsGrid');
@@ -731,8 +659,6 @@ function updateNewsSection() {
     news.forEach(article => {
         const newsItem = document.createElement('article');
         newsItem.className = 'news-item';
-        // Extraer texto plano para la vista previa
-        const contentText = stripHtml(article.content);
         newsItem.innerHTML = `
             <div class="news-image">
                 <img src="${article.image}" alt="${article.title}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
@@ -743,7 +669,7 @@ function updateNewsSection() {
             <div class="news-content">
                 <h3>${article.title}</h3>
                 <p class="news-date">${formatDate(article.date)}</p>
-                <p>${contentText.substring(0, 100)}...</p>
+                <p>${article.content.substring(0, 100)}...</p>
                 <button class="btn btn-outline btn-small" onclick="showNewsDetail(${article.id})">Leer más</button>
             </div>
         `;
@@ -757,14 +683,12 @@ function updateBandoSection() {
     if (!bandoContent || bandos.length === 0) return;
 
     const latestBando = bandos[bandos.length - 1];
-    // Extraer texto plano para la vista previa
-    const contentText = stripHtml(latestBando.content);
     bandoContent.innerHTML = `
         <div class="bando-item">
             <h3>${latestBando.title}</h3>
             <p class="bando-date">Publicado: ${formatDate(latestBando.date)}</p>
             <div class="bando-text">
-                <p>${contentText.substring(0, 200)}...</p>
+                <p>${latestBando.content.substring(0, 200)}...</p>
             </div>
             <button class="btn btn-outline btn-small" onclick="showBandoDetail(${latestBando.id})">Leer completo</button>
         </div>
@@ -1110,7 +1034,7 @@ function handleDocumentUpload(e) {
 }
 
 // Manejar cita previa
-async function handleAppointment(e) {
+function handleAppointment(e) {
     e.preventDefault();
     
     // Verificar si las citas previas están habilitadas
@@ -1143,25 +1067,12 @@ async function handleAppointment(e) {
         showNotification('La fecha seleccionada no puede ser en el pasado', 'error');
         return;
     }
-    
-    // Validar que el día seleccionado esté en los días configurados
-    const dayOfWeek = selectedDate.getDay();
-    if (!appointmentSchedule.days.includes(dayOfWeek)) {
-        showNotification('El día seleccionado no está disponible para citas previas', 'error');
-        return;
-    }
-    
-    // Validar que la hora seleccionada esté en los horarios configurados
-    if (!appointmentSchedule.hours.includes(appointmentData.time)) {
-        showNotification('El horario seleccionado no está disponible', 'error');
-        return;
-    }
 
     // Enviar email de confirmación al usuario
-    const confirmationSent = await sendConfirmationEmail(appointmentData);
+    const confirmationSent = sendConfirmationEmail(appointmentData);
     
     // Enviar alerta al ayuntamiento
-    const alertSent = await sendAdminAlert(appointmentData);
+    const alertSent = sendAdminAlert(appointmentData);
     
     if (confirmationSent && alertSent) {
         // Guardar la cita previa
@@ -1179,31 +1090,11 @@ async function handleAppointment(e) {
         // Crear notificación para el encargado municipal
         createMunicipalAlert(appointment);
         
-        // Actualizar calendario para reflejar la nueva cita
-        const appointmentDate = appointmentData.date;
-        if (appointmentDate) {
-            const dateObj = new Date(appointmentDate);
-            showTimeSlotsForDate(appointmentDate, dateObj);
-            renderCalendar();
-        }
-        
-        // Limpiar selecciones del calendario
-        selectedAppointmentDate = null;
-        selectedAppointmentTime = null;
-        
         showNotification('Su solicitud de cita ha sido enviada. Recibirá un email de confirmación y le contactaremos pronto.', 'success');
         
         // Cerrar el formulario después del envío exitoso
         setTimeout(() => {
             closeAppointmentForm();
-            // Resetear formulario
-            document.getElementById('appointmentForm').reset();
-            document.getElementById('date').value = '';
-            document.getElementById('time').value = '';
-            const timeSlotsContainer = document.getElementById('timeSlotsContainer');
-            if (timeSlotsContainer) {
-                timeSlotsContainer.style.display = 'none';
-            }
         }, 1500);
     } else {
         showNotification('Hubo un problema al enviar la solicitud. Por favor, inténtelo de nuevo o contacte por teléfono.', 'error');
@@ -1346,8 +1237,6 @@ function switchTab(tabName) {
         loadAdminsList();
     } else if (tabName === 'documents') {
         loadDocumentsList();
-    } else if (tabName === 'statistics') {
-        loadStatistics();
     } else if (tabName === 'notifications') {
         loadNotificationsHistory();
     } else if (tabName === 'database') {
@@ -1446,9 +1335,6 @@ function updateAdminContent() {
     loadBandoList();
     loadUsersList();
     loadNotificationsHistory();
-    
-    // Cargar configuración de horarios en el panel admin
-    loadAppointmentScheduleConfig();
 }
 
 // Cargar lista de noticias en admin
@@ -1856,7 +1742,7 @@ function showNewsDetail(newsId) {
             <h2>${article.title}</h2>
             <p><strong>Fecha:</strong> ${formatDate(article.date)}</p>
             <div style="margin-top: 1rem;">
-                <div class="ql-editor" style="padding: 0;">${article.content}</div>
+                <p>${article.content}</p>
             </div>
         </div>
     `;
@@ -1876,8 +1762,8 @@ function showBandoDetail(bandoId) {
             <span class="close" onclick="this.closest('.modal').remove()">&times;</span>
             <h2>${bando.title}</h2>
             <p><strong>Fecha:</strong> ${formatDate(bando.date)}</p>
-            <div style="margin-top: 1rem;">
-                <div class="ql-editor" style="padding: 0;">${bando.content}</div>
+            <div style="margin-top: 1rem; white-space: pre-line;">
+                <p>${bando.content}</p>
             </div>
         </div>
     `;
@@ -2011,7 +1897,134 @@ function closeAppointmentForm() {
     console.log('Formulario de cita previa cerrado y limpiado');
 }
 
-// Funciones de administración - (Las funciones openNewsEditor y openBandoEditor están definidas más abajo con Quill)
+// Funciones de administración
+function openNewsEditor(newsId = null) {
+    const article = newsId ? news.find(n => n.id === newsId) : null;
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.style.display = 'block';
+    modal.innerHTML = `
+        <div class="modal-content">
+            <span class="close" onclick="this.closest('.modal').remove()">&times;</span>
+            <h2>${article ? 'Editar Anuncio' : 'Nuevo Anuncio'}</h2>
+            <form id="newsForm">
+                <div class="form-group">
+                    <label for="newsTitle">Título:</label>
+                    <input type="text" id="newsTitle" name="title" value="${article ? article.title : ''}" required>
+                </div>
+                <div class="form-group">
+                    <label for="newsContent">Contenido:</label>
+                    <textarea id="newsContent" name="content" rows="6" required>${article ? article.content : ''}</textarea>
+                </div>
+                <div class="form-group">
+                    <label for="newsImage">URL de imagen:</label>
+                    <input type="url" id="newsImage" name="image" value="${article ? article.image : ''}">
+                </div>
+                <button type="submit" class="btn btn-primary">${article ? 'Actualizar' : 'Crear'} Anuncio</button>
+            </form>
+        </div>
+    `;
+    document.body.appendChild(modal);
+
+    document.getElementById('newsForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const formData = new FormData(e.target);
+        const newsData = Object.fromEntries(formData.entries());
+        
+        if (article) {
+            // Editar noticia existente
+            const index = news.findIndex(n => n.id === newsId);
+            news[index] = { ...article, ...newsData };
+        } else {
+            // Crear nueva noticia
+            news.push({
+                id: Date.now(),
+                ...newsData,
+                date: new Date().toISOString().split('T')[0]
+            });
+        }
+        
+        localStorage.setItem('news', JSON.stringify(news));
+        updateContent();
+        modal.remove();
+        showNotification('Anuncio guardado correctamente', 'success');
+    });
+}
+
+function openBandoEditor(bandoId = null) {
+    const bando = bandoId ? bandos.find(b => b.id === bandoId) : null;
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.style.display = 'block';
+    modal.innerHTML = `
+        <div class="modal-content">
+            <span class="close" onclick="this.closest('.modal').remove()">&times;</span>
+            <h2>${bando ? 'Editar Bando' : 'Nuevo Bando'}</h2>
+            <form id="bandoForm">
+                <div class="form-group">
+                    <label for="bandoTitle">Título:</label>
+                    <input type="text" id="bandoTitle" name="title" value="${bando ? bando.title : ''}" required>
+                </div>
+                <div class="form-group">
+                    <label for="bandoContent">Contenido:</label>
+                    <textarea id="bandoContent" name="content" rows="8" required>${bando ? bando.content : ''}</textarea>
+                </div>
+                <button type="submit" class="btn btn-primary">${bando ? 'Actualizar' : 'Crear'} Bando</button>
+            </form>
+        </div>
+    `;
+    document.body.appendChild(modal);
+
+    document.getElementById('bandoForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const formData = new FormData(e.target);
+        const bandoData = Object.fromEntries(formData.entries());
+        
+        if (bando) {
+            // Editar bando existente
+            const index = bandos.findIndex(b => b.id === bandoId);
+            bandos[index] = { ...bando, ...bandoData };
+        } else {
+            // Crear nuevo bando
+            bandos.push({
+                id: Date.now(),
+                ...bandoData,
+                date: new Date().toISOString().split('T')[0]
+            });
+        }
+        
+        localStorage.setItem('bandos', JSON.stringify(bandos));
+        updateContent();
+        modal.remove();
+        showNotification('Bando guardado correctamente', 'success');
+    });
+}
+
+function editNews(newsId) {
+    openNewsEditor(newsId);
+}
+
+function deleteNews(newsId) {
+    if (confirm('¿Está seguro de que desea eliminar este anuncio?')) {
+        news = news.filter(n => n.id !== newsId);
+        localStorage.setItem('news', JSON.stringify(news));
+        updateContent();
+        showNotification('Anuncio eliminado correctamente', 'success');
+    }
+}
+
+function editBando(bandoId) {
+    openBandoEditor(bandoId);
+}
+
+function deleteBando(bandoId) {
+    if (confirm('¿Está seguro de que desea eliminar este bando?')) {
+        bandos = bandos.filter(b => b.id !== bandoId);
+        localStorage.setItem('bandos', JSON.stringify(bandos));
+        updateContent();
+        showNotification('Bando eliminado correctamente', 'success');
+    }
+}
 
 // Utilidades
 function formatDate(dateString) {
@@ -2126,7 +2139,7 @@ function deleteDocument(docId) {
 function openNewsEditor(newsId = null) {
     const isEdit = newsId !== null;
     const news = isEdit ? news.find(n => n.id === newsId) : null;
-    
+
     const modal = document.createElement('div');
     modal.className = 'modal';
     modal.style.display = 'block';
@@ -2141,7 +2154,7 @@ function openNewsEditor(newsId = null) {
                 </div>
                 <div class="form-group">
                     <label for="newsContent">Contenido:</label>
-                    <div id="newsContentEditor" style="min-height: 200px;">${news ? news.content : ''}</div>
+                    <div id="newsContentEditor" style="min-height: 200px;">${news && news.content ? news.content : ''}</div>
                 </div>
                 <div class="form-group">
                     <label for="newsDate">Fecha:</label>
@@ -2156,60 +2169,59 @@ function openNewsEditor(newsId = null) {
         </div>
     `;
     document.body.appendChild(modal);
-    
-    // Esperar a que el modal se renderice antes de inicializar Quill
+
+    // Inicializar editor Quill
     setTimeout(() => {
-        // Verificar que Quill esté disponible
-        if (typeof Quill === 'undefined') {
-            console.error('Quill no está disponible. Verifica que el script de Quill se haya cargado.');
-            alert('Error: El editor no está disponible. Por favor, recarga la página.');
-            return;
-        }
-        
-        // Inicializar editor WYSIWYG Quill
         const editorElement = document.getElementById('newsContentEditor');
-        if (!editorElement) {
-            console.error('No se encontró el elemento newsContentEditor');
-            return;
-        }
-        
-        const quillEditor = new Quill('#newsContentEditor', {
-            theme: 'snow',
-            modules: {
-                toolbar: [
-                    [{ 'header': [1, 2, 3, false] }],
-                    ['bold', 'italic', 'underline'],
-                    [{ 'align': [] }],
-                    [{ 'list': 'ordered'}, { 'list': 'bullet' }],
-                    [{ 'color': [] }, { 'background': [] }],
-                    ['link', 'image'],
-                    ['blockquote', 'code-block'],
-                    ['clean']
-                ]
+        if (editorElement && typeof Quill !== 'undefined') {
+            modal.quillEditor = new Quill('#newsContentEditor', {
+                theme: 'snow',
+                modules: {
+                    toolbar: [
+                        [{ 'header': [1, 2, 3, false] }],
+                        ['bold', 'italic', 'underline', 'strike'],
+                        [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                        [{ 'align': [] }],
+                        ['link', 'image', 'blockquote', 'code-block']
+                    ]
+                }
+            });
+            
+            // Si hay contenido existente y es HTML, establecerlo
+            if (news && news.content) {
+                if (news.content.includes('<')) {
+                    // Es HTML
+                    modal.quillEditor.root.innerHTML = news.content;
+                } else {
+                    // Es texto plano
+                    modal.quillEditor.root.textContent = news.content;
+                }
             }
-        });
-        
-        // Guardar referencia del editor para usarlo en el submit
-        modal.quillEditor = quillEditor;
+        }
     }, 100);
-    
+
     document.getElementById('newsForm').addEventListener('submit', function(e) {
         e.preventDefault();
-        
-        // Obtener el editor Quill del modal
-        const quillEditor = modal.quillEditor;
-        if (!quillEditor) {
-            showNotification('Error: El editor no está inicializado. Por favor, recarga la página.', 'error');
-            return;
+
+        // Obtener contenido del editor Quill
+        let content = '';
+        if (modal.quillEditor) {
+            content = modal.quillEditor.root.innerHTML.trim();
+        } else {
+            // Fallback si no hay editor Quill
+            const editorElement = document.getElementById('newsContentEditor');
+            if (editorElement) {
+                content = editorElement.innerHTML || editorElement.textContent || '';
+            }
         }
-        
+
         const newsData = {
             title: document.getElementById('newsTitle').value,
-            content: quillEditor.root.innerHTML, // Guardar HTML
+            content: content,
             date: document.getElementById('newsDate').value,
             image: document.getElementById('newsImage').value || null
         };
-        
+
         if (isEdit) {
             const index = news.findIndex(n => n.id === newsId);
             news[index] = { ...news[index], ...newsData };
@@ -2217,9 +2229,10 @@ function openNewsEditor(newsId = null) {
             newsData.id = Date.now();
             news.push(newsData);
         }
-        
+
         localStorage.setItem('news', JSON.stringify(news));
         showNotification(`Anuncio ${isEdit ? 'actualizado' : 'creado'} correctamente`, 'success');
+        updateContent();
         modal.remove();
         loadNewsList();
     });
@@ -2252,7 +2265,7 @@ function deleteNews(newsId) {
 function openBandoEditor(bandoId = null) {
     const isEdit = bandoId !== null;
     const bando = isEdit ? bandos.find(b => b.id === bandoId) : null;
-    
+
     const modal = document.createElement('div');
     modal.className = 'modal';
     modal.style.display = 'block';
@@ -2267,7 +2280,7 @@ function openBandoEditor(bandoId = null) {
                 </div>
                 <div class="form-group">
                     <label for="bandoContent">Contenido:</label>
-                    <div id="bandoContentEditor" style="min-height: 250px;">${bando ? bando.content : ''}</div>
+                    <div id="bandoContentEditor" style="min-height: 250px;">${bando && bando.content ? bando.content : ''}</div>
                 </div>
                 <div class="form-group">
                     <label for="bandoDate">Fecha:</label>
@@ -2278,59 +2291,58 @@ function openBandoEditor(bandoId = null) {
         </div>
     `;
     document.body.appendChild(modal);
-    
-    // Esperar a que el modal se renderice antes de inicializar Quill
+
+    // Inicializar editor Quill
     setTimeout(() => {
-        // Verificar que Quill esté disponible
-        if (typeof Quill === 'undefined') {
-            console.error('Quill no está disponible. Verifica que el script de Quill se haya cargado.');
-            alert('Error: El editor no está disponible. Por favor, recarga la página.');
-            return;
-        }
-        
-        // Inicializar editor WYSIWYG Quill
         const editorElement = document.getElementById('bandoContentEditor');
-        if (!editorElement) {
-            console.error('No se encontró el elemento bandoContentEditor');
-            return;
-        }
-        
-        const quillEditor = new Quill('#bandoContentEditor', {
-            theme: 'snow',
-            modules: {
-                toolbar: [
-                    [{ 'header': [1, 2, 3, false] }],
-                    ['bold', 'italic', 'underline'],
-                    [{ 'align': [] }],
-                    [{ 'list': 'ordered'}, { 'list': 'bullet' }],
-                    [{ 'color': [] }, { 'background': [] }],
-                    ['link', 'image'],
-                    ['blockquote', 'code-block'],
-                    ['clean']
-                ]
+        if (editorElement && typeof Quill !== 'undefined') {
+            modal.quillEditor = new Quill('#bandoContentEditor', {
+                theme: 'snow',
+                modules: {
+                    toolbar: [
+                        [{ 'header': [1, 2, 3, false] }],
+                        ['bold', 'italic', 'underline', 'strike'],
+                        [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                        [{ 'align': [] }],
+                        ['link', 'image', 'blockquote', 'code-block']
+                    ]
+                }
+            });
+            
+            // Si hay contenido existente y es HTML, establecerlo
+            if (bando && bando.content) {
+                if (bando.content.includes('<')) {
+                    // Es HTML
+                    modal.quillEditor.root.innerHTML = bando.content;
+                } else {
+                    // Es texto plano
+                    modal.quillEditor.root.textContent = bando.content;
+                }
             }
-        });
-        
-        // Guardar referencia del editor para usarlo en el submit
-        modal.quillEditor = quillEditor;
+        }
     }, 100);
-    
+
     document.getElementById('bandoForm').addEventListener('submit', function(e) {
         e.preventDefault();
-        
-        // Obtener el editor Quill del modal
-        const quillEditor = modal.quillEditor;
-        if (!quillEditor) {
-            showNotification('Error: El editor no está inicializado. Por favor, recarga la página.', 'error');
-            return;
+
+        // Obtener contenido del editor Quill
+        let content = '';
+        if (modal.quillEditor) {
+            content = modal.quillEditor.root.innerHTML.trim();
+        } else {
+            // Fallback si no hay editor Quill
+            const editorElement = document.getElementById('bandoContentEditor');
+            if (editorElement) {
+                content = editorElement.innerHTML || editorElement.textContent || '';
+            }
         }
-        
+
         const bandoData = {
             title: document.getElementById('bandoTitle').value,
-            content: quillEditor.root.innerHTML, // Guardar HTML
+            content: content,
             date: document.getElementById('bandoDate').value
         };
-        
+
         if (isEdit) {
             const index = bandos.findIndex(b => b.id === bandoId);
             bandos[index] = { ...bandos[index], ...bandoData };
@@ -2338,9 +2350,10 @@ function openBandoEditor(bandoId = null) {
             bandoData.id = Date.now();
             bandos.push(bandoData);
         }
-        
+
         localStorage.setItem('bandos', JSON.stringify(bandos));
         showNotification(`Bando ${isEdit ? 'actualizado' : 'creado'} correctamente`, 'success');
+        updateContent();
         modal.remove();
         loadBandoList();
     });
@@ -2467,17 +2480,97 @@ function openEventEditor(eventId = null) {
             modalTitle.textContent = '✏️ Editar Evento';
             document.getElementById('eventId').value = event.id;
             document.getElementById('eventTitle').value = event.title;
-            document.getElementById('eventDescription').value = event.description;
             document.getElementById('eventDate').value = event.date;
             document.getElementById('eventTime').value = event.time;
             document.getElementById('eventLocation').value = event.location;
             document.getElementById('eventCategory').value = event.category;
+            
+            // Inicializar editor Quill con el contenido del evento
+            setTimeout(() => {
+                const editorElement = document.getElementById('eventDescriptionEditor');
+                if (!editorElement || typeof Quill === 'undefined') return;
+                
+                // Verificar si el editor ya existe
+                if (editorElement.quillEditor || modal.eventQuillEditor) {
+                    // El editor ya existe, solo actualizar el contenido
+                    const quillInstance = editorElement.quillEditor || modal.eventQuillEditor;
+                    if (event.description) {
+                        if (event.description.includes('<')) {
+                            quillInstance.root.innerHTML = event.description;
+                        } else {
+                            quillInstance.root.textContent = event.description;
+                        }
+                    } else {
+                        quillInstance.root.innerHTML = '';
+                    }
+                    return;
+                }
+                
+                // Crear nuevo editor
+                modal.eventQuillEditor = new Quill('#eventDescriptionEditor', {
+                    theme: 'snow',
+                    modules: {
+                        toolbar: [
+                            [{ 'header': [1, 2, 3, false] }],
+                            ['bold', 'italic', 'underline', 'strike'],
+                            [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                            [{ 'align': [] }],
+                            ['link', 'image', 'blockquote', 'code-block']
+                        ]
+                    }
+                });
+                
+                // Guardar referencia también en el elemento
+                editorElement.quillEditor = modal.eventQuillEditor;
+                
+                // Establecer contenido
+                if (event.description) {
+                    if (event.description.includes('<')) {
+                        // Es HTML
+                        modal.eventQuillEditor.root.innerHTML = event.description;
+                    } else {
+                        // Es texto plano
+                        modal.eventQuillEditor.root.textContent = event.description;
+                    }
+                }
+            }, 100);
         }
     } else {
         // Nuevo evento
         modalTitle.textContent = '🎉 Nuevo Evento';
         form.reset();
         document.getElementById('eventId').value = '';
+        
+        // Inicializar editor Quill vacío (solo si no existe)
+        setTimeout(() => {
+            const editorElement = document.getElementById('eventDescriptionEditor');
+            if (!editorElement || typeof Quill === 'undefined') return;
+            
+            // Verificar si el editor ya existe
+            if (editorElement.quillEditor || modal.eventQuillEditor) {
+                // El editor ya existe, solo limpiar el contenido
+                const quillInstance = editorElement.quillEditor || modal.eventQuillEditor;
+                quillInstance.root.innerHTML = '';
+                return;
+            }
+            
+            // Crear nuevo editor
+            modal.eventQuillEditor = new Quill('#eventDescriptionEditor', {
+                theme: 'snow',
+                modules: {
+                    toolbar: [
+                        [{ 'header': [1, 2, 3, false] }],
+                        ['bold', 'italic', 'underline', 'strike'],
+                        [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                        [{ 'align': [] }],
+                        ['link', 'image', 'blockquote', 'code-block']
+                    ]
+                }
+            });
+            
+            // Guardar referencia también en el elemento
+            editorElement.quillEditor = modal.eventQuillEditor;
+        }, 100);
     }
     
     openModal('eventModal');
@@ -2490,10 +2583,23 @@ function closeEventModal() {
 function saveEvent() {
     const form = document.getElementById('eventForm');
     const formData = new FormData(form);
+    const modal = document.getElementById('eventModal');
+    
+    // Obtener descripción del editor Quill
+    let description = '';
+    if (modal.eventQuillEditor) {
+        description = modal.eventQuillEditor.root.innerHTML.trim();
+    } else {
+        // Fallback si no hay editor Quill
+        const editorElement = document.getElementById('eventDescriptionEditor');
+        if (editorElement) {
+            description = editorElement.innerHTML || editorElement.textContent || '';
+        }
+    }
     
     const eventData = {
         title: formData.get('title'),
-        description: formData.get('description'),
+        description: description,
         date: formData.get('date'),
         time: formData.get('time'),
         location: formData.get('location'),
@@ -2600,7 +2706,7 @@ function renderEventos() {
             </div>
             <div class="event-info">
                 <h4>${event.title}</h4>
-                <p class="event-description">${event.description}</p>
+                <div class="event-description">${event.description || ''}</div>
                 <div class="event-details">
                     <span class="event-time">🕐 ${event.time}</span>
                     <span class="event-location">📍 ${event.location}</span>
@@ -2679,11 +2785,75 @@ function loadCulturaOcioConfig() {
         culturaOcioConfig = JSON.parse(saved);
     }
     
-    document.getElementById('culturaTitulo').value = culturaOcioConfig.titulo;
+    document.getElementById('culturaTitulo').value = culturaOcioConfig.titulo || '';
+    
+    // Inicializar editor Quill para la descripción (solo si no existe)
+    setTimeout(() => {
+        const editorElement = document.getElementById('culturaDescripcionEditor');
+        const modal = document.getElementById('culturaOcioModal');
+        
+        if (!editorElement || !modal || typeof Quill === 'undefined') return;
+        
+        // Verificar si el editor ya existe
+        if (editorElement.quillEditor || modal.culturaQuillEditor) {
+            // El editor ya existe, solo actualizar el contenido si hay
+            const quillInstance = editorElement.quillEditor || modal.culturaQuillEditor;
+            if (culturaOcioConfig.descripcion) {
+                if (culturaOcioConfig.descripcion.includes('<')) {
+                    quillInstance.root.innerHTML = culturaOcioConfig.descripcion;
+                } else {
+                    quillInstance.root.textContent = culturaOcioConfig.descripcion;
+                }
+            } else {
+                quillInstance.root.innerHTML = '';
+            }
+            return;
+        }
+        
+        // Crear nuevo editor
+        modal.culturaQuillEditor = new Quill('#culturaDescripcionEditor', {
+            theme: 'snow',
+            modules: {
+                toolbar: [
+                    [{ 'header': [1, 2, 3, false] }],
+                    ['bold', 'italic', 'underline', 'strike'],
+                    [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                    [{ 'align': [] }],
+                    ['link', 'image', 'blockquote', 'code-block']
+                ]
+            }
+        });
+        
+        // Guardar referencia también en el elemento
+        editorElement.quillEditor = modal.culturaQuillEditor;
+        
+        // Establecer contenido si existe
+        if (culturaOcioConfig.descripcion) {
+            if (culturaOcioConfig.descripcion.includes('<')) {
+                // Es HTML
+                modal.culturaQuillEditor.root.innerHTML = culturaOcioConfig.descripcion;
+            } else {
+                // Es texto plano
+                modal.culturaQuillEditor.root.textContent = culturaOcioConfig.descripcion;
+            }
+        }
+    }, 100);
 }
 
 function saveCulturaOcio() {
     culturaOcioConfig.titulo = document.getElementById('culturaTitulo').value;
+    
+    // Obtener descripción del editor Quill
+    const modal = document.getElementById('culturaOcioModal');
+    if (modal && modal.culturaQuillEditor) {
+        culturaOcioConfig.descripcion = modal.culturaQuillEditor.root.innerHTML.trim();
+    } else {
+        // Fallback si no hay editor Quill
+        const editorElement = document.getElementById('culturaDescripcionEditor');
+        if (editorElement) {
+            culturaOcioConfig.descripcion = editorElement.innerHTML || editorElement.textContent || '';
+        }
+    }
     
     localStorage.setItem('culturaOcioConfig', JSON.stringify(culturaOcioConfig));
     
@@ -3179,34 +3349,46 @@ function updateCulturaOcioSection() {
     
     // Renderizar las tarjetas configurables
     const container = section.querySelector('#culturaTarjetasContainer');
-    if (container) {
+    if (!container) return;
+    
+    // Verificar si hay tarjetas activas para mostrar
+    const tarjetasActivas = culturaOcioConfig.tarjetas && culturaOcioConfig.tarjetas.length > 0 
+        ? culturaOcioConfig.tarjetas.filter(tarjeta => tarjeta.activa)
+        : [];
+    
+    // Solo limpiar y actualizar si hay tarjetas activas
+    // Si no hay tarjetas, preservar el contenido existente
+    if (tarjetasActivas.length > 0) {
+        // Preservar cualquier sección de eventos existente antes de limpiar
+        const eventosSection = section.querySelector('.eventos-section');
+        const eventosHTML = eventosSection ? eventosSection.outerHTML : null;
+        
         container.innerHTML = '';
         
-        if (culturaOcioConfig.tarjetas && culturaOcioConfig.tarjetas.length > 0) {
-            const tarjetasGrid = document.createElement('div');
-            tarjetasGrid.className = 'cultura-tarjetas-grid';
-            
-            culturaOcioConfig.tarjetas
-                .filter(tarjeta => tarjeta.activa)
-                .sort((a, b) => a.orden - b.orden)
-                .forEach(tarjeta => {
-                    const tarjetaElement = document.createElement('div');
-                    tarjetaElement.className = 'cultura-tarjeta';
-                    tarjetaElement.style.borderTop = `4px solid ${tarjeta.color}`;
-                    
-                    // Header de la tarjeta
-                    const header = document.createElement('div');
-                    header.className = 'cultura-tarjeta-header';
-                    header.innerHTML = `
-                        <i class="${tarjeta.icono}" style="color: ${tarjeta.color}"></i>
-                        <h3>${tarjeta.titulo}</h3>
-                        <p>${tarjeta.descripcion}</p>
-                    `;
-                    
-                    // Lista de elementos
-                    const elementosList = document.createElement('div');
-                    elementosList.className = 'cultura-tarjeta-elementos';
-                    
+        const tarjetasGrid = document.createElement('div');
+        tarjetasGrid.className = 'cultura-tarjetas-grid';
+        
+        tarjetasActivas
+            .sort((a, b) => a.orden - b.orden)
+            .forEach(tarjeta => {
+                const tarjetaElement = document.createElement('div');
+                tarjetaElement.className = 'cultura-tarjeta';
+                tarjetaElement.style.borderTop = `4px solid ${tarjeta.color}`;
+                
+                // Header de la tarjeta
+                const header = document.createElement('div');
+                header.className = 'cultura-tarjeta-header';
+                header.innerHTML = `
+                    <i class="${tarjeta.icono}" style="color: ${tarjeta.color}"></i>
+                    <h3>${tarjeta.titulo}</h3>
+                    <div>${tarjeta.descripcion || ''}</div>
+                `;
+                
+                // Lista de elementos
+                const elementosList = document.createElement('div');
+                elementosList.className = 'cultura-tarjeta-elementos';
+                
+                if (tarjeta.elementos && tarjeta.elementos.length > 0) {
                     tarjeta.elementos.forEach(elemento => {
                         const elementoDiv = document.createElement('div');
                         elementoDiv.className = 'cultura-elemento';
@@ -3215,29 +3397,35 @@ function updateCulturaOcioSection() {
                             elementoDiv.innerHTML = `
                                 <a href="${elemento.enlace}" class="elemento-link">
                                     <h4>${elemento.titulo}</h4>
-                                    <p>${elemento.descripcion}</p>
+                                    <div>${elemento.descripcion || ''}</div>
                                 </a>
                             `;
                         } else {
                             elementoDiv.innerHTML = `
                                 <div class="elemento-info">
                                     <h4>${elemento.titulo}</h4>
-                                    <p>${elemento.descripcion}</p>
+                                    <div>${elemento.descripcion || ''}</div>
                                 </div>
                             `;
                         }
                         
                         elementosList.appendChild(elementoDiv);
                     });
-                    
-                    tarjetaElement.appendChild(header);
-                    tarjetaElement.appendChild(elementosList);
-                    tarjetasGrid.appendChild(tarjetaElement);
-                });
-            
-            container.appendChild(tarjetasGrid);
+                }
+                
+                tarjetaElement.appendChild(header);
+                tarjetaElement.appendChild(elementosList);
+                tarjetasGrid.appendChild(tarjetaElement);
+            });
+        
+        container.appendChild(tarjetasGrid);
+        
+        // Restaurar sección de eventos si existía
+        if (eventosHTML && eventosSection) {
+            section.appendChild(eventosSection);
         }
     }
+    // Si no hay tarjetas activas, no hacer nada (preservar contenido existente)
 }
 
 function loadCulturaEventsList() {
@@ -3251,6 +3439,7 @@ function loadCulturaEventsList() {
         return;
     }
     
+    // Mostrar TODOS los eventos (no solo los futuros)
     events.forEach(event => {
         const eventItem = document.createElement('div');
         eventItem.className = 'event-item';
@@ -3260,7 +3449,7 @@ function loadCulturaEventsList() {
             <div style="display: flex; justify-content: space-between; align-items: start;">
                 <div style="flex: 1;">
                     <h4>${event.title}</h4>
-                    <p>${event.description}</p>
+                    <div class="event-description-content" style="margin-bottom: 0.5rem;">${event.description || ''}</div>
                     <p><strong>Fecha:</strong> ${formatDate(event.date)}</p>
                     <p><strong>Hora:</strong> ${event.time}</p>
                     <p><strong>Ubicación:</strong> ${event.location}</p>
@@ -3771,14 +3960,6 @@ function updateAppointmentUI() {
                 field.disabled = false;
             });
         }
-        
-        // Mostrar y actualizar calendario
-        updateCalendarVisibility();
-        setTimeout(() => {
-            if (document.getElementById('calendarGrid')) {
-                initializeCalendar();
-            }
-        }, 300);
     } else {
         // Modo SIN CITA PREVIA
         statusBadge.className = 'status-badge appointment-disabled';
@@ -3792,9 +3973,6 @@ function updateAppointmentUI() {
                 field.disabled = true;
             });
         }
-        
-        // Ocultar calendario
-        updateCalendarVisibility();
     }
 }
 
@@ -3880,430 +4058,6 @@ function updateAppointmentMode() {
     
     showNotification(`Sistema de citas previas ${appointmentsEnabled ? 'activado' : 'desactivado'}`, 'success');
     console.log('💾 Configuración guardada:', appointmentsEnabled ? 'CITA PREVIA' : 'SIN CITA PREVIA');
-    
-    // Actualizar visibilidad del calendario
-    updateCalendarVisibility();
-}
-
-// ============================================
-// SISTEMA DE CALENDARIO DE CITAS PREVIAS
-// ============================================
-
-// Cargar configuración de horarios desde localStorage
-function loadAppointmentSchedule() {
-    try {
-        const saved = localStorage.getItem('appointmentSchedule');
-        if (saved) {
-            appointmentSchedule = JSON.parse(saved);
-            console.log('✅ Horarios cargados:', appointmentSchedule);
-        } else {
-            // Guardar configuración por defecto
-            saveAppointmentScheduleToStorage();
-        }
-    } catch (error) {
-        console.error('❌ Error cargando horarios:', error);
-        saveAppointmentScheduleToStorage(); // Guardar por defecto si hay error
-    }
-}
-
-// Guardar configuración de horarios en localStorage (función interna)
-function saveAppointmentScheduleToStorage() {
-    try {
-        localStorage.setItem('appointmentSchedule', JSON.stringify(appointmentSchedule));
-        console.log('💾 Horarios guardados:', appointmentSchedule);
-        
-        // Verificación
-        setTimeout(() => {
-            const verify = localStorage.getItem('appointmentSchedule');
-            if (verify) {
-                console.log('✅ Horarios verificados correctamente');
-            } else {
-                console.error('❌ Error: Horarios no se guardaron, reintentando...');
-                localStorage.setItem('appointmentSchedule', JSON.stringify(appointmentSchedule));
-            }
-        }, 100);
-    } catch (error) {
-        console.error('❌ Error guardando horarios:', error);
-        showNotification('Error al guardar horarios', 'error');
-    }
-}
-
-// Actualizar visibilidad del calendario según configuración
-function updateCalendarVisibility() {
-    const calendarContainer = document.getElementById('appointmentCalendarContainer');
-    if (!calendarContainer) return;
-    
-    if (appointmentsEnabled) {
-        calendarContainer.style.display = 'block';
-        // Inicializar calendario si no está inicializado
-        if (document.getElementById('calendarGrid')) {
-            initializeCalendar();
-        }
-    } else {
-        calendarContainer.style.display = 'none';
-    }
-}
-
-// Inicializar calendario
-function initializeCalendar() {
-    loadAppointmentSchedule();
-    renderCalendar();
-}
-
-// Renderizar calendario
-function renderCalendar() {
-    const calendarGrid = document.getElementById('calendarGrid');
-    const monthYearElement = document.getElementById('currentMonthYear');
-    
-    if (!calendarGrid || !monthYearElement) return;
-    
-    // Actualizar mes/año
-    const monthNames = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
-        'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
-    monthYearElement.textContent = `${monthNames[currentCalendarMonth]} ${currentCalendarYear}`;
-    
-    // Crear encabezados de días
-    calendarGrid.innerHTML = '';
-    const dayHeaders = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
-    dayHeaders.forEach(day => {
-        const header = document.createElement('div');
-        header.className = 'calendar-day-header';
-        header.textContent = day;
-        calendarGrid.appendChild(header);
-    });
-    
-    // Obtener primer día del mes y cantidad de días
-    const firstDay = new Date(currentCalendarYear, currentCalendarMonth, 1).getDay();
-    const daysInMonth = new Date(currentCalendarYear, currentCalendarMonth + 1, 0).getDate();
-    const today = new Date();
-    
-    // Días vacíos al inicio
-    for (let i = 0; i < firstDay; i++) {
-        const emptyDay = document.createElement('div');
-        emptyDay.className = 'calendar-day';
-        calendarGrid.appendChild(emptyDay);
-    }
-    
-    // Días del mes
-    for (let day = 1; day <= daysInMonth; day++) {
-        const dayElement = document.createElement('div');
-        const currentDate = new Date(currentCalendarYear, currentCalendarMonth, day);
-        const dayOfWeek = currentDate.getDay();
-        const dateString = formatDateForStorage(currentDate);
-        
-        dayElement.className = 'calendar-day';
-        dayElement.textContent = day;
-        dayElement.dataset.date = dateString;
-        
-        // Marcar día de hoy
-        if (currentDate.toDateString() === today.toDateString()) {
-            dayElement.classList.add('today');
-        }
-        
-        // Verificar si el día está disponible según horarios configurados
-        if (!appointmentSchedule.days.includes(dayOfWeek)) {
-            dayElement.classList.add('disabled');
-        }
-        
-        // Verificar que la fecha no sea en el pasado
-        if (currentDate < today) {
-            dayElement.classList.add('disabled');
-        }
-        
-        // Verificar si hay citas en este día
-        const hasAppointments = appointments.some(apt => {
-            const aptDate = new Date(apt.date);
-            return aptDate.toDateString() === currentDate.toDateString() && 
-                   (apt.status === 'pending' || apt.status === 'confirmed');
-        });
-        
-        if (hasAppointments) {
-            dayElement.classList.add('has-appointments');
-        }
-        
-        // Marcar día seleccionado
-        if (selectedAppointmentDate === dateString) {
-            dayElement.classList.add('selected');
-        }
-        
-        // Event listener solo si no está deshabilitado y el día está configurado
-        if (!dayElement.classList.contains('disabled') && 
-            appointmentSchedule.days.includes(dayOfWeek) &&
-            currentDate >= today) {
-            dayElement.addEventListener('click', () => selectAppointmentDate(dateString, currentDate));
-        } else {
-            // Agregar tooltip para días no disponibles
-            if (!appointmentSchedule.days.includes(dayOfWeek)) {
-                dayElement.title = 'Este día no está disponible para citas';
-            } else if (currentDate < today) {
-                dayElement.title = 'No se pueden seleccionar fechas pasadas';
-            }
-        }
-        
-        calendarGrid.appendChild(dayElement);
-    }
-}
-
-// Formatear fecha para almacenamiento (YYYY-MM-DD)
-function formatDateForStorage(date) {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-}
-
-// Seleccionar fecha en el calendario
-function selectAppointmentDate(dateString, dateObj) {
-    selectedAppointmentDate = dateString;
-    selectedAppointmentTime = null;
-    
-    // Actualizar campos ocultos del formulario
-    document.getElementById('date').value = dateString;
-    document.getElementById('time').value = '';
-    
-    // Re-renderizar calendario para mostrar selección
-    renderCalendar();
-    
-    // Mostrar slots de tiempo para esta fecha
-    showTimeSlotsForDate(dateString, dateObj);
-}
-
-// Mostrar slots de tiempo para una fecha
-function showTimeSlotsForDate(dateString, dateObj) {
-    const timeSlotsContainer = document.getElementById('timeSlotsContainer');
-    const timeSlotsGrid = document.getElementById('timeSlotsGrid');
-    const selectedDateText = document.getElementById('selectedDateText');
-    
-    if (!timeSlotsContainer || !timeSlotsGrid || !selectedDateText) return;
-    
-    // Formatear fecha para mostrar
-    const dateOptions = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
-    selectedDateText.textContent = dateObj.toLocaleDateString('es-ES', dateOptions);
-    
-    // Limpiar grid
-    timeSlotsGrid.innerHTML = '';
-    
-    // Obtener citas ocupadas para esta fecha
-    const occupiedTimes = appointments
-        .filter(apt => {
-            const aptDate = new Date(apt.date);
-            return formatDateForStorage(aptDate) === dateString && 
-                   (apt.status === 'pending' || apt.status === 'confirmed');
-        })
-        .map(apt => apt.time);
-    
-    // Crear slots de tiempo
-    appointmentSchedule.hours.forEach(hour => {
-        const timeSlot = document.createElement('div');
-        timeSlot.className = 'time-slot';
-        timeSlot.textContent = hour;
-        timeSlot.dataset.time = hour;
-        
-        // Marcar como ocupado si hay cita
-        if (occupiedTimes.includes(hour)) {
-            timeSlot.classList.add('occupied');
-            timeSlot.title = 'Este horario ya está ocupado';
-        } else {
-            // Marcar como seleccionado si está seleccionado
-            if (selectedAppointmentTime === hour) {
-                timeSlot.classList.add('selected');
-            }
-            
-            // Event listener
-            timeSlot.addEventListener('click', () => selectAppointmentTime(hour));
-        }
-        
-        timeSlotsGrid.appendChild(timeSlot);
-    });
-    
-    // Mostrar contenedor
-    timeSlotsContainer.style.display = 'block';
-}
-
-// Seleccionar hora
-function selectAppointmentTime(time) {
-    selectedAppointmentTime = time;
-    
-    // Actualizar campo oculto
-    document.getElementById('time').value = time;
-    
-    // Re-renderizar slots para mostrar selección
-    if (selectedAppointmentDate) {
-        const dateObj = new Date(selectedAppointmentDate);
-        showTimeSlotsForDate(selectedAppointmentDate, dateObj);
-    }
-}
-
-// Cambiar mes del calendario
-function changeCalendarMonth(direction) {
-    currentCalendarMonth += direction;
-    
-    if (currentCalendarMonth < 0) {
-        currentCalendarMonth = 11;
-        currentCalendarYear--;
-    } else if (currentCalendarMonth > 11) {
-        currentCalendarMonth = 0;
-        currentCalendarYear++;
-    }
-    
-    renderCalendar();
-}
-
-// Guardar configuración de horarios desde el panel admin
-function saveAppointmentScheduleConfig() {
-    if (!isAdmin) {
-        showNotification('Solo los administradores pueden configurar horarios', 'error');
-        return;
-    }
-    
-    // Obtener días seleccionados
-    const daysMap = {
-        'scheduleMonday': 1,
-        'scheduleTuesday': 2,
-        'scheduleWednesday': 3,
-        'scheduleThursday': 4,
-        'scheduleFriday': 5,
-        'scheduleSaturday': 6,
-        'scheduleSunday': 0
-    };
-    
-    const selectedDays = [];
-    Object.keys(daysMap).forEach(id => {
-        const checkbox = document.getElementById(id);
-        if (checkbox && checkbox.checked) {
-            selectedDays.push(daysMap[id]);
-        }
-    });
-    
-    // Obtener horarios
-    const morningHours = Array.from(document.querySelectorAll('#morningHoursList .hour-time-input'))
-        .map(input => input.value)
-        .filter(val => val);
-    
-    const afternoonHours = Array.from(document.querySelectorAll('#afternoonHoursList .hour-time-input'))
-        .map(input => input.value)
-        .filter(val => val);
-    
-    const allHours = [...morningHours, ...afternoonHours].sort();
-    
-    if (selectedDays.length === 0) {
-        showNotification('Debe seleccionar al menos un día de la semana', 'error');
-        return;
-    }
-    
-    if (allHours.length === 0) {
-        showNotification('Debe configurar al menos un horario disponible', 'error');
-        return;
-    }
-    
-    appointmentSchedule.days = selectedDays;
-    appointmentSchedule.hours = allHours;
-    
-    // Guardar en localStorage (llamar a la función que guarda)
-    saveAppointmentScheduleToStorage();
-    
-    showNotification('Horarios guardados correctamente', 'success');
-    console.log('💾 Horarios actualizados:', appointmentSchedule);
-    
-    // Re-renderizar calendario si está visible
-    if (appointmentsEnabled && selectedAppointmentDate) {
-        const dateObj = new Date(selectedAppointmentDate);
-        showTimeSlotsForDate(selectedAppointmentDate, dateObj);
-    }
-    
-    renderCalendar();
-}
-
-// Cargar configuración de horarios en el panel admin
-function loadAppointmentScheduleConfig() {
-    if (!isAdmin) return;
-    
-    loadAppointmentSchedule();
-    
-    // Marcar checkboxes de días
-    const daysMap = {
-        'scheduleMonday': 1,
-        'scheduleTuesday': 2,
-        'scheduleWednesday': 3,
-        'scheduleThursday': 4,
-        'scheduleFriday': 5,
-        'scheduleSaturday': 6,
-        'scheduleSunday': 0
-    };
-    
-        Object.keys(daysMap).forEach(id => {
-        const checkbox = document.getElementById(id);
-        if (checkbox) {
-            // Verificar que appointmentSchedule.days existe y es un array
-            if (appointmentSchedule && appointmentSchedule.days && Array.isArray(appointmentSchedule.days)) {
-                checkbox.checked = appointmentSchedule.days.includes(daysMap[id]);
-            } else {
-                checkbox.checked = false;
-            }
-        }
-    });
-    
-    // Cargar horarios (separar mañana y tarde)
-    const morningHours = (appointmentSchedule && appointmentSchedule.hours && Array.isArray(appointmentSchedule.hours)) 
-        ? appointmentSchedule.hours.filter(h => {
-            const hour = parseInt(h.split(':')[0]);
-            return hour < 14;
-        }) 
-        : [];
-
-    const afternoonHours = (appointmentSchedule && appointmentSchedule.hours && Array.isArray(appointmentSchedule.hours)) 
-        ? appointmentSchedule.hours.filter(h => {
-            const hour = parseInt(h.split(':')[0]);
-            return hour >= 14;
-        }) 
-        : [];
-    
-    // Limpiar y llenar lista de mañana
-    const morningList = document.getElementById('morningHoursList');
-    if (morningList) {
-        morningList.innerHTML = '';
-        morningHours.forEach(hour => {
-            addHourSlotElement(morningList, hour);
-        });
-    }
-    
-    // Limpiar y llenar lista de tarde
-    const afternoonList = document.getElementById('afternoonHoursList');
-    if (afternoonList) {
-        afternoonList.innerHTML = '';
-        afternoonHours.forEach(hour => {
-            addHourSlotElement(afternoonList, hour);
-        });
-    }
-}
-
-// Añadir slot de hora
-function addHourSlot(listId) {
-    const list = document.getElementById(listId);
-    if (!list) return;
-    
-    addHourSlotElement(list, '09:00');
-}
-
-// Crear elemento de slot de hora
-function addHourSlotElement(list, defaultValue = '09:00') {
-    const item = document.createElement('div');
-    item.className = 'hour-input-item';
-    item.innerHTML = `
-        <input type="time" class="hour-time-input" value="${defaultValue}">
-        <button type="button" class="btn-remove-hour" onclick="removeHourSlot(this)">
-            <i class="fas fa-times"></i>
-        </button>
-    `;
-    list.appendChild(item);
-}
-
-// Eliminar slot de hora
-function removeHourSlot(button) {
-    const item = button.closest('.hour-input-item');
-    if (item) {
-        item.remove();
-    }
 }
 
 // Función para validar DNI
@@ -4321,49 +4075,64 @@ function validateDNI(dni) {
     return letter === expectedLetter;
 }
 
-// Función para enviar email de confirmación al usuario
-async function sendConfirmationEmail(appointmentData) {
-    const emailData = {
+// Función para enviar email de confirmación (simulada)
+function sendConfirmationEmail(appointmentData) {
+    const emailContent = {
         to: appointmentData.email,
-        from: APPOINTMENT_EMAIL,
+        from: 'aytocobreros@gmail.com',
         subject: 'Confirmación de Cita Previa - Ayuntamiento de Cobreros',
-        template: 'appointment_confirmation',
-        data: {
-            name: appointmentData.name,
-            service: appointmentData.service,
-            date: appointmentData.date,
-            time: appointmentData.time,
-            dni: appointmentData.dni,
-            appointmentId: appointmentData.id || Date.now().toString(),
-            comments: appointmentData.comments || ''
-        }
+        body: `
+Estimado/a ${appointmentData.name},
+
+Hemos recibido su solicitud de cita previa con los siguientes datos:
+
+- Servicio: ${appointmentData.service}
+- Fecha preferida: ${appointmentData.date}
+- Hora preferida: ${appointmentData.time}
+- DNI: ${appointmentData.dni}
+
+Le contactaremos en breve para confirmar la fecha y hora exacta de su cita.
+
+Atentamente,
+Ayuntamiento de Cobreros
+aytocobreros@gmail.com
+980 62 26 18
+        `
     };
     
-    return await sendEmailViaFirebase(emailData);
+    console.log('Email de confirmación enviado:', emailContent);
+    return true;
 }
 
-// Función para enviar alerta al ayuntamiento
-async function sendAdminAlert(appointmentData) {
-    const emailData = {
-        to: APPOINTMENT_EMAIL,
-        from: APPOINTMENT_EMAIL,
+// Función para enviar alerta al ayuntamiento (simulada)
+function sendAdminAlert(appointmentData) {
+    const alertContent = {
+        to: 'aytocobreros@gmail.com',
+        from: 'aytocobreros@gmail.com',
         subject: 'NUEVA SOLICITUD DE CITA PREVIA',
-        template: 'appointment_notification_admin',
-        data: {
-            name: appointmentData.name,
-            dni: appointmentData.dni,
-            email: appointmentData.email,
-            phone: appointmentData.phone,
-            service: appointmentData.service,
-            date: appointmentData.date,
-            time: appointmentData.time,
-            comments: appointmentData.comments || '',
-            appointmentId: appointmentData.id || Date.now().toString(),
-            createdAt: new Date().toLocaleString('es-ES')
-        }
+        body: `
+NUEVA SOLICITUD DE CITA PREVIA RECIBIDA:
+
+Datos del solicitante:
+- Nombre: ${appointmentData.name}
+- DNI: ${appointmentData.dni}
+- Email: ${appointmentData.email}
+- Teléfono: ${appointmentData.phone}
+
+Detalles de la cita:
+- Servicio: ${appointmentData.service}
+- Fecha preferida: ${appointmentData.date}
+- Hora preferida: ${appointmentData.time}
+- Comentarios: ${appointmentData.comments || 'Ninguno'}
+
+Fecha de solicitud: ${new Date().toLocaleString('es-ES')}
+
+Por favor, contacte con el solicitante para confirmar la cita.
+        `
     };
     
-    return await sendEmailViaFirebase(emailData);
+    console.log('Alerta enviada al ayuntamiento:', alertContent);
+    return true;
 }
 
 // Funciones para el modal de protección de datos
@@ -4547,7 +4316,7 @@ function formatDateTime(dateString) {
     });
 }
 
-async function updateAppointmentStatus(appointmentId, newStatus) {
+function updateAppointmentStatus(appointmentId, newStatus) {
     const appointment = appointments.find(a => a.id === appointmentId);
     if (appointment) {
         const oldStatus = appointment.status;
@@ -4558,7 +4327,7 @@ async function updateAppointmentStatus(appointmentId, newStatus) {
         loadAppointmentStats();
         
         // Enviar email de confirmación al usuario
-        await sendStatusChangeEmail(appointment, oldStatus, newStatus);
+        sendStatusChangeEmail(appointment, oldStatus, newStatus);
         
         const statusText = getStatusText(newStatus);
         showNotification(`Cita ${statusText.toLowerCase()} correctamente. Se ha enviado un email de confirmación.`, 'success');
@@ -4723,44 +4492,49 @@ function saveEditedAppointment() {
 }
 
 // Función para enviar email de cambio de estado
-async function sendStatusChangeEmail(appointment, oldStatus, newStatus) {
+function sendStatusChangeEmail(appointment, oldStatus, newStatus) {
     const statusText = getStatusText(newStatus);
     const oldStatusText = getStatusText(oldStatus);
     
-    let message = '';
-    switch(newStatus) {
-        case 'confirmed':
-            message = 'Su cita ha sido confirmada. Le esperamos en la fecha y hora indicadas.';
-            break;
-        case 'cancelled':
-            message = 'Su cita ha sido cancelada. Si desea solicitar una nueva cita, puede hacerlo a través de nuestro sitio web.';
-            break;
-        case 'completed':
-            message = 'Su cita ha sido completada. Gracias por contactarnos.';
-            break;
-        default:
-            message = 'El estado de su cita ha sido actualizado.';
-    }
-    
-    const emailData = {
+    const emailContent = {
         to: appointment.email,
-        from: APPOINTMENT_EMAIL,
+        from: 'aytocobreros@gmail.com',
         subject: `Actualización de Cita Previa - ${statusText}`,
-        template: 'appointment_status_change',
-        data: {
-            name: appointment.name,
-            service: getServiceName(appointment.service) || appointment.service,
-            date: formatDate(appointment.date) || appointment.date,
-            time: appointment.time,
-            dni: appointment.dni,
-            appointmentId: appointment.id,
-            oldStatus: oldStatusText,
-            newStatus: statusText,
-            message: message
-        }
+        body: `
+Estimado/a ${appointment.name},
+
+Le informamos que el estado de su cita previa ha sido actualizado:
+
+Estado anterior: ${oldStatusText}
+Estado actual: ${statusText}
+
+Detalles de su cita:
+- Servicio: ${getServiceName(appointment.service)}
+- Fecha: ${formatDate(appointment.date)}
+- Hora: ${appointment.time}
+- DNI: ${appointment.dni}
+
+${newStatus === 'confirmed' ? `
+Su cita ha sido CONFIRMADA. Por favor, acuda al ayuntamiento en la fecha y hora indicadas.
+
+IMPORTANTE: Si no puede acudir, por favor contacte con nosotros lo antes posible.
+` : newStatus === 'cancelled' ? `
+Su cita ha sido CANCELADA. Si necesita una nueva cita, puede solicitarla a través de nuestra página web o contactando directamente con nosotros.
+` : `
+Su cita está PENDIENTE de confirmación. Le contactaremos próximamente para confirmar la fecha y hora exacta.
+`}
+
+Para cualquier consulta, puede contactar con nosotros:
+- Email: aytocobreros@gmail.com
+- Teléfono: 980 62 26 18
+
+Atentamente,
+Ayuntamiento de Cobreros
+        `
     };
     
-    return await sendEmailViaFirebase(emailData);
+    console.log('Email de cambio de estado enviado:', emailContent);
+    return true;
 }
 
 // Configurar modal de edición
@@ -8016,110 +7790,137 @@ function downloadAttachment(attachmentUrl) {
     }
 }
 
-// ===== FORMATO DE TEXTO - FUNCIÓN REUTILIZABLE =====
-
-// Función helper para generar opciones de formato de texto
-function getFormatoTextoHTML(prefix = 'text', includeLabel = true) {
-    return `
-        ${includeLabel ? '<label>Formato del texto:</label>' : ''}
-        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; ${includeLabel ? 'margin-top: 8px;' : ''}">
-            <div>
-                <label for="${prefix}Font" style="font-size: 0.9rem; color: #666;">Tipo de letra:</label>
-                <select id="${prefix}Font" style="width: 100%;">
-                    <option value="Arial, sans-serif">Arial</option>
-                    <option value="'Times New Roman', serif">Times New Roman</option>
-                    <option value="'Courier New', monospace">Courier New</option>
-                    <option value="Georgia, serif">Georgia</option>
-                    <option value="Verdana, sans-serif">Verdana</option>
-                    <option value="'Trebuchet MS', sans-serif">Trebuchet MS</option>
-                    <option value="Impact, sans-serif">Impact</option>
-                    <option value="'Comic Sans MS', cursive">Comic Sans MS</option>
-                </select>
-            </div>
-            <div>
-                <label for="${prefix}Size" style="font-size: 0.9rem; color: #666;">Tamaño:</label>
-                <select id="${prefix}Size" style="width: 100%;">
-                    <option value="12px">Muy Pequeño (12px)</option>
-                    <option value="14px">Pequeño (14px)</option>
-                    <option value="16px" selected>Normal (16px)</option>
-                    <option value="18px">Mediano (18px)</option>
-                    <option value="20px">Grande (20px)</option>
-                    <option value="24px">Muy Grande (24px)</option>
-                    <option value="30px">Extra Grande (30px)</option>
-                </select>
-            </div>
-            <div>
-                <label for="${prefix}Color" style="font-size: 0.9rem; color: #666;">Color:</label>
-                <input type="color" id="${prefix}Color" value="#333333" style="width: 100%; height: 38px; border-radius: 4px; border: 1px solid #ddd;">
-            </div>
-        </div>
-    `;
-}
-
 // ===== SISTEMA DE NOTIFICACIONES PUSH - TURISTEAM =====
 
-// Enviar notificación push con filtrado por localidades (MEJORADO CON FIREBASE FUNCTIONS)
-async function enviarNotificacionPushConLocalidades(titulo, mensaje, tipo = 'general', alcance = 'todos', localidadesSeleccionadas = [], hasAttachments = false, attachmentUrl = null, attachmentType = null, textFont = null, textSize = null, textColor = null) {
+// Enviar notificación push con filtrado por localidades (SOLO DESDE WEB)
+async function enviarNotificacionPushConLocalidades(titulo, mensaje, tipo = 'general', alcance = 'todos', localidadesSeleccionadas = [], hasAttachments = false, attachmentUrl = null, attachmentType = null) {
     try {
-        console.log('🔔 Enviando notificación push mejorada desde Firebase Functions');
+        // Verificar que se está enviando desde la web
+        console.log('🌐 Enviando notificación desde la WEB hacia la APK');
         
-        // Determinar el scope correcto
-        const scope = (alcance === 'localidades' && localidadesSeleccionadas.length > 0) ? 'localities' : 'all';
+        // Obtener usuarios que han dado consentimiento para notificaciones
+        let usuariosConNotificaciones = users.filter(user => 
+            user.notificationConsent && user.fcmToken
+        );
         
-        // Preparar datos para la función
-        const requestData = {
-            title: titulo,
-            message: mensaje,
-            type: tipo,
-            scope: scope,
-            localities: localidadesSeleccionadas,
-            textFont: textFont,
-            textSize: textSize,
-            textColor: textColor,
-            adminEmail: currentUser ? currentUser.email : 'admin@ayuntamiento.es'
-        };
-
-        // Llamar a la Firebase Function
-        const response = await fetch(FIREBASE_PUSH_NOTIFICATION_URL, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(requestData)
-        });
-
-        const result = await response.json();
-
-        if (result.success) {
-            // Notificación enviada exitosamente
-            const stats = result.stats || {};
-            
-            let mensajeExito = `✅ Notificación enviada: ${stats.sent || 0} exitosos`;
-            if (stats.failed && stats.failed > 0) {
-                mensajeExito += `, ${stats.failed} fallidos`;
+        // Filtrar por localidades si es necesario
+        if (alcance === 'localidades' && localidadesSeleccionadas.length > 0) {
+            usuariosConNotificaciones = usuariosConNotificaciones.filter(user => 
+                user.localities && user.localities.some(localidad => 
+                    localidadesSeleccionadas.includes(localidad)
+                )
+            );
+        }
+        
+        if (usuariosConNotificaciones.length === 0) {
+            if (alcance === 'localidades') {
+                alert('No hay usuarios registrados en las localidades seleccionadas que hayan dado consentimiento para recibir notificaciones.');
+            } else {
+                alert('No hay usuarios registrados que hayan dado consentimiento para recibir notificaciones.');
             }
-            
-            if (alcance === 'localidades' && localidadesSeleccionadas.length > 0) {
-                mensajeExito += ` en: ${localidadesSeleccionadas.join(', ')}`;
-            }
-            
-            showNotification(mensajeExito, 'success');
-            
-            console.log('📊 Estadísticas de notificación:', stats);
-            
-            // Mostrar información adicional si hay tokens inválidos limpiados
-            if (stats.invalidTokens && stats.invalidTokens > 0) {
-                console.log(`🧹 Tokens inválidos limpiados automáticamente: ${stats.invalidTokens}`);
-            }
-        } else {
-            // Error en el envío
-            console.error('❌ Error:', result.error);
-            showNotification(`Error: ${result.error || 'Error desconocido'}`, 'error');
+            return;
         }
 
+        // Datos de la notificación
+        const notificationData = {
+            titulo: titulo,
+            mensaje: mensaje,
+            tipo: tipo,
+            timestamp: new Date().toISOString(),
+            enviadoPor: currentUser ? currentUser.name : 'Administrador',
+            proyecto: 'Ayuntamiento de Cobreros'
+        };
+
+        let notificacionesEnviadas = 0;
+        let notificacionesFallidas = 0;
+
+        // Enviar a cada usuario individualmente
+        for (const usuario of usuariosConNotificaciones) {
+            try {
+                const response = await fetch('https://fcm.googleapis.com/fcm/send', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': 'key=TU_SERVER_KEY_AQUI', // Necesitas tu Server Key de Firebase
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        to: usuario.fcmToken,
+                        notification: {
+                            title: titulo,
+                            body: mensaje,
+                            icon: 'images/escudo-cobreros.png',
+                            badge: 'images/escudo-cobreros.png',
+                            click_action: window.location.origin
+                        },
+                        data: {
+                            ...notificationData,
+                            destinatario: usuario.email,
+                            has_attachments: hasAttachments,
+                            attachment_url: attachmentUrl,
+                            attachment_type: attachmentType,
+                            sent_from: 'WEB',
+                            sent_to: 'APK'
+                        }
+                    })
+                });
+
+                if (response.ok) {
+                    notificacionesEnviadas++;
+                    
+                    // Guardar notificación en Firestore para sincronización
+                    if (window.firebase && window.firebase.firestore) {
+                        window.firebase.firestore().collection('notifications').add({
+                            userId: usuario.id,
+                            userEmail: usuario.email,
+                            title: titulo,
+                            message: mensaje,
+                            type: tipo,
+                            localities: localidadesSeleccionadas.length > 0 ? localidadesSeleccionadas.join(', ') : 'Todas',
+                            hasAttachments: hasAttachments,
+                            attachmentUrl: attachmentUrl,
+                            attachmentType: attachmentType,
+                            timestamp: new Date(),
+                            read: false,
+                            sentFrom: 'WEB',
+                            sentTo: 'APK',
+                            fcmToken: usuario.fcmToken
+                        }).catch(error => {
+                            console.error('Error guardando notificación en Firestore:', error);
+                        });
+                    }
+                } else {
+                    notificacionesFallidas++;
+                }
+            } catch (error) {
+                console.error(`Error enviando notificación a ${usuario.email}:`, error);
+                notificacionesFallidas++;
+            }
+        }
+
+        // Mostrar resultado
+        if (notificacionesEnviadas > 0) {
+            let mensaje = `Notificación enviada a ${notificacionesEnviadas} usuarios`;
+            if (alcance === 'localidades' && localidadesSeleccionadas.length > 0) {
+                mensaje += ` en: ${localidadesSeleccionadas.join(', ')}`;
+            }
+            showNotification(mensaje, 'success');
+        }
+        if (notificacionesFallidas > 0) {
+            showNotification(`${notificacionesFallidas} notificaciones fallaron`, 'warning');
+        }
+
+        console.log('Notificación enviada:', {
+            ...notificationData,
+            alcance: alcance,
+            localidades: localidadesSeleccionadas,
+            totalUsuarios: usuariosConNotificaciones.length,
+            enviadas: notificacionesEnviadas,
+            fallidas: notificacionesFallidas
+        });
+
     } catch (error) {
-        console.error('❌ Error enviando notificación push:', error);
-        showNotification('Error al enviar notificación push. Intenta más tarde.', 'error');
+        console.error('Error enviando notificación push:', error);
+        showNotification('Error al enviar notificación push', 'error');
     }
 }
 
@@ -8271,9 +8072,6 @@ function abrirModalNotificacion() {
                     <textarea id="notifMensaje" rows="3" required placeholder="Escribe el mensaje que quieres enviar..."></textarea>
                 </div>
                 
-                <!-- Opciones de formato de texto -->
-                <div class="form-group">${getFormatoTextoHTML('text', true)}</div>
-                
                 <div class="form-group">
                     <label for="notifTipo">Tipo de notificación:</label>
                     <select id="notifTipo">
@@ -8416,18 +8214,10 @@ function enviarNotificacionPersonalizada(button) {
     const alcance = document.getElementById('notifAlcance').value;
     const archivoAdjunto = document.getElementById('notifArchivo');
     
-    // Obtener opciones de formato
-    const textFont = document.getElementById('textFont').value;
-    const textSize = document.getElementById('textSize').value;
-    const textColor = document.getElementById('textColor').value;
-    
     if (!titulo || !mensaje) {
         alert('Por favor, completa todos los campos');
         return;
     }
-    
-    // Crear mensaje con formato HTML
-    const mensajeFormateado = `<span style="font-family: ${textFont}; font-size: ${textSize}; color: ${textColor};">${mensaje}</span>`;
     
     // Obtener localidades seleccionadas si es necesario
     let localidadesSeleccionadas = [];
@@ -8456,8 +8246,7 @@ function enviarNotificacionPersonalizada(button) {
         attachmentType = archivoAdjunto.files[0].type;
     }
     
-    // Enviar con datos de formato adicionales
-    enviarNotificacionPushConLocalidades(titulo, mensaje, tipo, alcance, localidadesSeleccionadas, hasAttachments, attachmentUrl, attachmentType, textFont, textSize, textColor);
+    enviarNotificacionPushConLocalidades(titulo, mensaje, tipo, alcance, localidadesSeleccionadas, hasAttachments, attachmentUrl, attachmentType);
     modal.remove();
 }
 
@@ -9392,495 +9181,4 @@ function removeDatoItem(button) {
     button.parentElement.remove();
 }
 
-// ===== ESTADÍSTICAS AVANZADAS =====
-
-// Variables globales para gráficos
-let statisticsCharts = {};
-
-// Cargar todas las estadísticas
-function loadStatistics() {
-    if (!document.getElementById('statistics-tab')) return;
-    
-    calculateUserStats();
-    calculateNotificationStats();
-    calculateAppointmentStats();
-    calculateContentStats();
-    
-    createCharts();
-}
-
-// Calcular estadísticas de usuarios
-function calculateUserStats() {
-    const totalUsers = users.length;
-    const now = new Date();
-    const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-    const newUsersMonth = users.filter(u => new Date(u.registrationDate || u.date) >= firstDayOfMonth).length;
-    
-    // Usuarios activos (última semana)
-    const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-    const activeUsers = users.filter(u => {
-        const lastActivity = u.lastActivity || u.registrationDate || u.date;
-        return new Date(lastActivity) >= weekAgo;
-    }).length;
-    
-    // Localidades con usuarios
-    const localitiesSet = new Set();
-    users.forEach(u => {
-        if (u.localities && Array.isArray(u.localities)) {
-            u.localities.forEach(loc => localitiesSet.add(loc));
-        }
-    });
-    
-    document.getElementById('totalUsers').textContent = totalUsers;
-    document.getElementById('newUsersMonth').textContent = newUsersMonth;
-    document.getElementById('activeUsers').textContent = activeUsers;
-    document.getElementById('usersByLocalities').textContent = localitiesSet.size;
-}
-
-// Calcular estadísticas de notificaciones
-function calculateNotificationStats() {
-    // Notificaciones desde localStorage o Firestore (simulado)
-    const totalNotifications = notifications.length || 0;
-    const successRate = '95%'; // Simulado
-    const invalidTokens = 0; // Se calcularía desde Firebase
-    
-    // Tipo más usado
-    const typeCounts = {};
-    notifications.forEach(n => {
-        const type = n.type || 'general';
-        typeCounts[type] = (typeCounts[type] || 0) + 1;
-    });
-    const mostUsedType = Object.keys(typeCounts).reduce((a, b) => 
-        typeCounts[a] > typeCounts[b] ? a : b, 'general') || 'general';
-    
-    document.getElementById('totalNotifications').textContent = totalNotifications;
-    document.getElementById('successRate').textContent = successRate;
-    document.getElementById('invalidTokens').textContent = invalidTokens;
-    document.getElementById('mostUsedType').textContent = mostUsedType.charAt(0).toUpperCase() + mostUsedType.slice(1);
-}
-
-// Calcular estadísticas de citas previas
-function calculateAppointmentStats() {
-    const totalAppointments = appointments.length;
-    const pendingAppointments = appointments.filter(a => a.status === 'pending' || a.status === 'Pendiente').length;
-    const completedAppointments = appointments.filter(a => a.status === 'completed' || a.status === 'Completada').length;
-    const cancelledAppointments = appointments.filter(a => a.status === 'cancelled' || a.status === 'Cancelada').length;
-    
-    document.getElementById('totalAppointments').textContent = totalAppointments;
-    document.getElementById('pendingAppointments').textContent = pendingAppointments;
-    document.getElementById('completedAppointments').textContent = completedAppointments;
-    document.getElementById('cancelledAppointments').textContent = cancelledAppointments;
-}
-
-// Calcular estadísticas de contenido
-function calculateContentStats() {
-    const totalNews = news.length;
-    const totalBandos = bandos.length;
-    const totalDocuments = documents.length;
-    const totalViews = totalNews + totalBandos + totalDocuments; // Simulado
-    
-    document.getElementById('totalNews').textContent = totalNews;
-    document.getElementById('totalBandos').textContent = totalBandos;
-    document.getElementById('totalDocuments').textContent = totalDocuments;
-    document.getElementById('totalViews').textContent = totalViews;
-}
-
-// Crear todos los gráficos
-function createCharts() {
-    // Destruir gráficos existentes
-    Object.values(statisticsCharts).forEach(chart => {
-        if (chart) chart.destroy();
-    });
-    statisticsCharts = {};
-    
-    createUsersByLocalitiesChart();
-    createUsersGrowthChart();
-    createNotificationsByTypeChart();
-    createNotificationsTimelineChart();
-    createAppointmentsByStatusChart();
-    createAppointmentsMonthlyChart();
-    createContentPublishedChart();
-}
-
-// Gráfico: Usuarios por localidad
-function createUsersByLocalitiesChart() {
-    const ctx = document.getElementById('usersByLocalitiesChart');
-    if (!ctx) return;
-    
-    const localitiesCount = {};
-    users.forEach(u => {
-        if (u.localities && Array.isArray(u.localities)) {
-            u.localities.forEach(loc => {
-                localitiesCount[loc] = (localitiesCount[loc] || 0) + 1;
-            });
-        }
-    });
-    
-    statisticsCharts.usersByLocalities = new Chart(ctx, {
-        type: 'doughnut',
-        data: {
-            labels: Object.keys(localitiesCount),
-            datasets: [{
-                data: Object.values(localitiesCount),
-                backgroundColor: [
-                    '#3b82f6', '#10b981', '#f59e0b', '#ef4444',
-                    '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16',
-                    '#f97316', '#6366f1', '#14b8a6', '#a855f7', '#f43f5e'
-                ]
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                title: {
-                    display: true,
-                    text: 'Usuarios por Localidad'
-                },
-                legend: {
-                    position: 'bottom'
-                }
-            }
-        }
-    });
-}
-
-// Gráfico: Crecimiento de usuarios
-function createUsersGrowthChart() {
-    const ctx = document.getElementById('usersGrowthChart');
-    if (!ctx) return;
-    
-    // Últimos 30 días
-    const days = [];
-    const counts = [];
-    const today = new Date();
-    
-    for (let i = 29; i >= 0; i--) {
-        const date = new Date(today);
-        date.setDate(date.getDate() - i);
-        const dateStr = date.toISOString().split('T')[0];
-        
-        const count = users.filter(u => {
-            const regDate = u.registrationDate || u.date;
-            return regDate && regDate.startsWith(dateStr);
-        }).length;
-        
-        days.push(dateStr.split('-')[2]); // Solo el día
-        counts.push(count);
-    }
-    
-    statisticsCharts.usersGrowth = new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels: days,
-            datasets: [{
-                label: 'Nuevos Usuarios',
-                data: counts,
-                borderColor: '#3b82f6',
-                backgroundColor: 'rgba(59, 130, 246, 0.1)',
-                tension: 0.4,
-                fill: true
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                title: {
-                    display: true,
-                    text: 'Crecimiento de Usuarios (30 días)'
-                }
-            },
-            scales: {
-                y: {
-                    beginAtZero: true
-                }
-            }
-        }
-    });
-}
-
-// Gráfico: Notificaciones por tipo
-function createNotificationsByTypeChart() {
-    const ctx = document.getElementById('notificationsByTypeChart');
-    if (!ctx) return;
-    
-    const typeCounts = {
-        'general': 0,
-        'emergencia': 0,
-        'cita': 0,
-        'evento': 0,
-        'bando': 0
-    };
-    
-    notifications.forEach(n => {
-        const type = n.type || 'general';
-        if (typeCounts.hasOwnProperty(type)) {
-            typeCounts[type]++;
-        } else {
-            typeCounts['general']++;
-        }
-    });
-    
-    statisticsCharts.notificationsByType = new Chart(ctx, {
-        type: 'pie',
-        data: {
-            labels: ['General', 'Emergencia', 'Cita', 'Evento', 'Bando'],
-            datasets: [{
-                data: [
-                    typeCounts.general,
-                    typeCounts.emergencia,
-                    typeCounts.cita,
-                    typeCounts.evento,
-                    typeCounts.bando
-                ],
-                backgroundColor: [
-                    '#3b82f6',
-                    '#ef4444',
-                    '#10b981',
-                    '#f59e0b',
-                    '#8b5cf6'
-                ]
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                title: {
-                    display: true,
-                    text: 'Notificaciones por Tipo'
-                },
-                legend: {
-                    position: 'bottom'
-                }
-            }
-        }
-    });
-}
-
-// Gráfico: Timeline de notificaciones
-function createNotificationsTimelineChart() {
-    const ctx = document.getElementById('notificationsTimelineChart');
-    if (!ctx) return;
-    
-    // Últimos 7 días
-    const days = [];
-    const counts = [];
-    const today = new Date();
-    
-    for (let i = 6; i >= 0; i--) {
-        const date = new Date(today);
-        date.setDate(date.getDate() - i);
-        const dateStr = date.toISOString().split('T')[0];
-        
-        const count = notifications.filter(n => {
-            const notifDate = n.date || n.createdAt;
-            return notifDate && notifDate.startsWith(dateStr);
-        }).length;
-        
-        days.push(date.toLocaleDateString('es-ES', { weekday: 'short' }));
-        counts.push(count);
-    }
-    
-    statisticsCharts.notificationsTimeline = new Chart(ctx, {
-        type: 'bar',
-        data: {
-            labels: days,
-            datasets: [{
-                label: 'Notificaciones Enviadas',
-                data: counts,
-                backgroundColor: '#3b82f6'
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                title: {
-                    display: true,
-                    text: 'Notificaciones (Últimos 7 días)'
-                }
-            },
-            scales: {
-                y: {
-                    beginAtZero: true
-                }
-            }
-        }
-    });
-}
-
-// Gráfico: Citas por estado
-function createAppointmentsByStatusChart() {
-    const ctx = document.getElementById('appointmentsByStatusChart');
-    if (!ctx) return;
-    
-    const statusCounts = {
-        'Pendiente': appointments.filter(a => a.status === 'pending' || a.status === 'Pendiente').length,
-        'Completada': appointments.filter(a => a.status === 'completed' || a.status === 'Completada').length,
-        'Cancelada': appointments.filter(a => a.status === 'cancelled' || a.status === 'Cancelada').length
-    };
-    
-    statisticsCharts.appointmentsByStatus = new Chart(ctx, {
-        type: 'doughnut',
-        data: {
-            labels: Object.keys(statusCounts),
-            datasets: [{
-                data: Object.values(statusCounts),
-                backgroundColor: ['#f59e0b', '#10b981', '#ef4444']
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                title: {
-                    display: true,
-                    text: 'Citas por Estado'
-                },
-                legend: {
-                    position: 'bottom'
-                }
-            }
-        }
-    });
-}
-
-// Gráfico: Citas mensuales
-function createAppointmentsMonthlyChart() {
-    const ctx = document.getElementById('appointmentsMonthlyChart');
-    if (!ctx) return;
-    
-    // Últimos 6 meses
-    const months = [];
-    const counts = [];
-    const today = new Date();
-    
-    for (let i = 5; i >= 0; i--) {
-        const date = new Date(today.getFullYear(), today.getMonth() - i, 1);
-        const monthStr = date.toLocaleDateString('es-ES', { month: 'short', year: 'numeric' });
-        
-        const count = appointments.filter(a => {
-            const appDate = new Date(a.date || a.createdAt);
-            return appDate.getMonth() === date.getMonth() && 
-                   appDate.getFullYear() === date.getFullYear();
-        }).length;
-        
-        months.push(monthStr);
-        counts.push(count);
-    }
-    
-    statisticsCharts.appointmentsMonthly = new Chart(ctx, {
-        type: 'bar',
-        data: {
-            labels: months,
-            datasets: [{
-                label: 'Citas',
-                data: counts,
-                backgroundColor: '#10b981'
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                title: {
-                    display: true,
-                    text: 'Citas Mensuales (6 meses)'
-                }
-            },
-            scales: {
-                y: {
-                    beginAtZero: true
-                }
-            }
-        }
-    });
-}
-
-// Gráfico: Contenido publicado
-function createContentPublishedChart() {
-    const ctx = document.getElementById('contentPublishedChart');
-    if (!ctx) return;
-    
-    // Últimos 6 meses
-    const months = [];
-    const newsCounts = [];
-    const bandosCounts = [];
-    const today = new Date();
-    
-    for (let i = 5; i >= 0; i--) {
-        const date = new Date(today.getFullYear(), today.getMonth() - i, 1);
-        const monthStr = date.toLocaleDateString('es-ES', { month: 'short' });
-        
-        const newsCount = news.filter(n => {
-            const newsDate = new Date(n.date);
-            return newsDate.getMonth() === date.getMonth() && 
-                   newsDate.getFullYear() === date.getFullYear();
-        }).length;
-        
-        const bandosCount = bandos.filter(b => {
-            const bandoDate = new Date(b.date);
-            return bandoDate.getMonth() === date.getMonth() && 
-                   bandoDate.getFullYear() === date.getFullYear();
-        }).length;
-        
-        months.push(monthStr);
-        newsCounts.push(newsCount);
-        bandosCounts.push(bandosCount);
-    }
-    
-    statisticsCharts.contentPublished = new Chart(ctx, {
-        type: 'bar',
-        data: {
-            labels: months,
-            datasets: [
-                {
-                    label: 'Noticias',
-                    data: newsCounts,
-                    backgroundColor: '#3b82f6'
-                },
-                {
-                    label: 'Bandos',
-                    data: bandosCounts,
-                    backgroundColor: '#10b981'
-                }
-            ]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                title: {
-                    display: true,
-                    text: 'Contenido Publicado (6 meses)'
-                },
-                legend: {
-                    position: 'bottom'
-                }
-            },
-            scales: {
-                y: {
-                    beginAtZero: true
-                }
-            }
-        }
-    });
-}
-
-// Actualizar estadísticas
-function refreshStatistics() {
-    showNotification('Actualizando estadísticas...', 'info');
-    loadStatistics();
-    setTimeout(() => {
-        showNotification('Estadísticas actualizadas', 'success');
-    }, 500);
-}
-
-// Exportar estadísticas a PDF (simulado)
-function exportStatisticsPDF() {
-    showNotification('Función de exportación PDF en desarrollo', 'info');
-    // Aquí se implementaría la exportación real a PDF usando jsPDF
-}
-   
+ 
