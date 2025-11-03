@@ -25,7 +25,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
-var _a, _b;
+var _a;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.sendPushNotification = exports.sendEmail = void 0;
 const functions = __importStar(require("firebase-functions"));
@@ -36,8 +36,6 @@ const cors_1 = __importDefault(require("cors"));
 admin.initializeApp();
 // Configurar CORS
 const corsHandler = (0, cors_1.default)({ origin: true });
-// Obtener Server Key de FCM desde variables de entorno o config
-const FCM_SERVER_KEY = process.env.FCM_SERVER_KEY || ((_a = functions.config().fcm) === null || _a === void 0 ? void 0 : _a.server_key);
 // Tamaño de lote para envío masivo (máximo recomendado de FCM)
 const BATCH_SIZE = 500;
 // ⚙️ CONFIGURACIÓN DE EMAIL PARA CITAS PREVIAS
@@ -45,7 +43,7 @@ const BATCH_SIZE = 500;
 const APPOINTMENT_EMAIL = 'u2389387944@gmail.com';
 // Configurar Nodemailer para Gmail
 // Usar variables de entorno (método moderno) o fallback a config deprecated
-const gmailPassword = process.env.GMAIL_PASSWORD || ((_b = functions.config().gmail) === null || _b === void 0 ? void 0 : _b.password);
+const gmailPassword = process.env.GMAIL_PASSWORD || ((_a = functions.config().gmail) === null || _a === void 0 ? void 0 : _a.password);
 const transporter = nodemailer.createTransport({
     service: 'gmail',
     auth: {
@@ -134,10 +132,6 @@ exports.sendPushNotification = functions.https.onRequest((req, res) => {
             // Validaciones
             if (!title || !message) {
                 return res.status(400).json({ error: 'Título y mensaje son requeridos' });
-            }
-            if (!FCM_SERVER_KEY) {
-                console.error('❌ FCM_SERVER_KEY no configurada');
-                return res.status(500).json({ error: 'Configuración de FCM faltante' });
             }
             console.log('🔔 Iniciando envío de notificación push:', { title, type, scope });
             // Obtener usuarios que han dado consentimiento

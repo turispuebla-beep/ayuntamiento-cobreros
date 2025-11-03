@@ -9,9 +9,6 @@ admin.initializeApp();
 // Configurar CORS
 const corsHandler = cors({ origin: true });
 
-// Obtener Server Key de FCM desde variables de entorno o config
-const FCM_SERVER_KEY = process.env.FCM_SERVER_KEY || functions.config().fcm?.server_key;
-
 // Tamaño de lote para envío masivo (máximo recomendado de FCM)
 const BATCH_SIZE = 500;
 
@@ -124,11 +121,6 @@ export const sendPushNotification = functions.https.onRequest((req, res) => {
       // Validaciones
       if (!title || !message) {
         return res.status(400).json({ error: 'Título y mensaje son requeridos' });
-      }
-
-      if (!FCM_SERVER_KEY) {
-        console.error('❌ FCM_SERVER_KEY no configurada');
-        return res.status(500).json({ error: 'Configuración de FCM faltante' });
       }
 
       console.log('🔔 Iniciando envío de notificación push:', { title, type, scope });
@@ -639,5 +631,7 @@ Teléfono: 980 62 26 18
 Este es un email automático, por favor no responda a este mensaje.
   `;
 }
+
+
 
 

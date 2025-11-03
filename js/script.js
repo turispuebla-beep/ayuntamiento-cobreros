@@ -715,6 +715,13 @@ function updateContent() {
     updateAdminContent();
 }
 
+// Función auxiliar para extraer texto plano de HTML
+function stripHtml(html) {
+    const tmp = document.createElement('div');
+    tmp.innerHTML = html;
+    return tmp.textContent || tmp.innerText || '';
+}
+
 // Actualizar sección de noticias
 function updateNewsSection() {
     const newsGrid = document.getElementById('newsGrid');
@@ -724,6 +731,8 @@ function updateNewsSection() {
     news.forEach(article => {
         const newsItem = document.createElement('article');
         newsItem.className = 'news-item';
+        // Extraer texto plano para la vista previa
+        const contentText = stripHtml(article.content);
         newsItem.innerHTML = `
             <div class="news-image">
                 <img src="${article.image}" alt="${article.title}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
@@ -734,7 +743,7 @@ function updateNewsSection() {
             <div class="news-content">
                 <h3>${article.title}</h3>
                 <p class="news-date">${formatDate(article.date)}</p>
-                <p>${article.content.substring(0, 100)}...</p>
+                <p>${contentText.substring(0, 100)}...</p>
                 <button class="btn btn-outline btn-small" onclick="showNewsDetail(${article.id})">Leer más</button>
             </div>
         `;
@@ -748,12 +757,14 @@ function updateBandoSection() {
     if (!bandoContent || bandos.length === 0) return;
 
     const latestBando = bandos[bandos.length - 1];
+    // Extraer texto plano para la vista previa
+    const contentText = stripHtml(latestBando.content);
     bandoContent.innerHTML = `
         <div class="bando-item">
             <h3>${latestBando.title}</h3>
             <p class="bando-date">Publicado: ${formatDate(latestBando.date)}</p>
             <div class="bando-text">
-                <p>${latestBando.content.substring(0, 200)}...</p>
+                <p>${contentText.substring(0, 200)}...</p>
             </div>
             <button class="btn btn-outline btn-small" onclick="showBandoDetail(${latestBando.id})">Leer completo</button>
         </div>
@@ -1843,7 +1854,7 @@ function showNewsDetail(newsId) {
             <h2>${article.title}</h2>
             <p><strong>Fecha:</strong> ${formatDate(article.date)}</p>
             <div style="margin-top: 1rem;">
-                <p>${article.content}</p>
+                <div class="ql-editor" style="padding: 0;">${article.content}</div>
             </div>
         </div>
     `;
@@ -1863,8 +1874,8 @@ function showBandoDetail(bandoId) {
             <span class="close" onclick="this.closest('.modal').remove()">&times;</span>
             <h2>${bando.title}</h2>
             <p><strong>Fecha:</strong> ${formatDate(bando.date)}</p>
-            <div style="margin-top: 1rem; white-space: pre-line;">
-                <p>${bando.content}</p>
+            <div style="margin-top: 1rem;">
+                <div class="ql-editor" style="padding: 0;">${bando.content}</div>
             </div>
         </div>
     `;
@@ -2281,7 +2292,7 @@ function openNewsEditor(newsId = null) {
                 </div>
                 <div class="form-group">
                     <label for="newsContent">Contenido:</label>
-                    <textarea id="newsContent" rows="6" required>${news ? news.content : ''}</textarea>
+                    <div id="newsContentEditor" style="min-height: 200px;">${news ? news.content : ''}</div>
                 </div>
                 <div class="form-group">
                     <label for="newsDate">Fecha:</label>
@@ -2297,12 +2308,27 @@ function openNewsEditor(newsId = null) {
     `;
     document.body.appendChild(modal);
     
+    // Inicializar editor WYSIWYG Quill
+    const quillEditor = new Quill('#newsContentEditor', {
+        theme: 'snow',
+        modules: {
+            toolbar: [
+                [{ 'header': [1, 2, 3, false] }],
+                ['bold', 'italic', 'underline'],
+                [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                [{ 'color': [] }, { 'background': [] }],
+                ['link'],
+                ['clean']
+            ]
+        }
+    });
+    
     document.getElementById('newsForm').addEventListener('submit', function(e) {
         e.preventDefault();
         
         const newsData = {
             title: document.getElementById('newsTitle').value,
-            content: document.getElementById('newsContent').value,
+            content: quillEditor.root.innerHTML, // Guardar HTML
             date: document.getElementById('newsDate').value,
             image: document.getElementById('newsImage').value || null
         };
@@ -2364,7 +2390,7 @@ function openBandoEditor(bandoId = null) {
                 </div>
                 <div class="form-group">
                     <label for="bandoContent">Contenido:</label>
-                    <textarea id="bandoContent" rows="8" required>${bando ? bando.content : ''}</textarea>
+                    <div id="bandoContentEditor" style="min-height: 250px;">${bando ? bando.content : ''}</div>
                 </div>
                 <div class="form-group">
                     <label for="bandoDate">Fecha:</label>
@@ -2376,12 +2402,27 @@ function openBandoEditor(bandoId = null) {
     `;
     document.body.appendChild(modal);
     
+    // Inicializar editor WYSIWYG Quill
+    const quillEditor = new Quill('#bandoContentEditor', {
+        theme: 'snow',
+        modules: {
+            toolbar: [
+                [{ 'header': [1, 2, 3, false] }],
+                ['bold', 'italic', 'underline'],
+                [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                [{ 'color': [] }, { 'background': [] }],
+                ['link'],
+                ['clean']
+            ]
+        }
+    });
+    
     document.getElementById('bandoForm').addEventListener('submit', function(e) {
         e.preventDefault();
         
         const bandoData = {
             title: document.getElementById('bandoTitle').value,
-            content: document.getElementById('bandoContent').value,
+            content: quillEditor.root.innerHTML, // Guardar HTML
             date: document.getElementById('bandoDate').value
         };
         

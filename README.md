@@ -10,7 +10,17 @@ Sistema completo de gestión municipal para el **Ayuntamiento de Cobreros** con 
 
 ### **🆕 Funcionalidades Nuevas:**
 
-1. **🔔 Sistema de Notificaciones Push Profesional** ⭐ **NUEVO**
+1. **✨ Editor WYSIWYG Profesional** ⭐ **NUEVO**
+   - ✅ Editor de texto enriquecido tipo Word
+   - ✅ Negrita, cursiva, subrayado
+   - ✅ Títulos y subtítulos
+   - ✅ Listas numeradas y con viñetas
+   - ✅ Colores de texto y fondo
+   - ✅ Insertar enlaces
+   - ✅ Disponible en Noticias y Bandos
+   - ✅ Usando Quill.js
+
+2. **🔔 Sistema de Notificaciones Push Profesional**
    - ✅ Firebase Functions backend seguro
    - ✅ Batch sending (10x más rápido)
    - ✅ Limpieza automática de tokens inválidos
@@ -18,19 +28,19 @@ Sistema completo de gestión municipal para el **Ayuntamiento de Cobreros** con 
    - ✅ Estadísticas detalladas de entrega
    - ✅ Manejo profesional de errores
 
-2. **🎨 Formato de Texto Personalizado**
+3. **🎨 Formato de Texto Personalizado**
    - ✅ Tipo de letra (8 opciones)
    - ✅ Tamaño de texto (7 opciones)
    - ✅ Color personalizable
-   - ✅ Disponible en Notificaciones, Noticias y Bandos
+   - ✅ Disponible en Notificaciones
 
-3. **📧 Sistema de Emails Automáticos**
+4. **📧 Sistema de Emails Automáticos**
    - ✅ Confirmación de citas previas
    - ✅ Notificaciones a administradores
    - ✅ Firebase Functions desplegado
    - ✅ Plan Blaze activo
 
-4. **📱 App Android Completa**
+5. **📱 App Android Completa**
    - ✅ Sincronización en tiempo real
    - ✅ Recepción de notificaciones push
    - ✅ Envío desde la app (administradores)
@@ -343,10 +353,10 @@ firebase deploy --only functions
 - ✅ Functions desplegadas
 
 ### **⏳ Mejoras Futuras:**
-- ⏳ Editor WYSIWYG avanzado
-- ⏳ Más opciones de formato (negrita, cursiva)
+- ⏳ Más opciones de formato avanzado
 - ⏳ Plantillas predefinidas
 - ⏳ Estadísticas avanzadas
+- ⏳ Sistema de programación de notificaciones
 
 ---
 
@@ -370,5 +380,5 @@ Para soporte técnico, contactar con el equipo de desarrollo.
 ---
 
 **Última actualización**: Noviembre 2025
-**Versión**: 2.0.0
+**Versión**: 2.1.0
 **Estado**: ✅ Producción
