@@ -4231,23 +4231,32 @@ function loadAppointmentScheduleConfig() {
         'scheduleSunday': 0
     };
     
-    Object.keys(daysMap).forEach(id => {
+        Object.keys(daysMap).forEach(id => {
         const checkbox = document.getElementById(id);
         if (checkbox) {
-            checkbox.checked = appointmentSchedule.days.includes(daysMap[id]);
+            // Verificar que appointmentSchedule.days existe y es un array
+            if (appointmentSchedule && appointmentSchedule.days && Array.isArray(appointmentSchedule.days)) {
+                checkbox.checked = appointmentSchedule.days.includes(daysMap[id]);
+            } else {
+                checkbox.checked = false;
+            }
         }
     });
     
     // Cargar horarios (separar mañana y tarde)
-    const morningHours = appointmentSchedule.hours.filter(h => {
-        const hour = parseInt(h.split(':')[0]);
-        return hour < 14;
-    });
-    
-    const afternoonHours = appointmentSchedule.hours.filter(h => {
-        const hour = parseInt(h.split(':')[0]);
-        return hour >= 14;
-    });
+    const morningHours = (appointmentSchedule && appointmentSchedule.hours && Array.isArray(appointmentSchedule.hours)) 
+        ? appointmentSchedule.hours.filter(h => {
+            const hour = parseInt(h.split(':')[0]);
+            return hour < 14;
+        }) 
+        : [];
+
+    const afternoonHours = (appointmentSchedule && appointmentSchedule.hours && Array.isArray(appointmentSchedule.hours)) 
+        ? appointmentSchedule.hours.filter(h => {
+            const hour = parseInt(h.split(':')[0]);
+            return hour >= 14;
+        }) 
+        : [];
     
     // Limpiar y llenar lista de mañana
     const morningList = document.getElementById('morningHoursList');
