@@ -1346,6 +1346,8 @@ function switchTab(tabName) {
         loadAdminsList();
     } else if (tabName === 'documents') {
         loadDocumentsList();
+    } else if (tabName === 'statistics') {
+        loadStatistics();
     } else if (tabName === 'notifications') {
         loadNotificationsHistory();
     } else if (tabName === 'database') {
@@ -9478,4 +9480,495 @@ function removeDatoItem(button) {
     button.parentElement.remove();
 }
 
+// ===== ESTADÍSTICAS AVANZADAS =====
+
+// Variables globales para gráficos
+let statisticsCharts = {};
+
+// Cargar todas las estadísticas
+function loadStatistics() {
+    if (!document.getElementById('statistics-tab')) return;
+    
+    calculateUserStats();
+    calculateNotificationStats();
+    calculateAppointmentStats();
+    calculateContentStats();
+    
+    createCharts();
+}
+
+// Calcular estadísticas de usuarios
+function calculateUserStats() {
+    const totalUsers = users.length;
+    const now = new Date();
+    const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const newUsersMonth = users.filter(u => new Date(u.registrationDate || u.date) >= firstDayOfMonth).length;
+    
+    // Usuarios activos (última semana)
+    const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const activeUsers = users.filter(u => {
+        const lastActivity = u.lastActivity || u.registrationDate || u.date;
+        return new Date(lastActivity) >= weekAgo;
+    }).length;
+    
+    // Localidades con usuarios
+    const localitiesSet = new Set();
+    users.forEach(u => {
+        if (u.localities && Array.isArray(u.localities)) {
+            u.localities.forEach(loc => localitiesSet.add(loc));
+        }
+    });
+    
+    document.getElementById('totalUsers').textContent = totalUsers;
+    document.getElementById('newUsersMonth').textContent = newUsersMonth;
+    document.getElementById('activeUsers').textContent = activeUsers;
+    document.getElementById('usersByLocalities').textContent = localitiesSet.size;
+}
+
+// Calcular estadísticas de notificaciones
+function calculateNotificationStats() {
+    // Notificaciones desde localStorage o Firestore (simulado)
+    const totalNotifications = notifications.length || 0;
+    const successRate = '95%'; // Simulado
+    const invalidTokens = 0; // Se calcularía desde Firebase
+    
+    // Tipo más usado
+    const typeCounts = {};
+    notifications.forEach(n => {
+        const type = n.type || 'general';
+        typeCounts[type] = (typeCounts[type] || 0) + 1;
+    });
+    const mostUsedType = Object.keys(typeCounts).reduce((a, b) => 
+        typeCounts[a] > typeCounts[b] ? a : b, 'general') || 'general';
+    
+    document.getElementById('totalNotifications').textContent = totalNotifications;
+    document.getElementById('successRate').textContent = successRate;
+    document.getElementById('invalidTokens').textContent = invalidTokens;
+    document.getElementById('mostUsedType').textContent = mostUsedType.charAt(0).toUpperCase() + mostUsedType.slice(1);
+}
+
+// Calcular estadísticas de citas previas
+function calculateAppointmentStats() {
+    const totalAppointments = appointments.length;
+    const pendingAppointments = appointments.filter(a => a.status === 'pending' || a.status === 'Pendiente').length;
+    const completedAppointments = appointments.filter(a => a.status === 'completed' || a.status === 'Completada').length;
+    const cancelledAppointments = appointments.filter(a => a.status === 'cancelled' || a.status === 'Cancelada').length;
+    
+    document.getElementById('totalAppointments').textContent = totalAppointments;
+    document.getElementById('pendingAppointments').textContent = pendingAppointments;
+    document.getElementById('completedAppointments').textContent = completedAppointments;
+    document.getElementById('cancelledAppointments').textContent = cancelledAppointments;
+}
+
+// Calcular estadísticas de contenido
+function calculateContentStats() {
+    const totalNews = news.length;
+    const totalBandos = bandos.length;
+    const totalDocuments = documents.length;
+    const totalViews = totalNews + totalBandos + totalDocuments; // Simulado
+    
+    document.getElementById('totalNews').textContent = totalNews;
+    document.getElementById('totalBandos').textContent = totalBandos;
+    document.getElementById('totalDocuments').textContent = totalDocuments;
+    document.getElementById('totalViews').textContent = totalViews;
+}
+
+// Crear todos los gráficos
+function createCharts() {
+    // Destruir gráficos existentes
+    Object.values(statisticsCharts).forEach(chart => {
+        if (chart) chart.destroy();
+    });
+    statisticsCharts = {};
+    
+    createUsersByLocalitiesChart();
+    createUsersGrowthChart();
+    createNotificationsByTypeChart();
+    createNotificationsTimelineChart();
+    createAppointmentsByStatusChart();
+    createAppointmentsMonthlyChart();
+    createContentPublishedChart();
+}
+
+// Gráfico: Usuarios por localidad
+function createUsersByLocalitiesChart() {
+    const ctx = document.getElementById('usersByLocalitiesChart');
+    if (!ctx) return;
+    
+    const localitiesCount = {};
+    users.forEach(u => {
+        if (u.localities && Array.isArray(u.localities)) {
+            u.localities.forEach(loc => {
+                localitiesCount[loc] = (localitiesCount[loc] || 0) + 1;
+            });
+        }
+    });
+    
+    statisticsCharts.usersByLocalities = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: Object.keys(localitiesCount),
+            datasets: [{
+                data: Object.values(localitiesCount),
+                backgroundColor: [
+                    '#3b82f6', '#10b981', '#f59e0b', '#ef4444',
+                    '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16',
+                    '#f97316', '#6366f1', '#14b8a6', '#a855f7', '#f43f5e'
+                ]
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                title: {
+                    display: true,
+                    text: 'Usuarios por Localidad'
+                },
+                legend: {
+                    position: 'bottom'
+                }
+            }
+        }
+    });
+}
+
+// Gráfico: Crecimiento de usuarios
+function createUsersGrowthChart() {
+    const ctx = document.getElementById('usersGrowthChart');
+    if (!ctx) return;
+    
+    // Últimos 30 días
+    const days = [];
+    const counts = [];
+    const today = new Date();
+    
+    for (let i = 29; i >= 0; i--) {
+        const date = new Date(today);
+        date.setDate(date.getDate() - i);
+        const dateStr = date.toISOString().split('T')[0];
+        
+        const count = users.filter(u => {
+            const regDate = u.registrationDate || u.date;
+            return regDate && regDate.startsWith(dateStr);
+        }).length;
+        
+        days.push(dateStr.split('-')[2]); // Solo el día
+        counts.push(count);
+    }
+    
+    statisticsCharts.usersGrowth = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: days,
+            datasets: [{
+                label: 'Nuevos Usuarios',
+                data: counts,
+                borderColor: '#3b82f6',
+                backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                tension: 0.4,
+                fill: true
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                title: {
+                    display: true,
+                    text: 'Crecimiento de Usuarios (30 días)'
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true
+                }
+            }
+        }
+    });
+}
+
+// Gráfico: Notificaciones por tipo
+function createNotificationsByTypeChart() {
+    const ctx = document.getElementById('notificationsByTypeChart');
+    if (!ctx) return;
+    
+    const typeCounts = {
+        'general': 0,
+        'emergencia': 0,
+        'cita': 0,
+        'evento': 0,
+        'bando': 0
+    };
+    
+    notifications.forEach(n => {
+        const type = n.type || 'general';
+        if (typeCounts.hasOwnProperty(type)) {
+            typeCounts[type]++;
+        } else {
+            typeCounts['general']++;
+        }
+    });
+    
+    statisticsCharts.notificationsByType = new Chart(ctx, {
+        type: 'pie',
+        data: {
+            labels: ['General', 'Emergencia', 'Cita', 'Evento', 'Bando'],
+            datasets: [{
+                data: [
+                    typeCounts.general,
+                    typeCounts.emergencia,
+                    typeCounts.cita,
+                    typeCounts.evento,
+                    typeCounts.bando
+                ],
+                backgroundColor: [
+                    '#3b82f6',
+                    '#ef4444',
+                    '#10b981',
+                    '#f59e0b',
+                    '#8b5cf6'
+                ]
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                title: {
+                    display: true,
+                    text: 'Notificaciones por Tipo'
+                },
+                legend: {
+                    position: 'bottom'
+                }
+            }
+        }
+    });
+}
+
+// Gráfico: Timeline de notificaciones
+function createNotificationsTimelineChart() {
+    const ctx = document.getElementById('notificationsTimelineChart');
+    if (!ctx) return;
+    
+    // Últimos 7 días
+    const days = [];
+    const counts = [];
+    const today = new Date();
+    
+    for (let i = 6; i >= 0; i--) {
+        const date = new Date(today);
+        date.setDate(date.getDate() - i);
+        const dateStr = date.toISOString().split('T')[0];
+        
+        const count = notifications.filter(n => {
+            const notifDate = n.date || n.createdAt;
+            return notifDate && notifDate.startsWith(dateStr);
+        }).length;
+        
+        days.push(date.toLocaleDateString('es-ES', { weekday: 'short' }));
+        counts.push(count);
+    }
+    
+    statisticsCharts.notificationsTimeline = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: days,
+            datasets: [{
+                label: 'Notificaciones Enviadas',
+                data: counts,
+                backgroundColor: '#3b82f6'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                title: {
+                    display: true,
+                    text: 'Notificaciones (Últimos 7 días)'
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true
+                }
+            }
+        }
+    });
+}
+
+// Gráfico: Citas por estado
+function createAppointmentsByStatusChart() {
+    const ctx = document.getElementById('appointmentsByStatusChart');
+    if (!ctx) return;
+    
+    const statusCounts = {
+        'Pendiente': appointments.filter(a => a.status === 'pending' || a.status === 'Pendiente').length,
+        'Completada': appointments.filter(a => a.status === 'completed' || a.status === 'Completada').length,
+        'Cancelada': appointments.filter(a => a.status === 'cancelled' || a.status === 'Cancelada').length
+    };
+    
+    statisticsCharts.appointmentsByStatus = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: Object.keys(statusCounts),
+            datasets: [{
+                data: Object.values(statusCounts),
+                backgroundColor: ['#f59e0b', '#10b981', '#ef4444']
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                title: {
+                    display: true,
+                    text: 'Citas por Estado'
+                },
+                legend: {
+                    position: 'bottom'
+                }
+            }
+        }
+    });
+}
+
+// Gráfico: Citas mensuales
+function createAppointmentsMonthlyChart() {
+    const ctx = document.getElementById('appointmentsMonthlyChart');
+    if (!ctx) return;
+    
+    // Últimos 6 meses
+    const months = [];
+    const counts = [];
+    const today = new Date();
+    
+    for (let i = 5; i >= 0; i--) {
+        const date = new Date(today.getFullYear(), today.getMonth() - i, 1);
+        const monthStr = date.toLocaleDateString('es-ES', { month: 'short', year: 'numeric' });
+        
+        const count = appointments.filter(a => {
+            const appDate = new Date(a.date || a.createdAt);
+            return appDate.getMonth() === date.getMonth() && 
+                   appDate.getFullYear() === date.getFullYear();
+        }).length;
+        
+        months.push(monthStr);
+        counts.push(count);
+    }
+    
+    statisticsCharts.appointmentsMonthly = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: months,
+            datasets: [{
+                label: 'Citas',
+                data: counts,
+                backgroundColor: '#10b981'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                title: {
+                    display: true,
+                    text: 'Citas Mensuales (6 meses)'
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true
+                }
+            }
+        }
+    });
+}
+
+// Gráfico: Contenido publicado
+function createContentPublishedChart() {
+    const ctx = document.getElementById('contentPublishedChart');
+    if (!ctx) return;
+    
+    // Últimos 6 meses
+    const months = [];
+    const newsCounts = [];
+    const bandosCounts = [];
+    const today = new Date();
+    
+    for (let i = 5; i >= 0; i--) {
+        const date = new Date(today.getFullYear(), today.getMonth() - i, 1);
+        const monthStr = date.toLocaleDateString('es-ES', { month: 'short' });
+        
+        const newsCount = news.filter(n => {
+            const newsDate = new Date(n.date);
+            return newsDate.getMonth() === date.getMonth() && 
+                   newsDate.getFullYear() === date.getFullYear();
+        }).length;
+        
+        const bandosCount = bandos.filter(b => {
+            const bandoDate = new Date(b.date);
+            return bandoDate.getMonth() === date.getMonth() && 
+                   bandoDate.getFullYear() === date.getFullYear();
+        }).length;
+        
+        months.push(monthStr);
+        newsCounts.push(newsCount);
+        bandosCounts.push(bandosCount);
+    }
+    
+    statisticsCharts.contentPublished = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: months,
+            datasets: [
+                {
+                    label: 'Noticias',
+                    data: newsCounts,
+                    backgroundColor: '#3b82f6'
+                },
+                {
+                    label: 'Bandos',
+                    data: bandosCounts,
+                    backgroundColor: '#10b981'
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                title: {
+                    display: true,
+                    text: 'Contenido Publicado (6 meses)'
+                },
+                legend: {
+                    position: 'bottom'
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true
+                }
+            }
+        }
+    });
+}
+
+// Actualizar estadísticas
+function refreshStatistics() {
+    showNotification('Actualizando estadísticas...', 'info');
+    loadStatistics();
+    setTimeout(() => {
+        showNotification('Estadísticas actualizadas', 'success');
+    }, 500);
+}
+
+// Exportar estadísticas a PDF (simulado)
+function exportStatisticsPDF() {
+    showNotification('Función de exportación PDF en desarrollo', 'info');
+    // Aquí se implementaría la exportación real a PDF usando jsPDF
+}
  
