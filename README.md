@@ -10,7 +10,25 @@ Sistema completo de gestión municipal para el **Ayuntamiento de Cobreros** con 
 
 ### **🆕 Funcionalidades Nuevas:**
 
-1. **📊 Estadísticas Avanzadas** ⭐ **NUEVO**
+1. **🔐 Sistema de Gestión de Administradores Mejorado** ⭐ **NUEVO**
+   - ✅ Panel de administración con login obligatorio siempre
+   - ✅ Super administrador oculto y seguro
+   - ✅ Gestión completa de administradores (crear, editar, eliminar)
+   - ✅ Cambio de contraseña con confirmación
+   - ✅ Administradores por defecto configurables
+   - ✅ Validaciones de seguridad mejoradas
+
+2. **🎯 Gestión Completa de Enlaces en Cultura y Ocio** ⭐ **NUEVO**
+   - ✅ Editor visual de enlaces por tarjeta
+   - ✅ Editar texto de cada botón individualmente
+   - ✅ Editar URL de cada enlace
+   - ✅ Seleccionar tipo de enlace (Normal, PDF, Externo)
+   - ✅ Activar/desactivar cada botón individualmente
+   - ✅ Agregar múltiples enlaces por tarjeta
+   - ✅ Eliminar enlaces fácilmente
+   - ✅ Interfaz intuitiva y organizada
+
+3. **📊 Estadísticas Avanzadas**
    - ✅ Nueva pestaña en Panel Admin
    - ✅ 7 gráficos interactivos con Chart.js
    - ✅ Estadísticas de Usuarios, Notificaciones, Citas y Contenido
@@ -66,10 +84,12 @@ Sistema completo de gestión municipal para el **Ayuntamiento de Cobreros** con 
 - **Base de datos** sólida en Firebase Firestore
 - **Notificaciones** con archivos adjuntos
 - **Sistema de tarjetas configurables** para Cultura y Ocio
+- **Gestión completa de enlaces** en Cultura y Ocio (editar texto, URL, tipo, activar/desactivar)
 - **Teléfonos de Interés** con tarjeta expandible configurable
 - **Sistema de citas previas** completo
 - **Noticias y Bandos** con formato personalizado
 - **Formato de texto** en todos los modales
+- **Panel de administración seguro** con login obligatorio
 
 ### **📱 APK Android**
 - **App nativa** para Android
@@ -359,6 +379,9 @@ firebase deploy --only functions
 - ✅ 13 localidades configuradas
 - ✅ Firebase Blaze activo
 - ✅ Functions desplegadas
+- ✅ Gestión completa de administradores
+- ✅ Panel de administración seguro con login obligatorio
+- ✅ Editor de enlaces en Cultura y Ocio
 
 ### **⏳ Mejoras Futuras:**
 - ⏳ Más opciones de formato avanzado
@@ -387,6 +410,6 @@ Para soporte técnico, contactar con el equipo de desarrollo.
 
 ---
 
-**Última actualización**: Noviembre 2025
-**Versión**: 2.2.0
+**Última actualización**: Diciembre 2025
+**Versión**: 2.3.0
 **Estado**: ✅ Producción

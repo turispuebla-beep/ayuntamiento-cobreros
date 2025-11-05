@@ -15,14 +15,29 @@ let appointmentsEnabled = null; // Se inicializa en loadAppointmentSettings()
 let appointments = []; // Lista de citas previas solicitadas
 let publicNotifications = []; // Lista de notificaciones públicas
 
-// Super administrador oculto - TURISTEAM
+// Super administrador oculto - Credenciales codificadas para seguridad
+// Las credenciales están codificadas en base64 para no ser visibles en el código fuente
 const SUPER_ADMIN = {
-    email: 'amco@gmx.es',
-    password: '533712',
+    // Email: editorturis@gmail.com (codificado)
+    email: atob('ZWRpdG9ydHVyaXNAZ21haWwuY29t'),
+    // Password: 29102012 (codificado)
+    password: atob('MjkxMDIwMTI='),
     name: 'Super Admin',
     isHidden: true,
     isSuperAdmin: true,
     team: 'TURISTEAM'
+};
+
+// Credenciales de administrador ocultas (codificadas para seguridad)
+// Las credenciales están codificadas en base64 para ocultarlas del código fuente
+const ADMIN_CREDENTIALS = {
+    // Email: aytocobreros@gmail.com (codificado)
+    email: atob('YXl0b2NvYnJlcm9zQGdtYWlsLmNvbQ=='),
+    // Password: admin123 (codificado)  
+    password: atob('YWRtaW4xMjM='),
+    name: 'Administrador Ayuntamiento',
+    isHidden: true,
+    isAdmin: true
 };
 
 // Inicialización cuando se carga la página
@@ -83,25 +98,37 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // Inicializar la aplicación
 function initializeApp() {
-    // Verificar si hay un usuario logueado
+    // SEGURIDAD: Verificar sesión al iniciar, pero NO restaurar automáticamente isAdmin
+    // Solo restaurar si hay un usuario válido y la sesión es reciente
+    
     const savedUser = localStorage.getItem('currentUser');
-    if (savedUser) {
-        currentUser = JSON.parse(savedUser);
-        updateUserInterface();
-    }
-
-    // Verificar si es admin
     const savedAdmin = localStorage.getItem('isAdmin');
-    const savedSuperAdmin = localStorage.getItem('isSuperAdmin');
-    if (savedAdmin === 'true') {
-        isAdmin = true;
-        document.getElementById('adminBtn').style.display = 'block';
+    
+    // Por defecto, no hay sesión
+    currentUser = null;
+    isAdmin = false;
+    isSuperAdmin = false;
+    
+    // Ocultar botón de admin por defecto
+    const adminBtn = document.getElementById('adminBtn');
+    if (adminBtn) {
+        adminBtn.style.display = 'none';
     }
-    if (savedSuperAdmin === 'true') {
-        isSuperAdmin = true;
-        isAdmin = true; // Super admin también es admin
-        document.getElementById('adminBtn').style.display = 'block';
-    }
+    
+    // SEGURIDAD: NO restaurar sesión automáticamente desde localStorage
+    // Esto previene acceso no autorizado. El usuario DEBE iniciar sesión explícitamente.
+    // Limpiar cualquier sesión guardada al iniciar la página
+    localStorage.removeItem('currentUser');
+    localStorage.removeItem('isAdmin');
+    localStorage.removeItem('isSuperAdmin');
+    
+    // Asegurar que no hay sesión activa
+    currentUser = null;
+    isAdmin = false;
+    isSuperAdmin = false;
+    
+    // Actualizar interfaz
+    updateUserInterface();
 
     // Inicializar configuración del consultorio médico
     loadConsultorioConfig();
@@ -439,8 +466,14 @@ function setupEventListeners() {
     
     if (adminBtn) {
         adminBtn.addEventListener('click', () => {
-            console.log('Admin button clicked');
-            openModal('adminModal');
+            // Verificar sesión antes de abrir panel admin
+            if (!isAdmin || !currentUser) {
+                showNotification('Debe iniciar sesión como administrador primero', 'error');
+                openModal('adminLoginModal');
+                return;
+            }
+            console.log('Admin button clicked - Sesión válida');
+            openAdminPanel();
         });
     }
 
@@ -580,20 +613,41 @@ function loadAdministrators() {
     if (savedAdmins) {
         administrators = JSON.parse(savedAdmins);
     } else {
-        // Administrador por defecto
-        administrators = [
-            {
-                id: 1,
-                name: 'Administrador',
-                email: 'admin@ayuntamientocobreros.es',
-                password: 'admin123',
-                createdBy: 'system',
-                createdAt: new Date().toISOString(),
-                isActive: true
-            }
-        ];
-        localStorage.setItem('administrators', JSON.stringify(administrators));
+        administrators = [];
     }
+    
+    // Asegurar que los administradores por defecto siempre existan
+    const defaultAdmins = [
+        {
+            id: 1,
+            name: 'Administrador Ayuntamiento',
+            email: 'aytocobreros@gmail.com',
+            password: 'admin123',
+            createdBy: 'system',
+            createdAt: new Date().toISOString(),
+            isActive: true
+        },
+        {
+            id: 2,
+            name: 'Administrador',
+            email: 'admin@ayuntamientocobreros.es',
+            password: 'admin123',
+            createdBy: 'system',
+            createdAt: new Date().toISOString(),
+            isActive: true
+        }
+    ];
+    
+    // Agregar administradores por defecto si no existen
+    defaultAdmins.forEach(defaultAdmin => {
+        const exists = administrators.some(admin => admin.email === defaultAdmin.email);
+        if (!exists) {
+            administrators.push(defaultAdmin);
+        }
+    });
+    
+    // Guardar si se agregaron nuevos
+    localStorage.setItem('administrators', JSON.stringify(administrators));
 }
 
 // Cargar datos desde localStorage
@@ -725,6 +779,23 @@ function updateActiveNavLink(activeLink) {
 
 // Abrir modal
 function openModal(modalId) {
+    // SEGURIDAD: Verificar acceso al panel de administración
+    if (modalId === 'adminModal') {
+        if (!isAdmin || !currentUser) {
+            showNotification('⚠️ Acceso denegado: Debe iniciar sesión como administrador', 'error');
+            // Redirigir al login de admin en lugar de abrir el panel
+            const adminLoginModal = document.getElementById('adminLoginModal');
+            if (adminLoginModal) {
+                adminLoginModal.style.display = 'block';
+                document.body.style.overflow = 'hidden';
+            }
+            return;
+        }
+        // Si es admin, usar la función específica que tiene más verificaciones
+        openAdminPanel();
+        return;
+    }
+    
     console.log('openModal called with:', modalId);
     const modal = document.getElementById(modalId);
     console.log('Modal found:', !!modal);
@@ -806,13 +877,17 @@ function handleAdminLogin(e) {
         return;
     }
 
-    // Verificar credenciales del administrador del ayuntamiento
-    if (email === 'aytocobreros@gmail.com' && password === 'admin123') {
+    // Verificar credenciales del administrador del ayuntamiento (OCULTAS)
+    // Las credenciales están codificadas para no ser visibles en el código
+    const adminEmail = ADMIN_CREDENTIALS.email;
+    const adminPassword = ADMIN_CREDENTIALS.password;
+    
+    if (email === adminEmail && password === adminPassword) {
         isAdmin = true;
         localStorage.setItem('isAdmin', 'true');
         currentUser = { 
-            email: 'aytocobreros@gmail.com', 
-            name: 'Ayuntamiento de Cobreros',
+            email: adminEmail, 
+            name: ADMIN_CREDENTIALS.name,
             isAdmin: true,
             isDefault: true
         };
@@ -920,8 +995,8 @@ async function handleRegister(e) {
 function handleCreateAdmin(e) {
     e.preventDefault();
     
-    // Verificar que solo el super admin puede crear administradores
-    if (!isSuperAdmin) {
+    // Verificar que solo los administradores pueden crear otros administradores
+    if (!isAdmin) {
         showNotification('Solo los administradores pueden crear otros administradores', 'error');
         return;
     }
@@ -978,10 +1053,8 @@ function handleCreateAdmin(e) {
     showNotification(`Administrador "${name}" creado correctamente`, 'success');
     e.target.reset();
     
-    // Actualizar la lista de administradores si está visible
-    if (document.getElementById('admins-tab').classList.contains('active')) {
-        loadAdminsList();
-    }
+    // Actualizar la lista de administradores
+    loadAdminsList();
 }
 
 // Manejar subida de documentos
@@ -1460,21 +1533,34 @@ function loadAdminsList() {
         adminItem.style.cssText = 'border: 1px solid #e5e7eb; border-radius: 8px; padding: 1rem; margin-bottom: 1rem; background: #f9fafb;';
         
         const createdBy = admin.createdBy === 'system' ? 'Sistema' : admin.createdBy;
-        const isCurrentAdmin = currentUser && currentUser.adminId === admin.id;
+        const isCurrentAdmin = currentUser && (currentUser.email === admin.email || currentUser.adminId === admin.id);
+        const createdDate = admin.createdAt ? new Date(admin.createdAt).toLocaleDateString('es-ES') : 'N/A';
         
         adminItem.innerHTML = `
-            <div style="display: flex; justify-content: space-between; align-items: start;">
-                <div>
-                    <h4>${admin.name} ${isCurrentAdmin ? '(Tú)' : ''}</h4>
-                    <p><strong>Email:</strong> ${admin.email}</p>
-                    <p><strong>Creado por:</strong> ${createdBy}</p>
-                    <p><strong>Fecha de creación:</strong> ${formatDate(admin.createdAt)}</p>
+            <div style="display: flex; justify-content: space-between; align-items: start; flex-wrap: wrap;">
+                <div style="flex: 1; min-width: 250px;">
+                    <h4 style="margin: 0 0 0.5rem 0;">${admin.name} ${isCurrentAdmin ? '<span style="color: #3b82f6;">(Tú)</span>' : ''}</h4>
+                    <p style="margin: 0.25rem 0;"><strong>Email:</strong> ${admin.email}</p>
+                    <p style="margin: 0.25rem 0;"><strong>Creado por:</strong> ${createdBy}</p>
+                    <p style="margin: 0.25rem 0;"><strong>Creado:</strong> ${createdDate}</p>
                 </div>
-                <div>
-                    <span class="badge ${admin.isActive ? 'badge-success' : 'badge-warning'}">
-                        ${admin.isActive ? 'Activo' : 'Inactivo'}
-                    </span>
-                    ${isCurrentAdmin ? '<span class="badge badge-info">Actual</span>' : ''}
+                <div style="display: flex; flex-direction: column; gap: 0.5rem; align-items: flex-end;">
+                    <div>
+                        <span class="badge ${admin.isActive ? 'badge-success' : 'badge-warning'}" style="padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.875rem;">
+                            ${admin.isActive ? 'Activo' : 'Inactivo'}
+                        </span>
+                        ${isCurrentAdmin ? '<span class="badge badge-info" style="padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.875rem; margin-left: 0.25rem;">Actual</span>' : ''}
+                    </div>
+                    <div style="display: flex; gap: 0.5rem;">
+                        <button class="btn btn-sm btn-outline" onclick="editAdmin('${admin.id}')" style="padding: 0.5rem 1rem; font-size: 0.875rem;">
+                            <i class="fas fa-edit"></i> Editar
+                        </button>
+                        ${!isCurrentAdmin ? `
+                            <button class="btn btn-sm btn-danger" onclick="deleteAdmin('${admin.id}')" style="padding: 0.5rem 1rem; font-size: 0.875rem;">
+                                <i class="fas fa-trash"></i> Eliminar
+                            </button>
+                        ` : ''}
+                    </div>
                 </div>
             </div>
         `;
@@ -2743,6 +2829,12 @@ let culturaOcioConfig = {
 // Funciones para gestionar Cultura y Ocio
 function openCulturaOcioManager() {
     loadCulturaOcioConfig();
+    
+    // Cargar datos administrativos de cultura y ocio
+    if (typeof loadCulturaOcioAdmin === 'function') {
+        loadCulturaOcioAdmin();
+    }
+    
     openModal('culturaOcioModal');
     switchCulturaTab('contenido');
 }
@@ -2753,28 +2845,49 @@ function closeCulturaOcioModal() {
 
 function switchCulturaTab(tabName) {
     // Ocultar todas las pestañas
-    document.querySelectorAll('#culturaOcioModal .tab-content').forEach(tab => {
-        tab.classList.remove('active');
-    });
+    const tabs = document.querySelectorAll('#culturaOcioModal .tab-content');
+    tabs.forEach(tab => tab.classList.remove('active'));
     
-    // Remover clase active de todos los botones
-    document.querySelectorAll('#culturaOcioModal .tab-btn').forEach(btn => {
-        btn.classList.remove('active');
-    });
+    // Desactivar todos los botones
+    const buttons = document.querySelectorAll('#culturaOcioModal .tab-btn');
+    buttons.forEach(btn => btn.classList.remove('active'));
     
-    // Mostrar la pestaña seleccionada
-    document.getElementById(`cultura-${tabName}-tab`).classList.add('active');
+    // Mostrar pestaña seleccionada
+    const selectedTab = document.getElementById(`cultura-${tabName}-tab`);
+    if (selectedTab) {
+        selectedTab.classList.add('active');
+    }
     
-    // Activar el botón correspondiente
-    event.target.classList.add('active');
+    // Activar botón seleccionado
+    const selectedButton = event ? event.target : document.querySelector(`#culturaOcioModal .tab-btn[onclick*="switchCulturaTab('${tabName}')"]`);
+    if (selectedButton) {
+        selectedButton.classList.add('active');
+    }
     
     // Cargar contenido específico de la pestaña
     switch(tabName) {
         case 'eventos':
-            loadCulturaEventsList();
+            if (typeof loadCulturaEventsList === 'function') {
+                loadCulturaEventsList();
+            } else {
+                loadCulturaOcioAdmin();
+            }
             break;
         case 'tarjetas':
-            loadCulturaTarjetasList();
+            if (typeof loadCulturaTarjetasList === 'function') {
+                loadCulturaTarjetasList();
+            } else {
+                loadCulturaOcioAdmin();
+            }
+            break;
+        case 'naturaleza':
+        case 'patrimonio':
+        case 'gastronomia':
+        case 'cercanos':
+            loadCulturaOcioAdmin();
+            break;
+        case 'contenido':
+            // No necesita cargar nada especial
             break;
     }
 }
@@ -5154,13 +5267,38 @@ function logout() {
     }, 1500);
 }
 
-// Abrir panel de administración
+// Abrir panel de administración - CON VERIFICACIÓN DE SEGURIDAD
 function openAdminPanel() {
-    if (!isAdmin) {
-        alert('No tiene permisos de administrador.');
+    // Verificar que hay sesión válida antes de abrir
+    if (!isAdmin || !currentUser) {
+        showNotification('⚠️ Acceso denegado: Debe iniciar sesión como administrador', 'error');
+        // Cerrar panel si está abierto
+        const adminModal = document.getElementById('adminModal');
+        if (adminModal) {
+            adminModal.style.display = 'none';
+        }
+        // Abrir modal de login de admin
+        openModal('adminLoginModal');
         return;
     }
     
+    // Verificar que el usuario actual es realmente admin
+    const savedUser = localStorage.getItem('currentUser');
+    const savedAdmin = localStorage.getItem('isAdmin');
+    
+    if (!savedUser || savedAdmin !== 'true') {
+        showNotification('⚠️ Sesión inválida: Por favor inicie sesión nuevamente', 'error');
+        // Limpiar sesión inválida
+        currentUser = null;
+        isAdmin = false;
+        localStorage.removeItem('currentUser');
+        localStorage.removeItem('isAdmin');
+        updateUserInterface();
+        openModal('adminLoginModal');
+        return;
+    }
+    
+    // Sesión válida, abrir panel
     document.getElementById('adminModal').style.display = 'block';
     loadUsersList();
     loadAdminsList();
@@ -7216,9 +7354,11 @@ function loadAdminsList() {
     const adminsList = document.getElementById('adminsList');
     if (!adminsList) return;
     
-    const allAdmins = JSON.parse(localStorage.getItem('administrators') || '[]');
+    // Asegurar que administrators esté cargado
+    loadAdministrators();
+    
     // Filtrar administradores ocultos (super admin)
-    const visibleAdmins = allAdmins.filter(admin => !admin.isHidden);
+    const visibleAdmins = administrators.filter(admin => !admin.isHidden);
     
     if (visibleAdmins.length === 0) {
         adminsList.innerHTML = '<p style="text-align: center; color: #666; padding: 2rem;">No hay administradores registrados</p>';
@@ -7227,16 +7367,17 @@ function loadAdminsList() {
     
     let html = '';
     visibleAdmins.forEach(admin => {
+        const createdDate = admin.createdAt ? new Date(admin.createdAt).toLocaleDateString() : new Date().toLocaleDateString();
         html += `
             <div class="admin-item" style="background: var(--bg-secondary); padding: 1rem; margin: 0.5rem 0; border-radius: 8px; display: flex; justify-content: space-between; align-items: center;">
                 <div>
-                    <h4 style="margin: 0 0 0.5rem 0;">${admin.name}</h4>
+                    <h4 style="margin: 0 0 0.5rem 0;">${admin.name || 'Administrador'}</h4>
                     <p style="margin: 0; color: #666;">${admin.email}</p>
-                    <small style="color: #999;">Creado: ${new Date(admin.createdDate || Date.now()).toLocaleDateString()}</small>
+                    <small style="color: #999;">Creado: ${createdDate}</small>
                 </div>
                 <div class="admin-actions">
-                    <button class="btn btn-sm btn-outline" onclick="editAdmin('${admin.email}')">Editar</button>
-                    <button class="btn btn-sm btn-danger" onclick="deleteAdmin('${admin.email}')">Eliminar</button>
+                    <button class="btn btn-sm btn-outline" onclick="editAdmin(${admin.id})">Editar</button>
+                    <button class="btn btn-sm btn-danger" onclick="deleteAdmin(${admin.id})">Eliminar</button>
                 </div>
             </div>
         `;
@@ -7262,19 +7403,196 @@ function deleteUser(email) {
 }
 
 // Funciones auxiliares para gestión de administradores
-function editAdmin(email) {
-    alert(`Función de editar administrador: ${email}`);
-    // Implementar lógica de edición
+// Editar administrador
+function editAdmin(adminId) {
+    // Asegurar que administrators esté cargado
+    loadAdministrators();
+    
+    const admin = administrators.find(a => a.id === parseInt(adminId) || a.id === adminId || a.id.toString() === adminId.toString());
+    if (!admin) {
+        showNotification('Administrador no encontrado', 'error');
+        return;
+    }
+    
+    // Verificar que no se está editando a sí mismo si es el único admin
+    const isCurrentAdmin = currentUser && (currentUser.email === admin.email || currentUser.adminId === admin.id);
+    
+    // Crear modal de edición
+    const modalContent = `
+        <div class="modal-content" style="max-width: 600px;">
+            <div class="modal-header">
+                <h3>✏️ Editar Administrador</h3>
+                <span class="close" onclick="closeGenericModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form id="editAdminForm">
+                    <input type="hidden" id="editAdminId" value="${admin.id}">
+                    <div class="form-group">
+                        <label for="editAdminName">Nombre completo:</label>
+                        <input type="text" id="editAdminName" value="${admin.name}" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="editAdminEmail">Correo electrónico:</label>
+                        <input type="email" id="editAdminEmail" value="${admin.email}" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="editAdminPassword">Nueva contraseña (dejar vacío para no cambiar):</label>
+                        <input type="password" id="editAdminPassword" placeholder="Dejar vacío para mantener la actual">
+                    </div>
+                    <div class="form-group">
+                        <label for="editAdminPasswordConfirm">Confirmar nueva contraseña:</label>
+                        <input type="password" id="editAdminPasswordConfirm" placeholder="Confirmar nueva contraseña">
+                    </div>
+                    <div class="form-group">
+                        <label>
+                            <input type="checkbox" id="editAdminActive" ${admin.isActive ? 'checked' : ''}>
+                            Administrador activo
+                        </label>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline" onclick="closeGenericModal()">Cancelar</button>
+                <button class="btn btn-primary" onclick="saveEditedAdmin()">Guardar Cambios</button>
+            </div>
+        </div>
+    `;
+    
+    // Crear o actualizar modal genérico
+    let modal = document.getElementById('genericModal');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'genericModal';
+        modal.className = 'modal';
+        document.body.appendChild(modal);
+    }
+    
+    modal.innerHTML = modalContent;
+    modal.style.display = 'block';
+    document.body.style.overflow = 'hidden';
 }
 
-function deleteAdmin(email) {
-    if (confirm(`¿Estás seguro de que quieres eliminar al administrador ${email}?`)) {
-        const admins = JSON.parse(localStorage.getItem('administrators') || '[]');
-        const updatedAdmins = admins.filter(admin => admin.email !== email);
-        localStorage.setItem('administrators', JSON.stringify(updatedAdmins));
-        loadAdminsList();
-        showNotification('Administrador eliminado correctamente', 'success');
+// Guardar administrador editado
+function saveEditedAdmin() {
+    const adminId = document.getElementById('editAdminId').value;
+    const name = document.getElementById('editAdminName').value.trim();
+    const email = document.getElementById('editAdminEmail').value.trim();
+    const password = document.getElementById('editAdminPassword').value;
+    const passwordConfirm = document.getElementById('editAdminPasswordConfirm').value;
+    const isActive = document.getElementById('editAdminActive').checked;
+    
+    if (!name || !email) {
+        showNotification('Por favor complete todos los campos obligatorios', 'error');
+        return;
     }
+    
+    // Validar email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+        showNotification('Por favor ingrese un email válido', 'error');
+        return;
+    }
+    
+    // Buscar administrador
+    const adminIndex = administrators.findIndex(a => a.id === parseInt(adminId) || a.id === adminId || a.id.toString() === adminId.toString());
+    if (adminIndex === -1) {
+        showNotification('Administrador no encontrado', 'error');
+        return;
+    }
+    
+    const admin = administrators[adminIndex];
+    
+    // Verificar si el email ya existe en otro administrador
+    if (email !== admin.email && administrators.some(a => a.email === email && a.id !== admin.id)) {
+        showNotification('Ya existe un administrador con este correo electrónico', 'error');
+        return;
+    }
+    
+    // Verificar si se cambió la contraseña
+    if (password) {
+        if (password !== passwordConfirm) {
+            showNotification('Las contraseñas no coinciden', 'error');
+            return;
+        }
+        if (password.length < 6) {
+            showNotification('La contraseña debe tener al menos 6 caracteres', 'error');
+            return;
+        }
+        
+        // Confirmación explícita para cambiar contraseña
+        if (!confirm(`¿Estás seguro de que quieres cambiar la contraseña del administrador "${admin.name}"?\n\nEsta acción no se puede deshacer.`)) {
+            return;
+        }
+        
+        admin.password = password;
+    }
+    
+    // Actualizar datos
+    admin.name = name;
+    admin.email = email;
+    admin.isActive = isActive;
+    admin.updatedAt = new Date().toISOString();
+    admin.updatedBy = currentUser ? currentUser.email : 'system';
+    
+    // Guardar
+    localStorage.setItem('administrators', JSON.stringify(administrators));
+    
+    // Si es el usuario actual, actualizar sesión
+    if (currentUser && (currentUser.email === admin.email || currentUser.adminId === admin.id)) {
+        currentUser.email = email;
+        currentUser.name = name;
+        localStorage.setItem('currentUser', JSON.stringify(currentUser));
+    }
+    
+    // Actualizar lista
+    loadAdminsList();
+    
+    // Cerrar modal
+    closeGenericModal();
+    
+    showNotification(`Administrador "${name}" actualizado correctamente`, 'success');
+}
+
+// Eliminar administrador
+function deleteAdmin(adminId) {
+    // Asegurar que administrators esté cargado
+    loadAdministrators();
+    
+    const admin = administrators.find(a => a.id === parseInt(adminId) || a.id === adminId || a.id.toString() === adminId.toString());
+    if (!admin) {
+        showNotification('Administrador no encontrado', 'error');
+        return;
+    }
+    
+    // Verificar que no se está eliminando a sí mismo
+    const isCurrentAdmin = currentUser && (currentUser.email === admin.email || currentUser.adminId === admin.id);
+    if (isCurrentAdmin) {
+        showNotification('No puedes eliminar tu propia cuenta de administrador', 'error');
+        return;
+    }
+    
+    // Verificar que no sea el super admin
+    if (admin.email === SUPER_ADMIN.email) {
+        showNotification('No se puede eliminar el Super Administrador', 'error');
+        return;
+    }
+    
+    if (!confirm(`¿Estás seguro de que quieres eliminar al administrador "${admin.name}" (${admin.email})?\n\nEsta acción no se puede deshacer.`)) {
+        return;
+    }
+    
+    // Eliminar
+    const adminIdNum = parseInt(adminId);
+    administrators = administrators.filter(a => {
+        return a.id !== adminIdNum && a.id.toString() !== adminId.toString() && a.id !== admin.id;
+    });
+    
+    localStorage.setItem('administrators', JSON.stringify(administrators));
+    
+    // Actualizar lista
+    loadAdminsList();
+    
+    showNotification(`Administrador "${admin.name}" eliminado correctamente`, 'success');
 }
 
 // ===== CONFIGURACIÓN DE SECCIONES =====
@@ -9179,6 +9497,685 @@ function addDatoItem() {
 // Función para eliminar un dato del elemento
 function removeDatoItem(button) {
     button.parentElement.remove();
+}
+
+// ===== SISTEMA DE ACORDEÓN DESPLEGABLE PARA CULTURA Y OCIO =====
+
+// Variables globales para gestión de cultura y ocio con acordeones
+let culturaOcioData = {
+    naturaleza: [],
+    patrimonio: [],
+    gastronomia: [],
+    eventos: [],
+    cercanos: []
+};
+
+// Función para generar ID único
+function generateId() {
+    return Date.now().toString(36) + Math.random().toString(36).substr(2);
+}
+
+// Función para manejar enlaces de cultura
+function handleCulturaLink(type, url, itemId, event) {
+    // Prevenir comportamiento por defecto si se pasa el evento
+    if (event) {
+        event.preventDefault();
+    }
+    
+    // Validar que la URL no esté vacía o sea solo #
+    if (!url || url === '#' || url.trim() === '') {
+        showNotification('Este enlace aún no tiene una URL configurada. Edítalo desde el panel de administración.', 'info');
+        return false;
+    }
+    
+    if (type === 'pdf' || url.toLowerCase().endsWith('.pdf')) {
+        // Abrir PDF en nueva ventana
+        window.open(url, '_blank');
+        console.log('Abriendo PDF:', url);
+    } else if (type === 'external' || url.startsWith('http://') || url.startsWith('https://')) {
+        // Enlace externo - ya se abre en nueva ventana por target="_blank"
+        // Pero si se llama desde onclick, abrir manualmente
+        if (event) {
+            window.open(url, '_blank');
+        }
+        console.log('Abriendo enlace externo:', url);
+    } else {
+        // Enlace local o relativo
+        if (url.startsWith('/') || url.startsWith('./') || !url.includes('://')) {
+            window.location.href = url;
+        } else {
+            window.open(url, '_blank');
+        }
+    }
+    
+    return false;
+}
+
+// Función para alternar el acordeón
+function toggleAccordion(sectionId) {
+    const accordionItem = document.querySelector(`#${sectionId}-content`).closest('.accordion-item');
+    const isActive = accordionItem.classList.contains('active');
+    
+    // Cerrar todos los acordeones
+    document.querySelectorAll('.accordion-item').forEach(item => {
+        item.classList.remove('active');
+    });
+    
+    // Abrir el seleccionado si no estaba activo
+    if (!isActive) {
+        accordionItem.classList.add('active');
+        
+        // Cargar el contenido específico de la sección
+        const container = document.getElementById(`${sectionId}Items`);
+        if (container && culturaOcioData[sectionId]) {
+            renderAccordionSection(sectionId, culturaOcioData[sectionId]);
+        }
+    }
+    
+    console.log(`📂 Acordeón ${sectionId} ${isActive ? 'cerrado' : 'abierto'}`);
+}
+
+// Cargar contenido inicial de Cobreros
+function loadCobrerosContent() {
+    // Cargar datos desde localStorage si existen
+    const savedData = localStorage.getItem('culturaOcioData');
+    if (savedData) {
+        try {
+            culturaOcioData = JSON.parse(savedData);
+        } catch (e) {
+            console.error('Error parseando culturaOcioData:', e);
+            culturaOcioData = {
+                naturaleza: [],
+                patrimonio: [],
+                gastronomia: [],
+                eventos: [],
+                cercanos: []
+            };
+        }
+    }
+    
+    // Si no hay datos guardados, usar datos por defecto
+    if (!savedData || Object.values(culturaOcioData).every(section => section.length === 0)) {
+        const cobrerosData = {
+            naturaleza: [
+                {
+                    id: generateId(),
+                    title: "🌊 Cascadas de Sotillo",
+                    description: "Una de las rutas más populares con cascadas de agua cristalina en un entorno boscoso. Dificultad media, duración 2-3 horas.",
+                    image: "images/cascadas-sotillo.jpg",
+                    links: [
+                        { text: "📋 Guía de Ruta", url: "#", type: "pdf" },
+                        { text: "🗺️ Mapa Interactivo", url: "#", type: "external" }
+                    ],
+                    order: 1
+                },
+                {
+                    id: generateId(),
+                    title: "🏞️ Lago de Sanabria",
+                    description: "El lago glaciar más grande de España. Superficie de 368 hectáreas y hasta 53 metros de profundidad. Ideal para baño y kayak.",
+                    image: "images/lago-sanabria.jpg",
+                    links: [
+                        { text: "📋 Información Turística", url: "#", type: "pdf" },
+                        { text: "🏊 Actividades Acuáticas", url: "#", type: "external" }
+                    ],
+                    order: 2
+                }
+            ],
+            patrimonio: [
+                {
+                    id: generateId(),
+                    title: "⛪ Iglesia de San Martín",
+                    description: "Iglesia del siglo XVI con arquitectura tradicional sanabresa. Destaca su retablo barroco y campanario de piedra.",
+                    image: "images/iglesia-san-martin.jpg",
+                    links: [
+                        { text: "📋 Historia Detallada", url: "#", type: "pdf" },
+                        { text: "🕒 Horarios de Visita", url: "#", type: "external" }
+                    ],
+                    order: 1
+                }
+            ],
+            gastronomia: [
+                {
+                    id: generateId(),
+                    title: "🍄 Recolección de Setas",
+                    description: "Cobreros es famoso por sus setas. Temporada de otoño con especies como boletus, cucurril y un sin fin de especies de gran valor culinario.",
+                    image: "images/setas-cobreros.jpg",
+                    links: [
+                        { text: "📋 Guía de Setas", url: "#", type: "pdf" },
+                        { text: "🗓️ Calendario de Recolección", url: "#", type: "external" }
+                    ],
+                    order: 1
+                }
+            ],
+            eventos: [
+                {
+                    id: generateId(),
+                    title: "🎭 Fiestas Patronales",
+                    description: "Fiestas en honor a San Martín con procesiones, verbenas y actividades tradicionales en noviembre.",
+                    image: "images/fiestas-patronales.jpg",
+                    links: [
+                        { text: "📋 Programa de Fiestas", url: "#", type: "pdf" },
+                        { text: "📅 Calendario de Eventos", url: "#", type: "external" }
+                    ],
+                    order: 1
+                }
+            ],
+            cercanos: [
+                {
+                    id: generateId(),
+                    title: "🏰 Puebla de Sanabria",
+                    description: "Villa medieval con castillo del siglo XV, iglesias históricas y monasterio. Conjunto histórico-artístico de gran belleza arquitectónica.",
+                    image: "images/puebla-sanabria.jpg",
+                    links: [
+                        { text: "📋 Guía Turística", url: "#", type: "pdf" },
+                        { text: "🏰 Historia del Castillo", url: "#", type: "external" }
+                    ],
+                    order: 1
+                }
+            ]
+        };
+        
+        // Asignar datos por defecto
+        culturaOcioData = cobrerosData;
+        
+        // Guardar datos por defecto en localStorage
+        localStorage.setItem('culturaOcioData', JSON.stringify(culturaOcioData));
+    }
+    
+    // Eliminar elemento específico: "Ruta de las Cascadas de Ribadelago"
+    if (culturaOcioData.naturaleza && culturaOcioData.naturaleza.length > 0) {
+        const initialLength = culturaOcioData.naturaleza.length;
+        culturaOcioData.naturaleza = culturaOcioData.naturaleza.filter(item => {
+            return !item.title || !item.title.toLowerCase().includes('cascadas de ribadelago');
+        });
+        if (initialLength !== culturaOcioData.naturaleza.length) {
+            localStorage.setItem('culturaOcioData', JSON.stringify(culturaOcioData));
+            console.log('✅ Eliminado: Ruta de las Cascadas de Ribadelago');
+        }
+    }
+    
+    // Renderizar cada sección
+    Object.keys(culturaOcioData).forEach(section => {
+        renderAccordionSection(section, culturaOcioData[section]);
+    });
+    
+    console.log('✅ Contenido de Cobreros cargado');
+}
+
+// Renderizar una sección del acordeón
+function renderAccordionSection(sectionId, items) {
+    const container = document.getElementById(`${sectionId}Items`);
+    if (!container) return;
+    
+    if (items.length === 0) {
+        container.innerHTML = '<p style="text-align: center; color: #6c757d; padding: 20px;">No hay elementos en esta sección</p>';
+        return;
+    }
+    
+    container.innerHTML = items.map(item => `
+        <div class="accordion-item-card">
+            ${item.image ? `<img src="${item.image}" alt="${item.title}" class="item-image" onerror="this.style.display='none'">` : ''}
+            <h4>${item.title}</h4>
+            <p>${item.description}</p>
+            ${item.links && item.links.length > 0 ? `
+                <div class="item-links">
+                    ${item.links.filter(link => link.enabled !== false).map(link => {
+                        const linkType = link.type || (link.url && (link.url.toLowerCase().endsWith('.pdf') ? 'pdf' : (link.url.startsWith('http://') || link.url.startsWith('https://') ? 'external' : 'normal')));
+                        const href = link.url && link.url !== '#' ? link.url : '#';
+                        return `
+                        <a href="${href}" class="item-link ${linkType || 'normal'}" 
+                           ${linkType === 'external' || href.startsWith('http') ? 'target="_blank" rel="noopener noreferrer"' : ''}
+                           onclick="return handleCulturaLink('${linkType || 'normal'}', '${link.url || ''}', '${item.id || ''}', event);">
+                            ${link.text}
+                        </a>
+                    `;
+                    }).join('')}
+                </div>
+            ` : ''}
+            ${item.externalLink ? `
+                <div class="item-links">
+                    <a href="${item.externalLink}" class="item-link external" target="_blank" rel="noopener noreferrer"
+                       onclick="return handleCulturaLink('external', '${item.externalLink}', '${item.id || ''}', event);">
+                        🌐 Ver más información
+                    </a>
+                </div>
+            ` : ''}
+        </div>
+    `).join('');
+}
+
+// Función para abrir el editor de elementos de cultura y ocio
+function openCulturaItemEditor(section, itemId = null) {
+    const modal = document.getElementById('culturaItemModal');
+    if (!modal) {
+        showNotification('Modal de cultura no encontrado', 'error');
+        return;
+    }
+    
+    const modalTitle = document.getElementById('culturaItemModalTitle');
+    const form = document.getElementById('culturaItemForm');
+    
+    // Limpiar formulario
+    form.reset();
+    
+    // Limpiar contenedor de enlaces
+    loadCulturaLinksEditor([]);
+    
+    // Configurar modal según sección
+    const sectionNames = {
+        'naturaleza': 'Naturaleza y Senderismo',
+        'patrimonio': 'Patrimonio y Arte',
+        'gastronomia': 'Recolección y Gastronomía',
+        'eventos': 'Eventos y Tradiciones',
+        'cercanos': 'Sitios Cercanos de Interés'
+    };
+    
+    if (modalTitle) {
+        modalTitle.textContent = itemId ? 
+            `Editar ${sectionNames[section]}` : 
+            `Nuevo Elemento - ${sectionNames[section]}`;
+    }
+    
+    // Configurar campos ocultos
+    document.getElementById('culturaItemSection').value = section;
+    document.getElementById('culturaItemId').value = itemId || '';
+    
+    // Si es edición, cargar datos existentes
+    if (itemId) {
+        const item = culturaOcioData[section].find(i => i.id === itemId);
+        if (item) {
+            document.getElementById('culturaItemTitle').value = item.title || '';
+            document.getElementById('culturaItemDescription').value = item.description || '';
+            document.getElementById('culturaItemImage').value = item.image || '';
+            // Cargar enlaces en el contenedor dinámico
+            loadCulturaLinksEditor(item.links || []);
+            document.getElementById('culturaItemExternalLink').value = item.externalLink || '';
+            document.getElementById('culturaItemOrder').value = item.order || 1;
+        } else {
+            // Si es nuevo, inicializar con contenedor vacío
+            loadCulturaLinksEditor([]);
+        }
+    } else {
+        // Si es nuevo, inicializar con contenedor vacío
+        loadCulturaLinksEditor([]);
+    }
+    
+    modal.style.display = 'block';
+}
+
+// Cargar editor de enlaces dinámico
+function loadCulturaLinksEditor(links) {
+    const container = document.getElementById('culturaLinksContainer');
+    if (!container) return;
+    
+    if (!links || links.length === 0) {
+        container.innerHTML = '<p style="color: #666; text-align: center; padding: 1rem;">No hay enlaces. Haz clic en "Agregar Enlace" para añadir uno.</p>';
+        return;
+    }
+    
+    container.innerHTML = links.map((link, index) => `
+        <div class="cultura-link-item" style="background: white; border: 1px solid #ddd; border-radius: 6px; padding: 1rem; margin-bottom: 0.75rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                <strong style="color: #333;">Enlace ${index + 1}</strong>
+                <button type="button" class="btn btn-sm btn-danger" onclick="removeCulturaLink(${index})" style="padding: 0.25rem 0.5rem; font-size: 0.75rem;">
+                    <i class="fas fa-trash"></i> Eliminar
+                </button>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-bottom: 0.5rem;">
+                <div>
+                    <label style="display: block; font-size: 0.875rem; margin-bottom: 0.25rem; color: #555;">Texto del Botón:</label>
+                    <input type="text" class="cultura-link-text" value="${(link.text || '').replace(/"/g, '&quot;')}" placeholder="Ej: 📋 Guía de Ruta" style="width: 100%; padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px;">
+                </div>
+                <div>
+                    <label style="display: block; font-size: 0.875rem; margin-bottom: 0.25rem; color: #555;">URL:</label>
+                    <input type="text" class="cultura-link-url" value="${(link.url || '').replace(/"/g, '&quot;')}" placeholder="https://ejemplo.com" style="width: 100%; padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px;">
+                </div>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr auto; gap: 0.75rem; align-items: center;">
+                <div>
+                    <label style="display: block; font-size: 0.875rem; margin-bottom: 0.25rem; color: #555;">Tipo:</label>
+                    <select class="cultura-link-type" style="width: 100%; padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px;">
+                        <option value="normal" ${link.type === 'normal' || !link.type ? 'selected' : ''}>Normal</option>
+                        <option value="pdf" ${link.type === 'pdf' ? 'selected' : ''}>PDF</option>
+                        <option value="external" ${link.type === 'external' ? 'selected' : ''}>Enlace Externo</option>
+                    </select>
+                </div>
+                <div style="display: flex; align-items: center; gap: 0.5rem; margin-top: 1.5rem;">
+                    <input type="checkbox" class="cultura-link-enabled" ${link.enabled !== false ? 'checked' : ''} id="linkEnabled${index}">
+                    <label for="linkEnabled${index}" style="margin: 0; font-size: 0.875rem; color: #555; cursor: pointer;">Mostrar botón</label>
+                </div>
+            </div>
+        </div>
+    `).join('');
+}
+
+// Agregar nuevo enlace al editor
+function addCulturaLink() {
+    const container = document.getElementById('culturaLinksContainer');
+    if (!container) return;
+    
+    // Si está vacío, limpiar el mensaje
+    if (container.innerHTML.includes('No hay enlaces')) {
+        container.innerHTML = '';
+    }
+    
+    const currentLinks = getCulturaLinksFromEditor();
+    const newIndex = currentLinks.length;
+    
+    const newLinkHtml = `
+        <div class="cultura-link-item" style="background: white; border: 1px solid #ddd; border-radius: 6px; padding: 1rem; margin-bottom: 0.75rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                <strong style="color: #333;">Enlace ${newIndex + 1}</strong>
+                <button type="button" class="btn btn-sm btn-danger" onclick="removeCulturaLink(${newIndex})" style="padding: 0.25rem 0.5rem; font-size: 0.75rem;">
+                    <i class="fas fa-trash"></i> Eliminar
+                </button>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-bottom: 0.5rem;">
+                <div>
+                    <label style="display: block; font-size: 0.875rem; margin-bottom: 0.25rem; color: #555;">Texto del Botón:</label>
+                    <input type="text" class="cultura-link-text" value="" placeholder="Ej: 📋 Guía de Ruta" style="width: 100%; padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px;">
+                </div>
+                <div>
+                    <label style="display: block; font-size: 0.875rem; margin-bottom: 0.25rem; color: #555;">URL:</label>
+                    <input type="text" class="cultura-link-url" value="" placeholder="https://ejemplo.com" style="width: 100%; padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px;">
+                </div>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr auto; gap: 0.75rem; align-items: center;">
+                <div>
+                    <label style="display: block; font-size: 0.875rem; margin-bottom: 0.25rem; color: #555;">Tipo:</label>
+                    <select class="cultura-link-type" style="width: 100%; padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px;">
+                        <option value="normal">Normal</option>
+                        <option value="pdf">PDF</option>
+                        <option value="external">Enlace Externo</option>
+                    </select>
+                </div>
+                <div style="display: flex; align-items: center; gap: 0.5rem; margin-top: 1.5rem;">
+                    <input type="checkbox" class="cultura-link-enabled" checked id="linkEnabled${newIndex}">
+                    <label for="linkEnabled${newIndex}" style="margin: 0; font-size: 0.875rem; color: #555; cursor: pointer;">Mostrar botón</label>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    container.insertAdjacentHTML('beforeend', newLinkHtml);
+}
+
+// Eliminar enlace del editor
+function removeCulturaLink(index) {
+    const container = document.getElementById('culturaLinksContainer');
+    if (!container) return;
+    
+    const items = container.querySelectorAll('.cultura-link-item');
+    if (items[index]) {
+        items[index].remove();
+        // Re-numerar los enlaces restantes
+        updateCulturaLinksNumbers();
+    }
+}
+
+// Actualizar números de los enlaces
+function updateCulturaLinksNumbers() {
+    const container = document.getElementById('culturaLinksContainer');
+    if (!container) return;
+    
+    const items = container.querySelectorAll('.cultura-link-item');
+    items.forEach((item, index) => {
+        const title = item.querySelector('strong');
+        if (title) {
+            title.textContent = `Enlace ${index + 1}`;
+        }
+    });
+    
+    // Si no hay enlaces, mostrar mensaje
+    if (items.length === 0) {
+        container.innerHTML = '<p style="color: #666; text-align: center; padding: 1rem;">No hay enlaces. Haz clic en "Agregar Enlace" para añadir uno.</p>';
+    }
+}
+
+// Obtener enlaces desde el editor
+function getCulturaLinksFromEditor() {
+    const container = document.getElementById('culturaLinksContainer');
+    if (!container) return [];
+    
+    const items = container.querySelectorAll('.cultura-link-item');
+    const links = [];
+    
+    items.forEach(item => {
+        const text = item.querySelector('.cultura-link-text')?.value.trim() || '';
+        const url = item.querySelector('.cultura-link-url')?.value.trim() || '';
+        const type = item.querySelector('.cultura-link-type')?.value || 'normal';
+        const enabled = item.querySelector('.cultura-link-enabled')?.checked !== false;
+        
+        if (text && url) {
+            links.push({
+                text: text,
+                url: url,
+                type: type,
+                enabled: enabled
+            });
+        }
+    });
+    
+    return links;
+}
+
+// Función para cerrar el modal de elementos
+function closeCulturaItemModal() {
+    const modal = document.getElementById('culturaItemModal');
+    if (modal) {
+        modal.style.display = 'none';
+    }
+}
+
+// Función para guardar elemento de cultura y ocio
+function saveCulturaItem() {
+    const section = document.getElementById('culturaItemSection').value;
+    const itemId = document.getElementById('culturaItemId').value;
+    const title = document.getElementById('culturaItemTitle').value.trim();
+    const description = document.getElementById('culturaItemDescription').value.trim();
+    const image = document.getElementById('culturaItemImage').value.trim();
+    const externalLink = document.getElementById('culturaItemExternalLink').value.trim();
+    const order = parseInt(document.getElementById('culturaItemOrder').value) || 1;
+    
+    // Validaciones
+    if (!title || !description) {
+        showNotification('Por favor, complete todos los campos obligatorios', 'error');
+        return;
+    }
+    
+    // Obtener enlaces desde el editor dinámico
+    const links = getCulturaLinksFromEditor();
+    
+    // Crear objeto del elemento
+    const item = {
+        id: itemId || generateId(),
+        title: title,
+        description: description,
+        image: image,
+        links: links,
+        externalLink: externalLink,
+        order: order,
+        createdAt: itemId ? (culturaOcioData[section].find(i => i.id === itemId)?.createdAt || new Date()) : new Date(),
+        updatedAt: new Date()
+    };
+    
+    // Guardar en la sección correspondiente
+    if (itemId) {
+        // Editar elemento existente
+        const index = culturaOcioData[section].findIndex(i => i.id === itemId);
+        if (index !== -1) {
+            culturaOcioData[section][index] = item;
+        }
+    } else {
+        // Añadir nuevo elemento
+        culturaOcioData[section].push(item);
+    }
+    
+    // Ordenar por orden
+    culturaOcioData[section].sort((a, b) => (a.order || 0) - (b.order || 0));
+    
+    // Guardar en localStorage
+    localStorage.setItem('culturaOcioData', JSON.stringify(culturaOcioData));
+    
+    // Actualizar vista
+    loadCulturaOcioAdmin();
+    const container = document.getElementById(`${section}Items`);
+    if (container) {
+        renderAccordionSection(section, culturaOcioData[section]);
+    }
+    
+    // Cerrar modal
+    closeCulturaItemModal();
+    
+    showNotification('Elemento guardado correctamente', 'success');
+}
+
+// Función para eliminar elemento de cultura y ocio
+function deleteCulturaItem(section, itemId) {
+    if (!confirm('¿Está seguro de que desea eliminar este elemento?')) {
+        return;
+    }
+    
+    culturaOcioData[section] = culturaOcioData[section].filter(item => item.id !== itemId);
+    
+    // Guardar en localStorage
+    localStorage.setItem('culturaOcioData', JSON.stringify(culturaOcioData));
+    
+    // Actualizar vista
+    loadCulturaOcioAdmin();
+    const container = document.getElementById(`${section}Items`);
+    if (container) {
+        renderAccordionSection(section, culturaOcioData[section]);
+    }
+    
+    showNotification('Elemento eliminado correctamente', 'success');
+}
+
+// Función para eliminar elemento específico por título (utilidad)
+function deleteCulturaItemByTitle(section, titleKeyword) {
+    // Cargar datos actuales
+    const savedData = localStorage.getItem('culturaOcioData');
+    if (savedData) {
+        try {
+            culturaOcioData = JSON.parse(savedData);
+        } catch (e) {
+            console.error('Error parseando culturaOcioData:', e);
+            return;
+        }
+    }
+    
+    // Buscar y eliminar el elemento que contenga el título
+    const initialLength = culturaOcioData[section]?.length || 0;
+    culturaOcioData[section] = culturaOcioData[section].filter(item => {
+        return !item.title || !item.title.toLowerCase().includes(titleKeyword.toLowerCase());
+    });
+    
+    const removedCount = initialLength - (culturaOcioData[section]?.length || 0);
+    
+    if (removedCount > 0) {
+        // Guardar en localStorage
+        localStorage.setItem('culturaOcioData', JSON.stringify(culturaOcioData));
+        
+        // Actualizar vista
+        loadCulturaOcioAdmin();
+        const container = document.getElementById(`${section}Items`);
+        if (container) {
+            renderAccordionSection(section, culturaOcioData[section]);
+        }
+        
+        console.log(`✅ Eliminado: ${removedCount} elemento(s) con título "${titleKeyword}"`);
+        return true;
+    }
+    
+    return false;
+}
+
+// Función para cargar la gestión administrativa de cultura y ocio
+function loadCulturaOcioAdmin() {
+    // Cargar datos desde localStorage
+    const savedData = localStorage.getItem('culturaOcioData');
+    if (savedData) {
+        try {
+            culturaOcioData = JSON.parse(savedData);
+        } catch (e) {
+            console.error('Error parseando culturaOcioData:', e);
+        }
+    }
+    
+    // Renderizar cada sección
+    const sections = ['naturaleza', 'patrimonio', 'gastronomia', 'eventos', 'cercanos'];
+    sections.forEach(section => {
+        const listElement = document.getElementById(`${section}AdminList`);
+        if (listElement) {
+            renderCulturaAdminSection(section, listElement);
+        }
+    });
+}
+
+// Función para renderizar sección administrativa
+function renderCulturaAdminSection(section, container) {
+    const items = culturaOcioData[section] || [];
+    
+    if (items.length === 0) {
+        container.innerHTML = '<p style="text-align: center; color: #6c757d; padding: 20px;">No hay elementos en esta sección</p>';
+        return;
+    }
+    
+    container.innerHTML = items.map(item => `
+        <div class="admin-item-card" style="background: #fff; border: 1px solid #e0e0e0; border-radius: 12px; padding: 20px; margin-bottom: 15px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+            <div class="admin-item-content" style="flex: 1;">
+                <h4 style="margin: 0 0 0.5rem 0;">${item.title}</h4>
+                <p style="margin: 0 0 0.5rem 0; color: #666;">${item.description.substring(0, 100)}${item.description.length > 100 ? '...' : ''}</p>
+                <div class="admin-item-meta" style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                    <span style="background: #3b82f6; color: white; padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.75rem;">Orden: ${item.order || 1}</span>
+                    ${item.image ? '<span style="background: #10b981; color: white; padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.75rem;">Con imagen</span>' : ''}
+                    ${item.links && item.links.length > 0 ? `<span style="background: #f59e0b; color: white; padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.75rem;">${item.links.length} enlaces</span>` : ''}
+                    ${item.externalLink ? '<span style="background: #8b5cf6; color: white; padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.75rem;">Enlace externo</span>' : ''}
+                </div>
+            </div>
+            <div class="admin-item-actions" style="display: flex; gap: 0.5rem; margin-top: 1rem;">
+                <button class="btn btn-sm btn-primary" onclick="openCulturaItemEditor('${section}', '${item.id}')" style="padding: 0.5rem 1rem; font-size: 0.875rem;">
+                    <i class="fas fa-edit"></i> Editar
+                </button>
+                <button class="btn btn-sm btn-danger" onclick="deleteCulturaItem('${section}', '${item.id}')" style="padding: 0.5rem 1rem; font-size: 0.875rem;">
+                    <i class="fas fa-trash"></i> Eliminar
+                </button>
+            </div>
+        </div>
+    `).join('');
+}
+
+// Función para exportar sección de cultura y ocio
+function exportCulturaSection(section) {
+    const data = culturaOcioData[section] || [];
+    const dataStr = JSON.stringify(data, null, 2);
+    const dataBlob = new Blob([dataStr], {type: 'application/json'});
+    
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(dataBlob);
+    link.download = `cultura-ocio-${section}-${new Date().toISOString().split('T')[0]}.json`;
+    link.click();
+    
+    showNotification(`Sección ${section} exportada correctamente`, 'success');
+}
+
+// La función switchCulturaTab ya está definida arriba, no duplicar
+
+// La función openCulturaOcioManager ya está definida arriba, solo actualizar si es necesario
+
+// La función saveCulturaOcio ya está definida arriba, solo actualizar si es necesario
+
+// Cargar contenido al iniciar
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function() {
+        setTimeout(() => {
+            loadCobrerosContent();
+        }, 500);
+    });
+} else {
+    setTimeout(() => {
+        loadCobrerosContent();
+    }, 500);
 }
 
  

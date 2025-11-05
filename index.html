@@ -350,9 +350,76 @@
         <!-- Cultura y Ocio Section -->
         <section id="cultura-ocio" class="content-section">
             <div class="container">
-                <h2>Cultura y Ocio</h2>
-                <div class="cultura-tarjetas-container" id="culturaTarjetasContainer">
-                    <!-- Se llenará dinámicamente con tarjetas configurables -->
+                <h2>🏔️ Cobreros - Naturaleza y Patrimonio</h2>
+                
+                <!-- Sistema de acordeón desplegable -->
+                <div class="accordion-container">
+                    
+                    <!-- Naturaleza y Senderismo -->
+                    <div class="accordion-item">
+                        <div class="accordion-header" onclick="toggleAccordion('naturaleza')">
+                            <h3>🥾 Naturaleza y Senderismo</h3>
+                            <span class="accordion-icon">+</span>
+                        </div>
+                        <div class="accordion-content" id="naturaleza-content">
+                            <div class="accordion-items" id="naturalezaItems">
+                                <!-- Se llenará dinámicamente -->
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Patrimonio y Arte -->
+                    <div class="accordion-item">
+                        <div class="accordion-header" onclick="toggleAccordion('patrimonio')">
+                            <h3>🏛️ Patrimonio y Arte</h3>
+                            <span class="accordion-icon">+</span>
+                        </div>
+                        <div class="accordion-content" id="patrimonio-content">
+                            <div class="accordion-items" id="patrimonioItems">
+                                <!-- Se llenará dinámicamente -->
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Recolección y Gastronomía -->
+                    <div class="accordion-item">
+                        <div class="accordion-header" onclick="toggleAccordion('gastronomia')">
+                            <h3>🍄 Recolección y Gastronomía</h3>
+                            <span class="accordion-icon">+</span>
+                        </div>
+                        <div class="accordion-content" id="gastronomia-content">
+                            <div class="accordion-items" id="gastronomiaItems">
+                                <!-- Se llenará dinámicamente -->
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Eventos y Tradiciones -->
+                    <div class="accordion-item">
+                        <div class="accordion-header" onclick="toggleAccordion('eventos')">
+                            <h3>🎪 Eventos y Tradiciones</h3>
+                            <span class="accordion-icon">+</span>
+                        </div>
+                        <div class="accordion-content" id="eventos-content">
+                            <div class="accordion-items" id="eventosItems">
+                                <!-- Se llenará dinámicamente -->
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Sitios Cercanos de Interés -->
+                    <div class="accordion-item">
+                        <div class="accordion-header" onclick="toggleAccordion('cercanos')">
+                            <h3>🗺️ Sitios Cercanos de Interés</h3>
+                            <span class="accordion-icon">+</span>
+                        </div>
+                        <div class="accordion-content" id="cercanos-content">
+                            <div class="accordion-items" id="cercanosItems">
+                                <!-- Se llenará dinámicamente -->
+                            </div>
+                        </div>
+                    </div>
+                    
                 </div>
             </div>
         </section>
@@ -1582,6 +1649,165 @@
         .admin-access-btn:active {
             transform: scale(0.95);
         }
+        /* ===== ACORDEÓN DESPLEGABLE ===== */
+        
+        .accordion-container {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+        
+        .accordion-item {
+            background: white;
+            border-radius: 12px;
+            margin-bottom: 15px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+        
+        .accordion-item:hover {
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+        }
+        
+        .accordion-header {
+            background: linear-gradient(135deg, #2c3e50, #34495e);
+            color: white;
+            padding: 20px 25px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all 0.3s ease;
+            user-select: none;
+        }
+        
+        .accordion-header:hover {
+            background: linear-gradient(135deg, #34495e, #2c3e50);
+        }
+        
+        .accordion-header h3 {
+            margin: 0;
+            font-size: 1.2rem;
+            font-weight: 600;
+        }
+        
+        .accordion-icon {
+            font-size: 1.5rem;
+            font-weight: bold;
+            transition: transform 0.3s ease;
+        }
+        
+        .accordion-item.active .accordion-icon {
+            transform: rotate(45deg);
+        }
+        
+        .accordion-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease;
+            background: #f8f9fa;
+        }
+        
+        .accordion-item.active .accordion-content {
+            max-height: 2000px;
+        }
+        
+        .accordion-items {
+            padding: 25px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+        
+        .accordion-item-card {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+        }
+        
+        .accordion-item-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+        }
+        
+        .accordion-item-card h4 {
+            color: #2c3e50;
+            margin: 0 0 10px 0;
+            font-size: 1.1rem;
+            font-weight: 600;
+        }
+        
+        .accordion-item-card p {
+            color: #555;
+            margin: 0 0 15px 0;
+            line-height: 1.6;
+        }
+        
+        .accordion-item-card .item-image {
+            width: 100%;
+            height: 200px;
+            object-fit: cover;
+            border-radius: 6px;
+            margin-bottom: 15px;
+        }
+        
+        .accordion-item-card .item-links {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        
+        .accordion-item-card .item-link {
+            background: #007bff;
+            color: white;
+            padding: 8px 12px;
+            border-radius: 4px;
+            text-decoration: none;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+        }
+        
+        .accordion-item-card .item-link:hover {
+            background: #0056b3;
+            transform: translateY(-1px);
+        }
+        
+        .accordion-item-card .item-link.pdf {
+            background: #dc3545;
+        }
+        
+        .accordion-item-card .item-link.pdf:hover {
+            background: #c82333;
+        }
+        
+        .accordion-item-card .item-link.external {
+            background: #28a745;
+        }
+        
+        .accordion-item-card .item-link.external:hover {
+            background: #218838;
+        }
+        
+        /* Responsive para móvil */
+        .device-mobile .accordion-items {
+            grid-template-columns: 1fr;
+            padding: 15px;
+        }
+        
+        .device-mobile .accordion-header {
+            padding: 15px 20px;
+        }
+        
+        .device-mobile .accordion-header h3 {
+            font-size: 1.1rem;
+        }
+        
+        .device-mobile .accordion-item-card {
+            padding: 15px;
+        }
+        
     </style>
 
     <!-- Botón de acceso admin en esquina superior derecha -->
@@ -1994,8 +2220,11 @@
             <div class="modal-body">
                 <div class="cultura-tabs">
                     <button class="tab-btn active" onclick="switchCulturaTab('contenido')">📝 Contenido</button>
-                    <button class="tab-btn" onclick="switchCulturaTab('tarjetas')">🃏 Tarjetas</button>
-                    <button class="tab-btn" onclick="switchCulturaTab('eventos')">🎉 Eventos</button>
+                    <button class="tab-btn" onclick="switchCulturaTab('naturaleza')">🥾 Naturaleza</button>
+                    <button class="tab-btn" onclick="switchCulturaTab('patrimonio')">🏛️ Patrimonio</button>
+                    <button class="tab-btn" onclick="switchCulturaTab('gastronomia')">🍄 Gastronomía</button>
+                    <button class="tab-btn" onclick="switchCulturaTab('eventos')">🎪 Eventos</button>
+                    <button class="tab-btn" onclick="switchCulturaTab('cercanos')">🗺️ Sitios Cercanos</button>
                 </div>
                 
                 <!-- Tab de Contenido -->
@@ -2006,7 +2235,7 @@
                     </div>
                     <div class="form-group">
                         <label for="culturaDescripcion">Descripción principal:</label>
-                        <div id="culturaDescripcionEditor" style="min-height: 200px;"></div>
+                        <textarea id="culturaDescripcion" rows="4" placeholder="Descripción de la sección de Cultura y Ocio..."></textarea>
                     </div>
                     <div class="form-group">
                         <label for="culturaSubtitle">Subtítulo de eventos:</label>
@@ -2014,41 +2243,77 @@
                     </div>
                 </div>
                 
+                <!-- Tab de Naturaleza -->
+                <div id="cultura-naturaleza-tab" class="tab-content">
+                    <div class="content-actions">
+                        <button class="btn btn-primary" onclick="openCulturaItemEditor('naturaleza')">
+                            <i class="fas fa-plus"></i> Nuevo Elemento
+                        </button>
+                        <button class="btn btn-secondary" onclick="exportCulturaSection('naturaleza')">
+                            <i class="fas fa-download"></i> Exportar
+                        </button>
+                    </div>
+                    <div class="content-list" id="naturalezaAdminList">
+                        <!-- Se cargará dinámicamente -->
+                    </div>
+                </div>
+                
+                <!-- Tab de Patrimonio -->
+                <div id="cultura-patrimonio-tab" class="tab-content">
+                    <div class="content-actions">
+                        <button class="btn btn-primary" onclick="openCulturaItemEditor('patrimonio')">
+                            <i class="fas fa-plus"></i> Nuevo Elemento
+                        </button>
+                        <button class="btn btn-secondary" onclick="exportCulturaSection('patrimonio')">
+                            <i class="fas fa-download"></i> Exportar
+                        </button>
+                    </div>
+                    <div class="content-list" id="patrimonioAdminList">
+                        <!-- Se cargará dinámicamente -->
+                    </div>
+                </div>
+                
+                <!-- Tab de Gastronomía -->
+                <div id="cultura-gastronomia-tab" class="tab-content">
+                    <div class="content-actions">
+                        <button class="btn btn-primary" onclick="openCulturaItemEditor('gastronomia')">
+                            <i class="fas fa-plus"></i> Nuevo Elemento
+                        </button>
+                        <button class="btn btn-secondary" onclick="exportCulturaSection('gastronomia')">
+                            <i class="fas fa-download"></i> Exportar
+                        </button>
+                    </div>
+                    <div class="content-list" id="gastronomiaAdminList">
+                        <!-- Se cargará dinámicamente -->
+                    </div>
+                </div>
+                
                 <!-- Tab de Eventos -->
                 <div id="cultura-eventos-tab" class="tab-content">
                     <div class="content-actions">
-                        <button class="btn btn-primary" onclick="openEventEditor()">
-                            <i class="fas fa-plus"></i> Nuevo Evento
+                        <button class="btn btn-primary" onclick="openCulturaItemEditor('eventos')">
+                            <i class="fas fa-plus"></i> Nuevo Elemento
                         </button>
-                        <button class="btn btn-secondary" onclick="exportEvents()">
-                            <i class="fas fa-download"></i> Exportar Eventos
+                        <button class="btn btn-secondary" onclick="exportCulturaSection('eventos')">
+                            <i class="fas fa-download"></i> Exportar
                         </button>
                     </div>
-                    <div class="content-list" id="culturaEventsList">
+                    <div class="content-list" id="eventosAdminList">
                         <!-- Se cargará dinámicamente -->
                     </div>
                 </div>
                 
-                <!-- Tab de Instalaciones -->
-                <div id="cultura-instalaciones-tab" class="tab-content">
+                <!-- Tab de Sitios Cercanos -->
+                <div id="cultura-cercanos-tab" class="tab-content">
                     <div class="content-actions">
-                        <button class="btn btn-primary" onclick="addCulturaInstalacion()">
-                            <i class="fas fa-plus"></i> Nueva Instalación
+                        <button class="btn btn-primary" onclick="openCulturaItemEditor('cercanos')">
+                            <i class="fas fa-plus"></i> Nuevo Elemento
+                        </button>
+                        <button class="btn btn-secondary" onclick="exportCulturaSection('cercanos')">
+                            <i class="fas fa-download"></i> Exportar
                         </button>
                     </div>
-                    <div class="content-list" id="culturaInstalacionesList">
-                        <!-- Se cargará dinámicamente -->
-                    </div>
-                </div>
-                
-                <!-- Tab de Tarjetas -->
-                <div id="cultura-tarjetas-tab" class="tab-content">
-                    <div class="content-actions">
-                        <button class="btn btn-primary" onclick="addCulturaTarjeta()">
-                            <i class="fas fa-plus"></i> Nueva Tarjeta
-                        </button>
-                    </div>
-                    <div class="content-list" id="culturaTarjetasList">
+                    <div class="content-list" id="cercanosAdminList">
                         <!-- Se cargará dinámicamente -->
                     </div>
                 </div>
@@ -2057,6 +2322,72 @@
                 <button type="button" class="btn btn-outline" onclick="closeCulturaOcioModal()">Cancelar</button>
                 <button type="button" class="btn btn-primary" onclick="saveCulturaOcio()">
                     <i class="fas fa-save"></i> Guardar Cambios
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para editar elementos de Cultura y Ocio -->
+    <div id="culturaItemModal" class="modal">
+        <div class="modal-content" style="max-width: 800px;">
+            <div class="modal-header">
+                <h3 id="culturaItemModalTitle">Editar Elemento</h3>
+                <span class="close" onclick="closeCulturaItemModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form id="culturaItemForm">
+                    <input type="hidden" id="culturaItemId">
+                    <input type="hidden" id="culturaItemSection">
+                    
+                    <div class="form-group">
+                        <label for="culturaItemTitle">Título:</label>
+                        <input type="text" id="culturaItemTitle" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="culturaItemDescription">Descripción:</label>
+                        <textarea id="culturaItemDescription" rows="4" required></textarea>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="culturaItemImage">Imagen (URL o archivo):</label>
+                        <input type="text" id="culturaItemImage" placeholder="URL de imagen o subir archivo">
+                        <input type="file" id="culturaItemImageFile" accept="image/*" style="margin-top: 5px;">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Enlaces/Botones:</label>
+                        <div id="culturaLinksContainer" style="border: 1px solid #ddd; border-radius: 8px; padding: 1rem; background: #f9fafb;">
+                            <!-- Los enlaces se cargarán dinámicamente aquí -->
+                        </div>
+                        <button type="button" class="btn btn-sm btn-outline" onclick="addCulturaLink()" style="margin-top: 10px;">
+                            <i class="fas fa-plus"></i> Agregar Enlace
+                        </button>
+                        <small style="color: #666; display: block; margin-top: 5px;">
+                            Puedes agregar múltiples enlaces. Cada uno puede tener su propio texto, URL, tipo y puedes activarlo/desactivarlo.
+                        </small>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="culturaItemDocument">Documento (PDF/JPG):</label>
+                        <input type="file" id="culturaItemDocument" accept=".pdf,.jpg,.jpeg,.png">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="culturaItemExternalLink">Enlace externo:</label>
+                        <input type="url" id="culturaItemExternalLink" placeholder="https://ejemplo.com">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="culturaItemOrder">Orden de visualización:</label>
+                        <input type="number" id="culturaItemOrder" min="1" value="1">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline" onclick="closeCulturaItemModal()">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="saveCulturaItem()">
+                    <i class="fas fa-save"></i> Guardar
                 </button>
             </div>
         </div>
