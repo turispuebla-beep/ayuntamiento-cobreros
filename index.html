@@ -31,12 +31,12 @@
         
         // Configuración de Firebase
         const firebaseConfig = {
-            apiKey: "AIzaSyBXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX", // Necesitas tu API key real
+            apiKey: "AIzaSyAwgSjagdxd7pthmRAINDeTIPXx3zAMUeo",
             authDomain: "turisteam-80f1b.firebaseapp.com",
             projectId: "turisteam-80f1b",
             storageBucket: "turisteam-80f1b.appspot.com",
             messagingSenderId: "623846192437",
-            appId: "1:623846192437:web:XXXXXXXXXXXXXXXX" // Necesitas tu App ID real
+            appId: "1:623846192437:web:dc176bf38c1cbb9bac487c"
         };
         
         // Inicializar Firebase
@@ -59,7 +59,7 @@
         async function getFCMToken() {
             try {
                 const token = await getToken(messaging, {
-                    vapidKey: 'TU_VAPID_KEY_AQUI' // Necesitas generar una VAPID key
+                    vapidKey: 'BEl62iUYgUivxIkv69yViEuiBIa40HI8lF7vQyVpX4Bw'
                 });
                 console.log('FCM Token:', token);
                 return token;

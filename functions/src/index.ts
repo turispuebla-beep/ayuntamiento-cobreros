@@ -295,7 +295,7 @@ export const sendPushNotification = functions.https.onRequest((req, res) => {
       await admin.firestore().collection('notification_stats').add(stats);
 
       console.log('📊 Estadísticas guardadas:', stats);
-
+      
       return res.status(200).json({
         success: true,
         message: `Notificación enviada: ${sentCount} exitosos, ${failedCount} fallidos`,
@@ -631,6 +631,8 @@ Teléfono: 980 62 26 18
 Este es un email automático, por favor no responda a este mensaje.
   `;
 }
+
+
 
 
 
