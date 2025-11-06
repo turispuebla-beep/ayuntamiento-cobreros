@@ -47,3 +47,5 @@ Si el despliegue falló, veremos el error y lo arreglamos.
 **¿Puedes verificar en Firebase Console si ya está la función?** 🔍
 
 
+
+

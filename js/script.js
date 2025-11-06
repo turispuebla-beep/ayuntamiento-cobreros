@@ -27,6 +27,178 @@ const Logger = {
     }
 };
 
+// ===== FUNCIONES DE UTILIDAD Y SEGURIDAD =====
+
+// Función para escapar HTML y prevenir XSS
+function escapeHtml(text) {
+    if (text == null) return '';
+    const div = document.createElement('div');
+    div.textContent = String(text);
+    return div.innerHTML;
+}
+
+// Función mejorada para escapar caracteres especiales en HTML
+function escapeForHtml(text) {
+    if (text == null) return '';
+    return String(text)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+
+// Validar URL
+function isValidUrl(url) {
+    if (!url || typeof url !== 'string') return false;
+    try {
+        new URL(url);
+        return true;
+    } catch {
+        // Intentar como URL relativa
+        return url.startsWith('/') || url.startsWith('./') || url.startsWith('../');
+    }
+}
+
+// Objeto de validadores reutilizables
+const validators = {
+    required(value, fieldName) {
+        if (!value || (typeof value === 'string' && value.trim() === '')) {
+            return `${fieldName} es obligatorio`;
+        }
+        return null;
+    },
+    url(value) {
+        if (!value) return null; // URL opcional
+        if (!isValidUrl(value)) {
+            return 'URL inválida';
+        }
+        return null;
+    },
+    positiveNumber(value) {
+        const num = parseInt(value);
+        if (isNaN(num) || num < 1) {
+            return 'Debe ser un número mayor a 0';
+        }
+        return null;
+    },
+    email(value) {
+        if (!value) return null;
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(value)) {
+            return 'Email inválido';
+        }
+        return null;
+    },
+    postalCode(value) {
+        if (!value) return null;
+        const postalCodeRegex = /^[0-9]{5}$/;
+        if (!postalCodeRegex.test(value)) {
+            return 'El código postal debe tener 5 dígitos';
+        }
+        return null;
+    }
+};
+
+// Función de debouncing
+function debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+        const later = () => {
+            clearTimeout(timeout);
+            func(...args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+    };
+}
+
+// Cache de elementos DOM para Cultura y Ocio
+const culturaOcioCache = {
+    modal: null,
+    containers: {},
+    getModal() {
+        if (!this.modal) {
+            this.modal = document.getElementById('culturaOcioModal');
+        }
+        return this.modal;
+    },
+    getContainer(id) {
+        if (!this.containers[id]) {
+            this.containers[id] = document.getElementById(id);
+        }
+        return this.containers[id];
+    },
+    clear() {
+        this.modal = null;
+        this.containers = {};
+    }
+};
+
+// Función para crear badges reutilizables
+function createBadge(text, color = '#3b82f6') {
+    const badge = document.createElement('span');
+    badge.style.cssText = `background: ${color}; color: white; padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.75rem;`;
+    badge.textContent = text;
+    return badge;
+}
+
+// Función para crear botones de acción reutilizables
+function createActionButton(text, icon, onClick, variant = 'primary') {
+    const button = document.createElement('button');
+    button.className = `btn btn-sm btn-${variant}`;
+    button.innerHTML = `<i class="fas fa-${icon}"></i> ${text}`;
+    button.onclick = onClick;
+    button.style.cssText = 'padding: 0.5rem 1rem; font-size: 0.875rem;';
+    return button;
+}
+
+// Función para mostrar estado de carga
+function showLoadingState(containerId, message = 'Cargando...') {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    container.innerHTML = `
+        <div class="loading-state" style="text-align: center; padding: 2rem; color: #6b7280;">
+            <div style="display: inline-block; width: 40px; height: 40px; border: 4px solid #e5e7eb; border-top-color: #3b82f6; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+            <p style="margin-top: 1rem;">${escapeHtml(message)}</p>
+        </div>
+    `;
+    // Agregar animación si no existe
+    if (!document.getElementById('loading-spinner-style')) {
+        const style = document.createElement('style');
+        style.id = 'loading-spinner-style';
+        style.textContent = `
+            @keyframes spin {
+                to { transform: rotate(360deg); }
+            }
+        `;
+        document.head.appendChild(style);
+    }
+}
+
+// Configuración de tarjetas a eliminar (en lugar de hardcodeado)
+const TARJETAS_A_ELIMINAR = [
+    'Quesos Artesanales',
+    'Vinos de la Tierra'
+];
+
+// Función genérica para eliminar tarjetas por títulos
+function removeTarjetasByTitles(titles) {
+    if (!culturaOcioConfig.tarjetas || !Array.isArray(culturaOcioConfig.tarjetas)) {
+        return false;
+    }
+    const initialLength = culturaOcioConfig.tarjetas.length;
+    culturaOcioConfig.tarjetas = culturaOcioConfig.tarjetas.filter(tarjeta => {
+        const titulo = tarjeta.titulo || '';
+        return !titles.some(nombre => titulo.includes(nombre));
+    });
+    if (culturaOcioConfig.tarjetas.length < initialLength) {
+        localStorage.setItem('culturaOcioConfig', JSON.stringify(culturaOcioConfig));
+        return true;
+    }
+    return false;
+}
+
 // Variables globales
 let currentUser = null;
 let isAdmin = false;
@@ -941,6 +1113,38 @@ function openModal(modalId) {
     if (modal) {
         modal.style.display = 'block';
         document.body.style.overflow = 'hidden';
+        
+        // Mejorar accesibilidad: agregar atributos ARIA
+        modal.setAttribute('role', 'dialog');
+        modal.setAttribute('aria-modal', 'true');
+        modal.setAttribute('aria-hidden', 'false');
+        
+        // Buscar título del modal para aria-labelledby
+        const modalTitle = modal.querySelector('h2, h3, .modal-title, [class*="title"]');
+        if (modalTitle && !modalTitle.id) {
+            modalTitle.id = `${modalId}-title`;
+        }
+        if (modalTitle) {
+            modal.setAttribute('aria-labelledby', modalTitle.id);
+        }
+        
+        // Focus trap: enfocar primer elemento interactivo
+        setTimeout(() => {
+            const firstFocusable = modal.querySelector('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+            if (firstFocusable) {
+                firstFocusable.focus();
+            }
+        }, 100);
+        
+        // Agregar listener para ESC
+        const handleEscape = (e) => {
+            if (e.key === 'Escape' && modal.style.display === 'block') {
+                closeModal(modalId);
+                document.removeEventListener('keydown', handleEscape);
+            }
+        };
+        document.addEventListener('keydown', handleEscape);
+        
         console.log('Modal opened successfully');
     } else {
         console.error('Modal not found:', modalId);
@@ -953,6 +1157,9 @@ function closeModal(modalId) {
     if (modal) {
         modal.style.display = 'none';
         document.body.style.overflow = 'auto';
+        
+        // Mejorar accesibilidad: actualizar atributos ARIA
+        modal.setAttribute('aria-hidden', 'true');
     }
 }
 
@@ -975,7 +1182,7 @@ function handleLogin(e) {
     const user = users.find(u => u.email === email && u.password === password);
     
     if (user) {
-        const displayName = user.fullName || (user.name ? `${user.name}${user.surname1 ? ' ' + user.surname1 : ''}${user.surname2 ? ' ' + user.surname2 : ''}` : (user.nombre ? `${user.nombre}${user.apellidos ? ' ' + user.apellidos : ''}` : user.name || 'Usuario'));
+        const displayName = user.fullName || (user.name ? `${user.name}${user.surname1 ? ' ' + user.surname1 : ''}${user.surname2 ? ' ' + user.surname2 : ''}` : (user.nombre ? `${user.nombre}${user.apellidos ? ' ' + user.apellidos : ''}` : user.name || 'Persona usuaria'));
         currentUser = { 
             email: user.email, 
             name: user.name || user.nombre || '',
@@ -1321,7 +1528,7 @@ async function handleRegister(e, recaptchaToken = null) {
         
     } catch (error) {
         console.error('❌ Error en el registro:', error);
-        showNotification('Error al registrar el usuario. Por favor, inténtelo de nuevo.', 'error');
+        showNotification('Error al registrar a la persona. Por favor, inténtelo de nuevo.', 'error');
     }
 }
 
@@ -1360,7 +1567,7 @@ function handleCreateAdmin(e) {
 
     // Verificar si el email ya existe en usuarios normales
     if (users.some(user => user.email === email)) {
-        showNotification('Este correo electrónico ya está registrado como usuario normal', 'error');
+        showNotification('Este correo electrónico ya está registrado', 'error');
         return;
     }
 
@@ -1474,6 +1681,41 @@ async function handleAppointment(e) {
         showNotification('La fecha seleccionada no puede ser en el pasado', 'error');
         return;
     }
+    
+    // Validar que la fecha y hora no estén ya reservadas
+    const dateStr = formatDateForStorage(selectedDate);
+    const existingAppointment = appointments.find(apt => {
+        const aptDate = new Date(apt.date);
+        return formatDateForStorage(aptDate) === dateStr && 
+               apt.time === appointmentData.time && 
+               apt.status !== 'cancelled';
+    });
+    
+    if (existingAppointment) {
+        showNotification('Este horario ya está reservado. Por favor, seleccione otro horario.', 'error');
+        // Recargar calendario para mostrar el horario como reservado
+        if (document.getElementById('calendarGrid')) {
+            renderCalendar();
+            selectAppointmentDate(dateStr);
+        }
+        return;
+    }
+    
+    // Validar que la fecha tenga horarios disponibles
+    const dayOfWeek = selectedDate.getDay();
+    const dayName = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'][dayOfWeek];
+    const dayConfig = appointmentScheduleConfig.days[dayName];
+    
+    if (!dayConfig || !dayConfig.enabled) {
+        showNotification('Este día no tiene horarios disponibles', 'error');
+        return;
+    }
+    
+    const allSlots = [...(dayConfig.morningHours || []), ...(dayConfig.afternoonHours || [])];
+    if (!allSlots.includes(appointmentData.time)) {
+        showNotification('El horario seleccionado no está disponible para este día', 'error');
+        return;
+    }
 
     // Enviar email de confirmación al usuario
     const confirmationSent = await sendConfirmationEmail(appointmentData);
@@ -1493,6 +1735,17 @@ async function handleAppointment(e) {
         
         appointments.push(appointment);
         saveAppointments();
+        
+        // Actualizar calendario para mostrar la nueva cita en rojo
+        if (document.getElementById('calendarGrid')) {
+            renderCalendar();
+            // Si el formulario sigue abierto, actualizar los horarios
+            if (selectedAppointmentDate) {
+                setTimeout(() => {
+                    showTimeSlots(selectedAppointmentDate);
+                }, 100);
+            }
+        }
         
         // Crear notificación para el encargado municipal
         createMunicipalAlert(appointment);
@@ -1663,6 +1916,13 @@ function switchTab(tabName) {
         loadDocumentsList();
     } else if (tabName === 'notifications') {
         loadNotificationsHistory();
+    } else if (tabName === 'appointments') {
+        loadAppointmentScheduleConfigUI(); // Cargar configuración de horarios
+        // Renderizar calendario después de un breve delay para asegurar que el DOM esté listo
+        setTimeout(() => {
+            renderAdminCalendar();
+            loadAppointmentsList();
+        }, 200);
     } else if (tabName === 'database') {
         loadSystemStats();
     } else if (tabName === 'settings') {
@@ -1759,6 +2019,7 @@ function updateAdminContent() {
     loadBandoList();
     loadUsersList();
     loadNotificationsHistory();
+    loadAppointmentScheduleConfigUI(); // Cargar configuración de horarios en el UI
 }
 
 // Cargar lista de noticias en admin
@@ -2267,11 +2528,21 @@ function toggleAppointmentForm() {
     const formContainer = document.getElementById('appointmentFormContainer');
     const toggleBtn = document.getElementById('toggleAppointmentForm');
     
+    // Actualizar aria-expanded para accesibilidad
+    const isExpanded = formContainer.style.display !== 'none';
+    toggleBtn.setAttribute('aria-expanded', !isExpanded);
+    
     if (formContainer.style.display === 'none' || formContainer.style.display === '') {
         // Abrir formulario
         formContainer.style.display = 'block';
         toggleBtn.innerHTML = '<i class="fas fa-calendar-minus"></i> Ocultar Formulario';
         toggleBtn.style.background = '#ef4444';
+        toggleBtn.setAttribute('aria-expanded', 'true');
+        
+        // Inicializar calendario
+        setTimeout(() => {
+            initializeAppointmentCalendar();
+        }, 100);
         
         // Scroll suave al formulario con offset
         setTimeout(() => {
@@ -2284,7 +2555,7 @@ function toggleAppointmentForm() {
                 top: offsetPosition,
                 behavior: 'smooth'
             });
-        }, 100);
+        }, 200);
         
         console.log('Formulario de cita previa abierto');
     } else {
@@ -2299,10 +2570,11 @@ function closeAppointmentForm() {
     const toggleBtn = document.getElementById('toggleAppointmentForm');
     const appointmentForm = document.getElementById('appointmentForm');
     
-    // Cerrar formulario
-    formContainer.style.display = 'none';
-    toggleBtn.innerHTML = '<i class="fas fa-calendar-plus"></i> Solicitar Cita Previa';
-    toggleBtn.style.background = '';
+        // Cerrar formulario
+        formContainer.style.display = 'none';
+        toggleBtn.innerHTML = '<i class="fas fa-calendar-plus"></i> Solicitar Cita Previa';
+        toggleBtn.style.background = '';
+        toggleBtn.setAttribute('aria-expanded', 'false');
     
     // Limpiar formulario
     if (appointmentForm) {
@@ -2832,7 +3104,7 @@ function exportUsers() {
     link.download = `usuarios_${new Date().toISOString().split('T')[0]}.json`;
     link.click();
     URL.revokeObjectURL(url);
-    showNotification('Usuarios exportados correctamente', 'success');
+    showNotification('Datos de personas usuarias exportados correctamente', 'success');
 }
 
 function exportAdmins() {
@@ -3198,29 +3470,39 @@ function closeCulturaOcioModal() {
     closeModal('culturaOcioModal');
 }
 
-function switchCulturaTab(tabName) {
-    // Ocultar todas las pestañas
-    const tabs = document.querySelectorAll('#culturaOcioModal .tab-content');
-    tabs.forEach(tab => tab.classList.remove('active'));
-    
-    // Desactivar todos los botones
-    const buttons = document.querySelectorAll('#culturaOcioModal .tab-btn');
-    buttons.forEach(btn => btn.classList.remove('active'));
-    
-    // Mostrar pestaña seleccionada
-    const selectedTab = document.getElementById(`cultura-${tabName}-tab`);
-    if (selectedTab) {
-        selectedTab.classList.add('active');
-    }
-    
-    // Activar botón seleccionado
-    const selectedButton = event ? event.target : document.querySelector(`#culturaOcioModal .tab-btn[onclick*="switchCulturaTab('${tabName}')"]`);
-    if (selectedButton) {
-        selectedButton.classList.add('active');
-    }
-    
-    // Cargar contenido específico de la pestaña
-    switch(tabName) {
+function switchCulturaTab(tabName, event = null) {
+    try {
+        // Usar cache para obtener modal
+        const modal = culturaOcioCache.getModal();
+        if (!modal) {
+            console.warn('Modal de cultura y ocio no encontrado');
+            return;
+        }
+        
+        // Ocultar todas las pestañas
+        const tabs = modal.querySelectorAll('.tab-content');
+        tabs.forEach(tab => tab.classList.remove('active'));
+        
+        // Desactivar todos los botones
+        const buttons = modal.querySelectorAll('.tab-btn');
+        buttons.forEach(btn => btn.classList.remove('active'));
+        
+        // Mostrar pestaña seleccionada
+        const selectedTab = document.getElementById(`cultura-${tabName}-tab`);
+        if (selectedTab) {
+            selectedTab.classList.add('active');
+        }
+        
+        // Activar botón seleccionado (usar event si está disponible, sino buscar por selector)
+        const safeTabName = escapeHtml(tabName);
+        const buttonSelector = `#culturaOcioModal .tab-btn[onclick*="switchCulturaTab('${safeTabName}')"]`;
+        const selectedButton = event?.target || modal.querySelector(buttonSelector);
+        if (selectedButton) {
+            selectedButton.classList.add('active');
+        }
+        
+        // Cargar contenido específico de la pestaña
+        switch(tabName) {
         case 'eventos':
             if (typeof loadCulturaEventsList === 'function') {
             loadCulturaEventsList();
@@ -3289,6 +3571,10 @@ function switchCulturaTab(tabName) {
                 }
             }
             break;
+        }
+    } catch (error) {
+        console.error('Error en switchCulturaTab:', error);
+        showNotification('Error al cambiar de pestaña. Por favor, inténtelo de nuevo.', 'error');
     }
 }
 
@@ -3301,20 +3587,8 @@ function loadCulturaOcioConfig() {
             culturaOcioConfig.pestanasPersonalizadas = [];
         }
         
-        // Eliminar tarjetas específicas: Quesos Artesanales y Vinos de la Tierra
-        if (culturaOcioConfig.tarjetas && Array.isArray(culturaOcioConfig.tarjetas)) {
-            const initialLength = culturaOcioConfig.tarjetas.length;
-            culturaOcioConfig.tarjetas = culturaOcioConfig.tarjetas.filter(tarjeta => {
-                const titulo = tarjeta.titulo || '';
-                // Eliminar tarjetas que contengan estos textos
-                return !titulo.includes('Quesos Artesanales') && !titulo.includes('Vinos de la Tierra');
-            });
-            
-            // Si se eliminaron tarjetas, guardar la configuración actualizada
-            if (culturaOcioConfig.tarjetas.length < initialLength) {
-                localStorage.setItem('culturaOcioConfig', JSON.stringify(culturaOcioConfig));
-            }
-        }
+        // Eliminar tarjetas específicas usando función genérica
+        removeTarjetasByTitles(TARJETAS_A_ELIMINAR);
     }
     // Renderizar pestañas personalizadas al cargar
     if (typeof renderCustomTabs === 'function') {
@@ -4279,7 +4553,7 @@ function handleDataImport(e) {
                 case 'users':
                     users = data;
                     localStorage.setItem('users', JSON.stringify(users));
-                    showNotification('Usuarios importados correctamente', 'success');
+                    showNotification('Datos de personas usuarias importados correctamente', 'success');
                     break;
                 case 'admins':
                     administrators = data;
@@ -4652,12 +4926,14 @@ async function sendConfirmationEmail(appointmentData) {
                 data: {
                     name: appointmentData.name,
                     service: getServiceName(appointmentData.service),
-                    date: formatDate(appointmentData.date),
+                    date: formatDateForDisplay(appointmentData.date),
                     time: appointmentData.time,
+                    dateFormatted: formatDateForDisplay(appointmentData.date),
                     dni: appointmentData.dni,
                     email: appointmentData.email,
                     phone: appointmentData.phone,
-                    comments: appointmentData.comments || 'Ninguno'
+                    comments: appointmentData.comments || 'Ninguno',
+                    appointmentId: Date.now().toString()
                 }
             })
         });
@@ -4696,10 +4972,12 @@ async function sendAdminAlert(appointmentData) {
                     email: appointmentData.email,
                     phone: appointmentData.phone,
                     service: getServiceName(appointmentData.service),
-                    date: formatDate(appointmentData.date),
+                    date: formatDateForDisplay(appointmentData.date),
                     time: appointmentData.time,
+                    dateFormatted: formatDateForDisplay(appointmentData.date),
                     comments: appointmentData.comments || 'Ninguno',
-                    createdAt: new Date().toLocaleString('es-ES')
+                    createdAt: new Date().toLocaleString('es-ES'),
+                    appointmentId: Date.now().toString()
                 }
             })
         });
@@ -4914,6 +5192,7 @@ async function updateAppointmentStatus(appointmentId, newStatus) {
         saveAppointments();
         loadAppointmentsList();
         loadAppointmentStats();
+        renderAdminCalendar(); // Actualizar calendario del admin
         
         const statusText = getStatusText(newStatus);
         showNotification(`Cita ${statusText.toLowerCase()} correctamente. Se ha enviado un email de confirmación.`, 'success');
@@ -4969,31 +5248,85 @@ function refreshAppointments() {
     loadAppointments();
     loadAppointmentsList();
     loadAppointmentStats();
+    renderAdminCalendar(); // Actualizar calendario del admin
     showNotification('Lista de citas actualizada', 'success');
 }
 
 // Función para crear una cita de prueba (solo para desarrollo)
-function createTestAppointment() {
+async function createTestAppointment() {
+    console.log('🚀 Iniciando prueba de cita previa...');
+    
+    // Obtener fecha de mañana para la prueba
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const dateStr = formatDateForStorage(tomorrow);
+    
+    console.log('📅 Fecha seleccionada para la prueba:', dateStr);
+    
+    const testAppointmentData = {
+        name: 'Prueba Cita Previa',
+        dni: '12345678A',
+        email: 'aytocobreros@gmail.com',
+        phone: '980622618',
+        service: 'empadronamiento',
+        date: dateStr,
+        time: '10:00',
+        comments: 'Cita de prueba para verificar el envío de correos de confirmación',
+        status: 'pending'
+    };
+    
+    console.log('📋 Datos de la cita de prueba:', testAppointmentData);
+    
     const testAppointment = {
         id: Date.now().toString(),
-        name: 'Juan Pérez García',
-        dni: '12345678A',
-        email: 'juan.perez@email.com',
-        phone: '666123456',
-        service: 'empadronamiento',
-        date: '2024-12-25',
-        time: '10:00',
-        comments: 'Cita de prueba para verificar funcionalidad',
-        status: 'pending',
+        ...testAppointmentData,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
     };
     
+    // Agregar la cita
     appointments.push(testAppointment);
     saveAppointments();
+    console.log('✅ Cita guardada en localStorage');
+    
+    // Enviar correo de confirmación
+    try {
+        console.log('📧 Enviando correo de confirmación de prueba a aytocobreros@gmail.com...');
+        const confirmationSent = await sendConfirmationEmail(testAppointmentData);
+        if (confirmationSent) {
+            console.log('✅ Correo de confirmación enviado correctamente');
+            showNotification('Cita de prueba creada y correo de confirmación enviado a aytocobreros@gmail.com', 'success');
+        } else {
+            console.log('⚠️ No se pudo enviar el correo de confirmación');
+            showNotification('Cita de prueba creada, pero no se pudo enviar el correo de confirmación', 'warning');
+        }
+    } catch (error) {
+        console.error('❌ Error enviando correo de confirmación:', error);
+        showNotification('Cita de prueba creada, pero hubo un error al enviar el correo: ' + error.message, 'error');
+    }
+    
+    // Enviar alerta al administrador
+    try {
+        console.log('📧 Enviando alerta al administrador (aytocobreros@gmail.com)...');
+        const alertSent = await sendAdminAlert(testAppointmentData);
+        if (alertSent) {
+            console.log('✅ Alerta al administrador enviada correctamente');
+        } else {
+            console.log('⚠️ No se pudo enviar la alerta al administrador');
+        }
+    } catch (error) {
+        console.error('❌ Error enviando alerta al administrador:', error);
+    }
+    
+    // Actualizar UI
     loadAppointmentsList();
     loadAppointmentStats();
-    showNotification('Cita de prueba creada', 'success');
+    renderAdminCalendar();
+    
+    console.log('✅ Prueba de cita previa completada. Revisa el correo aytocobreros@gmail.com');
+    showNotification('Cita de prueba creada correctamente. Revisa el correo aytocobreros@gmail.com', 'success');
+    
+    return testAppointment;
 }
 
 // Funciones para editar citas previas
@@ -5706,7 +6039,7 @@ async function register() {
     users.push(newUser);
     localStorage.setItem('users', JSON.stringify(users));
     closeModal('registerModal');
-    showNotification('Usuario registrado correctamente', 'success');
+    showNotification('Registro completado correctamente', 'success');
     
     // Si dio consentimiento para notificaciones, mostrar mensaje
     if (notificationConsent && fcmToken) {
@@ -5782,7 +6115,13 @@ function openAdminPanel() {
     loadNotificationsHistory();
     loadSystemStats();
     loadAppointmentSettings();
+    loadAppointmentScheduleConfigUI(); // Cargar configuración de horarios
     loadPublicNotificationsList();
+    
+    // Renderizar calendario del admin después de un breve delay para asegurar que el DOM esté listo
+    setTimeout(() => {
+        renderAdminCalendar();
+    }, 300);
 }
 
 // Cerrar panel de administración
@@ -7868,7 +8207,7 @@ function editUser(email) {
     const user = users.find(u => u.email === email);
     
     if (!user) {
-        showNotification('Usuario no encontrado', 'error');
+        showNotification('Persona no encontrada', 'error');
         return;
     }
     
@@ -8021,7 +8360,7 @@ async function saveUserChanges(oldEmail) {
         const userIndex = users.findIndex(u => u.email === oldEmail);
         
         if (userIndex === -1) {
-            showNotification('Usuario no encontrado', 'error');
+            showNotification('Persona no encontrada', 'error');
             return;
         }
         
@@ -8110,7 +8449,7 @@ async function saveUserChanges(oldEmail) {
         // Recargar lista de usuarios
         loadUsersList();
         
-        showNotification('Usuario actualizado correctamente', 'success');
+        showNotification('Datos actualizados correctamente', 'success');
         
     } catch (error) {
         console.error('Error guardando cambios del usuario:', error);
@@ -8124,7 +8463,7 @@ function deleteUser(email) {
         const updatedUsers = users.filter(user => user.email !== email);
         localStorage.setItem('users', JSON.stringify(updatedUsers));
         loadUsersList();
-        showNotification('Usuario eliminado correctamente', 'success');
+        showNotification('Datos eliminados correctamente', 'success');
     }
 }
 
@@ -9354,7 +9693,7 @@ function actualizarEstadisticasNotificaciones() {
     
     console.log('Estadísticas por localidad:', estadisticasPorLocalidad);
     
-    showNotification(`Estadísticas actualizadas: ${usuariosConNotificaciones.length} usuarios con notificaciones activadas`, 'success');
+    showNotification(`Estadísticas actualizadas: ${usuariosConNotificaciones.length} personas con notificaciones activadas`, 'success');
 }
 
 // Mostrar modal de descarga de APK
@@ -10462,7 +10801,7 @@ function loadCobrerosContent() {
     console.log('✅ Contenido de Cobreros cargado');
 }
 
-// Renderizar una sección del acordeón
+// Renderizar una sección del acordeón (con sanitización)
 function renderAccordionSection(sectionId, items) {
     const container = document.getElementById(`${sectionId}Items`);
     if (!container) return;
@@ -10472,36 +10811,100 @@ function renderAccordionSection(sectionId, items) {
         return;
     }
     
-    container.innerHTML = items.map(item => `
-        <div class="accordion-item-card">
-            ${item.image ? `<img src="${item.image}" alt="${item.title}" class="item-image" onerror="this.style.display='none'">` : ''}
-            <h4>${item.title}</h4>
-            <p>${item.description}</p>
-            ${item.links && item.links.length > 0 ? `
-                <div class="item-links">
-                    ${item.links.filter(link => link.enabled !== false).map(link => {
-                        const linkType = link.type || (link.url && (link.url.toLowerCase().endsWith('.pdf') ? 'pdf' : (link.url.startsWith('http://') || link.url.startsWith('https://') ? 'external' : 'normal')));
-                        const href = link.url && link.url !== '#' ? link.url : '#';
-                        return `
-                        <a href="${href}" class="item-link ${linkType || 'normal'}" 
-                           ${linkType === 'external' || href.startsWith('http') ? 'target="_blank" rel="noopener noreferrer"' : ''}
-                           onclick="return handleCulturaLink('${linkType || 'normal'}', '${link.url || ''}', '${item.id || ''}', event);">
-                            ${link.text}
-                        </a>
-                    `;
-                    }).join('')}
-                </div>
-            ` : ''}
-            ${item.externalLink ? `
-                <div class="item-links">
-                    <a href="${item.externalLink}" class="item-link external" target="_blank" rel="noopener noreferrer"
-                       onclick="return handleCulturaLink('external', '${item.externalLink}', '${item.id || ''}', event);">
-                        🌐 Ver más información
-                    </a>
-                </div>
-            ` : ''}
-        </div>
-    `).join('');
+    // Usar DocumentFragment para mejor rendimiento
+    const fragment = document.createDocumentFragment();
+    
+    items.forEach(item => {
+        // Sanitizar todos los inputs del usuario
+        const safeTitle = escapeHtml(item.title || '');
+        const safeDescription = escapeHtml(item.description || '');
+        const safeImage = item.image ? escapeForHtml(item.image) : '';
+        const safeExternalLink = item.externalLink ? escapeForHtml(item.externalLink) : '';
+        const safeItemId = escapeHtml(item.id || '');
+        
+        const card = document.createElement('div');
+        card.className = 'accordion-item-card';
+        
+        // Imagen (si existe y es válida)
+        if (safeImage && isValidUrl(safeImage)) {
+            const img = document.createElement('img');
+            img.src = safeImage;
+            img.alt = safeTitle;
+            img.className = 'item-image';
+            img.onerror = function() { this.style.display = 'none'; };
+            card.appendChild(img);
+        }
+        
+        const title = document.createElement('h4');
+        title.textContent = safeTitle;
+        card.appendChild(title);
+        
+        const description = document.createElement('p');
+        description.textContent = safeDescription;
+        card.appendChild(description);
+        
+        // Enlaces
+        if (item.links && item.links.length > 0) {
+            const linksDiv = document.createElement('div');
+            linksDiv.className = 'item-links';
+            
+            item.links.filter(link => link.enabled !== false).forEach(link => {
+                const linkType = link.type || (link.url && (link.url.toLowerCase().endsWith('.pdf') ? 'pdf' : (link.url.startsWith('http://') || link.url.startsWith('https://') ? 'external' : 'normal')));
+                const safeUrl = escapeForHtml(link.url || '');
+                const safeLinkText = escapeHtml(link.text || '');
+                const safeLinkType = escapeHtml(linkType || 'normal');
+                
+                // Validar URL antes de crear enlace
+                if (!safeUrl || safeUrl === '#') {
+                    return; // Saltar enlaces inválidos
+                }
+                
+                const linkElement = document.createElement('a');
+                linkElement.href = safeUrl;
+                linkElement.className = `item-link ${safeLinkType}`;
+                linkElement.textContent = safeLinkText;
+                
+                if (linkType === 'external' || safeUrl.startsWith('http')) {
+                    linkElement.target = '_blank';
+                    linkElement.rel = 'noopener noreferrer';
+                }
+                
+                linkElement.onclick = (e) => {
+                    return handleCulturaLink(safeLinkType, safeUrl, safeItemId, e);
+                };
+                
+                linksDiv.appendChild(linkElement);
+            });
+            
+            if (linksDiv.children.length > 0) {
+                card.appendChild(linksDiv);
+            }
+        }
+        
+        // Enlace externo
+        if (safeExternalLink && isValidUrl(safeExternalLink)) {
+            const linksDiv = document.createElement('div');
+            linksDiv.className = 'item-links';
+            
+            const externalLink = document.createElement('a');
+            externalLink.href = safeExternalLink;
+            externalLink.className = 'item-link external';
+            externalLink.target = '_blank';
+            externalLink.rel = 'noopener noreferrer';
+            externalLink.textContent = '🌐 Ver más información';
+            externalLink.onclick = (e) => {
+                return handleCulturaLink('external', safeExternalLink, safeItemId, e);
+            };
+            
+            linksDiv.appendChild(externalLink);
+            card.appendChild(linksDiv);
+        }
+        
+        fragment.appendChild(card);
+    });
+    
+    container.innerHTML = '';
+    container.appendChild(fragment);
 }
 
 // Función para abrir el editor de elementos de cultura y ocio
@@ -10573,40 +10976,122 @@ function loadCulturaLinksEditor(links) {
         return;
     }
     
-    container.innerHTML = links.map((link, index) => `
-        <div class="cultura-link-item" style="background: white; border: 1px solid #ddd; border-radius: 6px; padding: 1rem; margin-bottom: 0.75rem;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
-                <strong style="color: #333;">Enlace ${index + 1}</strong>
-                <button type="button" class="btn btn-sm btn-danger" onclick="removeCulturaLink(${index})" style="padding: 0.25rem 0.5rem; font-size: 0.75rem;">
-                    <i class="fas fa-trash"></i> Eliminar
-                </button>
-            </div>
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-bottom: 0.5rem;">
-                <div>
-                    <label style="display: block; font-size: 0.875rem; margin-bottom: 0.25rem; color: #555;">Texto del Botón:</label>
-                    <input type="text" class="cultura-link-text" value="${(link.text || '').replace(/"/g, '&quot;')}" placeholder="Ej: 📋 Guía de Ruta" style="width: 100%; padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px;">
-                </div>
-                <div>
-                    <label style="display: block; font-size: 0.875rem; margin-bottom: 0.25rem; color: #555;">URL:</label>
-                    <input type="text" class="cultura-link-url" value="${(link.url || '').replace(/"/g, '&quot;')}" placeholder="https://ejemplo.com" style="width: 100%; padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px;">
-                </div>
-            </div>
-            <div style="display: grid; grid-template-columns: 1fr auto; gap: 0.75rem; align-items: center;">
-                <div>
-                    <label style="display: block; font-size: 0.875rem; margin-bottom: 0.25rem; color: #555;">Tipo:</label>
-                    <select class="cultura-link-type" style="width: 100%; padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px;">
-                        <option value="normal" ${link.type === 'normal' || !link.type ? 'selected' : ''}>Normal</option>
-                        <option value="pdf" ${link.type === 'pdf' ? 'selected' : ''}>PDF</option>
-                        <option value="external" ${link.type === 'external' ? 'selected' : ''}>Enlace Externo</option>
-                    </select>
-                </div>
-                <div style="display: flex; align-items: center; gap: 0.5rem; margin-top: 1.5rem;">
-                    <input type="checkbox" class="cultura-link-enabled" ${link.enabled !== false ? 'checked' : ''} id="linkEnabled${index}">
-                    <label for="linkEnabled${index}" style="margin: 0; font-size: 0.875rem; color: #555; cursor: pointer;">Mostrar botón</label>
-                </div>
-            </div>
-        </div>
-    `).join('');
+    // Usar DocumentFragment para mejor rendimiento
+    const fragment = document.createDocumentFragment();
+    
+    links.forEach((link, index) => {
+        // Sanitizar valores
+        const safeText = escapeForHtml(link.text || '');
+        const safeUrl = escapeForHtml(link.url || '');
+        const safeType = escapeHtml(link.type || 'normal');
+        const safeIndex = index;
+        
+        const linkItem = document.createElement('div');
+        linkItem.className = 'cultura-link-item';
+        linkItem.style.cssText = 'background: white; border: 1px solid #ddd; border-radius: 6px; padding: 1rem; margin-bottom: 0.75rem;';
+        
+        const headerDiv = document.createElement('div');
+        headerDiv.style.cssText = 'display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;';
+        
+        const strong = document.createElement('strong');
+        strong.style.cssText = 'color: #333;';
+        strong.textContent = `Enlace ${index + 1}`;
+        
+        const deleteBtn = document.createElement('button');
+        deleteBtn.type = 'button';
+        deleteBtn.className = 'btn btn-sm btn-danger';
+        deleteBtn.style.cssText = 'padding: 0.25rem 0.5rem; font-size: 0.75rem;';
+        deleteBtn.innerHTML = '<i class="fas fa-trash"></i> Eliminar';
+        deleteBtn.onclick = () => removeCulturaLink(safeIndex);
+        
+        headerDiv.appendChild(strong);
+        headerDiv.appendChild(deleteBtn);
+        
+        const inputsDiv = document.createElement('div');
+        inputsDiv.style.cssText = 'display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-bottom: 0.5rem;';
+        
+        const textDiv = document.createElement('div');
+        const textLabel = document.createElement('label');
+        textLabel.style.cssText = 'display: block; font-size: 0.875rem; margin-bottom: 0.25rem; color: #555;';
+        textLabel.textContent = 'Texto del Botón:';
+        const textInput = document.createElement('input');
+        textInput.type = 'text';
+        textInput.className = 'cultura-link-text';
+        textInput.value = safeText;
+        textInput.placeholder = 'Ej: 📋 Guía de Ruta';
+        textInput.style.cssText = 'width: 100%; padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px;';
+        textDiv.appendChild(textLabel);
+        textDiv.appendChild(textInput);
+        
+        const urlDiv = document.createElement('div');
+        const urlLabel = document.createElement('label');
+        urlLabel.style.cssText = 'display: block; font-size: 0.875rem; margin-bottom: 0.25rem; color: #555;';
+        urlLabel.textContent = 'URL:';
+        const urlInput = document.createElement('input');
+        urlInput.type = 'text';
+        urlInput.className = 'cultura-link-url';
+        urlInput.value = safeUrl;
+        urlInput.placeholder = 'https://ejemplo.com';
+        urlInput.style.cssText = 'width: 100%; padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px;';
+        // Agregar validación en tiempo real
+        urlInput.addEventListener('input', function() {
+            const url = this.value.trim();
+            if (url && !isValidUrl(url) && !url.startsWith('/') && !url.startsWith('#')) {
+                this.style.borderColor = '#ef4444';
+            } else {
+                this.style.borderColor = '';
+            }
+        });
+        urlDiv.appendChild(urlLabel);
+        urlDiv.appendChild(urlInput);
+        
+        inputsDiv.appendChild(textDiv);
+        inputsDiv.appendChild(urlDiv);
+        
+        const typeDiv = document.createElement('div');
+        typeDiv.style.cssText = 'display: grid; grid-template-columns: 1fr auto; gap: 0.75rem; align-items: center;';
+        
+        const selectDiv = document.createElement('div');
+        const typeLabel = document.createElement('label');
+        typeLabel.style.cssText = 'display: block; font-size: 0.875rem; margin-bottom: 0.25rem; color: #555;';
+        typeLabel.textContent = 'Tipo:';
+        const typeSelect = document.createElement('select');
+        typeSelect.className = 'cultura-link-type';
+        typeSelect.style.cssText = 'width: 100%; padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px;';
+        typeSelect.innerHTML = `
+            <option value="normal" ${link.type === 'normal' || !link.type ? 'selected' : ''}>Normal</option>
+            <option value="pdf" ${link.type === 'pdf' ? 'selected' : ''}>PDF</option>
+            <option value="external" ${link.type === 'external' ? 'selected' : ''}>Enlace Externo</option>
+        `;
+        selectDiv.appendChild(typeLabel);
+        selectDiv.appendChild(typeSelect);
+        
+        const checkboxDiv = document.createElement('div');
+        checkboxDiv.style.cssText = 'display: flex; align-items: center; gap: 0.5rem; margin-top: 1.5rem;';
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.className = 'cultura-link-enabled';
+        checkbox.id = `linkEnabled${index}`;
+        checkbox.checked = link.enabled !== false;
+        const checkboxLabel = document.createElement('label');
+        checkboxLabel.htmlFor = `linkEnabled${index}`;
+        checkboxLabel.style.cssText = 'margin: 0; font-size: 0.875rem; color: #555; cursor: pointer;';
+        checkboxLabel.textContent = 'Mostrar botón';
+        checkboxDiv.appendChild(checkbox);
+        checkboxDiv.appendChild(checkboxLabel);
+        
+        typeDiv.appendChild(selectDiv);
+        typeDiv.appendChild(checkboxDiv);
+        
+        linkItem.appendChild(headerDiv);
+        linkItem.appendChild(inputsDiv);
+        linkItem.appendChild(typeDiv);
+        
+        fragment.appendChild(linkItem);
+    });
+    
+    container.innerHTML = '';
+    container.appendChild(fragment);
 }
 
 // Agregar nuevo enlace al editor
@@ -10727,88 +11212,159 @@ function closeCulturaItemModal() {
     }
 }
 
-// Función para guardar elemento de cultura y ocio
-function saveCulturaItem() {
-    const section = document.getElementById('culturaItemSection').value;
-    const itemId = document.getElementById('culturaItemId').value;
-    const title = document.getElementById('culturaItemTitle').value.trim();
-    const description = document.getElementById('culturaItemDescription').value.trim();
-    const image = document.getElementById('culturaItemImage').value.trim();
-    const externalLink = document.getElementById('culturaItemExternalLink').value.trim();
-    const order = parseInt(document.getElementById('culturaItemOrder').value) || 1;
+// Función para validar elemento de cultura y ocio
+function validateCulturaItem(item) {
+    const errors = [];
     
-    // Validaciones
-    if (!title || !description) {
-        showNotification('Por favor, complete todos los campos obligatorios', 'error');
-        return;
+    const titleError = validators.required(item.title, 'Título');
+    if (titleError) errors.push(titleError);
+    
+    const descError = validators.required(item.description, 'Descripción');
+    if (descError) errors.push(descError);
+    
+    if (item.image) {
+        const urlError = validators.url(item.image);
+        if (urlError) errors.push(urlError);
     }
     
-    // Obtener enlaces desde el editor dinámico
-    const links = getCulturaLinksFromEditor();
-    
-    // Crear objeto del elemento
-    const item = {
-        id: itemId || generateId(),
-        title: title,
-        description: description,
-        image: image,
-        links: links,
-        externalLink: externalLink,
-        order: order,
-        createdAt: itemId ? (culturaOcioData[section].find(i => i.id === itemId)?.createdAt || new Date()) : new Date(),
-        updatedAt: new Date()
-    };
-    
-    // Guardar en la sección correspondiente
-    if (itemId) {
-        // Editar elemento existente
-        const index = culturaOcioData[section].findIndex(i => i.id === itemId);
-        if (index !== -1) {
-            culturaOcioData[section][index] = item;
-        }
-    } else {
-        // Añadir nuevo elemento
-        culturaOcioData[section].push(item);
+    if (item.externalLink) {
+        const urlError = validators.url(item.externalLink);
+        if (urlError) errors.push(urlError);
     }
     
-    // Ordenar por orden
-    culturaOcioData[section].sort((a, b) => (a.order || 0) - (b.order || 0));
+    const orderError = validators.positiveNumber(item.order);
+    if (orderError) errors.push(orderError);
     
-    // Guardar en localStorage
-    localStorage.setItem('culturaOcioData', JSON.stringify(culturaOcioData));
-    
-    // Actualizar vista
-    loadCulturaOcioAdmin();
-    const container = document.getElementById(`${section}Items`);
-    if (container) {
-        renderAccordionSection(section, culturaOcioData[section]);
+    // Validar enlaces
+    if (item.links && item.links.length > 0) {
+        item.links.forEach((link, index) => {
+            if (link.url) {
+                const linkUrlError = validators.url(link.url);
+                if (linkUrlError) {
+                    errors.push(`Enlace ${index + 1}: ${linkUrlError}`);
+                }
+            }
+        });
     }
     
-    // Cerrar modal
-    closeCulturaItemModal();
-    
-    showNotification('Elemento guardado correctamente', 'success');
+    return errors;
 }
 
-// Función para eliminar elemento de cultura y ocio
+// Función para guardar elemento de cultura y ocio (mejorada con validaciones)
+function saveCulturaItem() {
+    try {
+        const section = document.getElementById('culturaItemSection').value;
+        const itemId = document.getElementById('culturaItemId').value;
+        const title = document.getElementById('culturaItemTitle').value.trim();
+        const description = document.getElementById('culturaItemDescription').value.trim();
+        const image = document.getElementById('culturaItemImage').value.trim();
+        const externalLink = document.getElementById('culturaItemExternalLink').value.trim();
+        const order = parseInt(document.getElementById('culturaItemOrder').value) || 1;
+        
+        // Obtener enlaces desde el editor dinámico
+        const links = getCulturaLinksFromEditor();
+        
+        // Crear objeto del elemento
+        const item = {
+            id: itemId || generateId(),
+            title: title,
+            description: description,
+            image: image,
+            links: links,
+            externalLink: externalLink,
+            order: order,
+            createdAt: itemId ? (culturaOcioData[section]?.find(i => i.id === itemId)?.createdAt || new Date()) : new Date(),
+            updatedAt: new Date()
+        };
+        
+        // Validar usando validators
+        const errors = validateCulturaItem(item);
+        if (errors.length > 0) {
+            showNotification(`Errores de validación:\n${errors.join('\n')}`, 'error');
+            return;
+        }
+        
+        // Inicializar sección si no existe
+        if (!culturaOcioData[section]) {
+            culturaOcioData[section] = [];
+        }
+        
+        // Guardar en la sección correspondiente
+        if (itemId) {
+            // Editar elemento existente
+            const index = culturaOcioData[section].findIndex(i => i.id === itemId);
+            if (index !== -1) {
+                culturaOcioData[section][index] = item;
+            } else {
+                showNotification('Elemento no encontrado para editar', 'error');
+                return;
+            }
+        } else {
+            // Añadir nuevo elemento
+            culturaOcioData[section].push(item);
+        }
+        
+        // Ordenar por orden
+        culturaOcioData[section].sort((a, b) => (a.order || 0) - (b.order || 0));
+        
+        // Guardar en localStorage
+        localStorage.setItem('culturaOcioData', JSON.stringify(culturaOcioData));
+        
+        // Actualizar vista
+        loadCulturaOcioAdmin();
+        const container = document.getElementById(`${section}Items`);
+        if (container) {
+            renderAccordionSection(section, culturaOcioData[section]);
+        }
+        
+        // Cerrar modal
+        closeCulturaItemModal();
+        
+        showNotification('Elemento guardado correctamente', 'success');
+        
+    } catch (error) {
+        console.error('Error guardando elemento de cultura y ocio:', error);
+        showNotification('Error al guardar el elemento. Por favor, inténtelo de nuevo.', 'error');
+    }
+}
+
+// Función para eliminar elemento de cultura y ocio (mejorada con mejor confirmación)
 function deleteCulturaItem(section, itemId) {
-    if (!confirm('¿Está seguro de que desea eliminar este elemento?')) {
-        return;
+    try {
+        const item = culturaOcioData[section]?.find(i => i.id === itemId);
+        if (!item) {
+            showNotification('Elemento no encontrado', 'error');
+            return;
+        }
+        
+        const itemName = item.title || 'este elemento';
+        const confirmMessage = `¿Está seguro de que desea eliminar "${itemName}"?\n\nEsta acción no se puede deshacer.`;
+        
+        if (!confirm(confirmMessage)) {
+            return;
+        }
+        
+        // Mostrar estado de carga
+        showLoadingState(`${section}AdminList`, 'Eliminando elemento...');
+        
+        culturaOcioData[section] = culturaOcioData[section].filter(item => item.id !== itemId);
+        
+        // Guardar en localStorage
+        localStorage.setItem('culturaOcioData', JSON.stringify(culturaOcioData));
+        
+        // Actualizar vista
+        loadCulturaOcioAdmin();
+        const container = document.getElementById(`${section}Items`);
+        if (container) {
+            renderAccordionSection(section, culturaOcioData[section]);
+        }
+        
+        showNotification(`"${itemName}" eliminado correctamente`, 'success');
+        
+    } catch (error) {
+        console.error('Error eliminando elemento de cultura y ocio:', error);
+        showNotification('Error al eliminar el elemento. Por favor, inténtelo de nuevo.', 'error');
     }
-    
-    culturaOcioData[section] = culturaOcioData[section].filter(item => item.id !== itemId);
-    
-    // Guardar en localStorage
-    localStorage.setItem('culturaOcioData', JSON.stringify(culturaOcioData));
-    
-    // Actualizar vista
-    loadCulturaOcioAdmin();
-    const container = document.getElementById(`${section}Items`);
-    if (container) {
-        renderAccordionSection(section, culturaOcioData[section]);
-    }
-    
-    showNotification('Elemento eliminado correctamente', 'success');
 }
 
 // Función para eliminar elemento específico por título (utilidad)
@@ -10872,7 +11428,7 @@ function loadCulturaOcioAdmin() {
     });
 }
 
-// Función para renderizar sección administrativa
+// Función para renderizar sección administrativa (con sanitización)
 function renderCulturaAdminSection(section, container) {
     const items = culturaOcioData[section] || [];
     
@@ -10881,56 +11437,142 @@ function renderCulturaAdminSection(section, container) {
         return;
     }
     
-    container.innerHTML = items.map(item => `
-        <div class="admin-item-card" style="background: #fff; border: 1px solid #e0e0e0; border-radius: 12px; padding: 20px; margin-bottom: 15px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
-            <div class="admin-item-content" style="flex: 1;">
-                <h4 style="margin: 0 0 0.5rem 0;">${item.title}</h4>
-                <p style="margin: 0 0 0.5rem 0; color: #666;">${item.description.substring(0, 100)}${item.description.length > 100 ? '...' : ''}</p>
-                <div class="admin-item-meta" style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
-                    <span style="background: #3b82f6; color: white; padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.75rem;">Orden: ${item.order || 1}</span>
-                    ${item.image ? '<span style="background: #10b981; color: white; padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.75rem;">Con imagen</span>' : ''}
-                    ${item.links && item.links.length > 0 ? `<span style="background: #f59e0b; color: white; padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.75rem;">${item.links.length} enlaces</span>` : ''}
-                    ${item.externalLink ? '<span style="background: #8b5cf6; color: white; padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.75rem;">Enlace externo</span>' : ''}
-                </div>
-            </div>
-            <div class="admin-item-actions" style="display: flex; gap: 0.5rem; margin-top: 1rem;">
-                <button class="btn btn-sm btn-primary" onclick="openCulturaItemEditor('${section}', '${item.id}')" style="padding: 0.5rem 1rem; font-size: 0.875rem;">
-                    <i class="fas fa-edit"></i> Editar
-                </button>
-                <button class="btn btn-sm btn-danger" onclick="deleteCulturaItem('${section}', '${item.id}')" style="padding: 0.5rem 1rem; font-size: 0.875rem;">
-                    <i class="fas fa-trash"></i> Eliminar
-                </button>
-            </div>
-        </div>
-    `).join('');
+    // Usar DocumentFragment para mejor rendimiento
+    const fragment = document.createDocumentFragment();
+    
+    items.forEach(item => {
+        // Sanitizar todos los inputs del usuario
+        const safeTitle = escapeHtml(item.title || '');
+        const safeDescription = escapeHtml((item.description || '').substring(0, 100));
+        const safeSection = escapeHtml(section);
+        const safeId = escapeHtml(item.id || '');
+        const order = item.order || 1;
+        const linksCount = item.links ? item.links.length : 0;
+        
+        const card = document.createElement('div');
+        card.className = 'admin-item-card';
+        card.style.cssText = 'background: #fff; border: 1px solid #e0e0e0; border-radius: 12px; padding: 20px; margin-bottom: 15px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);';
+        
+        const contentDiv = document.createElement('div');
+        contentDiv.className = 'admin-item-content';
+        contentDiv.style.cssText = 'flex: 1;';
+        
+        const title = document.createElement('h4');
+        title.style.cssText = 'margin: 0 0 0.5rem 0;';
+        title.textContent = safeTitle;
+        
+        const description = document.createElement('p');
+        description.style.cssText = 'margin: 0 0 0.5rem 0; color: #666;';
+        description.textContent = safeDescription + (item.description && item.description.length > 100 ? '...' : '');
+        
+        const metaDiv = document.createElement('div');
+        metaDiv.className = 'admin-item-meta';
+        metaDiv.style.cssText = 'display: flex; gap: 0.5rem; flex-wrap: wrap;';
+        
+        // Usar createBadge para crear badges
+        metaDiv.appendChild(createBadge(`Orden: ${order}`, '#3b82f6'));
+        if (item.image) {
+            metaDiv.appendChild(createBadge('Con imagen', '#10b981'));
+        }
+        if (linksCount > 0) {
+            metaDiv.appendChild(createBadge(`${linksCount} enlaces`, '#f59e0b'));
+        }
+        if (item.externalLink) {
+            metaDiv.appendChild(createBadge('Enlace externo', '#8b5cf6'));
+        }
+        
+        contentDiv.appendChild(title);
+        contentDiv.appendChild(description);
+        contentDiv.appendChild(metaDiv);
+        
+        const actionsDiv = document.createElement('div');
+        actionsDiv.className = 'admin-item-actions';
+        actionsDiv.style.cssText = 'display: flex; gap: 0.5rem; margin-top: 1rem;';
+        
+        // Usar createActionButton para crear botones
+        const editBtn = createActionButton('Editar', 'edit', () => openCulturaItemEditor(safeSection, safeId), 'primary');
+        const deleteBtn = createActionButton('Eliminar', 'trash', () => deleteCulturaItem(safeSection, safeId), 'danger');
+        
+        actionsDiv.appendChild(editBtn);
+        actionsDiv.appendChild(deleteBtn);
+        
+        card.appendChild(contentDiv);
+        card.appendChild(actionsDiv);
+        fragment.appendChild(card);
+    });
+    
+    container.innerHTML = '';
+    container.appendChild(fragment);
 }
 
-// Función para exportar sección de cultura y ocio
+// Función para exportar sección de cultura y ocio (con cleanup de ObjectURLs)
 function exportCulturaSection(section) {
-    const data = culturaOcioData[section] || [];
-    const dataStr = JSON.stringify(data, null, 2);
-    const dataBlob = new Blob([dataStr], {type: 'application/json'});
-    
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(dataBlob);
-    link.download = `cultura-ocio-${section}-${new Date().toISOString().split('T')[0]}.json`;
-    link.click();
-    
-    showNotification(`Sección ${section} exportada correctamente`, 'success');
+    try {
+        const data = culturaOcioData[section] || [];
+        if (data.length === 0) {
+            showNotification('No hay datos para exportar en esta sección', 'warning');
+            return;
+        }
+        
+        const dataStr = JSON.stringify(data, null, 2);
+        const dataBlob = new Blob([dataStr], {type: 'application/json'});
+        
+        const link = document.createElement('a');
+        const objectUrl = URL.createObjectURL(dataBlob);
+        link.href = objectUrl;
+        link.download = `cultura-ocio-${section}-${new Date().toISOString().split('T')[0]}.json`;
+        link.style.display = 'none';
+        
+        document.body.appendChild(link);
+        link.click();
+        
+        // Cleanup: revocar ObjectURL después de un tiempo
+        setTimeout(() => {
+            URL.revokeObjectURL(objectUrl);
+            document.body.removeChild(link);
+        }, 100);
+        
+        showNotification(`Sección ${section} exportada correctamente`, 'success');
+        
+    } catch (error) {
+        console.error('Error exportando sección:', error);
+        showNotification('Error al exportar la sección. Por favor, inténtelo de nuevo.', 'error');
+    }
 }
 
-// Función para exportar tarjetas de cultura y ocio
+// Función para exportar tarjetas de cultura y ocio (con cleanup de ObjectURLs)
 function exportCulturaTarjetas() {
-    const data = culturaOcioConfig.tarjetas || [];
-    const dataStr = JSON.stringify(data, null, 2);
-    const dataBlob = new Blob([dataStr], {type: 'application/json'});
-    
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(dataBlob);
-    link.download = `cultura-tarjetas-${new Date().toISOString().split('T')[0]}.json`;
-    link.click();
-    
-    showNotification('Tarjetas exportadas correctamente', 'success');
+    try {
+        const data = culturaOcioConfig.tarjetas || [];
+        if (data.length === 0) {
+            showNotification('No hay tarjetas para exportar', 'warning');
+            return;
+        }
+        
+        const dataStr = JSON.stringify(data, null, 2);
+        const dataBlob = new Blob([dataStr], {type: 'application/json'});
+        
+        const link = document.createElement('a');
+        const objectUrl = URL.createObjectURL(dataBlob);
+        link.href = objectUrl;
+        link.download = `cultura-tarjetas-${new Date().toISOString().split('T')[0]}.json`;
+        link.style.display = 'none';
+        
+        document.body.appendChild(link);
+        link.click();
+        
+        // Cleanup: revocar ObjectURL después de un tiempo
+        setTimeout(() => {
+            URL.revokeObjectURL(objectUrl);
+            document.body.removeChild(link);
+        }, 100);
+        
+        showNotification('Tarjetas exportadas correctamente', 'success');
+        
+    } catch (error) {
+        console.error('Error exportando tarjetas:', error);
+        showNotification('Error al exportar las tarjetas. Por favor, inténtelo de nuevo.', 'error');
+    }
 }
 
 // Función para crear pestañas personalizadas
@@ -11069,5 +11711,968 @@ if (document.readyState === 'loading') {
         loadCobrerosContent();
     }, 500);
 }
+
+// ===== SISTEMA MEJORADO DE CITAS PREVIAS =====
+
+// Configuración de horarios por día
+let appointmentScheduleConfig = {
+    days: {
+        monday: { enabled: true, morningHours: ['09:00', '10:00', '11:00', '12:00'], afternoonHours: ['16:00', '17:00', '18:00'] },
+        tuesday: { enabled: true, morningHours: ['09:00', '10:00', '11:00', '12:00'], afternoonHours: ['16:00', '17:00', '18:00'] },
+        wednesday: { enabled: true, morningHours: ['09:00', '10:00', '11:00', '12:00'], afternoonHours: ['16:00', '17:00', '18:00'] },
+        thursday: { enabled: true, morningHours: ['09:00', '10:00', '11:00', '12:00'], afternoonHours: ['16:00', '17:00', '18:00'] },
+        friday: { enabled: true, morningHours: ['09:00', '10:00', '11:00', '12:00'], afternoonHours: ['16:00', '17:00', '18:00'] },
+        saturday: { enabled: false, morningHours: [], afternoonHours: [] },
+        sunday: { enabled: false, morningHours: [], afternoonHours: [] }
+    }
+};
+
+// Estado del calendario
+let currentCalendarMonth = new Date().getMonth();
+let currentCalendarYear = new Date().getFullYear();
+let selectedAppointmentDate = null;
+let selectedAppointmentTime = null;
+
+// Estado del calendario del admin
+let adminCalendarMonth = new Date().getMonth();
+let adminCalendarYear = new Date().getFullYear();
+let selectedAdminDate = null;
+
+// Cargar configuración de horarios
+function loadAppointmentScheduleConfig() {
+    const saved = localStorage.getItem('appointmentScheduleConfig');
+    if (saved) {
+        try {
+            const parsed = JSON.parse(saved);
+            appointmentScheduleConfig = { ...appointmentScheduleConfig, ...parsed };
+        } catch (error) {
+            console.error('Error cargando configuración de horarios:', error);
+        }
+    }
+}
+
+// Cargar configuración de horarios en el UI del panel de admin
+function loadAppointmentScheduleConfigUI() {
+    if (!isAdmin) return;
+    
+    // Verificar que los elementos existan antes de continuar
+    const morningList = document.getElementById('morningHoursList');
+    const afternoonList = document.getElementById('afternoonHoursList');
+    
+    if (!morningList || !afternoonList) {
+        // Si los elementos no existen, intentar de nuevo después de un breve delay
+        setTimeout(() => {
+            loadAppointmentScheduleConfigUI();
+        }, 100);
+        return;
+    }
+    
+    // Cargar configuración desde localStorage
+    loadAppointmentScheduleConfig();
+    
+    // Actualizar checkboxes de días
+    const dayCheckboxes = {
+        'scheduleMonday': 'monday',
+        'scheduleTuesday': 'tuesday',
+        'scheduleWednesday': 'wednesday',
+        'scheduleThursday': 'thursday',
+        'scheduleFriday': 'friday',
+        'scheduleSaturday': 'saturday',
+        'scheduleSunday': 'sunday'
+    };
+    
+    Object.keys(dayCheckboxes).forEach(checkboxId => {
+        const checkbox = document.getElementById(checkboxId);
+        if (checkbox) {
+            const dayName = dayCheckboxes[checkboxId];
+            const dayConfig = appointmentScheduleConfig.days[dayName];
+            if (dayConfig) {
+                checkbox.checked = dayConfig.enabled || false;
+            } else {
+                checkbox.checked = false;
+            }
+        }
+    });
+    
+    // Obtener horarios guardados (todos los días comparten los mismos horarios)
+    // Buscar cualquier día que tenga horarios configurados
+    let morningHours = ['09:00', '10:00', '11:00', '12:00']; // Valores por defecto
+    let afternoonHours = ['16:00', '17:00', '18:00']; // Valores por defecto
+    
+    // Buscar horarios en cualquier día configurado
+    for (const dayName in appointmentScheduleConfig.days) {
+        const dayConfig = appointmentScheduleConfig.days[dayName];
+        if (dayConfig && (dayConfig.morningHours?.length > 0 || dayConfig.afternoonHours?.length > 0)) {
+            if (dayConfig.morningHours && dayConfig.morningHours.length > 0) {
+                morningHours = dayConfig.morningHours;
+            }
+            if (dayConfig.afternoonHours && dayConfig.afternoonHours.length > 0) {
+                afternoonHours = dayConfig.afternoonHours;
+            }
+            break; // Usar los primeros horarios encontrados
+        }
+    }
+    
+    // Actualizar horarios de mañana
+    if (morningList) {
+        morningList.innerHTML = '';
+        if (morningHours.length === 0) {
+            morningHours = ['09:00', '10:00', '11:00', '12:00']; // Valores por defecto si está vacío
+        }
+        morningHours.forEach(hour => {
+            const item = document.createElement('div');
+            item.className = 'hour-input-item';
+            item.innerHTML = `
+                <input type="time" class="hour-time-input" value="${escapeHtml(hour)}">
+                <button type="button" class="btn-remove-hour" onclick="removeHourSlot(this)" aria-label="Eliminar hora">
+                    <i class="fas fa-times" aria-hidden="true"></i>
+                </button>
+            `;
+            morningList.appendChild(item);
+        });
+    }
+    
+    // Actualizar horarios de tarde
+    if (afternoonList) {
+        afternoonList.innerHTML = '';
+        if (afternoonHours.length === 0) {
+            afternoonHours = ['16:00', '17:00', '18:00']; // Valores por defecto si está vacío
+        }
+        afternoonHours.forEach(hour => {
+            const item = document.createElement('div');
+            item.className = 'hour-input-item';
+            item.innerHTML = `
+                <input type="time" class="hour-time-input" value="${escapeHtml(hour)}">
+                <button type="button" class="btn-remove-hour" onclick="removeHourSlot(this)" aria-label="Eliminar hora">
+                    <i class="fas fa-times" aria-hidden="true"></i>
+                </button>
+            `;
+            afternoonList.appendChild(item);
+        });
+    }
+}
+
+// Obtener configuración de un día específico
+function getDayConfig(checkboxId) {
+    const checkbox = document.getElementById(checkboxId);
+    const enabled = checkbox ? checkbox.checked : false;
+    
+    // Los horarios son compartidos entre todos los días
+    const morningHours = getHoursFromList('morningHoursList');
+    const afternoonHours = getHoursFromList('afternoonHoursList');
+    
+    return {
+        enabled: enabled,
+        morningHours: morningHours,
+        afternoonHours: afternoonHours
+    };
+}
+
+// Guardar configuración de horarios
+function saveAppointmentScheduleConfig() {
+    if (!isAdmin) {
+        showNotification('Solo los administradores pueden cambiar esta configuración', 'error');
+        return;
+    }
+    
+    try {
+        // Obtener horarios compartidos
+        const morningHours = getHoursFromList('morningHoursList');
+        const afternoonHours = getHoursFromList('afternoonHoursList');
+        
+        // Obtener configuración por día desde los checkboxes
+        const daysConfig = {
+            monday: {
+                enabled: document.getElementById('scheduleMonday')?.checked || false,
+                morningHours: morningHours,
+                afternoonHours: afternoonHours
+            },
+            tuesday: {
+                enabled: document.getElementById('scheduleTuesday')?.checked || false,
+                morningHours: morningHours,
+                afternoonHours: afternoonHours
+            },
+            wednesday: {
+                enabled: document.getElementById('scheduleWednesday')?.checked || false,
+                morningHours: morningHours,
+                afternoonHours: afternoonHours
+            },
+            thursday: {
+                enabled: document.getElementById('scheduleThursday')?.checked || false,
+                morningHours: morningHours,
+                afternoonHours: afternoonHours
+            },
+            friday: {
+                enabled: document.getElementById('scheduleFriday')?.checked || false,
+                morningHours: morningHours,
+                afternoonHours: afternoonHours
+            },
+            saturday: {
+                enabled: document.getElementById('scheduleSaturday')?.checked || false,
+                morningHours: morningHours,
+                afternoonHours: afternoonHours
+            },
+            sunday: {
+                enabled: document.getElementById('scheduleSunday')?.checked || false,
+                morningHours: morningHours,
+                afternoonHours: afternoonHours
+            }
+        };
+        
+        appointmentScheduleConfig.days = daysConfig;
+        localStorage.setItem('appointmentScheduleConfig', JSON.stringify(appointmentScheduleConfig));
+        
+        // Recargar calendario si está visible
+        if (document.getElementById('calendarGrid')) {
+            renderCalendar();
+        }
+        
+        showNotification('Configuración de horarios guardada correctamente', 'success');
+    } catch (error) {
+        console.error('Error guardando configuración:', error);
+        showNotification('Error al guardar la configuración', 'error');
+    }
+}
+
+
+// Obtener horas de una lista
+function getHoursFromList(listId) {
+    const list = document.getElementById(listId);
+    if (!list) return [];
+    const inputs = list.querySelectorAll('.hour-time-input');
+    return Array.from(inputs).map(input => input.value).filter(v => v);
+}
+
+// Agregar slot de hora
+function addHourSlot(listId) {
+    const list = document.getElementById(listId);
+    if (!list) return;
+    
+    const newItem = document.createElement('div');
+    newItem.className = 'hour-input-item';
+    newItem.innerHTML = `
+        <input type="time" class="hour-time-input" value="09:00">
+        <button type="button" class="btn-remove-hour" onclick="removeHourSlot(this)">
+            <i class="fas fa-times"></i>
+        </button>
+    `;
+    list.appendChild(newItem);
+}
+
+// Eliminar slot de hora
+function removeHourSlot(button) {
+    button.closest('.hour-input-item').remove();
+}
+
+// Renderizar calendario completo (mes completo, no solo semana)
+function renderCalendar() {
+    const calendarGrid = document.getElementById('calendarGrid');
+    if (!calendarGrid) return;
+    
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    const firstDay = new Date(currentCalendarYear, currentCalendarMonth, 1);
+    const lastDay = new Date(currentCalendarYear, currentCalendarMonth + 1, 0);
+    const daysInMonth = lastDay.getDate();
+    const startingDayOfWeek = firstDay.getDay(); // 0 = Domingo, 1 = Lunes, etc.
+    
+    // Nombres de días y meses
+    const dayNames = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+    const monthNames = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 
+                       'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+    
+    // Actualizar título del mes
+    const monthYearElement = document.getElementById('currentMonthYear');
+    if (monthYearElement) {
+        monthYearElement.textContent = `${monthNames[currentCalendarMonth]} ${currentCalendarYear}`;
+    }
+    
+    // Crear encabezados de días
+    let calendarHTML = '<div class="calendar-weekdays">';
+    dayNames.forEach(day => {
+        calendarHTML += `<div class="calendar-weekday">${escapeHtml(day)}</div>`;
+    });
+    calendarHTML += '</div>';
+    
+    // Crear grid de días
+    calendarHTML += '<div class="calendar-days-grid">';
+    
+    // Días vacíos al inicio
+    for (let i = 0; i < startingDayOfWeek; i++) {
+        calendarHTML += '<div class="calendar-day empty"></div>';
+    }
+    
+    // Días del mes
+    for (let day = 1; day <= daysInMonth; day++) {
+        const date = new Date(currentCalendarYear, currentCalendarMonth, day);
+        const dateStr = formatDateForStorage(date);
+        const isPast = date < today;
+        const isToday = dateStr === formatDateForStorage(today);
+        const dayOfWeek = date.getDay();
+        const dayName = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'][dayOfWeek];
+        const dayConfig = appointmentScheduleConfig.days[dayName];
+        const isEnabled = dayConfig && dayConfig.enabled;
+        
+        // Verificar si hay citas en este día
+        const appointmentsOnDay = appointments.filter(apt => {
+            const aptDate = new Date(apt.date);
+            return formatDateForStorage(aptDate) === dateStr && apt.status !== 'cancelled';
+        });
+        
+        // Verificar si el día está completamente reservado
+        const allSlots = [...(dayConfig?.morningHours || []), ...(dayConfig?.afternoonHours || [])];
+        const reservedSlots = appointmentsOnDay.map(apt => apt.time).filter(t => t);
+        const isFullyBooked = isEnabled && allSlots.length > 0 && reservedSlots.length >= allSlots.length;
+        const hasAppointments = appointmentsOnDay.length > 0;
+        
+        let dayClass = 'calendar-day';
+        if (isPast) {
+            dayClass += ' past';
+        } else if (isToday) {
+            dayClass += ' today';
+        } else if (!isEnabled) {
+            dayClass += ' disabled';
+        } else if (hasAppointments) {
+            // Día con citas: color rojo
+            dayClass += ' has-appointments';
+        } else if (isEnabled && !isPast) {
+            // Día disponible: color azul
+            dayClass += ' available';
+        }
+        
+        if (isFullyBooked) dayClass += ' fully-booked';
+        if (selectedAppointmentDate === dateStr) dayClass += ' selected';
+        
+        const safeDateStr = escapeHtml(dateStr);
+        const appointmentsInfo = hasAppointments ? appointmentsOnDay.map(apt => `${apt.time} - ${apt.name || 'Sin nombre'}`).join(', ') : '';
+        
+        calendarHTML += `
+            <div class="${dayClass}" 
+                 data-date="${safeDateStr}" 
+                 data-day="${day}"
+                 data-appointments="${escapeHtml(JSON.stringify(appointmentsOnDay))}"
+                 ${!isPast && isEnabled ? `onclick="selectAppointmentDate('${safeDateStr}')"` : ''}
+                 ${!isPast && isEnabled ? 'style="cursor: pointer;"' : ''}
+                 title="${hasAppointments ? `Citas: ${appointmentsInfo}` : isEnabled && !isPast ? 'Disponible para cita' : ''}">
+                <span class="day-number">${day}</span>
+                ${hasAppointments ? `<span class="appointments-count" title="${appointmentsOnDay.length} cita(s) reservada(s)">${appointmentsOnDay.length}</span>` : ''}
+                ${!hasAppointments && isEnabled && !isPast ? '<span class="available-indicator" title="Disponible">✓</span>' : ''}
+            </div>
+        `;
+    }
+    
+    // Calcular días del siguiente mes para completar la última semana
+    const totalCells = startingDayOfWeek + daysInMonth;
+    const remainingCells = 7 - (totalCells % 7);
+    if (remainingCells < 7) {
+        const nextMonth = currentCalendarMonth === 11 ? 0 : currentCalendarMonth + 1;
+        const nextYear = currentCalendarMonth === 11 ? currentCalendarYear + 1 : currentCalendarYear;
+        for (let day = 1; day <= remainingCells; day++) {
+            const date = new Date(nextYear, nextMonth, day);
+            const dateStr = formatDateForStorage(date);
+            const isPast = date < today;
+            
+            calendarHTML += `
+                <div class="calendar-day next-month ${isPast ? 'past' : ''}" 
+                     data-date="${escapeHtml(dateStr)}" 
+                     data-day="${day}"
+                     style="opacity: 0.4;">
+                    <span class="day-number">${day}</span>
+                </div>
+            `;
+        }
+    }
+    
+    calendarHTML += '</div>';
+    calendarGrid.innerHTML = calendarHTML;
+}
+
+// Formatear fecha para almacenamiento (YYYY-MM-DD)
+function formatDateForStorage(date) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+}
+
+// Formatear fecha para mostrar
+function formatDateForDisplay(dateStr) {
+    const date = new Date(dateStr + 'T00:00:00');
+    const dayNames = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+    const monthNames = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 
+                       'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+    return `${dayNames[date.getDay()]}, ${date.getDate()} de ${monthNames[date.getMonth()]} de ${date.getFullYear()}`;
+}
+
+// Cambiar mes del calendario
+function changeCalendarMonth(direction) {
+    currentCalendarMonth += direction;
+    if (currentCalendarMonth < 0) {
+        currentCalendarMonth = 11;
+        currentCalendarYear--;
+    } else if (currentCalendarMonth > 11) {
+        currentCalendarMonth = 0;
+        currentCalendarYear++;
+    }
+    renderCalendar();
+}
+
+// Seleccionar fecha de cita
+function selectAppointmentDate(dateStr) {
+    selectedAppointmentDate = dateStr;
+    selectedAppointmentTime = null;
+    
+    // Actualizar campo oculto
+    const dateInput = document.getElementById('date');
+    if (dateInput) {
+        dateInput.value = dateStr;
+    }
+    
+    // Actualizar texto de fecha seleccionada
+    const selectedDateText = document.getElementById('selectedDateText');
+    if (selectedDateText) {
+        selectedDateText.textContent = formatDateForDisplay(dateStr);
+    }
+    
+    // Obtener citas del día seleccionado para mostrar información
+    const appointmentsOnDay = appointments.filter(apt => {
+        const aptDate = new Date(apt.date);
+        return formatDateForStorage(aptDate) === dateStr && apt.status !== 'cancelled';
+    });
+    
+    // Mostrar horarios disponibles (esto también mostrará las citas existentes)
+    showTimeSlots(dateStr);
+    
+    // Re-renderizar calendario para mostrar selección
+    renderCalendar();
+}
+
+// Mostrar horarios disponibles para una fecha
+function showTimeSlots(dateStr) {
+    const timeSlotsContainer = document.getElementById('timeSlotsContainer');
+    const timeSlotsGrid = document.getElementById('timeSlotsGrid');
+    const selectedDateAppointments = document.getElementById('selectedDateAppointments');
+    const existingAppointmentsList = document.getElementById('existingAppointmentsList');
+    if (!timeSlotsContainer || !timeSlotsGrid) return;
+    
+    const date = new Date(dateStr + 'T00:00:00');
+    const dayOfWeek = date.getDay();
+    const dayName = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'][dayOfWeek];
+    const dayConfig = appointmentScheduleConfig.days[dayName];
+    
+    if (!dayConfig || !dayConfig.enabled) {
+        timeSlotsContainer.style.display = 'none';
+        showNotification('Este día no tiene horarios disponibles', 'warning');
+        return;
+    }
+    
+    // Obtener citas ya reservadas para este día
+    const reservedAppointments = appointments.filter(apt => {
+        const aptDate = new Date(apt.date);
+        return formatDateForStorage(aptDate) === dateStr && apt.status !== 'cancelled';
+    });
+    const reservedTimes = reservedAppointments.map(apt => apt.time).filter(t => t);
+    
+    // Mostrar información de citas existentes
+    if (selectedDateAppointments && existingAppointmentsList) {
+        if (reservedAppointments.length > 0) {
+            existingAppointmentsList.innerHTML = '';
+            reservedAppointments.forEach(apt => {
+                const li = document.createElement('li');
+                li.innerHTML = `<strong>${escapeHtml(apt.time)}</strong> - ${escapeHtml(apt.name || 'Sin nombre')} (${escapeHtml(apt.service || 'Sin servicio')})`;
+                existingAppointmentsList.appendChild(li);
+            });
+            selectedDateAppointments.style.display = 'block';
+        } else {
+            selectedDateAppointments.style.display = 'none';
+        }
+    }
+    
+    // Combinar horarios de mañana y tarde
+    const allSlots = [...(dayConfig.morningHours || []), ...(dayConfig.afternoonHours || [])];
+    
+    if (allSlots.length === 0) {
+        timeSlotsContainer.style.display = 'none';
+        showNotification('No hay horarios configurados para este día', 'warning');
+        return;
+    }
+    
+    // Renderizar slots de tiempo
+    timeSlotsGrid.innerHTML = '';
+    allSlots.forEach(time => {
+        const isReserved = reservedTimes.includes(time);
+        const reservedAppointment = reservedAppointments.find(apt => apt.time === time);
+        const slot = document.createElement('button');
+        slot.type = 'button';
+        slot.className = `time-slot ${isReserved ? 'reserved' : 'available'}`;
+        slot.dataset.time = escapeHtml(time);
+        
+        if (isReserved) {
+            slot.disabled = true;
+            const reservedBy = reservedAppointment ? ` - Reservado por ${reservedAppointment.name || 'Sin nombre'}` : '';
+            slot.title = `Horario ya reservado${reservedBy}`;
+            slot.innerHTML = `<span class="time-text">${escapeHtml(time)}</span> <i class="fas fa-lock" aria-hidden="true"></i>`;
+        } else {
+            slot.onclick = () => selectAppointmentTime(time);
+            if (selectedAppointmentTime === time) {
+                slot.classList.add('selected');
+            }
+            slot.title = 'Horario disponible';
+            slot.innerHTML = `<span class="time-text">${escapeHtml(time)}</span>`;
+        }
+        
+        timeSlotsGrid.appendChild(slot);
+    });
+    
+    timeSlotsContainer.style.display = 'block';
+}
+
+// Seleccionar hora de cita
+function selectAppointmentTime(time) {
+    selectedAppointmentTime = time;
+    
+    // Actualizar campo oculto
+    const timeInput = document.getElementById('time');
+    if (timeInput) {
+        timeInput.value = time;
+    }
+    
+    // Actualizar UI de slots
+    const slots = document.querySelectorAll('.time-slot');
+    slots.forEach(slot => {
+        slot.classList.remove('selected');
+        if (slot.dataset.time === time && !slot.disabled) {
+            slot.classList.add('selected');
+        }
+    });
+}
+
+// Renderizar calendario del admin (mes completo)
+function renderAdminCalendar() {
+    const calendarGrid = document.getElementById('adminCalendarGrid');
+    if (!calendarGrid) {
+        console.log('⚠️ adminCalendarGrid no encontrado, reintentando...');
+        setTimeout(() => renderAdminCalendar(), 200);
+        return;
+    }
+    
+    // Asegurar que la configuración esté cargada
+    loadAppointmentScheduleConfig();
+    
+    console.log('📅 Renderizando calendario del admin...');
+    
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    const firstDay = new Date(adminCalendarYear, adminCalendarMonth, 1);
+    const lastDay = new Date(adminCalendarYear, adminCalendarMonth + 1, 0);
+    const daysInMonth = lastDay.getDate();
+    const startingDayOfWeek = firstDay.getDay();
+    
+    // Nombres de días y meses
+    const dayNames = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+    const monthNames = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 
+                       'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+    
+    // Actualizar título del mes
+    const monthYearElement = document.getElementById('adminCurrentMonthYear');
+    if (monthYearElement) {
+        monthYearElement.textContent = `${monthNames[adminCalendarMonth]} ${adminCalendarYear}`;
+    }
+    
+    // Crear encabezados de días
+    let calendarHTML = '<div class="calendar-weekdays">';
+    dayNames.forEach(day => {
+        calendarHTML += `<div class="calendar-weekday">${escapeHtml(day)}</div>`;
+    });
+    calendarHTML += '</div>';
+    
+    // Crear grid de días
+    calendarHTML += '<div class="calendar-days-grid">';
+    
+    // Días vacíos al inicio
+    for (let i = 0; i < startingDayOfWeek; i++) {
+        calendarHTML += '<div class="calendar-day empty"></div>';
+    }
+    
+    // Días del mes
+    for (let day = 1; day <= daysInMonth; day++) {
+        const date = new Date(adminCalendarYear, adminCalendarMonth, day);
+        const dateStr = formatDateForStorage(date);
+        const isPast = date < today;
+        const isToday = dateStr === formatDateForStorage(today);
+        const dayOfWeek = date.getDay();
+        const dayName = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'][dayOfWeek];
+        const dayConfig = appointmentScheduleConfig.days[dayName];
+        const isEnabled = dayConfig && dayConfig.enabled;
+        
+        // Obtener citas de este día
+        const appointmentsOnDay = appointments.filter(apt => {
+            const aptDate = new Date(apt.date);
+            return formatDateForStorage(aptDate) === dateStr && apt.status !== 'cancelled';
+        });
+        
+        const confirmedAppointments = appointmentsOnDay.filter(apt => apt.status === 'confirmed');
+        const pendingAppointments = appointmentsOnDay.filter(apt => apt.status === 'pending');
+        const hasAppointments = appointmentsOnDay.length > 0;
+        
+        // Verificar si el día está completamente reservado
+        const allSlots = [...(dayConfig?.morningHours || []), ...(dayConfig?.afternoonHours || [])];
+        const reservedSlots = appointmentsOnDay.map(apt => apt.time).filter(t => t);
+        const isFullyBooked = isEnabled && allSlots.length > 0 && reservedSlots.length >= allSlots.length;
+        
+        let dayClass = 'calendar-day';
+        if (isPast) {
+            dayClass += ' past';
+        } else if (isToday) {
+            dayClass += ' today';
+        } else if (!isEnabled) {
+            dayClass += ' disabled';
+        } else if (hasAppointments) {
+            // Día con citas: color según estado
+            if (confirmedAppointments.length > 0) {
+                dayClass += ' has-confirmed';
+            } else if (pendingAppointments.length > 0) {
+                dayClass += ' has-pending';
+            } else {
+                dayClass += ' has-appointments';
+            }
+        } else if (isEnabled && !isPast) {
+            // Día disponible: color azul
+            dayClass += ' available';
+        }
+        
+        if (isFullyBooked) dayClass += ' fully-booked';
+        if (selectedAdminDate === dateStr) dayClass += ' selected';
+        
+        const safeDateStr = escapeHtml(dateStr);
+        const appointmentsInfo = hasAppointments ? appointmentsOnDay.map(apt => `${apt.time} - ${apt.name || 'Sin nombre'} (${apt.status})`).join(', ') : '';
+        
+        calendarHTML += `
+            <div class="${dayClass}" 
+                 data-date="${safeDateStr}" 
+                 data-day="${day}"
+                 ${!isPast && isEnabled ? `onclick="selectAdminDate('${safeDateStr}')"` : ''}
+                 ${!isPast && isEnabled ? 'style="cursor: pointer;"' : ''}
+                 title="${hasAppointments ? `Citas: ${appointmentsInfo}` : isEnabled && !isPast ? 'Disponible para cita' : ''}">
+                <span class="day-number">${day}</span>
+                ${hasAppointments ? `<span class="appointments-count" title="${appointmentsOnDay.length} cita(s)">${appointmentsOnDay.length}</span>` : ''}
+                ${!hasAppointments && isEnabled && !isPast ? '<span class="available-indicator" title="Disponible">✓</span>' : ''}
+            </div>
+        `;
+    }
+    
+    // Calcular días del siguiente mes para completar la última semana
+    const totalCells = startingDayOfWeek + daysInMonth;
+    const remainingCells = 7 - (totalCells % 7);
+    if (remainingCells < 7) {
+        const nextMonth = adminCalendarMonth === 11 ? 0 : adminCalendarMonth + 1;
+        const nextYear = adminCalendarMonth === 11 ? adminCalendarYear + 1 : adminCalendarYear;
+        for (let day = 1; day <= remainingCells; day++) {
+            const date = new Date(nextYear, nextMonth, day);
+            const dateStr = formatDateForStorage(date);
+            const isPast = date < today;
+            
+            calendarHTML += `
+                <div class="calendar-day next-month ${isPast ? 'past' : ''}" 
+                     data-date="${escapeHtml(dateStr)}" 
+                     data-day="${day}"
+                     style="opacity: 0.4;">
+                    <span class="day-number">${day}</span>
+                </div>
+            `;
+        }
+    }
+    
+    calendarHTML += '</div>';
+    calendarGrid.innerHTML = calendarHTML;
+    console.log('✅ Calendario del admin renderizado correctamente');
+}
+
+// Cambiar mes del calendario del admin
+function changeAdminCalendarMonth(direction) {
+    adminCalendarMonth += direction;
+    if (adminCalendarMonth < 0) {
+        adminCalendarMonth = 11;
+        adminCalendarYear--;
+    } else if (adminCalendarMonth > 11) {
+        adminCalendarMonth = 0;
+        adminCalendarYear++;
+    }
+    renderAdminCalendar();
+}
+
+// Seleccionar fecha en el calendario del admin
+function selectAdminDate(dateStr) {
+    selectedAdminDate = dateStr;
+    
+    // Obtener el día de la semana
+    const date = new Date(dateStr + 'T00:00:00');
+    const dayOfWeek = date.getDay();
+    const dayName = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'][dayOfWeek];
+    const dayNames = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+    
+    // Mostrar panel de configuración del día
+    const dayConfigPanel = document.getElementById('adminDayConfigPanel');
+    const selectedDayTitle = document.getElementById('adminSelectedDayTitle');
+    const dayEnabledCheckbox = document.getElementById('adminDayEnabled');
+    const dayHoursConfig = document.getElementById('adminDayHoursConfig');
+    
+    if (dayConfigPanel && selectedDayTitle && dayEnabledCheckbox) {
+        dayConfigPanel.style.display = 'block';
+        selectedDayTitle.textContent = `${dayNames[dayOfWeek]}, ${formatDateForDisplay(dateStr)}`;
+        
+        // Cargar configuración del día
+        const dayConfig = appointmentScheduleConfig.days[dayName];
+        if (dayConfig) {
+            dayEnabledCheckbox.checked = dayConfig.enabled || false;
+            toggleAdminDayEnabled(); // Esto mostrará/ocultará la configuración de horarios
+            loadAdminDayHoursConfig(dayName);
+        } else {
+            dayEnabledCheckbox.checked = false;
+            toggleAdminDayEnabled();
+        }
+    }
+    
+    // Obtener citas del día seleccionado
+    const appointmentsOnDay = appointments.filter(apt => {
+        const aptDate = new Date(apt.date);
+        return formatDateForStorage(aptDate) === dateStr;
+    });
+    
+    const selectedDateContainer = document.getElementById('adminSelectedDateAppointments');
+    const dayAppointmentsList = document.getElementById('adminDayAppointmentsList');
+    
+    if (selectedDateContainer && dayAppointmentsList) {
+        if (appointmentsOnDay.length > 0) {
+            dayAppointmentsList.innerHTML = appointmentsOnDay.map(apt => {
+                const statusBadge = {
+                    'pending': '<span class="status-badge status-pending" style="padding: 0.25rem 0.75rem; border-radius: 12px; font-size: 0.75rem; font-weight: 500; text-transform: uppercase; background: rgba(245, 158, 11, 0.2); color: var(--accent-color);">Pendiente</span>',
+                    'confirmed': '<span class="status-badge status-confirmed" style="padding: 0.25rem 0.75rem; border-radius: 12px; font-size: 0.75rem; font-weight: 500; text-transform: uppercase; background: rgba(34, 197, 94, 0.2); color: #22c55e;">Confirmada</span>',
+                    'cancelled': '<span class="status-badge status-cancelled" style="padding: 0.25rem 0.75rem; border-radius: 12px; font-size: 0.75rem; font-weight: 500; text-transform: uppercase; background: rgba(239, 68, 68, 0.2); color: var(--error-color);">Cancelada</span>'
+                }[apt.status] || '';
+                
+                return `
+                    <div class="appointment-item" data-status="${apt.status}" style="margin-bottom: 1rem; padding: 1rem; border: 1px solid var(--border-color); border-radius: var(--border-radius); background: var(--bg-secondary);">
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.5rem;">
+                            <div style="flex: 1;">
+                                <div style="font-weight: 600; color: var(--text-primary); margin-bottom: 0.25rem;">${escapeHtml(apt.name || 'Sin nombre')}</div>
+                                <div style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 0.25rem;">
+                                    <i class="fas fa-clock"></i> ${escapeHtml(apt.time || 'Sin hora')} - ${escapeHtml(getServiceName(apt.service))}
+                                </div>
+                            </div>
+                            <div>${statusBadge}</div>
+                        </div>
+                        <div style="font-size: 0.85rem; color: var(--text-secondary);">
+                            <p style="margin-bottom: 0.25rem;"><strong>DNI:</strong> ${escapeHtml(apt.dni || 'N/A')}</p>
+                            <p style="margin-bottom: 0.25rem;"><strong>Email:</strong> ${escapeHtml(apt.email || 'N/A')}</p>
+                            <p style="margin-bottom: 0.25rem;"><strong>Teléfono:</strong> ${escapeHtml(apt.phone || 'N/A')}</p>
+                        </div>
+                        <div style="display: flex; gap: 0.5rem; margin-top: 0.75rem; flex-wrap: wrap;">
+                            <button class="btn btn-primary btn-sm" onclick="editAppointment('${apt.id}')">
+                                <i class="fas fa-edit"></i> Editar
+                            </button>
+                            ${apt.status === 'pending' ? `
+                                <button class="btn btn-success btn-sm" onclick="updateAppointmentStatus('${apt.id}', 'confirmed'); renderAdminCalendar(); selectAdminDate('${dateStr}');">
+                                    <i class="fas fa-check"></i> Confirmar
+                                </button>
+                            ` : ''}
+                            ${apt.status !== 'cancelled' ? `
+                                <button class="btn btn-warning btn-sm" onclick="updateAppointmentStatus('${apt.id}', 'cancelled'); renderAdminCalendar(); selectAdminDate('${dateStr}');">
+                                    <i class="fas fa-times"></i> Cancelar
+                                </button>
+                            ` : ''}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+            
+            selectedDateContainer.style.display = 'block';
+        } else {
+            selectedDateContainer.style.display = 'none';
+        }
+    }
+    
+    // Re-renderizar calendario para mostrar selección
+    renderAdminCalendar();
+}
+
+// Toggle para activar/desactivar día
+function toggleAdminDayEnabled() {
+    const dayEnabledCheckbox = document.getElementById('adminDayEnabled');
+    const dayHoursConfig = document.getElementById('adminDayHoursConfig');
+    
+    if (dayEnabledCheckbox && dayHoursConfig) {
+        if (dayEnabledCheckbox.checked) {
+            dayHoursConfig.style.display = 'block';
+            // Si no hay horarios configurados, cargar los del día de la semana
+            if (selectedAdminDate) {
+                const date = new Date(selectedAdminDate + 'T00:00:00');
+                const dayOfWeek = date.getDay();
+                const dayName = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'][dayOfWeek];
+                loadAdminDayHoursConfig(dayName);
+            }
+        } else {
+            dayHoursConfig.style.display = 'none';
+        }
+    }
+}
+
+// Cargar configuración de horarios del día
+function loadAdminDayHoursConfig(dayName) {
+    const dayConfig = appointmentScheduleConfig.days[dayName];
+    const morningHours = dayConfig?.morningHours || [];
+    const afternoonHours = dayConfig?.afternoonHours || [];
+    
+    // Si no hay horarios, usar valores por defecto
+    const defaultMorning = morningHours.length > 0 ? morningHours : ['09:00', '10:00', '11:00', '12:00'];
+    const defaultAfternoon = afternoonHours.length > 0 ? afternoonHours : ['16:00', '17:00', '18:00'];
+    
+    // Cargar horarios de mañana
+    const morningContainer = document.getElementById('adminDayMorningHours');
+    if (morningContainer) {
+        morningContainer.innerHTML = '';
+        defaultMorning.forEach(hour => {
+            const item = document.createElement('div');
+            item.className = 'hour-input-item';
+            item.style.cssText = 'display: flex; gap: 0.5rem; margin-bottom: 0.5rem; align-items: center;';
+            item.innerHTML = `
+                <input type="time" class="hour-time-input" value="${escapeHtml(hour)}" style="flex: 1; padding: 0.5rem; border: 1px solid var(--border-color); border-radius: 4px;">
+                <button type="button" class="btn btn-outline btn-sm" onclick="removeAdminDayHourSlot(this, 'morning')" style="padding: 0.5rem;">
+                    <i class="fas fa-times"></i>
+                </button>
+            `;
+            morningContainer.appendChild(item);
+        });
+    }
+    
+    // Cargar horarios de tarde
+    const afternoonContainer = document.getElementById('adminDayAfternoonHours');
+    if (afternoonContainer) {
+        afternoonContainer.innerHTML = '';
+        defaultAfternoon.forEach(hour => {
+            const item = document.createElement('div');
+            item.className = 'hour-input-item';
+            item.style.cssText = 'display: flex; gap: 0.5rem; margin-bottom: 0.5rem; align-items: center;';
+            item.innerHTML = `
+                <input type="time" class="hour-time-input" value="${escapeHtml(hour)}" style="flex: 1; padding: 0.5rem; border: 1px solid var(--border-color); border-radius: 4px;">
+                <button type="button" class="btn btn-outline btn-sm" onclick="removeAdminDayHourSlot(this, 'afternoon')" style="padding: 0.5rem;">
+                    <i class="fas fa-times"></i>
+                </button>
+            `;
+            afternoonContainer.appendChild(item);
+        });
+    }
+}
+
+// Agregar slot de hora para el día
+function addAdminDayHourSlot(period) {
+    const containerId = period === 'morning' ? 'adminDayMorningHours' : 'adminDayAfternoonHours';
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    
+    const item = document.createElement('div');
+    item.className = 'hour-input-item';
+    item.style.cssText = 'display: flex; gap: 0.5rem; margin-bottom: 0.5rem; align-items: center;';
+    item.innerHTML = `
+        <input type="time" class="hour-time-input" value="09:00" style="flex: 1; padding: 0.5rem; border: 1px solid var(--border-color); border-radius: 4px;">
+        <button type="button" class="btn btn-outline btn-sm" onclick="removeAdminDayHourSlot(this, '${period}')" style="padding: 0.5rem;">
+            <i class="fas fa-times"></i>
+        </button>
+    `;
+    container.appendChild(item);
+}
+
+// Eliminar slot de hora del día
+function removeAdminDayHourSlot(button, period) {
+    button.closest('.hour-input-item').remove();
+}
+
+// Guardar configuración del día
+function saveAdminDayConfig() {
+    if (!selectedAdminDate) {
+        showNotification('No hay día seleccionado', 'error');
+        return;
+    }
+    
+    const date = new Date(selectedAdminDate + 'T00:00:00');
+    const dayOfWeek = date.getDay();
+    const dayName = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'][dayOfWeek];
+    const dayEnabledCheckbox = document.getElementById('adminDayEnabled');
+    
+    if (!dayEnabledCheckbox) {
+        showNotification('Error: No se pudo encontrar la configuración del día', 'error');
+        return;
+    }
+    
+    // Obtener horarios de mañana
+    const morningContainer = document.getElementById('adminDayMorningHours');
+    const morningInputs = morningContainer ? morningContainer.querySelectorAll('.hour-time-input') : [];
+    const morningHours = Array.from(morningInputs).map(input => input.value).filter(v => v);
+    
+    // Obtener horarios de tarde
+    const afternoonContainer = document.getElementById('adminDayAfternoonHours');
+    const afternoonInputs = afternoonContainer ? afternoonContainer.querySelectorAll('.hour-time-input') : [];
+    const afternoonHours = Array.from(afternoonInputs).map(input => input.value).filter(v => v);
+    
+    // Actualizar configuración
+    if (!appointmentScheduleConfig.days[dayName]) {
+        appointmentScheduleConfig.days[dayName] = { enabled: false, morningHours: [], afternoonHours: [] };
+    }
+    
+    appointmentScheduleConfig.days[dayName].enabled = dayEnabledCheckbox.checked;
+    appointmentScheduleConfig.days[dayName].morningHours = morningHours;
+    appointmentScheduleConfig.days[dayName].afternoonHours = afternoonHours;
+    
+    // Guardar en localStorage
+    localStorage.setItem('appointmentScheduleConfig', JSON.stringify(appointmentScheduleConfig));
+    
+    // Re-renderizar calendario
+    renderAdminCalendar();
+    
+    showNotification('Configuración del día guardada correctamente', 'success');
+}
+
+// Inicializar calendario cuando se abre el formulario
+function initializeAppointmentCalendar() {
+    loadAppointmentScheduleConfig();
+    currentCalendarMonth = new Date().getMonth();
+    currentCalendarYear = new Date().getFullYear();
+    renderCalendar();
+}
+
+// Cargar configuración al iniciar
+loadAppointmentScheduleConfig();
+
+// Inicializar calendario cuando se muestra el formulario
+document.addEventListener('DOMContentLoaded', function() {
+    const toggleBtn = document.getElementById('toggleAppointmentForm');
+    if (toggleBtn) {
+        toggleBtn.addEventListener('click', function() {
+            setTimeout(() => {
+                if (document.getElementById('appointmentFormContainer')?.style.display !== 'none') {
+                    initializeAppointmentCalendar();
+                }
+            }, 100);
+        });
+    }
+    
+    // Ejecutar prueba automáticamente si hay parámetro ?testAppointment=true en la URL
+    if (window.location.search.includes('testAppointment=true')) {
+        setTimeout(async () => {
+            console.log('🧪 Modo de prueba activado. Ejecutando prueba de cita previa...');
+            if (typeof createTestAppointment === 'function') {
+                try {
+                    await createTestAppointment();
+                } catch (error) {
+                    console.error('❌ Error ejecutando prueba:', error);
+                }
+            } else {
+                console.error('❌ La función createTestAppointment no está disponible');
+            }
+        }, 3000);
+    }
+});
 
  

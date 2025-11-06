@@ -33,6 +33,99 @@ body {
     background-color: var(--bg-primary);
 }
 
+/* Skip Links para accesibilidad */
+.skip-link {
+    position: absolute;
+    top: -40px;
+    left: 0;
+    background: var(--primary-color);
+    color: white;
+    padding: 0.75rem 1.5rem;
+    text-decoration: none;
+    z-index: 10000;
+    font-weight: 600;
+    border-radius: 0 0 4px 0;
+    transition: top 0.3s;
+}
+
+.skip-link:focus {
+    top: 0;
+    outline: 3px solid var(--accent-color);
+    outline-offset: 2px;
+}
+
+/* Screen reader only - texto oculto visualmente pero accesible */
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border-width: 0;
+}
+
+/* Indicador de campo obligatorio */
+.required-indicator {
+    color: var(--error-color);
+    font-weight: bold;
+    margin-left: 0.25rem;
+}
+
+/* Mensajes de error accesibles */
+.error-message {
+    display: block;
+    color: var(--error-color);
+    font-size: 0.875rem;
+    margin-top: 0.25rem;
+    font-weight: 500;
+}
+
+.error-message:empty {
+    display: none;
+}
+
+/* Focus visible mejorado para accesibilidad */
+*:focus-visible {
+    outline: 3px solid var(--accent-color);
+    outline-offset: 2px;
+    border-radius: 2px;
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+    outline: 3px solid var(--accent-color);
+    outline-offset: 2px;
+}
+
+/* Contraste mejorado para elementos interactivos */
+.btn:focus-visible {
+    outline: 3px solid var(--accent-color);
+    outline-offset: 2px;
+    box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.3);
+}
+
+/* Mejora de contraste para texto */
+.text-secondary {
+    color: var(--text-secondary);
+}
+
+/* Asegurar contraste mínimo 4.5:1 */
+a {
+    color: var(--primary-color);
+}
+
+a:hover,
+a:focus {
+    color: var(--secondary-color);
+    text-decoration: underline;
+}
+
 .container {
     max-width: 1200px;
     margin: 0 auto;
@@ -3123,6 +3216,234 @@ a.btn {
     .telefono-elemento-item .elemento-actions {
         justify-content: center;
     }
+}
+
+/* ===== CALENDARIO DE CITAS PREVIAS MEJORADO ===== */
+.calendar-weekdays {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+    text-align: center;
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+}
+
+.calendar-days-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 0.5rem;
+}
+
+.calendar-day {
+    aspect-ratio: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid var(--border-color);
+    border-radius: 8px;
+    padding: 0.5rem;
+    background: var(--bg-primary);
+    transition: all 0.2s;
+    position: relative;
+    min-height: 60px;
+}
+
+.calendar-day.empty {
+    border: none;
+    background: transparent;
+}
+
+.calendar-day.past {
+    opacity: 0.4;
+    background: var(--bg-tertiary);
+    cursor: not-allowed;
+}
+
+.calendar-day.today {
+    border-color: var(--primary-color);
+    background: rgba(30, 64, 175, 0.1);
+    font-weight: bold;
+}
+
+.calendar-day.disabled {
+    opacity: 0.5;
+    background: var(--bg-tertiary);
+    cursor: not-allowed;
+}
+
+.calendar-day.available {
+    background: rgba(59, 130, 246, 0.15);
+    border-color: var(--primary-color);
+    color: var(--primary-color);
+}
+
+.calendar-day.available:hover {
+    background: rgba(59, 130, 246, 0.25);
+    border-color: var(--secondary-color);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+.calendar-day.has-appointments {
+    background: rgba(239, 68, 68, 0.2);
+    border-color: var(--error-color);
+    color: var(--error-color);
+    font-weight: 600;
+}
+
+.calendar-day.has-appointments:hover {
+    background: rgba(239, 68, 68, 0.3);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+.calendar-day.has-confirmed {
+    background: rgba(34, 197, 94, 0.2);
+    border-color: #22c55e;
+    color: #22c55e;
+    font-weight: 600;
+}
+
+.calendar-day.has-confirmed:hover {
+    background: rgba(34, 197, 94, 0.3);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+.calendar-day.has-pending {
+    background: rgba(245, 158, 11, 0.2);
+    border-color: var(--accent-color);
+    color: var(--accent-color);
+    font-weight: 600;
+}
+
+.calendar-day.has-pending:hover {
+    background: rgba(245, 158, 11, 0.3);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+.calendar-day.selected {
+    border-color: var(--accent-color);
+    background: rgba(245, 158, 11, 0.3);
+    font-weight: bold;
+    transform: scale(1.05);
+    box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.3);
+}
+
+.calendar-day.fully-booked {
+    background: rgba(239, 68, 68, 0.3);
+    border-color: var(--error-color);
+    opacity: 0.8;
+}
+
+.calendar-day:hover:not(.past):not(.disabled):not(.empty) {
+    border-color: var(--primary-color);
+    background: rgba(30, 64, 175, 0.1);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+.calendar-day .day-number {
+    font-size: 1rem;
+    font-weight: 500;
+}
+
+.calendar-day .appointments-count {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    background: var(--error-color);
+    color: white;
+    border-radius: 50%;
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.7rem;
+    font-weight: bold;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.calendar-day.fully-booked .appointments-count {
+    background: var(--error-color);
+    animation: pulse 2s infinite;
+}
+
+.calendar-day .available-indicator {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    color: var(--primary-color);
+    font-size: 0.8rem;
+    font-weight: bold;
+}
+
+@keyframes pulse {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.7;
+    }
+}
+
+/* Slots de tiempo */
+.time-slots-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+    gap: 0.75rem;
+    margin-top: 1rem;
+}
+
+.time-slot {
+    padding: 0.75rem 1rem;
+    border: 2px solid var(--border-color);
+    border-radius: 8px;
+    background: var(--bg-primary);
+    cursor: pointer;
+    transition: all 0.2s;
+    font-weight: 500;
+    text-align: center;
+}
+
+.time-slot.available {
+    border-color: var(--success-color);
+    background: rgba(16, 185, 129, 0.1);
+}
+
+.time-slot.available:hover {
+    background: rgba(16, 185, 129, 0.2);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+.time-slot.selected {
+    border-color: var(--accent-color);
+    background: var(--accent-color);
+    color: white;
+    font-weight: bold;
+    transform: scale(1.05);
+}
+
+.time-slot.reserved {
+    border-color: var(--error-color);
+    background: rgba(239, 68, 68, 0.1);
+    color: var(--text-secondary);
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+.time-slot.reserved .time-text {
+    text-decoration: line-through;
+}
+
+.time-slot:disabled {
+    cursor: not-allowed;
 }
 
 /* ===== ESTADÍSTICAS AVANZADAS ===== */

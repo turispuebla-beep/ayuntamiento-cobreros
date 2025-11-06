@@ -175,3 +175,5 @@ firebase deploy --only functions:sendPushNotification
 **Todo está listo, solo falta configurar el Server Key FCM (10 minutos) y estará 100% operativo** 🎯
 
 
+
+

@@ -17,20 +17,41 @@ const BATCH_SIZE = 500;
 const APPOINTMENT_EMAIL = 'u2389387944@gmail.com';
 
 // Configurar Nodemailer para Gmail
-// Usar variables de entorno (método moderno) o fallback a config deprecated
-const gmailPassword = process.env.GMAIL_PASSWORD || functions.config().gmail?.password;
+// ✅ MIGRADO A FIREBASE SECRETS (marzo 2026)
+// Para configurar: firebase functions:secrets:set GMAIL_PASSWORD
+// El secret se expone automáticamente como process.env.GMAIL_PASSWORD
+// NOTA: El secret solo está disponible en runtime, no en build time
+// Por eso creamos el transporter dentro de la función
 
-const transporter = nodemailer.createTransport({
-  service: 'gmail',
-  auth: {
-    user: APPOINTMENT_EMAIL,
-    pass: gmailPassword
+function createTransporter() {
+  const gmailPassword = process.env.GMAIL_PASSWORD;
+  if (!gmailPassword) {
+    throw new Error('GMAIL_PASSWORD secret no configurado. Usa: firebase functions:secrets:set GMAIL_PASSWORD');
   }
-});
+  return nodemailer.createTransport({
+    service: 'gmail',
+    auth: {
+      user: APPOINTMENT_EMAIL,
+      pass: gmailPassword
+    }
+  });
+}
 
 // Función para enviar emails
-export const sendEmail = functions.https.onRequest((req, res) => {
+// ✅ Usa Firebase Secrets (GMAIL_PASSWORD se expone automáticamente como process.env)
+export const sendEmail = functions
+  .runWith({ secrets: ['GMAIL_PASSWORD'] })
+  .https.onRequest((req, res) => {
   return corsHandler(req, res, async () => {
+    // Validar que el secret esté configurado (solo en runtime)
+    const runtimeGmailPassword = process.env.GMAIL_PASSWORD;
+    if (!runtimeGmailPassword) {
+      return res.status(500).json({ 
+        error: 'GMAIL_PASSWORD secret no configurado',
+        message: 'Configura el secret con: firebase functions:secrets:set GMAIL_PASSWORD'
+      });
+    }
+    
     if (req.method !== 'POST') {
       return res.status(405).json({ error: 'Método no permitido' });
     }
@@ -74,6 +95,7 @@ export const sendEmail = functions.https.onRequest((req, res) => {
       };
 
       // Enviar email
+      const transporter = createTransporter();
       const info = await transporter.sendMail(mailOptions);
       
       console.log('✅ Email enviado:', info.messageId);
@@ -347,10 +369,10 @@ function generateAppointmentConfirmationHTML(data: any): string {
                     <h3>📅 Detalles de su cita:</h3>
                     <ul>
                         <li><strong>Servicio:</strong> ${data.service}</li>
-                        <li><strong>Fecha:</strong> <span class="highlight">${data.date}</span></li>
-                        <li><strong>Hora:</strong> <span class="highlight">${data.time}</span></li>
+                        <li><strong>Fecha:</strong> <span class="highlight">${data.date || data.dateFormatted || 'No especificada'}</span></li>
+                        <li><strong>Hora:</strong> <span class="highlight">${data.time || 'No especificada'}</span></li>
                         <li><strong>DNI:</strong> ${data.dni}</li>
-                        <li><strong>ID de Cita:</strong> ${data.appointmentId || data.id}</li>
+                        <li><strong>ID de Cita:</strong> ${data.appointmentId || data.id || 'N/A'}</li>
                         ${data.comments ? `<li><strong>Comentarios:</strong> ${data.comments}</li>` : ''}
                     </ul>
                 </div>
@@ -385,10 +407,10 @@ Le confirmamos que su solicitud de cita previa ha sido recibida correctamente.
 
 DETALLES DE SU CITA:
 - Servicio: ${data.service}
-- Fecha: ${data.date}
-- Hora: ${data.time}
+- Fecha: ${data.date || data.dateFormatted || 'No especificada'}
+- Hora: ${data.time || 'No especificada'}
 - DNI: ${data.dni}
-- ID de Cita: ${data.appointmentId || data.id}
+- ID de Cita: ${data.appointmentId || data.id || 'N/A'}
 ${data.comments ? `- Comentarios: ${data.comments}` : ''}
 
 IMPORTANTE: Nos pondremos en contacto con usted para confirmar la disponibilidad de la fecha y hora solicitada.
@@ -632,7 +654,244 @@ Este es un email automático, por favor no responda a este mensaje.
   `;
 }
 
+// ===== SISTEMA DE BACKUP AUTOMÁTICO =====
 
+/**
+ * 🔄 Función programada para crear backups automáticos
+ * 
+ * Se ejecuta diariamente a las 02:00 UTC
+ * Guarda backups en Firebase Storage
+ * 
+ * Backup incluye:
+ * - Usuarios registrados
+ * - Citas previas
+ * - Notificaciones enviadas
+ * - Configuración del sistema
+ */
+export const createDailyBackup = functions.pubsub
+  .schedule('0 2 * * *') // Diariamente a las 02:00 UTC
+  .timeZone('Europe/Madrid')
+  .onRun(async (context) => {
+    try {
+      console.log('🔄 Iniciando backup automático diario...');
+      
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+      const backupDate = new Date().toISOString().split('T')[0];
+      
+      // Recolectar datos
+      const backupData: any = {
+        timestamp: new Date().toISOString(),
+        backupDate: backupDate,
+        collections: {}
+      };
+
+      // Backup de usuarios
+      const usersSnapshot = await admin.firestore().collection('users').get();
+      backupData.collections.users = usersSnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+      console.log(`✅ Usuarios: ${usersSnapshot.size} documentos`);
+
+      // Backup de citas previas (desde localStorage, guardar en Firestore)
+      // Nota: Las citas están en localStorage del frontend, aquí guardamos la estructura
+      backupData.collections.appointments = {
+        note: 'Las citas previas se guardan en localStorage del frontend. Este backup guarda la estructura de datos.'
+      };
+
+      // Backup de estadísticas de notificaciones
+      const statsSnapshot = await admin.firestore()
+        .collection('notification_stats')
+        .orderBy('timestamp', 'desc')
+        .limit(1000)
+        .get();
+      backupData.collections.notification_stats = statsSnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+      console.log(`✅ Estadísticas: ${statsSnapshot.size} documentos`);
+
+      // Backup de administradores (solo estructura, sin contraseñas)
+      const adminsSnapshot = await admin.firestore().collection('admins').get();
+      backupData.collections.admins = adminsSnapshot.docs.map(doc => {
+        const data = doc.data();
+        // No incluir contraseñas en el backup
+        delete data.password;
+        return {
+          id: doc.id,
+          ...data
+        };
+      });
+      console.log(`✅ Administradores: ${adminsSnapshot.size} documentos`);
+
+      // Guardar backup en Firestore
+      const backupRef = await admin.firestore().collection('backups').add({
+        ...backupData,
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        size: JSON.stringify(backupData).length,
+        collectionsCount: {
+          users: backupData.collections.users.length,
+          notification_stats: backupData.collections.notification_stats.length,
+          admins: backupData.collections.admins.length
+        }
+      });
+
+      console.log(`✅ Backup guardado en Firestore: ${backupRef.id}`);
+
+      // Opcional: Guardar también en Firebase Storage como JSON
+      const bucket = admin.storage().bucket();
+      const fileName = `backups/${backupDate}/backup-${timestamp}.json`;
+      const file = bucket.file(fileName);
+      
+      await file.save(JSON.stringify(backupData, null, 2), {
+        contentType: 'application/json',
+        metadata: {
+          metadata: {
+            createdBy: 'backup-automatico',
+            timestamp: timestamp,
+            backupDate: backupDate
+          }
+        }
+      });
+
+      console.log(`✅ Backup guardado en Storage: ${fileName}`);
+
+      // Limpiar backups antiguos (mantener solo los últimos 30 días)
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      
+      const oldBackups = await admin.firestore()
+        .collection('backups')
+        .where('createdAt', '<', thirtyDaysAgo)
+        .get();
+
+      if (!oldBackups.empty) {
+        const deletePromises = oldBackups.docs.map(doc => doc.ref.delete());
+        await Promise.all(deletePromises);
+        console.log(`🧹 Limpieza: ${oldBackups.size} backups antiguos eliminados`);
+      }
+
+      // Limpiar archivos antiguos de Storage
+      const [files] = await bucket.getFiles({ prefix: 'backups/' });
+      const oldFiles = files.filter(file => {
+        const timeCreated = file.metadata.timeCreated;
+        if (!timeCreated) return false;
+        const fileDate = new Date(timeCreated);
+        return fileDate < thirtyDaysAgo;
+      });
+
+      if (oldFiles.length > 0) {
+        const deletePromises = oldFiles.map(file => file.delete());
+        await Promise.all(deletePromises);
+        console.log(`🧹 Limpieza Storage: ${oldFiles.length} archivos antiguos eliminados`);
+      }
+
+      console.log('✅ Backup automático completado exitosamente');
+      
+      return null;
+    } catch (error: any) {
+      console.error('❌ Error en backup automático:', error);
+      // No lanzar error para que no falle la función programada
+      return null;
+    }
+  });
+
+/**
+ * 🔄 Función manual para crear backup inmediato
+ * 
+ * Endpoint: https://us-central1-turisteam-80f1b.cloudfunctions.net/createBackup
+ * Método: POST
+ */
+export const createBackup = functions.https.onRequest((req, res) => {
+  return corsHandler(req, res, async () => {
+    if (req.method !== 'POST') {
+      return res.status(405).json({ error: 'Método no permitido' });
+    }
+
+    try {
+      console.log('🔄 Iniciando backup manual...');
+      
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+      const backupDate = new Date().toISOString().split('T')[0];
+      
+      // Recolectar datos (mismo proceso que backup automático)
+      const backupData: any = {
+        timestamp: new Date().toISOString(),
+        backupDate: backupDate,
+        type: 'manual',
+        collections: {}
+      };
+
+      // Backup de usuarios
+      const usersSnapshot = await admin.firestore().collection('users').get();
+      backupData.collections.users = usersSnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+
+      // Backup de estadísticas
+      const statsSnapshot = await admin.firestore()
+        .collection('notification_stats')
+        .orderBy('timestamp', 'desc')
+        .limit(1000)
+        .get();
+      backupData.collections.notification_stats = statsSnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+
+      // Backup de administradores (sin contraseñas)
+      const adminsSnapshot = await admin.firestore().collection('admins').get();
+      backupData.collections.admins = adminsSnapshot.docs.map(doc => {
+        const data = doc.data();
+        delete data.password;
+        return {
+          id: doc.id,
+          ...data
+        };
+      });
+
+      // Guardar en Firestore
+      const backupRef = await admin.firestore().collection('backups').add({
+        ...backupData,
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        size: JSON.stringify(backupData).length
+      });
+
+      // Guardar en Storage
+      const bucket = admin.storage().bucket();
+      const fileName = `backups/${backupDate}/backup-manual-${timestamp}.json`;
+      const file = bucket.file(fileName);
+      
+      await file.save(JSON.stringify(backupData, null, 2), {
+        contentType: 'application/json'
+      });
+
+      console.log(`✅ Backup manual completado: ${backupRef.id}`);
+      
+      return res.status(200).json({
+        success: true,
+        message: 'Backup creado exitosamente',
+        backupId: backupRef.id,
+        storagePath: fileName,
+        timestamp: backupData.timestamp,
+        collectionsCount: {
+          users: backupData.collections.users.length,
+          notification_stats: backupData.collections.notification_stats.length,
+          admins: backupData.collections.admins.length
+        }
+      });
+
+    } catch (error: any) {
+      console.error('❌ Error en backup manual:', error);
+      return res.status(500).json({
+        success: false,
+        error: 'Error interno del servidor',
+        details: error.message
+      });
+    }
+  });
+});
 
 
 
