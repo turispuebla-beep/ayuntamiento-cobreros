@@ -29,13 +29,20 @@ async function executeRecaptcha(action) {
     try {
         // Verificar que reCAPTCHA esté cargado
         if (typeof grecaptcha === 'undefined') {
-            console.error('reCAPTCHA no está cargado');
-            return null;
+            console.error('❌ reCAPTCHA no está cargado. Verifica que el script de reCAPTCHA esté incluido en el HTML.');
+            throw new Error('reCAPTCHA no está disponible');
         }
 
-        // Esperar a que reCAPTCHA esté listo
-        await new Promise((resolve) => {
-            grecaptcha.ready(resolve);
+        // Esperar a que reCAPTCHA esté listo (con timeout)
+        await new Promise((resolve, reject) => {
+            const timeout = setTimeout(() => {
+                reject(new Error('Timeout esperando a que reCAPTCHA esté listo'));
+            }, 5000); // 5 segundos de timeout
+            
+            grecaptcha.ready(() => {
+                clearTimeout(timeout);
+                resolve();
+            });
         });
 
         // Ejecutar reCAPTCHA
@@ -43,12 +50,16 @@ async function executeRecaptcha(action) {
             action: action 
         });
 
+        if (!token) {
+            throw new Error('No se pudo obtener token de reCAPTCHA');
+        }
+
         console.log(`✅ reCAPTCHA token obtenido para acción: ${action}`);
         return token;
 
     } catch (error) {
         console.error('❌ Error ejecutando reCAPTCHA:', error);
-        return null;
+        throw error; // Re-lanzar el error para que handleFormWithRecaptcha lo maneje
     }
 }
 
@@ -60,20 +71,27 @@ async function executeRecaptcha(action) {
  */
 async function validateRecaptchaToken(token, action) {
     try {
-        // En un entorno real, esto se haría en el backend
-        // Por ahora, simulamos la validación
-        
-        // TODO: Implementar validación real en Firebase Functions
-        console.log(`🔍 Validando token reCAPTCHA para acción: ${action}`);
-        
-        // Simulación de validación (REEMPLAZAR con llamada real al backend)
-        if (token && token.length > 50) {
-            console.log('✅ Token reCAPTCHA válido (simulado)');
-            return true;
-        } else {
-            console.log('❌ Token reCAPTCHA inválido');
+        // Validación básica del token
+        if (!token || typeof token !== 'string') {
+            console.error('❌ Token reCAPTCHA inválido: token vacío o no es string');
             return false;
         }
+        
+        if (token.length < 50) {
+            console.error('❌ Token reCAPTCHA inválido: longitud insuficiente');
+            return false;
+        }
+        
+        // En un entorno real, esto se haría en el backend
+        // Por ahora, validamos que el token tenga el formato correcto
+        // TODO: Implementar validación real en Firebase Functions
+        
+        console.log(`🔍 Validando token reCAPTCHA para acción: ${action}`);
+        console.log('✅ Token reCAPTCHA válido (validación local)');
+        
+        // NOTA: En producción, esto debería validarse en el servidor
+        // Por ahora, aceptamos tokens que parecen válidos
+        return true;
 
     } catch (error) {
         console.error('❌ Error validando token reCAPTCHA:', error);
@@ -124,8 +142,17 @@ async function handleFormWithRecaptcha(formId, action, submitCallback) {
     } catch (error) {
         console.error('❌ Error en verificación reCAPTCHA:', error);
         
-        // Mostrar error al usuario
-        showNotification('Error de verificación de seguridad. Inténtalo de nuevo.', 'error');
+        // Mostrar mensaje de error más descriptivo
+        let errorMessage = 'Error de verificación de seguridad. ';
+        if (error.message.includes('no está disponible') || error.message.includes('no está cargado')) {
+            errorMessage += 'reCAPTCHA no está disponible. Por favor, recarga la página.';
+        } else if (error.message.includes('Timeout')) {
+            errorMessage += 'Tiempo de espera agotado. Por favor, inténtalo de nuevo.';
+        } else {
+            errorMessage += 'Inténtalo de nuevo.';
+        }
+        
+        showNotification(errorMessage, 'error');
         
     } finally {
         // Restaurar estado del botón
@@ -172,8 +199,14 @@ function initializeRecaptcha() {
     // Register Form
     const registerForm = document.getElementById('registerForm');
     if (registerForm) {
+        // Remover listener anterior si existe (solo podemos hacerlo si guardamos la referencia)
+        // Por ahora, simplemente agregamos nuestro listener que se ejecutará primero
+        // porque se agrega después de que el DOM esté listo
+        
+        // Usar capture phase para interceptar antes que otros listeners
         registerForm.addEventListener('submit', async (e) => {
             e.preventDefault();
+            e.stopImmediatePropagation(); // Prevenir que otros listeners se ejecuten
             
             await handleFormWithRecaptcha('registerForm', RECAPTCHA_CONFIG.actions.register, async (token) => {
                 // Aquí va la lógica original de registro
@@ -186,9 +219,10 @@ function initializeRecaptcha() {
                     await handleRegister(formData, token);
                 } else {
                     console.error('❌ Función handleRegister no encontrada');
+                    showNotification('Error: Función de registro no disponible', 'error');
                 }
             });
-        });
+        }, true); // Usar capture phase
     }
 
     // Admin Login Form
@@ -217,11 +251,29 @@ function initializeRecaptcha() {
     console.log('✅ reCAPTCHA inicializado en todos los formularios');
 }
 
+// Inicializar cuando el DOM esté listo y reCAPTCHA esté cargado
+function waitForRecaptchaAndInitialize() {
+    // Verificar si reCAPTCHA está disponible
+    if (typeof grecaptcha !== 'undefined') {
+        console.log('✅ reCAPTCHA cargado, inicializando...');
+        initializeRecaptcha();
+    } else {
+        // Esperar un poco más y reintentar
+        console.log('⏳ Esperando a que reCAPTCHA se cargue...');
+        setTimeout(waitForRecaptchaAndInitialize, 500);
+    }
+}
+
 // Inicializar cuando el DOM esté listo
-document.addEventListener('DOMContentLoaded', () => {
-    // Esperar un poco para que reCAPTCHA se cargue
-    setTimeout(initializeRecaptcha, 1000);
-});
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+        // Esperar a que reCAPTCHA se cargue
+        setTimeout(waitForRecaptchaAndInitialize, 500);
+    });
+} else {
+    // DOM ya está listo
+    setTimeout(waitForRecaptchaAndInitialize, 500);
+}
 
 // Exportar funciones para uso global
 window.executeRecaptcha = executeRecaptcha;

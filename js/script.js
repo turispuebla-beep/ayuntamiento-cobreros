@@ -545,7 +545,12 @@ function setupEventListeners() {
 
     // Formularios
     document.getElementById('loginForm').addEventListener('submit', handleLogin);
-    document.getElementById('registerForm').addEventListener('submit', handleRegister);
+    // El registro se maneja a través de recaptcha.js si está disponible
+    // Si recaptcha no está disponible, agregar listener directo
+    const registerForm = document.getElementById('registerForm');
+    if (registerForm && typeof initializeRecaptcha === 'undefined') {
+        registerForm.addEventListener('submit', handleRegister);
+    }
     document.getElementById('adminLoginForm').addEventListener('submit', handleAdminLogin);
     
     // Manejar cambio de tipo de documento en registro
@@ -1074,11 +1079,27 @@ function handleAdminLogin(e) {
 }
 
 // Manejar registro
-async function handleRegister(e) {
-    e.preventDefault();
+async function handleRegister(e, recaptchaToken = null) {
+    // Si e es un Event, prevenir comportamiento por defecto
+    if (e && e.preventDefault) {
+        e.preventDefault();
+    }
     
     try {
-        const formData = new FormData(e.target);
+        // Si e es FormData, usarlo directamente; si es Event, obtener FormData del formulario
+        let formData;
+        let formElement;
+        
+        if (e instanceof FormData) {
+            formData = e;
+            formElement = document.getElementById('registerForm');
+        } else if (e && e.target) {
+            formData = new FormData(e.target);
+            formElement = e.target;
+        } else {
+            showNotification('Error al procesar el formulario de registro', 'error');
+            return;
+        }
         const name = formData.get('name') || '';
         const surname1 = formData.get('surname1') || '';
         const surname2 = formData.get('surname2') || '';
@@ -1279,7 +1300,24 @@ async function handleRegister(e) {
 
         showNotification('Registro completado correctamente. Ahora recibirá notificaciones.', 'success');
         closeModal('registerModal');
-        e.target.reset();
+        
+        // Resetear formulario si existe
+        if (formElement && formElement.reset) {
+            formElement.reset();
+        } else {
+            const form = document.getElementById('registerForm');
+            if (form) {
+                form.reset();
+            }
+        }
+        
+        // Limpiar campos de documento al resetear
+        const dniGroup = document.getElementById('dniGroup');
+        const passportGroup = document.getElementById('passportGroup');
+        const otherDocGroup = document.getElementById('otherDocGroup');
+        if (dniGroup) dniGroup.style.display = 'none';
+        if (passportGroup) passportGroup.style.display = 'none';
+        if (otherDocGroup) otherDocGroup.style.display = 'none';
         
     } catch (error) {
         console.error('❌ Error en el registro:', error);
@@ -3261,6 +3299,21 @@ function loadCulturaOcioConfig() {
         // Asegurar que pestanasPersonalizadas existe
         if (!culturaOcioConfig.pestanasPersonalizadas) {
             culturaOcioConfig.pestanasPersonalizadas = [];
+        }
+        
+        // Eliminar tarjetas específicas: Quesos Artesanales y Vinos de la Tierra
+        if (culturaOcioConfig.tarjetas && Array.isArray(culturaOcioConfig.tarjetas)) {
+            const initialLength = culturaOcioConfig.tarjetas.length;
+            culturaOcioConfig.tarjetas = culturaOcioConfig.tarjetas.filter(tarjeta => {
+                const titulo = tarjeta.titulo || '';
+                // Eliminar tarjetas que contengan estos textos
+                return !titulo.includes('Quesos Artesanales') && !titulo.includes('Vinos de la Tierra');
+            });
+            
+            // Si se eliminaron tarjetas, guardar la configuración actualizada
+            if (culturaOcioConfig.tarjetas.length < initialLength) {
+                localStorage.setItem('culturaOcioConfig', JSON.stringify(culturaOcioConfig));
+            }
         }
     }
     // Renderizar pestañas personalizadas al cargar
@@ -7810,8 +7863,259 @@ function loadAdminsList() {
 
 // Funciones auxiliares para gestión de usuarios
 function editUser(email) {
-    alert(`Función de editar usuario: ${email}`);
-    // Implementar lógica de edición
+    // Cargar usuarios
+    const users = JSON.parse(localStorage.getItem('users') || '[]');
+    const user = users.find(u => u.email === email);
+    
+    if (!user) {
+        showNotification('Usuario no encontrado', 'error');
+        return;
+    }
+    
+    // Crear modal de edición
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.id = 'editUserModal';
+    modal.style.display = 'block';
+    
+    // Construir dirección completa
+    const fullAddress = user.address || user.direccion || '';
+    const city = user.city || user.ciudad || '';
+    const postalCode = user.postalCode || user.codigoPostal || '';
+    const addressParts = [fullAddress, city, postalCode].filter(p => p);
+    const displayAddress = addressParts.join(', ');
+    
+    modal.innerHTML = `
+        <div class="modal-content" style="max-width: 700px; max-height: 90vh; overflow-y: auto;">
+            <div class="modal-header">
+                <h3>✏️ Editar Usuario</h3>
+                <span class="close" onclick="closeEditUserModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form id="editUserForm">
+                    <input type="hidden" id="editUserEmail" value="${user.email}">
+                    
+                    <div class="form-group">
+                        <label for="editUserName">Nombre:</label>
+                        <input type="text" id="editUserName" value="${user.name || user.nombre || ''}" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="editUserSurname1">Primer Apellido:</label>
+                        <input type="text" id="editUserSurname1" value="${user.surname1 || ''}" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="editUserSurname2">Segundo Apellido: <small style="color: #999;">(Opcional)</small></label>
+                        <input type="text" id="editUserSurname2" value="${user.surname2 || ''}">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="editUserEmailInput">Correo electrónico:</label>
+                        <input type="email" id="editUserEmailInput" value="${user.email}" required>
+                        <small style="color: #666;">El email no se puede cambiar</small>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="editUserPhone">Teléfono:</label>
+                        <input type="tel" id="editUserPhone" value="${user.phone || user.telefono || ''}" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="editUserAddress">Dirección:</label>
+                        <input type="text" id="editUserAddress" value="${fullAddress}" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="editUserCity">Ciudad / Población:</label>
+                        <input type="text" id="editUserCity" value="${city}" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="editUserPostalCode">Código Postal:</label>
+                        <input type="text" id="editUserPostalCode" value="${postalCode}" required maxlength="5" pattern="[0-9]{5}">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="editUserDocumentType">Tipo de documento:</label>
+                        <select id="editUserDocumentType" required>
+                            <option value="dni" ${(user.documentType === 'dni' || (!user.documentType && user.dni)) ? 'selected' : ''}>DNI</option>
+                            <option value="nie" ${user.documentType === 'nie' ? 'selected' : ''}>NIE</option>
+                            <option value="passport" ${user.documentType === 'passport' ? 'selected' : ''}>Pasaporte</option>
+                            <option value="other" ${user.documentType === 'other' ? 'selected' : ''}>Otro</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="editUserDocumentNumber">Número de documento:</label>
+                        <input type="text" id="editUserDocumentNumber" value="${user.documentNumber || user.dni || ''}" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="editUserLocalities">Localidades de interés:</label>
+                        <div class="localities-selection">
+                            <div class="localities-grid">
+                                ${['Cobreros', 'Avedillo de Sanabria', 'Barrio de Lomba', 'Castro de Sanabria', 'Limianos', 'Quintana de Sanabria', 'Riego de Lomba', 'San Martín del Terroso', 'San Miguel de Lomba', 'San Román de Sanabria', 'Santa Colomba', 'Sotillo', 'Terroso'].map(locality => {
+                                    const isChecked = (user.localities || []).includes(locality);
+                                    return `
+                                        <label class="locality-checkbox">
+                                            <input type="checkbox" name="editUserLocalities" value="${locality}" ${isChecked ? 'checked' : ''}>
+                                            <span>${locality}</span>
+                                        </label>
+                                    `;
+                                }).join('')}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group checkbox-group">
+                        <input type="checkbox" id="editUserConsent" ${user.consent ? 'checked' : ''}>
+                        <label for="editUserConsent">Consentimiento para tratamiento de datos</label>
+                    </div>
+                    
+                    <div class="form-group checkbox-group">
+                        <input type="checkbox" id="editUserNotificationConsent" ${user.notificationConsent ? 'checked' : ''}>
+                        <label for="editUserNotificationConsent">Consentimiento para recibir notificaciones</label>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="editUserPassword">Nueva contraseña: <small style="color: #999;">(dejar vacío para no cambiar)</small></label>
+                        <input type="password" id="editUserPassword" placeholder="Nueva contraseña">
+                    </div>
+                    
+                    <div class="form-actions" style="display: flex; gap: 1rem; margin-top: 1.5rem;">
+                        <button type="button" class="btn btn-outline" onclick="closeEditUserModal()">Cancelar</button>
+                        <button type="submit" class="btn btn-primary">Guardar Cambios</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    
+    // Manejar envío del formulario
+    document.getElementById('editUserForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        await saveUserChanges(user.email);
+    });
+    
+    // Cerrar al hacer clic fuera del modal
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+            closeEditUserModal();
+        }
+    });
+}
+
+function closeEditUserModal() {
+    const modal = document.getElementById('editUserModal');
+    if (modal) {
+        modal.remove();
+    }
+}
+
+async function saveUserChanges(oldEmail) {
+    try {
+        const users = JSON.parse(localStorage.getItem('users') || '[]');
+        const userIndex = users.findIndex(u => u.email === oldEmail);
+        
+        if (userIndex === -1) {
+            showNotification('Usuario no encontrado', 'error');
+            return;
+        }
+        
+        const user = users[userIndex];
+        
+        // Obtener valores del formulario
+        const name = document.getElementById('editUserName').value.trim();
+        const surname1 = document.getElementById('editUserSurname1').value.trim();
+        const surname2 = document.getElementById('editUserSurname2').value.trim();
+        const phone = document.getElementById('editUserPhone').value.trim();
+        const address = document.getElementById('editUserAddress').value.trim();
+        const city = document.getElementById('editUserCity').value.trim();
+        const postalCode = document.getElementById('editUserPostalCode').value.trim();
+        const documentType = document.getElementById('editUserDocumentType').value;
+        const documentNumber = document.getElementById('editUserDocumentNumber').value.trim().toUpperCase();
+        const newPassword = document.getElementById('editUserPassword').value.trim();
+        const consent = document.getElementById('editUserConsent').checked;
+        const notificationConsent = document.getElementById('editUserNotificationConsent').checked;
+        
+        // Obtener localidades seleccionadas
+        const selectedLocalities = [];
+        document.querySelectorAll('input[name="editUserLocalities"]:checked').forEach(checkbox => {
+            selectedLocalities.push(checkbox.value);
+        });
+        
+        // Validaciones
+        if (!name || !surname1 || !phone || !address || !city || !postalCode || !documentNumber) {
+            showNotification('Por favor, complete todos los campos obligatorios', 'error');
+            return;
+        }
+        
+        // Validar código postal
+        const postalCodeRegex = /^[0-9]{5}$/;
+        if (!postalCodeRegex.test(postalCode)) {
+            showNotification('El código postal debe tener 5 dígitos', 'error');
+            return;
+        }
+        
+        // Construir nombre completo
+        const fullName = `${name} ${surname1}${surname2 ? ' ' + surname2 : ''}`.trim();
+        const fullSurnames = surname2 ? `${surname1} ${surname2}` : surname1;
+        
+        // Actualizar usuario
+        const updatedUser = {
+            ...user,
+            name: name,
+            nombre: name,
+            surname1: surname1,
+            surname2: surname2 || '',
+            fullName: fullName,
+            apellidos: fullSurnames,
+            phone: phone,
+            telefono: phone,
+            address: address,
+            direccion: address,
+            city: city,
+            ciudad: city,
+            postalCode: postalCode,
+            codigoPostal: postalCode,
+            documentType: documentType,
+            documentNumber: documentNumber,
+            dni: (documentType === 'dni' || documentType === 'nie') ? documentNumber : (user.dni || ''),
+            localities: selectedLocalities,
+            consent: consent,
+            notificationConsent: notificationConsent,
+            updatedAt: new Date().toISOString()
+        };
+        
+        // Actualizar contraseña si se proporcionó una nueva
+        if (newPassword) {
+            updatedUser.password = newPassword;
+        }
+        
+        // Guardar cambios
+        users[userIndex] = updatedUser;
+        localStorage.setItem('users', JSON.stringify(users));
+        
+        // Sincronizar con Firestore si está disponible
+        if (typeof syncUserToFirestore === 'function') {
+            await syncUserToFirestore(updatedUser);
+        }
+        
+        // Cerrar modal
+        closeEditUserModal();
+        
+        // Recargar lista de usuarios
+        loadUsersList();
+        
+        showNotification('Usuario actualizado correctamente', 'success');
+        
+    } catch (error) {
+        console.error('Error guardando cambios del usuario:', error);
+        showNotification('Error al guardar los cambios. Por favor, inténtelo de nuevo.', 'error');
+    }
 }
 
 function deleteUser(email) {
