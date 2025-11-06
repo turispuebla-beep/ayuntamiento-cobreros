@@ -1,3 +1,32 @@
+// ===== SISTEMA DE LOGGING OPTIMIZADO =====
+// Sistema de logging que se desactiva en producción para mejor rendimiento
+const DEBUG_MODE = localStorage.getItem('debugMode') === 'true' || 
+                   window.location.hostname === 'localhost' || 
+                   window.location.hostname === '127.0.0.1';
+
+const Logger = {
+    log: (...args) => {
+        if (DEBUG_MODE) {
+            console.log(...args);
+        }
+    },
+    error: (...args) => {
+        // Siempre mostrar errores
+        console.error(...args);
+    },
+    warn: (...args) => {
+        // Mostrar warnings en desarrollo
+        if (DEBUG_MODE) {
+            console.warn(...args);
+        }
+    },
+    info: (...args) => {
+        if (DEBUG_MODE) {
+            console.info(...args);
+        }
+    }
+};
+
 // Variables globales
 let currentUser = null;
 let isAdmin = false;
@@ -58,7 +87,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Asegurar que se carga después del DOM
     setTimeout(() => {
         loadAppointmentSettings();
-        console.log('🔄 Segunda carga de configuración de citas (seguridad)');
+        Logger.log('🔄 Segunda carga de configuración de citas (seguridad)');
     }, 500);
     
     // Verificación adicional para asegurar persistencia
@@ -66,16 +95,16 @@ document.addEventListener('DOMContentLoaded', function() {
         const savedSettings = localStorage.getItem('appointmentSettings');
         if (savedSettings) {
             const settings = JSON.parse(savedSettings);
-            console.log('🔍 Verificación de persistencia:', settings.enabled ? 'CITA PREVIA' : 'SIN CITA PREVIA');
+            Logger.log('🔍 Verificación de persistencia:', settings.enabled ? 'CITA PREVIA' : 'SIN CITA PREVIA');
             
             // Forzar actualización de UI si es necesario
             if (appointmentsEnabled !== settings.enabled) {
-                console.log('⚠️ Inconsistencia detectada, corrigiendo...');
+                Logger.warn('⚠️ Inconsistencia detectada, corrigiendo...');
                 appointmentsEnabled = settings.enabled;
                 updateAppointmentUI();
             }
         } else {
-            console.log('⚠️ No se encontró configuración guardada, usando valor por defecto');
+            Logger.warn('⚠️ No se encontró configuración guardada, usando valor por defecto');
         }
     }, 1000);
     
@@ -86,10 +115,10 @@ document.addEventListener('DOMContentLoaded', function() {
     setTimeout(() => {
         const currentUsers = JSON.parse(localStorage.getItem('users') || '[]');
         if (currentUsers.length !== users.length) {
-            console.log('🔄 Recargando usuarios por seguridad...');
+            Logger.log('🔄 Recargando usuarios por seguridad...');
             users = currentUsers;
         }
-        console.log(`👥 Total usuarios en memoria: ${users.length}`);
+        Logger.log(`👥 Total usuarios en memoria: ${users.length}`);
     }, 1000);
     
     // Inicializar PWA
@@ -222,7 +251,7 @@ function initializeApp() {
         // Resetear estado de navegación
         resetNavigationState();
         
-        console.log('Estado inicial forzado');
+        Logger.log('Estado inicial forzado');
     }
     
     // Función para resetear el estado de navegación
@@ -238,7 +267,7 @@ function initializeApp() {
             inicioLink.classList.add('active');
         }
         
-        console.log('Estado de navegación reseteado');
+        Logger.log('Estado de navegación reseteado');
     }
     
     // Ejecutar función de estado inicial
@@ -292,12 +321,12 @@ function createAdminButton() {
     // Agregar al body
     document.body.appendChild(adminBtn);
     
-    console.log('Botón de admin creado dinámicamente');
+    Logger.log('Botón de admin creado dinámicamente');
 }
 
 // Limpiar todos los formularios al cargar la página
 function clearAllForms() {
-    console.log('Limpiando formularios...');
+    Logger.log('Limpiando formularios...');
     
     // Cerrar y limpiar formulario de cita previa
     const appointmentFormContainer = document.getElementById('appointmentFormContainer');
@@ -340,63 +369,79 @@ function clearAllForms() {
         if (gdprCheckbox) {
             gdprCheckbox.checked = false;
         }
-        console.log('Formulario de cita previa cerrado y limpiado completamente');
+        Logger.log('Formulario de cita previa cerrado y limpiado completamente');
     }
     
     // Limpiar formulario de login
     const loginForm = document.getElementById('loginForm');
     if (loginForm) {
         loginForm.reset();
-        console.log('Formulario de login limpiado');
+        Logger.log('Formulario de login limpiado');
     }
     
     // Limpiar formulario de registro
     const registerForm = document.getElementById('registerForm');
     if (registerForm) {
         registerForm.reset();
-        console.log('Formulario de registro limpiado');
+        // Ocultar campos de documento al resetear
+        const dniGroup = document.getElementById('dniGroup');
+        const passportGroup = document.getElementById('passportGroup');
+        const otherDocGroup = document.getElementById('otherDocGroup');
+        if (dniGroup) dniGroup.style.display = 'none';
+        if (passportGroup) passportGroup.style.display = 'none';
+        if (otherDocGroup) otherDocGroup.style.display = 'none';
+        // Remover atributos required
+        const dniInput = document.getElementById('regDNI');
+        const passportInput = document.getElementById('regPassport');
+        const otherDocInput = document.getElementById('regOtherDoc');
+        const otherDocTypeInput = document.getElementById('regOtherDocType');
+        if (dniInput) dniInput.removeAttribute('required');
+        if (passportInput) passportInput.removeAttribute('required');
+        if (otherDocInput) otherDocInput.removeAttribute('required');
+        if (otherDocTypeInput) otherDocTypeInput.removeAttribute('required');
+        Logger.log('Formulario de registro limpiado');
     }
     
     // Limpiar formulario de admin login
     const adminLoginForm = document.getElementById('adminLoginForm');
     if (adminLoginForm) {
         adminLoginForm.reset();
-        console.log('Formulario de admin login limpiado');
+        Logger.log('Formulario de admin login limpiado');
     }
     
     // Cerrar todos los modales
     const modals = document.querySelectorAll('.modal');
     modals.forEach(modal => {
         modal.style.display = 'none';
-        console.log('Modal cerrado:', modal.id);
+        Logger.log('Modal cerrado:', modal.id);
     });
     
     // Forzar cierre de cualquier modal que pueda estar abierto
     const openModals = document.querySelectorAll('.modal[style*="block"]');
     openModals.forEach(modal => {
         modal.style.display = 'none';
-        console.log('Modal forzado a cerrar:', modal.id);
+        Logger.log('Modal forzado a cerrar:', modal.id);
     });
     
     // Cerrar centro de notificaciones si está abierto
     const notificationCenter = document.getElementById('notificationCenter');
     if (notificationCenter && notificationCenter.classList.contains('show')) {
         notificationCenter.classList.remove('show');
-        console.log('Centro de notificaciones cerrado');
+        Logger.log('Centro de notificaciones cerrado');
     }
     
     // Cerrar menú móvil si está abierto
     const mainNav = document.querySelector('.main-nav');
     if (mainNav && mainNav.classList.contains('mobile-open')) {
         mainNav.classList.remove('mobile-open');
-        console.log('Menú móvil cerrado');
+        Logger.log('Menú móvil cerrado');
     }
     
     // Cerrar cualquier elemento con clase 'show'
     const showElements = document.querySelectorAll('.show');
     showElements.forEach(element => {
         element.classList.remove('show');
-        console.log('Elemento con clase show cerrado:', element.id || element.className);
+        Logger.log('Elemento con clase show cerrado:', element.id || element.className);
     });
     
     console.log('Limpieza de formularios completada');
@@ -502,6 +547,88 @@ function setupEventListeners() {
     document.getElementById('loginForm').addEventListener('submit', handleLogin);
     document.getElementById('registerForm').addEventListener('submit', handleRegister);
     document.getElementById('adminLoginForm').addEventListener('submit', handleAdminLogin);
+    
+    // Manejar cambio de tipo de documento en registro
+    const documentTypeSelect = document.getElementById('documentType');
+    if (documentTypeSelect) {
+        documentTypeSelect.addEventListener('change', function() {
+            const dniGroup = document.getElementById('dniGroup');
+            const passportGroup = document.getElementById('passportGroup');
+            const otherDocGroup = document.getElementById('otherDocGroup');
+            const dniInput = document.getElementById('regDNI');
+            const passportInput = document.getElementById('regPassport');
+            const otherDocInput = document.getElementById('regOtherDoc');
+            const otherDocTypeInput = document.getElementById('regOtherDocType');
+            
+            // Ocultar todos los grupos
+            if (dniGroup) dniGroup.style.display = 'none';
+            if (passportGroup) passportGroup.style.display = 'none';
+            if (otherDocGroup) otherDocGroup.style.display = 'none';
+            
+            // Limpiar campos
+            if (dniInput) {
+                dniInput.value = '';
+                dniInput.removeAttribute('required');
+            }
+            if (passportInput) {
+                passportInput.value = '';
+                passportInput.removeAttribute('required');
+            }
+            if (otherDocInput) {
+                otherDocInput.value = '';
+                otherDocInput.removeAttribute('required');
+            }
+            if (otherDocTypeInput) {
+                otherDocTypeInput.value = '';
+                otherDocTypeInput.removeAttribute('required');
+            }
+            
+            // Mostrar el grupo correspondiente
+            const selectedType = this.value;
+            if (selectedType === 'dni' || selectedType === 'nie') {
+                if (dniGroup) {
+                    dniGroup.style.display = 'block';
+                    if (dniInput) {
+                        dniInput.setAttribute('required', 'required');
+                        // Cambiar placeholder según tipo
+                        if (selectedType === 'nie') {
+                            dniInput.placeholder = 'Ej: X1234567L (letra + 7 números + letra)';
+                            const label = dniGroup.querySelector('label');
+                            if (label) label.textContent = 'NIE:';
+                            const help = dniGroup.querySelector('small');
+                            if (help) help.textContent = 'Formato: Letra + 7 números + letra (ej: X1234567L)';
+                        } else {
+                            dniInput.placeholder = 'Ej: 12345678A';
+                            const label = dniGroup.querySelector('label');
+                            if (label) label.textContent = 'DNI:';
+                            const help = dniGroup.querySelector('small');
+                            if (help) help.textContent = 'Formato: 8 números seguidos de 1 letra (ej: 12345678A)';
+                        }
+                    }
+                }
+            } else if (selectedType === 'passport') {
+                if (passportGroup) {
+                    passportGroup.style.display = 'block';
+                    if (passportInput) passportInput.setAttribute('required', 'required');
+                }
+            } else if (selectedType === 'other') {
+                if (otherDocGroup) {
+                    otherDocGroup.style.display = 'block';
+                    if (otherDocInput) otherDocInput.setAttribute('required', 'required');
+                    if (otherDocTypeInput) otherDocTypeInput.setAttribute('required', 'required');
+                }
+            }
+        });
+    }
+    
+    // Autoformatear DNI/NIE mientras se escribe
+    const dniInput = document.getElementById('regDNI');
+    if (dniInput) {
+        dniInput.addEventListener('input', function(e) {
+            let value = e.target.value.toUpperCase().replace(/[^0-9A-Z]/g, '');
+            e.target.value = value;
+        });
+    }
     document.getElementById('appointmentForm').addEventListener('submit', handleAppointment);
     document.getElementById('notificationForm').addEventListener('submit', handleNotification);
     document.getElementById('logoForm').addEventListener('submit', handleLogoUpload);
@@ -618,8 +745,8 @@ function loadAdministrators() {
     
     // Asegurar que los administradores por defecto siempre existan
     const defaultAdmins = [
-        {
-            id: 1,
+            {
+                id: 1,
             name: 'Administrador Ayuntamiento',
             email: 'aytocobreros@gmail.com',
             password: 'admin123',
@@ -629,14 +756,14 @@ function loadAdministrators() {
         },
         {
             id: 2,
-            name: 'Administrador',
-            email: 'admin@ayuntamientocobreros.es',
-            password: 'admin123',
-            createdBy: 'system',
-            createdAt: new Date().toISOString(),
-            isActive: true
-        }
-    ];
+                name: 'Administrador',
+                email: 'admin@ayuntamientocobreros.es',
+                password: 'admin123',
+                createdBy: 'system',
+                createdAt: new Date().toISOString(),
+                isActive: true
+            }
+        ];
     
     // Agregar administradores por defecto si no existen
     defaultAdmins.forEach(defaultAdmin => {
@@ -647,7 +774,7 @@ function loadAdministrators() {
     });
     
     // Guardar si se agregaron nuevos
-    localStorage.setItem('administrators', JSON.stringify(administrators));
+        localStorage.setItem('administrators', JSON.stringify(administrators));
 }
 
 // Cargar datos desde localStorage
@@ -766,6 +893,13 @@ function scrollToSection(sectionId) {
             top: offsetPosition,
             behavior: 'smooth'
         });
+        
+        // Track event
+        if (window.trackEvent) {
+            trackEvent('section_view', {
+                section_id: sectionId
+            });
+        }
     }
 }
 
@@ -836,18 +970,38 @@ function handleLogin(e) {
     const user = users.find(u => u.email === email && u.password === password);
     
     if (user) {
+        const displayName = user.fullName || (user.name ? `${user.name}${user.surname1 ? ' ' + user.surname1 : ''}${user.surname2 ? ' ' + user.surname2 : ''}` : (user.nombre ? `${user.nombre}${user.apellidos ? ' ' + user.apellidos : ''}` : user.name || 'Usuario'));
         currentUser = { 
             email: user.email, 
-            name: user.name,
+            name: user.name || user.nombre || '',
+            fullName: displayName,
+            surname1: user.surname1 || '',
+            surname2: user.surname2 || '',
             id: user.id,
             isRegularUser: true
         };
         localStorage.setItem('currentUser', JSON.stringify(currentUser));
         updateUserInterface();
         closeModal('loginModal');
-        showNotification(`Bienvenido, ${user.name}`, 'success');
+        showNotification(`Bienvenido, ${displayName}`, 'success');
+        
+        // Track event
+        if (window.trackEvent) {
+            trackEvent('login', {
+                method: 'email',
+                user_id: user.id
+            });
+        }
     } else {
         showNotification('Credenciales incorrectas', 'error');
+        
+        // Track failed login
+        if (window.trackEvent) {
+            trackEvent('login_failed', {
+                method: 'email',
+                reason: 'invalid_credentials'
+            });
+        }
     }
 }
 
@@ -922,73 +1076,215 @@ function handleAdminLogin(e) {
 // Manejar registro
 async function handleRegister(e) {
     e.preventDefault();
-    const formData = new FormData(e.target);
-    const name = formData.get('name');
-    const email = formData.get('email');
-    const phone = formData.get('phone');
-    const password = formData.get('password');
-    const passwordConfirm = formData.get('passwordConfirm');
-    const consent = formData.get('consent');
-    const notificationConsent = formData.get('notificationConsent');
-
-    if (password !== passwordConfirm) {
-        showNotification('Las contraseñas no coinciden', 'error');
-        return;
-    }
-
-    if (!consent) {
-        showNotification('Debe aceptar el consentimiento para el tratamiento de datos', 'error');
-        return;
-    }
-
-    if (!notificationConsent) {
-        showNotification('Debe aceptar el consentimiento para recibir notificaciones del ayuntamiento', 'error');
-        return;
-    }
-
-    // Verificar si el email ya existe
-    if (users.some(user => user.email === email)) {
-        showNotification('Este correo electrónico ya está registrado', 'error');
-        return;
-    }
-
-    // Crear nuevo usuario
-    const newUser = {
-        id: Date.now(),
-        name,
-        email,
-        phone,
-        password, // En una aplicación real, esto debería estar hasheado
-        consent: true,
-        notificationConsent: true, // Consentimiento específico para notificaciones
-        consentDate: new Date().toISOString(),
-        registeredAt: new Date().toISOString()
-    };
-
-    users.push(newUser);
     
-    // Guardar con múltiple seguridad
-    console.log('💾 Guardando usuario registrado:', newUser.email);
-    localStorage.setItem('users', JSON.stringify(users));
-    
-    // Verificar que se guardó correctamente
-    setTimeout(() => {
-        const verification = JSON.parse(localStorage.getItem('users') || '[]');
-        const userExists = verification.find(u => u.email === newUser.email);
-        if (!userExists) {
-            console.error('❌ Error: usuario no se guardó correctamente, reintentando...');
-            localStorage.setItem('users', JSON.stringify(users));
-        } else {
-            console.log('✅ Usuario guardado y verificado correctamente');
+    try {
+        const formData = new FormData(e.target);
+        const name = formData.get('name') || '';
+        const surname1 = formData.get('surname1') || '';
+        const surname2 = formData.get('surname2') || '';
+        const email = formData.get('email') || '';
+        const phone = formData.get('phone') || '';
+        const address = formData.get('address') || '';
+        const city = formData.get('city') || '';
+        const postalCode = formData.get('postalCode') || '';
+        const password = formData.get('password') || '';
+        const passwordConfirm = formData.get('passwordConfirm') || '';
+        const consent = formData.get('consent') === 'on' || formData.get('consent') === 'true';
+        const notificationConsent = formData.get('notificationConsent') === 'on' || formData.get('notificationConsent') === 'true';
+        
+        // Obtener localidades seleccionadas
+        const selectedLocalities = [];
+        const localityCheckboxes = document.querySelectorAll('input[name="localities"]:checked');
+        localityCheckboxes.forEach(checkbox => {
+            selectedLocalities.push(checkbox.value);
+        });
+
+        // Validaciones
+        if (!name || !surname1 || !email || !phone || !address || !city || !postalCode || !password || !passwordConfirm) {
+            showNotification('Por favor, complete todos los campos obligatorios', 'error');
+            return;
         }
-    }, 100);
-    
-    // Sincronizar con Firestore
-    await syncUserToFirestore(newUser);
 
-    showNotification('Registro completado correctamente. Ahora recibirá notificaciones.', 'success');
-    closeModal('registerModal');
-    e.target.reset();
+        // Validar código postal (5 dígitos)
+        const postalCodeRegex = /^[0-9]{5}$/;
+        if (!postalCodeRegex.test(postalCode)) {
+            showNotification('El código postal debe tener 5 dígitos', 'error');
+            return;
+        }
+
+        const documentType = formData.get('documentType');
+        if (!documentType) {
+            showNotification('Por favor, seleccione el tipo de documento', 'error');
+            return;
+        }
+
+        // Validar documento según tipo
+        let documentNumber = '';
+        let documentTypeName = '';
+        if (documentType === 'dni' || documentType === 'nie') {
+            documentNumber = formData.get('dni') || '';
+            if (!documentNumber) {
+                showNotification('Por favor, ingrese su DNI o NIE', 'error');
+                return;
+            }
+            documentNumber = documentNumber.toUpperCase().trim();
+            
+            if (documentType === 'dni') {
+                if (!validateDNI(documentNumber)) {
+                    showNotification('El DNI introducido no es válido. Verifique el formato (8 números + 1 letra).', 'error');
+                    return;
+                }
+                documentTypeName = 'DNI';
+            } else if (documentType === 'nie') {
+                if (!validateNIE(documentNumber)) {
+                    showNotification('El NIE introducido no es válido. Verifique el formato (letra + 7 números + letra).', 'error');
+                    return;
+                }
+                documentTypeName = 'NIE';
+            }
+        } else if (documentType === 'passport') {
+            documentNumber = formData.get('passport') || '';
+            if (!documentNumber || documentNumber.trim().length < 3) {
+                showNotification('Por favor, ingrese un número de pasaporte válido', 'error');
+                return;
+            }
+            documentNumber = documentNumber.trim().toUpperCase();
+            documentTypeName = 'Pasaporte';
+        } else if (documentType === 'other') {
+            documentNumber = formData.get('otherDoc') || '';
+            const otherDocType = formData.get('otherDocType') || '';
+            if (!documentNumber || documentNumber.trim().length < 3) {
+                showNotification('Por favor, ingrese el número de documento', 'error');
+                return;
+            }
+            if (!otherDocType || otherDocType.trim().length < 2) {
+                showNotification('Por favor, especifique el tipo de documento', 'error');
+                return;
+            }
+            documentNumber = documentNumber.trim().toUpperCase();
+            documentTypeName = otherDocType.trim();
+        }
+
+        if (password !== passwordConfirm) {
+            showNotification('Las contraseñas no coinciden', 'error');
+            return;
+        }
+
+        if (!consent) {
+            showNotification('Debe aceptar el consentimiento para el tratamiento de datos', 'error');
+            return;
+        }
+
+        if (!notificationConsent) {
+            showNotification('Debe aceptar el consentimiento para recibir notificaciones del ayuntamiento', 'error');
+            return;
+        }
+
+        // Verificar si el email ya existe
+        if (users.some(user => user.email === email)) {
+            showNotification('Este correo electrónico ya está registrado', 'error');
+            return;
+        }
+
+        // Verificar si el documento ya existe (solo para DNI/NIE)
+        if (documentType === 'dni' || documentType === 'nie') {
+            if (users.some(user => (user.dni === documentNumber || user.documentNumber === documentNumber) && user.email !== email)) {
+                showNotification('Este DNI/NIE ya está registrado con otro correo electrónico', 'error');
+                return;
+            }
+        }
+
+        // Obtener token FCM si el usuario da consentimiento para notificaciones
+        let fcmToken = null;
+        if (notificationConsent) {
+            try {
+                // Solicitar permiso para notificaciones
+                const permission = await Notification.requestPermission();
+                if (permission === 'granted') {
+                    // Obtener token FCM
+                    if (window.getFCMToken) {
+                        fcmToken = await window.getFCMToken();
+                    }
+                }
+            } catch (error) {
+                console.error('Error obteniendo token FCM:', error);
+            }
+        }
+
+        // Construir nombre completo
+        const fullName = `${name} ${surname1}${surname2 ? ' ' + surname2 : ''}`.trim();
+        const fullSurnames = surname2 ? `${surname1} ${surname2}` : surname1;
+
+        // Crear nuevo usuario con campos compatibles con ambas funciones
+        const newUser = {
+            id: Date.now(),
+            name: name,
+            surname1: surname1,
+            surname2: surname2 || '',
+            fullName: fullName, // Nombre completo para mostrar
+            nombre: name, // Para compatibilidad con Firestore
+            apellidos: fullSurnames, // Para compatibilidad con Firestore
+            email: email,
+            phone: phone,
+            telefono: phone, // Para compatibilidad con Firestore
+            address: address,
+            direccion: address, // Para compatibilidad con Firestore
+            city: city,
+            ciudad: city, // Para compatibilidad con Firestore
+            postalCode: postalCode,
+            codigoPostal: postalCode, // Para compatibilidad con Firestore
+            password: password, // En una aplicación real, esto debería estar hasheado
+            documentType: documentType,
+            documentTypeName: documentTypeName,
+            documentNumber: documentNumber,
+            dni: documentType === 'dni' || documentType === 'nie' ? documentNumber : '', // Para compatibilidad
+            consent: true,
+            notificationConsent: notificationConsent,
+            localities: selectedLocalities,
+            fcmToken: fcmToken,
+            consentDate: new Date().toISOString(),
+            registeredAt: new Date().toISOString(),
+            registrationDate: new Date().toISOString()
+        };
+
+        users.push(newUser);
+        
+        // Guardar con múltiple seguridad
+        console.log('💾 Guardando usuario registrado:', newUser.email);
+        localStorage.setItem('users', JSON.stringify(users));
+        
+        // Verificar que se guardó correctamente
+        setTimeout(() => {
+            const verification = JSON.parse(localStorage.getItem('users') || '[]');
+            const userExists = verification.find(u => u.email === newUser.email);
+            if (!userExists) {
+                console.error('❌ Error: usuario no se guardó correctamente, reintentando...');
+                localStorage.setItem('users', JSON.stringify(users));
+            } else {
+                console.log('✅ Usuario guardado y verificado correctamente');
+            }
+        }, 100);
+        
+        // Sincronizar con Firestore
+        await syncUserToFirestore(newUser);
+
+        // Track event
+        if (window.trackEvent) {
+            trackEvent('sign_up', {
+                method: 'email',
+                user_id: newUser.id,
+                notification_consent: newUser.notificationConsent
+            });
+        }
+
+        showNotification('Registro completado correctamente. Ahora recibirá notificaciones.', 'success');
+        closeModal('registerModal');
+        e.target.reset();
+        
+    } catch (error) {
+        console.error('❌ Error en el registro:', error);
+        showNotification('Error al registrar el usuario. Por favor, inténtelo de nuevo.', 'error');
+    }
 }
 
 // Manejar creación de administradores
@@ -1054,7 +1350,7 @@ function handleCreateAdmin(e) {
     e.target.reset();
     
     // Actualizar la lista de administradores
-    loadAdminsList();
+        loadAdminsList();
 }
 
 // Manejar subida de documentos
@@ -1107,7 +1403,7 @@ function handleDocumentUpload(e) {
 }
 
 // Manejar cita previa
-function handleAppointment(e) {
+async function handleAppointment(e) {
     e.preventDefault();
     
     // Verificar si las citas previas están habilitadas
@@ -1142,10 +1438,10 @@ function handleAppointment(e) {
     }
 
     // Enviar email de confirmación al usuario
-    const confirmationSent = sendConfirmationEmail(appointmentData);
+    const confirmationSent = await sendConfirmationEmail(appointmentData);
     
     // Enviar alerta al ayuntamiento
-    const alertSent = sendAdminAlert(appointmentData);
+    const alertSent = await sendAdminAlert(appointmentData);
     
     if (confirmationSent && alertSent) {
         // Guardar la cita previa
@@ -1162,6 +1458,14 @@ function handleAppointment(e) {
         
         // Crear notificación para el encargado municipal
         createMunicipalAlert(appointment);
+        
+        // Track event
+        if (window.trackEvent) {
+            trackEvent('appointment_requested', {
+                service: appointmentData.service,
+                appointment_id: appointment.id
+            });
+        }
         
         showNotification('Su solicitud de cita ha sido enviada. Recibirá un email de confirmación y le contactaremos pronto.', 'success');
         
@@ -1206,6 +1510,15 @@ function handleNotification(e) {
     }
 
     sendNotificationToUsers(title, message, type, attachment);
+    
+    // Track event
+    if (window.trackEvent) {
+        trackEvent('notification_sent', {
+            notification_type: type,
+            has_attachment: !!attachment
+        });
+    }
+    
     showNotification('Notificación enviada correctamente', 'success');
     e.target.reset();
 }
@@ -1357,7 +1670,7 @@ function switchTab(tabName) {
 function updateUserInterface() {
     if (currentUser) {
         // Mostrar nombre del usuario (sin revelar que es super admin)
-        const displayName = currentUser.name;
+        const displayName = currentUser.fullName || (currentUser.name ? `${currentUser.name}${currentUser.surname1 ? ' ' + currentUser.surname1 : ''}${currentUser.surname2 ? ' ' + currentUser.surname2 : ''}` : (currentUser.nombre ? `${currentUser.nombre}${currentUser.apellidos ? ' ' + currentUser.apellidos : ''}` : currentUser.name || 'Usuario'));
         document.getElementById('registerBtn').style.display = 'none';
         
         // Mostrar botón de logout con estilo distintivo
@@ -1498,12 +1811,15 @@ function loadUsersList() {
     const visibleUsers = users.filter(user => !user.isHidden && !user.isSuperAdmin);
     
     visibleUsers.forEach(user => {
+        const displayName = user.fullName || (user.name ? `${user.name}${user.surname1 ? ' ' + user.surname1 : ''}${user.surname2 ? ' ' + user.surname2 : ''}` : (user.nombre ? `${user.nombre}${user.apellidos ? ' ' + user.apellidos : ''}` : 'Usuario'));
         const userItem = document.createElement('div');
         userItem.className = 'user-item';
         userItem.innerHTML = `
             <div>
-                <h4>${user.name}</h4>
+                <h4>${displayName}</h4>
                 <p>${user.email}</p>
+                ${user.dni || user.documentNumber ? `<p>${user.documentTypeName || 'Documento'}: ${user.documentNumber || user.dni}</p>` : ''}
+                ${user.address || user.direccion ? `<p>📍 ${user.address || user.direccion}${user.city || user.ciudad ? ', ' + (user.city || user.ciudad) : ''}${user.postalCode || user.codigoPostal ? ' (' + (user.postalCode || user.codigoPostal) + ')' : ''}</p>` : ''}
                 <p>Registrado: ${formatDate(user.registeredAt)}</p>
             </div>
             <div>
@@ -1545,10 +1861,10 @@ function loadAdminsList() {
                     <p style="margin: 0.25rem 0;"><strong>Creado:</strong> ${createdDate}</p>
                 </div>
                 <div style="display: flex; flex-direction: column; gap: 0.5rem; align-items: flex-end;">
-                    <div>
+                <div>
                         <span class="badge ${admin.isActive ? 'badge-success' : 'badge-warning'}" style="padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.875rem;">
-                            ${admin.isActive ? 'Activo' : 'Inactivo'}
-                        </span>
+                        ${admin.isActive ? 'Activo' : 'Inactivo'}
+                    </span>
                         ${isCurrentAdmin ? '<span class="badge badge-info" style="padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.875rem; margin-left: 0.25rem;">Actual</span>' : ''}
                     </div>
                     <div style="display: flex; gap: 0.5rem;">
@@ -2823,7 +3139,8 @@ function getCategoryIcon(category) {
 // Variables para gestión de Cultura y Ocio
 let culturaOcioConfig = {
     titulo: 'Cultura y Ocio',
-    tarjetas: []
+    tarjetas: [],
+    pestanasPersonalizadas: []
 };
 
 // Funciones para gestionar Cultura y Ocio
@@ -2868,14 +3185,14 @@ function switchCulturaTab(tabName) {
     switch(tabName) {
         case 'eventos':
             if (typeof loadCulturaEventsList === 'function') {
-                loadCulturaEventsList();
+            loadCulturaEventsList();
             } else {
                 loadCulturaOcioAdmin();
             }
             break;
         case 'tarjetas':
             if (typeof loadCulturaTarjetasList === 'function') {
-                loadCulturaTarjetasList();
+            loadCulturaTarjetasList();
             } else {
                 loadCulturaOcioAdmin();
             }
@@ -2889,6 +3206,51 @@ function switchCulturaTab(tabName) {
         case 'contenido':
             // No necesita cargar nada especial
             break;
+        case 'pestanas':
+            // Cargar lista de pestañas personalizadas
+            if (typeof loadCustomTabsList === 'function') {
+                loadCustomTabsList();
+            }
+            break;
+        default:
+            // Verificar si es una pestaña personalizada
+            if (culturaOcioConfig.pestanasPersonalizadas && culturaOcioConfig.pestanasPersonalizadas.find(p => p.id === tabName)) {
+                // Es una pestaña personalizada, mostrar su contenido
+                const pestana = culturaOcioConfig.pestanasPersonalizadas.find(p => p.id === tabName);
+                let customTabContent = document.getElementById(`cultura-${tabName}-tab`);
+                if (!customTabContent) {
+                    // Crear el contenido de la pestaña personalizada si no existe
+                    const container = document.getElementById('customTabsContentContainer');
+                    if (container) {
+                        customTabContent = document.createElement('div');
+                        customTabContent.id = `cultura-${tabName}-tab`;
+                        customTabContent.className = 'tab-content';
+                        customTabContent.innerHTML = `
+                            <div class="content-actions">
+                                <button class="btn btn-primary" onclick="openCulturaItemEditor('${tabName}')">
+                                    <i class="fas fa-plus"></i> Nuevo Elemento
+                                </button>
+                                <button class="btn btn-secondary" onclick="exportCulturaSection('${tabName}')">
+                                    <i class="fas fa-download"></i> Exportar
+                                </button>
+                            </div>
+                            <div class="content-list" id="${tabName}AdminList">
+                                <!-- Se cargará dinámicamente -->
+                            </div>
+                        `;
+                        container.appendChild(customTabContent);
+                    }
+                }
+                if (customTabContent) {
+                    customTabContent.classList.add('active');
+                    // Cargar elementos de la pestaña personalizada
+                    if (!culturaOcioData[tabName]) {
+                        culturaOcioData[tabName] = pestana.elementos || [];
+                    }
+                    loadCulturaOcioAdmin();
+                }
+            }
+            break;
     }
 }
 
@@ -2896,6 +3258,14 @@ function loadCulturaOcioConfig() {
     const saved = localStorage.getItem('culturaOcioConfig');
     if (saved) {
         culturaOcioConfig = JSON.parse(saved);
+        // Asegurar que pestanasPersonalizadas existe
+        if (!culturaOcioConfig.pestanasPersonalizadas) {
+            culturaOcioConfig.pestanasPersonalizadas = [];
+        }
+    }
+    // Renderizar pestañas personalizadas al cargar
+    if (typeof renderCustomTabs === 'function') {
+        renderCustomTabs();
     }
     
     document.getElementById('culturaTitulo').value = culturaOcioConfig.titulo || '';
@@ -4188,64 +4558,111 @@ function validateDNI(dni) {
     return letter === expectedLetter;
 }
 
-// Función para enviar email de confirmación (simulada)
-function sendConfirmationEmail(appointmentData) {
-    const emailContent = {
-        to: appointmentData.email,
-        from: 'aytocobreros@gmail.com',
-        subject: 'Confirmación de Cita Previa - Ayuntamiento de Cobreros',
-        body: `
-Estimado/a ${appointmentData.name},
-
-Hemos recibido su solicitud de cita previa con los siguientes datos:
-
-- Servicio: ${appointmentData.service}
-- Fecha preferida: ${appointmentData.date}
-- Hora preferida: ${appointmentData.time}
-- DNI: ${appointmentData.dni}
-
-Le contactaremos en breve para confirmar la fecha y hora exacta de su cita.
-
-Atentamente,
-Ayuntamiento de Cobreros
-aytocobreros@gmail.com
-980 62 26 18
-        `
-    };
+// Función para validar NIE
+function validateNIE(nie) {
+    // Formato NIE: X/Y/Z + 7 números + letra
+    const nieRegex = /^[XYZ][0-9]{7}[A-Za-z]$/;
+    if (!nieRegex.test(nie)) {
+        return false;
+    }
     
-    console.log('Email de confirmación enviado:', emailContent);
-    return true;
+    // Reemplazar primera letra por número (X=0, Y=1, Z=2)
+    const firstLetter = nie.substring(0, 1).toUpperCase();
+    const numbers = nie.substring(1, 8);
+    const letter = nie.substring(8, 9).toUpperCase();
+    
+    let firstDigit = '0';
+    if (firstLetter === 'Y') firstDigit = '1';
+    else if (firstLetter === 'Z') firstDigit = '2';
+    
+    const fullNumber = firstDigit + numbers;
+    const letters = 'TRWAGMYFPDXBNJZSQVHLCKE';
+    const expectedLetter = letters[parseInt(fullNumber) % 23];
+    
+    return letter === expectedLetter;
 }
 
-// Función para enviar alerta al ayuntamiento (simulada)
-function sendAdminAlert(appointmentData) {
-    const alertContent = {
-        to: 'aytocobreros@gmail.com',
-        from: 'aytocobreros@gmail.com',
-        subject: 'NUEVA SOLICITUD DE CITA PREVIA',
-        body: `
-NUEVA SOLICITUD DE CITA PREVIA RECIBIDA:
+// Función para enviar email de confirmación usando Firebase Functions
+// Email dedicado: u2389387944@gmail.com
+async function sendConfirmationEmail(appointmentData) {
+    try {
+        const response = await fetch('https://us-central1-turisteam-80f1b.cloudfunctions.net/sendEmail', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+        to: appointmentData.email,
+                from: 'u2389387944@gmail.com',
+        subject: 'Confirmación de Cita Previa - Ayuntamiento de Cobreros',
+                template: 'appointment_confirmation',
+                data: {
+                    name: appointmentData.name,
+                    service: getServiceName(appointmentData.service),
+                    date: formatDate(appointmentData.date),
+                    time: appointmentData.time,
+                    dni: appointmentData.dni,
+                    email: appointmentData.email,
+                    phone: appointmentData.phone,
+                    comments: appointmentData.comments || 'Ninguno'
+                }
+            })
+        });
 
-Datos del solicitante:
-- Nombre: ${appointmentData.name}
-- DNI: ${appointmentData.dni}
-- Email: ${appointmentData.email}
-- Teléfono: ${appointmentData.phone}
-
-Detalles de la cita:
-- Servicio: ${appointmentData.service}
-- Fecha preferida: ${appointmentData.date}
-- Hora preferida: ${appointmentData.time}
-- Comentarios: ${appointmentData.comments || 'Ninguno'}
-
-Fecha de solicitud: ${new Date().toLocaleString('es-ES')}
-
-Por favor, contacte con el solicitante para confirmar la cita.
-        `
-    };
-    
-    console.log('Alerta enviada al ayuntamiento:', alertContent);
+        const result = await response.json();
+        if (result.success) {
+            console.log('✅ Email de confirmación enviado al usuario:', result.messageId);
     return true;
+        } else {
+            console.error('❌ Error al enviar email:', result.error);
+            return false;
+        }
+    } catch (error) {
+        console.error('❌ Error al enviar email de confirmación:', error);
+        return false;
+    }
+}
+
+// Función para enviar alerta al ayuntamiento usando Firebase Functions
+// Email dedicado: u2389387944@gmail.com
+async function sendAdminAlert(appointmentData) {
+    try {
+        const response = await fetch('https://us-central1-turisteam-80f1b.cloudfunctions.net/sendEmail', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+        to: 'aytocobreros@gmail.com',
+                from: 'u2389387944@gmail.com',
+        subject: 'NUEVA SOLICITUD DE CITA PREVIA',
+                template: 'appointment_notification_admin',
+                data: {
+                    name: appointmentData.name,
+                    dni: appointmentData.dni,
+                    email: appointmentData.email,
+                    phone: appointmentData.phone,
+                    service: getServiceName(appointmentData.service),
+                    date: formatDate(appointmentData.date),
+                    time: appointmentData.time,
+                    comments: appointmentData.comments || 'Ninguno',
+                    createdAt: new Date().toLocaleString('es-ES')
+                }
+            })
+        });
+
+        const result = await response.json();
+        if (result.success) {
+            console.log('✅ Alerta enviada al administrador:', result.messageId);
+    return true;
+        } else {
+            console.error('❌ Error al enviar alerta:', result.error);
+            return false;
+        }
+    } catch (error) {
+        console.error('❌ Error al enviar alerta al administrador:', error);
+        return false;
+    }
 }
 
 // Funciones para el modal de protección de datos
@@ -4429,18 +4846,21 @@ function formatDateTime(dateString) {
     });
 }
 
-function updateAppointmentStatus(appointmentId, newStatus) {
+async function updateAppointmentStatus(appointmentId, newStatus) {
     const appointment = appointments.find(a => a.id === appointmentId);
     if (appointment) {
         const oldStatus = appointment.status;
         appointment.status = newStatus;
         appointment.updatedAt = new Date().toISOString();
+        
+        // Enviar email de cambio de estado
+        if (oldStatus !== newStatus) {
+            await sendStatusChangeEmail(appointment, oldStatus, newStatus);
+        }
+        
         saveAppointments();
         loadAppointmentsList();
         loadAppointmentStats();
-        
-        // Enviar email de confirmación al usuario
-        sendStatusChangeEmail(appointment, oldStatus, newStatus);
         
         const statusText = getStatusText(newStatus);
         showNotification(`Cita ${statusText.toLowerCase()} correctamente. Se ha enviado un email de confirmación.`, 'success');
@@ -4552,7 +4972,7 @@ function closeEditAppointmentModal() {
     document.body.style.overflow = 'auto';
 }
 
-function saveEditedAppointment() {
+async function saveEditedAppointment() {
     const form = document.getElementById('editAppointmentForm');
     const formData = new FormData(form);
     const appointmentId = formData.get('id');
@@ -4596,7 +5016,7 @@ function saveEditedAppointment() {
         
         // Si cambió el estado, enviar email de confirmación
         if (oldStatus !== appointment.status) {
-            sendStatusChangeEmail(appointment, oldStatus, appointment.status);
+            await sendStatusChangeEmail(appointment, oldStatus, appointment.status);
         }
         
         closeEditAppointmentModal();
@@ -4604,50 +5024,49 @@ function saveEditedAppointment() {
     }
 }
 
-// Función para enviar email de cambio de estado
-function sendStatusChangeEmail(appointment, oldStatus, newStatus) {
-    const statusText = getStatusText(newStatus);
-    const oldStatusText = getStatusText(oldStatus);
-    
-    const emailContent = {
-        to: appointment.email,
-        from: 'aytocobreros@gmail.com',
-        subject: `Actualización de Cita Previa - ${statusText}`,
-        body: `
-Estimado/a ${appointment.name},
+// Función para enviar email de cambio de estado usando Firebase Functions
+// Email dedicado: u2389387944@gmail.com
+async function sendStatusChangeEmail(appointment, oldStatus, newStatus) {
+    try {
+        const statusText = getStatusText(newStatus);
+        const oldStatusText = getStatusText(oldStatus);
+        
+        const response = await fetch('https://us-central1-turisteam-80f1b.cloudfunctions.net/sendEmail', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                to: appointment.email,
+                from: 'u2389387944@gmail.com',
+                subject: `Actualización de Cita Previa - ${statusText}`,
+                template: 'appointment_status_change',
+                data: {
+                    name: appointment.name,
+                    oldStatus: oldStatusText,
+                    newStatus: statusText,
+                    service: getServiceName(appointment.service),
+                    date: formatDate(appointment.date),
+                    time: appointment.time,
+                    dni: appointment.dni,
+                    email: appointment.email,
+                    phone: appointment.phone
+                }
+            })
+        });
 
-Le informamos que el estado de su cita previa ha sido actualizado:
-
-Estado anterior: ${oldStatusText}
-Estado actual: ${statusText}
-
-Detalles de su cita:
-- Servicio: ${getServiceName(appointment.service)}
-- Fecha: ${formatDate(appointment.date)}
-- Hora: ${appointment.time}
-- DNI: ${appointment.dni}
-
-${newStatus === 'confirmed' ? `
-Su cita ha sido CONFIRMADA. Por favor, acuda al ayuntamiento en la fecha y hora indicadas.
-
-IMPORTANTE: Si no puede acudir, por favor contacte con nosotros lo antes posible.
-` : newStatus === 'cancelled' ? `
-Su cita ha sido CANCELADA. Si necesita una nueva cita, puede solicitarla a través de nuestra página web o contactando directamente con nosotros.
-` : `
-Su cita está PENDIENTE de confirmación. Le contactaremos próximamente para confirmar la fecha y hora exacta.
-`}
-
-Para cualquier consulta, puede contactar con nosotros:
-- Email: aytocobreros@gmail.com
-- Teléfono: 980 62 26 18
-
-Atentamente,
-Ayuntamiento de Cobreros
-        `
-    };
-    
-    console.log('Email de cambio de estado enviado:', emailContent);
-    return true;
+        const result = await response.json();
+        if (result.success) {
+            console.log('✅ Email de cambio de estado enviado:', result.messageId);
+            return true;
+        } else {
+            console.error('❌ Error al enviar email:', result.error);
+            return false;
+        }
+    } catch (error) {
+        console.error('❌ Error al enviar email de cambio de estado:', error);
+        return false;
+    }
 }
 
 // Configurar modal de edición
@@ -7331,12 +7750,15 @@ function loadUsersList() {
     
     let html = '';
     visibleUsers.forEach(user => {
+        const displayName = user.fullName || (user.name ? `${user.name}${user.surname1 ? ' ' + user.surname1 : ''}${user.surname2 ? ' ' + user.surname2 : ''}` : (user.nombre ? `${user.nombre}${user.apellidos ? ' ' + user.apellidos : ''}` : 'Usuario'));
         html += `
             <div class="user-item" style="background: var(--bg-secondary); padding: 1rem; margin: 0.5rem 0; border-radius: 8px; display: flex; justify-content: space-between; align-items: center;">
                 <div>
-                    <h4 style="margin: 0 0 0.5rem 0;">${user.name}</h4>
+                    <h4 style="margin: 0 0 0.5rem 0;">${displayName}</h4>
                     <p style="margin: 0; color: #666;">${user.email}</p>
-                    <small style="color: #999;">Registrado: ${new Date(user.registrationDate || Date.now()).toLocaleDateString()}</small>
+                    ${user.dni || user.documentNumber ? `<p style="margin: 0.25rem 0; color: #666; font-size: 0.9em;">${user.documentTypeName || 'Documento'}: ${user.documentNumber || user.dni}</p>` : ''}
+                    ${user.address || user.direccion ? `<p style="margin: 0.25rem 0; color: #666; font-size: 0.9em;">📍 ${user.address || user.direccion}${user.city || user.ciudad ? ', ' + (user.city || user.ciudad) : ''}${user.postalCode || user.codigoPostal ? ' (' + (user.postalCode || user.codigoPostal) + ')' : ''}</p>` : ''}
+                    <small style="color: #999;">Registrado: ${new Date(user.registrationDate || user.registeredAt || Date.now()).toLocaleDateString()}</small>
                 </div>
                 <div class="user-actions">
                     <button class="btn btn-sm btn-outline" onclick="editUser('${user.email}')">Editar</button>
@@ -7545,7 +7967,7 @@ function saveEditedAdmin() {
     }
     
     // Actualizar lista
-    loadAdminsList();
+        loadAdminsList();
     
     // Cerrar modal
     closeGenericModal();
@@ -7703,7 +8125,16 @@ async function migrateUsersToFirestore() {
         
         if (localUsers.length === 0) {
             console.log('No hay usuarios locales para migrar');
+            // Esperar a que Firebase esté listo antes de cargar
             await loadUsersFromFirestore();
+            return;
+        }
+        
+        // Esperar a que Firebase esté inicializado
+        const firebaseReady = await waitForFirebase();
+        if (!firebaseReady || !window.firebase || !window.firebase.firestore) {
+            console.warn('⚠️ Firebase no disponible, usando localStorage como fallback');
+            loadUsersFromLocalStorage();
             return;
         }
         
@@ -7713,10 +8144,20 @@ async function migrateUsersToFirestore() {
         for (const user of localUsers) {
             try {
                 await window.firebase.firestore().collection('users').add({
-                    nombre: user.nombre || '',
-                    apellidos: user.apellidos || '',
+                    nombre: user.nombre || user.name || '',
+                    apellidos: user.apellidos || (user.surname1 ? `${user.surname1}${user.surname2 ? ' ' + user.surname2 : ''}` : '') || '',
+                    surname1: user.surname1 || '',
+                    surname2: user.surname2 || '',
+                    fullName: user.fullName || '',
                     email: user.email || '',
-                    telefono: user.telefono || '',
+                    telefono: user.telefono || user.phone || '',
+                    direccion: user.direccion || user.address || '',
+                    ciudad: user.ciudad || user.city || '',
+                    codigoPostal: user.codigoPostal || user.postalCode || '',
+                    documentType: user.documentType || '',
+                    documentTypeName: user.documentTypeName || '',
+                    documentNumber: user.documentNumber || user.dni || '',
+                    dni: user.dni || user.documentNumber || '',
                     notificationConsent: user.notificationConsent || false,
                     localities: user.localities || [],
                     fcmToken: user.fcmToken || '',
@@ -7744,9 +8185,46 @@ async function migrateUsersToFirestore() {
     }
 }
 
+// Función auxiliar para esperar a que Firebase esté inicializado
+async function waitForFirebase(maxWait = 5000) {
+    if (window.firebase && window.firebase.firestore) {
+        return true;
+    }
+    
+    return new Promise((resolve) => {
+        let waited = 0;
+        const checkInterval = 100;
+        const interval = setInterval(() => {
+            waited += checkInterval;
+            if (window.firebase && window.firebase.firestore) {
+                clearInterval(interval);
+                resolve(true);
+            } else if (waited >= maxWait) {
+                clearInterval(interval);
+                console.warn('⚠️ Firebase no se inicializó en el tiempo esperado');
+                resolve(false);
+            }
+        }, checkInterval);
+        
+        // También escuchar el evento personalizado
+        window.addEventListener('firebaseReady', () => {
+            clearInterval(interval);
+            resolve(true);
+        }, { once: true });
+    });
+}
+
 // Cargar usuarios desde Firestore
 async function loadUsersFromFirestore() {
     try {
+        // Esperar a que Firebase esté inicializado
+        const firebaseReady = await waitForFirebase();
+        if (!firebaseReady || !window.firebase || !window.firebase.firestore) {
+            console.warn('⚠️ Firebase no disponible, usando localStorage como fallback');
+            loadUsersFromLocalStorage();
+            return;
+        }
+        
         const snapshot = await window.firebase.firestore().collection('users').get();
         users = [];
         
@@ -7754,10 +8232,25 @@ async function loadUsersFromFirestore() {
             const userData = doc.data();
             users.push({
                 id: doc.id,
-                nombre: userData.nombre || '',
-                apellidos: userData.apellidos || '',
+                name: userData.nombre || userData.name || '',
+                surname1: userData.surname1 || '',
+                surname2: userData.surname2 || '',
+                fullName: userData.fullName || userData.nombre || userData.name || '',
+                nombre: userData.nombre || userData.name || '',
+                apellidos: userData.apellidos || (userData.surname1 ? `${userData.surname1}${userData.surname2 ? ' ' + userData.surname2 : ''}` : '') || '',
                 email: userData.email || '',
-                telefono: userData.telefono || '',
+                phone: userData.telefono || userData.phone || '',
+                telefono: userData.telefono || userData.phone || '',
+                address: userData.direccion || userData.address || '',
+                direccion: userData.direccion || userData.address || '',
+                city: userData.ciudad || userData.city || '',
+                ciudad: userData.ciudad || userData.city || '',
+                postalCode: userData.codigoPostal || userData.postalCode || '',
+                codigoPostal: userData.codigoPostal || userData.postalCode || '',
+                documentType: userData.documentType || '',
+                documentTypeName: userData.documentTypeName || '',
+                documentNumber: userData.documentNumber || userData.dni || '',
+                dni: userData.dni || userData.documentNumber || '',
                 notificationConsent: userData.notificationConsent || false,
                 localities: userData.localities || [],
                 fcmToken: userData.fcmToken || '',
@@ -7800,13 +8293,30 @@ function loadUsersFromLocalStorage() {
 // Sincronizar usuario con Firestore
 async function syncUserToFirestore(userData) {
     try {
+        // Esperar a que Firebase esté inicializado
+        const firebaseReady = await waitForFirebase();
+        if (!firebaseReady || !window.firebase || !window.firebase.firestore) {
+            console.warn('⚠️ Firebase no disponible, usuario guardado solo en localStorage');
+            return;
+        }
+        
         await window.firebase.firestore().collection('users').add({
-            nombre: userData.nombre,
-            apellidos: userData.apellidos,
+            nombre: userData.nombre || userData.name || '',
+            apellidos: userData.apellidos || (userData.surname1 ? `${userData.surname1}${userData.surname2 ? ' ' + userData.surname2 : ''}` : '') || '',
+            surname1: userData.surname1 || '',
+            surname2: userData.surname2 || '',
+            fullName: userData.fullName || '',
             email: userData.email,
-            telefono: userData.telefono,
+            telefono: userData.telefono || userData.phone || '',
+            direccion: userData.direccion || userData.address || '',
+            ciudad: userData.ciudad || userData.city || '',
+            codigoPostal: userData.codigoPostal || userData.postalCode || '',
+            documentType: userData.documentType || '',
+            documentTypeName: userData.documentTypeName || '',
+            documentNumber: userData.documentNumber || userData.dni || '',
+            dni: userData.dni || userData.documentNumber || '',
             notificationConsent: userData.notificationConsent,
-            localities: userData.localities,
+            localities: userData.localities || [],
             fcmToken: userData.fcmToken || '',
             registeredFrom: 'WEB',
             registrationDate: new Date()
@@ -7973,25 +8483,30 @@ function showWebNotification(notificationData) {
 // Cargar notificaciones recibidas desde Firestore
 async function loadReceivedNotifications() {
     try {
-        if (window.firebase && window.firebase.firestore) {
-            const snapshot = await window.firebase.firestore()
-                .collection('notifications')
-                .where('sentTo', '==', 'WEB')
-                .orderBy('timestamp', 'desc')
-                .limit(50)
-                .get();
-            
-            const receivedNotifications = [];
-            snapshot.forEach(doc => {
-                const data = doc.data();
-                receivedNotifications.push({
-                    id: doc.id,
-                    ...data
-                });
-            });
-            
-            displayReceivedNotifications(receivedNotifications);
+        // Esperar a que Firebase esté inicializado
+        const firebaseReady = await waitForFirebase();
+        if (!firebaseReady || !window.firebase || !window.firebase.firestore) {
+            console.warn('⚠️ Firebase no disponible para cargar notificaciones');
+            return;
         }
+        
+        const snapshot = await window.firebase.firestore()
+            .collection('notifications')
+            .where('sentTo', '==', 'WEB')
+            .orderBy('timestamp', 'desc')
+            .limit(50)
+            .get();
+        
+        const receivedNotifications = [];
+        snapshot.forEach(doc => {
+            const data = doc.data();
+            receivedNotifications.push({
+                id: doc.id,
+                ...data
+            });
+        });
+        
+        displayReceivedNotifications(receivedNotifications);
     } catch (error) {
         console.error('Error cargando notificaciones recibidas:', error);
     }
@@ -8080,20 +8595,25 @@ function formatNotificationTime(timestamp) {
 // Marcar notificación como leída
 async function markNotificationAsRead(notificationId) {
     try {
-        if (window.firebase && window.firebase.firestore) {
-            await window.firebase.firestore()
-                .collection('notifications')
-                .doc(notificationId)
-                .update({ read: true });
-            
-            // Remover de la lista
-            const notificationElement = document.querySelector(`[data-id="${notificationId}"]`);
-            if (notificationElement) {
-                notificationElement.remove();
-            }
-            
-            showNotification('Notificación marcada como leída', 'success');
+        // Esperar a que Firebase esté inicializado
+        const firebaseReady = await waitForFirebase();
+        if (!firebaseReady || !window.firebase || !window.firebase.firestore) {
+            console.warn('⚠️ Firebase no disponible para marcar notificación como leída');
+            return;
         }
+        
+        await window.firebase.firestore()
+            .collection('notifications')
+            .doc(notificationId)
+            .update({ read: true });
+        
+        // Remover de la lista
+        const notificationElement = document.querySelector(`[data-id="${notificationId}"]`);
+        if (notificationElement) {
+            notificationElement.remove();
+        }
+        
+        showNotification('Notificación marcada como leída', 'success');
     } catch (error) {
         console.error('Error marcando notificación como leída:', error);
     }
@@ -8110,135 +8630,71 @@ function downloadAttachment(attachmentUrl) {
 
 // ===== SISTEMA DE NOTIFICACIONES PUSH - TURISTEAM =====
 
-// Enviar notificación push con filtrado por localidades (SOLO DESDE WEB)
+// Enviar notificación push con filtrado por localidades usando Firebase Functions
+// Sistema mejorado: usa Firebase Functions (más seguro, no requiere Server Key en frontend)
 async function enviarNotificacionPushConLocalidades(titulo, mensaje, tipo = 'general', alcance = 'todos', localidadesSeleccionadas = [], hasAttachments = false, attachmentUrl = null, attachmentType = null) {
     try {
-        // Verificar que se está enviando desde la web
-        console.log('🌐 Enviando notificación desde la WEB hacia la APK');
+        console.log('🔔 Enviando notificación push usando Firebase Functions');
         
-        // Obtener usuarios que han dado consentimiento para notificaciones
-        let usuariosConNotificaciones = users.filter(user => 
-            user.notificationConsent && user.fcmToken
-        );
-        
-        // Filtrar por localidades si es necesario
-        if (alcance === 'localidades' && localidadesSeleccionadas.length > 0) {
-            usuariosConNotificaciones = usuariosConNotificaciones.filter(user => 
-                user.localities && user.localities.some(localidad => 
-                    localidadesSeleccionadas.includes(localidad)
-                )
-            );
-        }
-        
-        if (usuariosConNotificaciones.length === 0) {
-            if (alcance === 'localidades') {
-                alert('No hay usuarios registrados en las localidades seleccionadas que hayan dado consentimiento para recibir notificaciones.');
-            } else {
-                alert('No hay usuarios registrados que hayan dado consentimiento para recibir notificaciones.');
-            }
-            return;
-        }
-
-        // Datos de la notificación
-        const notificationData = {
-            titulo: titulo,
-            mensaje: mensaje,
-            tipo: tipo,
-            timestamp: new Date().toISOString(),
-            enviadoPor: currentUser ? currentUser.name : 'Administrador',
-            proyecto: 'Ayuntamiento de Cobreros'
+        // Preparar datos para Firebase Function
+        const requestData = {
+            title: titulo,
+            message: mensaje,
+            type: tipo,
+            scope: alcance === 'localidades' ? 'localities' : 'all',
+            localities: alcance === 'localidades' ? localidadesSeleccionadas : [],
+            adminEmail: currentUser ? currentUser.email : 'admin',
+            textFont: '',
+            textSize: '',
+            textColor: ''
         };
 
-        let notificacionesEnviadas = 0;
-        let notificacionesFallidas = 0;
+        // Enviar a Firebase Function
+        const response = await fetch('https://us-central1-turisteam-80f1b.cloudfunctions.net/sendPushNotification', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(requestData)
+        });
 
-        // Enviar a cada usuario individualmente
-        for (const usuario of usuariosConNotificaciones) {
-            try {
-                const response = await fetch('https://fcm.googleapis.com/fcm/send', {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': 'key=TU_SERVER_KEY_AQUI', // Necesitas tu Server Key de Firebase
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        to: usuario.fcmToken,
-                        notification: {
-                            title: titulo,
-                            body: mensaje,
-                            icon: 'images/escudo-cobreros.png',
-                            badge: 'images/escudo-cobreros.png',
-                            click_action: window.location.origin
-                        },
-                        data: {
-                            ...notificationData,
-                            destinatario: usuario.email,
-                            has_attachments: hasAttachments,
-                            attachment_url: attachmentUrl,
-                            attachment_type: attachmentType,
-                            sent_from: 'WEB',
-                            sent_to: 'APK'
-                        }
-                    })
-                });
+        const result = await response.json();
 
-                if (response.ok) {
-                    notificacionesEnviadas++;
-                    
-                    // Guardar notificación en Firestore para sincronización
-                    if (window.firebase && window.firebase.firestore) {
-                        window.firebase.firestore().collection('notifications').add({
-                            userId: usuario.id,
-                            userEmail: usuario.email,
-                            title: titulo,
-                            message: mensaje,
-                            type: tipo,
-                            localities: localidadesSeleccionadas.length > 0 ? localidadesSeleccionadas.join(', ') : 'Todas',
-                            hasAttachments: hasAttachments,
-                            attachmentUrl: attachmentUrl,
-                            attachmentType: attachmentType,
-                            timestamp: new Date(),
-                            read: false,
-                            sentFrom: 'WEB',
-                            sentTo: 'APK',
-                            fcmToken: usuario.fcmToken
-                        }).catch(error => {
-                            console.error('Error guardando notificación en Firestore:', error);
-                        });
-                    }
-                } else {
-                    notificacionesFallidas++;
-                }
-            } catch (error) {
-                console.error(`Error enviando notificación a ${usuario.email}:`, error);
-                notificacionesFallidas++;
+        if (result.success) {
+            // Mostrar estadísticas
+            const stats = result.stats || {};
+            let mensaje = `Notificación enviada: ${stats.sent || 0} exitosos`;
+            
+            if (stats.failed > 0) {
+                mensaje += `, ${stats.failed} fallidos`;
             }
-        }
-
-        // Mostrar resultado
-        if (notificacionesEnviadas > 0) {
-            let mensaje = `Notificación enviada a ${notificacionesEnviadas} usuarios`;
+            
             if (alcance === 'localidades' && localidadesSeleccionadas.length > 0) {
                 mensaje += ` en: ${localidadesSeleccionadas.join(', ')}`;
             }
+            
             showNotification(mensaje, 'success');
+            
+            // Log detallado
+            console.log('✅ Notificación enviada exitosamente:', {
+                titulo,
+                tipo,
+                alcance,
+                localidades: localidadesSeleccionadas,
+                estadisticas: stats
+            });
+            
+            return true;
+        } else {
+            console.error('❌ Error en Firebase Function:', result.error || result.message);
+            showNotification(result.message || 'Error al enviar notificación', 'error');
+            return false;
         }
-        if (notificacionesFallidas > 0) {
-            showNotification(`${notificacionesFallidas} notificaciones fallaron`, 'warning');
-        }
-
-        console.log('Notificación enviada:', {
-            ...notificationData,
-            alcance: alcance,
-            localidades: localidadesSeleccionadas,
-            totalUsuarios: usuariosConNotificaciones.length,
-            enviadas: notificacionesEnviadas,
-            fallidas: notificacionesFallidas
-        });
 
     } catch (error) {
-        console.error('Error enviando notificación push:', error);
-        showNotification('Error al enviar notificación push', 'error');
+        console.error('❌ Error al enviar notificación push:', error);
+        showNotification('Error al enviar notificación push. Verifique la conexión.', 'error');
+        return false;
     }
 }
 
@@ -10157,6 +10613,138 @@ function exportCulturaSection(section) {
     link.click();
     
     showNotification(`Sección ${section} exportada correctamente`, 'success');
+}
+
+// Función para exportar tarjetas de cultura y ocio
+function exportCulturaTarjetas() {
+    const data = culturaOcioConfig.tarjetas || [];
+    const dataStr = JSON.stringify(data, null, 2);
+    const dataBlob = new Blob([dataStr], {type: 'application/json'});
+    
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(dataBlob);
+    link.download = `cultura-tarjetas-${new Date().toISOString().split('T')[0]}.json`;
+    link.click();
+    
+    showNotification('Tarjetas exportadas correctamente', 'success');
+}
+
+// Función para crear pestañas personalizadas
+function addCustomTab(event) {
+    if (event) {
+        event.preventDefault();
+    }
+    
+    const nombre = document.getElementById('pestanaNombre').value.trim();
+    const id = document.getElementById('pestanaId').value.trim();
+    
+    if (!nombre || !id) {
+        showNotification('Por favor, complete todos los campos', 'error');
+        return;
+    }
+    
+    // Verificar que el ID no exista ya
+    if (!culturaOcioConfig.pestanasPersonalizadas) {
+        culturaOcioConfig.pestanasPersonalizadas = [];
+    }
+    
+    if (culturaOcioConfig.pestanasPersonalizadas.find(p => p.id === id)) {
+        showNotification('Ya existe una pestaña con ese ID', 'error');
+        return;
+    }
+    
+    // Agregar nueva pestaña
+    const nuevaPestana = {
+        id: id,
+        nombre: nombre,
+        elementos: [],
+        activa: true,
+        createdAt: new Date().toISOString()
+    };
+    
+    culturaOcioConfig.pestanasPersonalizadas.push(nuevaPestana);
+    
+    // Guardar en localStorage
+    localStorage.setItem('culturaOcioConfig', JSON.stringify(culturaOcioConfig));
+    
+    // Limpiar formulario
+    document.getElementById('nuevaPestanaForm').reset();
+    
+    // Recargar lista de pestañas
+    loadCustomTabsList();
+    
+    // Actualizar pestañas en el modal
+    renderCustomTabs();
+    
+    showNotification('Pestaña personalizada creada correctamente', 'success');
+    
+    // Cambiar a la nueva pestaña
+    switchCulturaTab(id);
+}
+
+// Función para cargar lista de pestañas personalizadas
+function loadCustomTabsList() {
+    const container = document.getElementById('customTabsList');
+    if (!container) return;
+    
+    if (!culturaOcioConfig.pestanasPersonalizadas || culturaOcioConfig.pestanasPersonalizadas.length === 0) {
+        container.innerHTML = '<p style="text-align: center; color: #6c757d; padding: 20px;">No hay pestañas personalizadas creadas</p>';
+        return;
+    }
+    
+    container.innerHTML = culturaOcioConfig.pestanasPersonalizadas.map(pestana => `
+        <div class="admin-item-card" style="background: #fff; border: 1px solid #e0e0e0; border-radius: 12px; padding: 20px; margin-bottom: 15px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+            <div class="admin-item-content" style="flex: 1;">
+                <h4 style="margin: 0 0 0.5rem 0;">${pestana.nombre}</h4>
+                <p style="margin: 0 0 0.5rem 0; color: #666;">ID: ${pestana.id}</p>
+                <div class="admin-item-meta" style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                    <span style="background: #3b82f6; color: white; padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.75rem;">${pestana.elementos?.length || 0} elementos</span>
+                    <span style="background: ${pestana.activa ? '#10b981' : '#ef4444'}; color: white; padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.75rem;">${pestana.activa ? 'Activa' : 'Inactiva'}</span>
+                </div>
+            </div>
+            <div class="admin-item-actions" style="display: flex; gap: 0.5rem; margin-top: 1rem;">
+                <button class="btn btn-sm btn-primary" onclick="switchCulturaTab('${pestana.id}')" style="padding: 0.5rem 1rem; font-size: 0.875rem;">
+                    <i class="fas fa-edit"></i> Gestionar
+                </button>
+                <button class="btn btn-sm btn-danger" onclick="deleteCustomTab('${pestana.id}')" style="padding: 0.5rem 1rem; font-size: 0.875rem;">
+                    <i class="fas fa-trash"></i> Eliminar
+                </button>
+            </div>
+        </div>
+    `).join('');
+}
+
+// Función para renderizar pestañas personalizadas en el contenedor de pestañas
+function renderCustomTabs() {
+    const container = document.getElementById('customTabsContainer');
+    if (!container) return;
+    
+    if (!culturaOcioConfig.pestanasPersonalizadas || culturaOcioConfig.pestanasPersonalizadas.length === 0) {
+        container.innerHTML = '';
+        return;
+    }
+    
+    container.innerHTML = culturaOcioConfig.pestanasPersonalizadas.map(pestana => `
+        <button class="tab-btn" onclick="switchCulturaTab('${pestana.id}')">${pestana.nombre}</button>
+    `).join('');
+}
+
+// Función para eliminar pestaña personalizada
+function deleteCustomTab(pestanaId) {
+    if (!confirm('¿Está seguro de que desea eliminar esta pestaña personalizada?')) {
+        return;
+    }
+    
+    culturaOcioConfig.pestanasPersonalizadas = culturaOcioConfig.pestanasPersonalizadas.filter(p => p.id !== pestanaId);
+    
+    // Guardar en localStorage
+    localStorage.setItem('culturaOcioConfig', JSON.stringify(culturaOcioConfig));
+    
+    // Recargar lista
+    loadCustomTabsList();
+    renderCustomTabs();
+    
+    showNotification('Pestaña personalizada eliminada correctamente', 'success');
 }
 
 // La función switchCulturaTab ya está definida arriba, no duplicar

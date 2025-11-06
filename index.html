@@ -28,6 +28,7 @@
     <script type="module">
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
         import { getMessaging, getToken, onMessage } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging.js';
+        import { getFirestore, collection, addDoc, getDocs, doc, updateDoc, deleteDoc, query, where } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
         
         // Configuración de Firebase
         const firebaseConfig = {
@@ -42,6 +43,59 @@
         // Inicializar Firebase
         const app = initializeApp(firebaseConfig);
         const messaging = getMessaging(app);
+        const db = getFirestore(app);
+        
+        // Exponer Firebase globalmente para compatibilidad con código existente (sintaxis v8)
+        // Crear wrapper compatible con la sintaxis .collection().add()
+        window.firebase = {
+            firestore: () => ({
+                collection: (collectionName) => ({
+                    add: (data) => {
+                        // Convertir sintaxis v8 a v9 modular
+                        return addDoc(collection(db, collectionName), data);
+                    },
+                    get: () => {
+                        // Retornar un objeto compatible con forEach
+                        return getDocs(collection(db, collectionName)).then(snapshot => ({
+                            forEach: (callback) => {
+                                snapshot.forEach(doc => callback(doc));
+                            },
+                            empty: snapshot.empty,
+                            size: snapshot.size,
+                            docs: snapshot.docs
+                        }));
+                    },
+                    where: (field, operator, value) => ({
+                        get: () => {
+                            const q = query(collection(db, collectionName), where(field, operator, value));
+                            return getDocs(q).then(snapshot => ({
+                                forEach: (callback) => {
+                                    snapshot.forEach(doc => callback(doc));
+                                },
+                                empty: snapshot.empty,
+                                size: snapshot.size,
+                                docs: snapshot.docs
+                            }));
+                        }
+                    }),
+                    doc: (docId) => ({
+                        update: (data) => {
+                            return updateDoc(doc(db, collectionName, docId), data);
+                        },
+                        delete: () => {
+                            return deleteDoc(doc(db, collectionName, docId));
+                        }
+                    })
+                })
+            })
+        };
+        
+        // Marcar Firebase como inicializado
+        window.firebaseInitialized = true;
+        console.log('✅ Firebase inicializado correctamente');
+        
+        // Disparar evento personalizado para notificar que Firebase está listo
+        window.dispatchEvent(new CustomEvent('firebaseReady'));
         
         // Solicitar permiso para notificaciones
         async function requestNotificationPermission() {
@@ -357,11 +411,11 @@
                     
                     <!-- Naturaleza y Senderismo -->
                     <div class="accordion-item">
-                        <div class="accordion-header" onclick="toggleAccordion('naturaleza')">
+                        <div class="accordion-header" onclick="toggleAccordion('naturaleza')" role="button" tabindex="0" aria-expanded="false" aria-controls="naturaleza-content" onkeypress="if(event.key==='Enter'||event.key===' '){toggleAccordion('naturaleza');event.preventDefault();}">
                             <h3>🥾 Naturaleza y Senderismo</h3>
-                            <span class="accordion-icon">+</span>
+                            <span class="accordion-icon" aria-hidden="true">+</span>
                         </div>
-                        <div class="accordion-content" id="naturaleza-content">
+                        <div class="accordion-content" id="naturaleza-content" role="region" aria-labelledby="naturaleza-header">
                             <div class="accordion-items" id="naturalezaItems">
                                 <!-- Se llenará dinámicamente -->
                             </div>
@@ -370,11 +424,11 @@
                     
                     <!-- Patrimonio y Arte -->
                     <div class="accordion-item">
-                        <div class="accordion-header" onclick="toggleAccordion('patrimonio')">
+                        <div class="accordion-header" onclick="toggleAccordion('patrimonio')" role="button" tabindex="0" aria-expanded="false" aria-controls="patrimonio-content" onkeypress="if(event.key==='Enter'||event.key===' '){toggleAccordion('patrimonio');event.preventDefault();}">
                             <h3>🏛️ Patrimonio y Arte</h3>
-                            <span class="accordion-icon">+</span>
+                            <span class="accordion-icon" aria-hidden="true">+</span>
                         </div>
-                        <div class="accordion-content" id="patrimonio-content">
+                        <div class="accordion-content" id="patrimonio-content" role="region" aria-labelledby="patrimonio-header">
                             <div class="accordion-items" id="patrimonioItems">
                                 <!-- Se llenará dinámicamente -->
                             </div>
@@ -383,11 +437,11 @@
                     
                     <!-- Recolección y Gastronomía -->
                     <div class="accordion-item">
-                        <div class="accordion-header" onclick="toggleAccordion('gastronomia')">
+                        <div class="accordion-header" onclick="toggleAccordion('gastronomia')" role="button" tabindex="0" aria-expanded="false" aria-controls="gastronomia-content" onkeypress="if(event.key==='Enter'||event.key===' '){toggleAccordion('gastronomia');event.preventDefault();}">
                             <h3>🍄 Recolección y Gastronomía</h3>
-                            <span class="accordion-icon">+</span>
+                            <span class="accordion-icon" aria-hidden="true">+</span>
                         </div>
-                        <div class="accordion-content" id="gastronomia-content">
+                        <div class="accordion-content" id="gastronomia-content" role="region" aria-labelledby="gastronomia-header">
                             <div class="accordion-items" id="gastronomiaItems">
                                 <!-- Se llenará dinámicamente -->
                             </div>
@@ -396,11 +450,11 @@
                     
                     <!-- Eventos y Tradiciones -->
                     <div class="accordion-item">
-                        <div class="accordion-header" onclick="toggleAccordion('eventos')">
+                        <div class="accordion-header" onclick="toggleAccordion('eventos')" role="button" tabindex="0" aria-expanded="false" aria-controls="eventos-content" onkeypress="if(event.key==='Enter'||event.key===' '){toggleAccordion('eventos');event.preventDefault();}">
                             <h3>🎪 Eventos y Tradiciones</h3>
-                            <span class="accordion-icon">+</span>
+                            <span class="accordion-icon" aria-hidden="true">+</span>
                         </div>
-                        <div class="accordion-content" id="eventos-content">
+                        <div class="accordion-content" id="eventos-content" role="region" aria-labelledby="eventos-header">
                             <div class="accordion-items" id="eventosItems">
                                 <!-- Se llenará dinámicamente -->
                             </div>
@@ -409,11 +463,11 @@
                     
                     <!-- Sitios Cercanos de Interés -->
                     <div class="accordion-item">
-                        <div class="accordion-header" onclick="toggleAccordion('cercanos')">
+                        <div class="accordion-header" onclick="toggleAccordion('cercanos')" role="button" tabindex="0" aria-expanded="false" aria-controls="cercanos-content" onkeypress="if(event.key==='Enter'||event.key===' '){toggleAccordion('cercanos');event.preventDefault();}">
                             <h3>🗺️ Sitios Cercanos de Interés</h3>
-                            <span class="accordion-icon">+</span>
+                            <span class="accordion-icon" aria-hidden="true">+</span>
                         </div>
-                        <div class="accordion-content" id="cercanos-content">
+                        <div class="accordion-content" id="cercanos-content" role="region" aria-labelledby="cercanos-header">
                             <div class="accordion-items" id="cercanosItems">
                                 <!-- Se llenará dinámicamente -->
                             </div>
@@ -520,16 +574,61 @@
             <h2>Registrarse</h2>
             <form id="registerForm">
                 <div class="form-group">
-                    <label for="regName">Nombre completo:</label>
-                    <input type="text" id="regName" name="name" required>
+                    <label for="regName">Nombre:</label>
+                    <input type="text" id="regName" name="name" required placeholder="Ej: Juan">
+                </div>
+                <div class="form-group">
+                    <label for="regSurname1">Primer Apellido:</label>
+                    <input type="text" id="regSurname1" name="surname1" required placeholder="Ej: Pérez">
+                </div>
+                <div class="form-group">
+                    <label for="regSurname2">Segundo Apellido: <small style="color: #999; font-weight: normal;">(Opcional)</small></label>
+                    <input type="text" id="regSurname2" name="surname2" placeholder="Ej: García">
                 </div>
                 <div class="form-group">
                     <label for="regEmail">Correo electrónico:</label>
-                    <input type="email" id="regEmail" name="email" required>
+                    <input type="email" id="regEmail" name="email" required placeholder="ejemplo@correo.com">
                 </div>
                 <div class="form-group">
                     <label for="regPhone">Teléfono:</label>
-                    <input type="tel" id="regPhone" name="phone" required>
+                    <input type="tel" id="regPhone" name="phone" required placeholder="Ej: 600123456">
+                </div>
+                <div class="form-group">
+                    <label for="regAddress">Dirección:</label>
+                    <input type="text" id="regAddress" name="address" required placeholder="Ej: Calle Principal, 123">
+                </div>
+                <div class="form-group">
+                    <label for="regCity">Ciudad / Población:</label>
+                    <input type="text" id="regCity" name="city" required placeholder="Ej: Cobreros">
+                </div>
+                <div class="form-group">
+                    <label for="regPostalCode">Código Postal:</label>
+                    <input type="text" id="regPostalCode" name="postalCode" required placeholder="Ej: 49394" maxlength="5" pattern="[0-9]{5}">
+                </div>
+                <div class="form-group">
+                    <label for="documentType">Tipo de documento:</label>
+                    <select id="documentType" name="documentType" required>
+                        <option value="">Seleccione un tipo</option>
+                        <option value="dni">DNI (Documento Nacional de Identidad)</option>
+                        <option value="nie">NIE (Número de Identidad de Extranjero)</option>
+                        <option value="passport">Pasaporte</option>
+                        <option value="other">Otro documento extranjero</option>
+                    </select>
+                </div>
+                <div class="form-group" id="dniGroup" style="display: none;">
+                    <label for="regDNI">DNI / NIE:</label>
+                    <input type="text" id="regDNI" name="dni" placeholder="Ej: 12345678A" maxlength="9" style="text-transform: uppercase;">
+                    <small class="form-help">Formato: 8 números seguidos de 1 letra (ej: 12345678A)</small>
+                </div>
+                <div class="form-group" id="passportGroup" style="display: none;">
+                    <label for="regPassport">Número de documento:</label>
+                    <input type="text" id="regPassport" name="passport" placeholder="Ingrese el número de su documento" maxlength="50">
+                </div>
+                <div class="form-group" id="otherDocGroup" style="display: none;">
+                    <label for="regOtherDoc">Número de documento:</label>
+                    <input type="text" id="regOtherDoc" name="otherDoc" placeholder="Ingrese el número de su documento" maxlength="50">
+                    <label for="regOtherDocType" style="margin-top: 0.5rem;">Tipo de documento:</label>
+                    <input type="text" id="regOtherDocType" name="otherDocType" placeholder="Ej: Cédula, Tarjeta de residencia, etc." maxlength="50">
                 </div>
                 
                 <div class="form-group">
@@ -2218,13 +2317,18 @@
                 <span class="close" onclick="closeCulturaOcioModal()">&times;</span>
             </div>
             <div class="modal-body">
-                <div class="cultura-tabs">
+                <div class="cultura-tabs" id="culturaTabsContainer">
                     <button class="tab-btn active" onclick="switchCulturaTab('contenido')">📝 Contenido</button>
                     <button class="tab-btn" onclick="switchCulturaTab('naturaleza')">🥾 Naturaleza</button>
                     <button class="tab-btn" onclick="switchCulturaTab('patrimonio')">🏛️ Patrimonio</button>
                     <button class="tab-btn" onclick="switchCulturaTab('gastronomia')">🍄 Gastronomía</button>
                     <button class="tab-btn" onclick="switchCulturaTab('eventos')">🎪 Eventos</button>
                     <button class="tab-btn" onclick="switchCulturaTab('cercanos')">🗺️ Sitios Cercanos</button>
+                    <button class="tab-btn" onclick="switchCulturaTab('tarjetas')">🃏 Tarjetas</button>
+                    <button class="tab-btn" onclick="switchCulturaTab('pestanas')" style="background: #f3f4f6; color: #6b7280;">
+                        <i class="fas fa-plus"></i> Nueva Pestaña
+                    </button>
+                    <div id="customTabsContainer"></div>
                 </div>
                 
                 <!-- Tab de Contenido -->
@@ -2317,6 +2421,59 @@
                         <!-- Se cargará dinámicamente -->
                     </div>
                 </div>
+                
+                <!-- Tab de Tarjetas -->
+                <div id="cultura-tarjetas-tab" class="tab-content">
+                    <div class="content-actions">
+                        <button class="btn btn-primary" onclick="addCulturaTarjeta()">
+                            <i class="fas fa-plus"></i> Nueva Tarjeta
+                        </button>
+                        <button class="btn btn-secondary" onclick="exportCulturaTarjetas()">
+                            <i class="fas fa-download"></i> Exportar
+                        </button>
+                    </div>
+                    <div class="content-list" id="culturaTarjetasList">
+                        <!-- Se cargará dinámicamente -->
+                    </div>
+                </div>
+                
+                <!-- Tab de Gestión de Pestañas -->
+                <div id="cultura-pestanas-tab" class="tab-content">
+                    <div class="form-group">
+                        <h4 style="margin-bottom: 1rem;">✨ Crear Nueva Pestaña Personalizada</h4>
+                        <p style="color: #6b7280; margin-bottom: 1.5rem;">Añade pestañas personalizadas para organizar mejor tus contenidos de Cultura y Ocio.</p>
+                    </div>
+                    <form id="nuevaPestanaForm" onsubmit="addCustomTab(event)">
+                        <div class="form-group">
+                            <label for="pestanaNombre">Nombre de la pestaña (con emoji):</label>
+                            <input type="text" id="pestanaNombre" placeholder="Ej: 🎨 Arte y Cultura" required>
+                            <small>💡 Usa emojis para hacer la pestaña más atractiva</small>
+                        </div>
+                        <div class="form-group">
+                            <label for="pestanaId">ID único (sin espacios, solo letras y números):</label>
+                            <input type="text" id="pestanaId" placeholder="Ej: arte-cultura" pattern="[a-zA-Z0-9-]+" required>
+                            <small>💡 Este ID se usará internamente (no se mostrará al usuario)</small>
+                        </div>
+                        <div class="form-actions">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-plus"></i> Crear Pestaña
+                            </button>
+                            <button type="button" class="btn btn-outline" onclick="switchCulturaTab('contenido')">
+                                Cancelar
+                            </button>
+                        </div>
+                    </form>
+                    
+                    <div style="margin-top: 2rem; padding-top: 2rem; border-top: 1px solid #e5e7eb;">
+                        <h4 style="margin-bottom: 1rem;">📋 Pestañas Personalizadas Existentes</h4>
+                        <div id="customTabsList" class="content-list">
+                            <!-- Se cargará dinámicamente -->
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Contenedor para pestañas personalizadas dinámicas -->
+                <div id="customTabsContentContainer"></div>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-outline" onclick="closeCulturaOcioModal()">Cancelar</button>
@@ -2346,7 +2503,8 @@
                     
                     <div class="form-group">
                         <label for="culturaItemDescription">Descripción:</label>
-                        <textarea id="culturaItemDescription" rows="4" required></textarea>
+                        <textarea id="culturaItemDescription" rows="10" required style="min-height: 200px;"></textarea>
+                        <small style="color: #666;">Escribe la descripción completa que aparecerá en la página web</small>
                     </div>
                     
                     <div class="form-group">
