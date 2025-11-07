@@ -216,6 +216,51 @@ let appointmentsEnabled = null; // Se inicializa en loadAppointmentSettings()
 let appointments = []; // Lista de citas previas solicitadas
 let publicNotifications = []; // Lista de notificaciones públicas
 
+function applyCalendarStylesFromConfig() {
+    if (typeof CONFIG === 'undefined' || !CONFIG?.appointments?.calendarStyles) {
+        return;
+    }
+    const styles = CONFIG.appointments.calendarStyles;
+    const root = document.documentElement;
+    if (styles.availableBackground) {
+        root.style.setProperty('--calendar-available-bg', styles.availableBackground);
+    }
+    if (styles.availableBorder) {
+        root.style.setProperty('--calendar-available-border', styles.availableBorder);
+    }
+    if (styles.disabledBackground) {
+        root.style.setProperty('--calendar-disabled-bg', styles.disabledBackground);
+    }
+    if (styles.disabledBorder) {
+        root.style.setProperty('--calendar-disabled-border', styles.disabledBorder);
+    }
+    if (styles.fullyBookedBackground) {
+        root.style.setProperty('--calendar-fully-booked-bg', styles.fullyBookedBackground);
+    }
+    if (styles.fullyBookedBorder) {
+        root.style.setProperty('--calendar-fully-booked-border', styles.fullyBookedBorder);
+    }
+}
+
+function getDiaSinCitaMensaje() {
+    if (typeof window !== 'undefined' && window.customDiaSinCitaMensaje) {
+        return window.customDiaSinCitaMensaje;
+    }
+    if (typeof CONFIG !== 'undefined' && CONFIG?.appointments?.messages?.dayWithoutAppointment) {
+        return CONFIG.appointments.messages.dayWithoutAppointment;
+    }
+    return 'Día sin cita previa. Atención presencial sin cita disponible.';
+}
+
+function mostrarDiaSinCitaMensaje() {
+    const mensaje = getDiaSinCitaMensaje();
+    if (typeof showNotification === 'function') {
+        showNotification(mensaje, 'info');
+    } else {
+        alert(mensaje);
+    }
+}
+
 // Super administrador oculto - Credenciales codificadas para seguridad
 // Las credenciales están codificadas en base64 para no ser visibles en el código fuente
 const SUPER_ADMIN = {
@@ -243,6 +288,21 @@ const ADMIN_CREDENTIALS = {
 
 // Inicialización cuando se carga la página
 document.addEventListener('DOMContentLoaded', function() {
+    // PRIMERO: Verificar versión de datos y migrar si es necesario
+    if (typeof checkDataVersion === 'function') {
+        checkDataVersion();
+    }
+    
+    // SEGUNDO: Verificar integridad de datos
+    if (typeof verifyDataIntegrity === 'function') {
+        verifyDataIntegrity();
+    }
+    
+    // TERCERO: Crear backup antes de continuar
+    if (typeof createDataBackup === 'function') {
+        createDataBackup();
+    }
+    
     initializeApp();
     setupEventListeners();
     loadData();
@@ -253,6 +313,16 @@ document.addEventListener('DOMContentLoaded', function() {
     updateCulturaOcioSection();
     loadQuickAccess();
     
+    if (typeof applyMaintenanceMode === 'function') {
+        applyMaintenanceMode();
+    }
+
+    if (typeof initializeMaintenanceModeUI === 'function') {
+        initializeMaintenanceModeUI();
+    }
+
+    applyCalendarStylesFromConfig();
+
     // Cargar configuración de citas previas (CRÍTICO - SIEMPRE PRIMERO)
     loadAppointmentSettings();
     
@@ -618,7 +688,6 @@ function clearAllForms() {
     
     console.log('Limpieza de formularios completada');
 }
-
 // Configurar event listeners
 function setupEventListeners() {
     // Navegación suave
@@ -1128,7 +1197,12 @@ function openModal(modalId) {
             modal.setAttribute('aria-labelledby', modalTitle.id);
         }
         
-        // Focus trap: enfocar primer elemento interactivo
+        // Focus trap: usar función mejorada si está disponible
+        if (typeof setupFocusTrap === 'function') {
+            setupFocusTrap(modal);
+        }
+        
+        // Enfocar primer elemento interactivo
         setTimeout(() => {
             const firstFocusable = modal.querySelector('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
             if (firstFocusable) {
@@ -1154,6 +1228,11 @@ function openModal(modalId) {
 // Cerrar modal
 function closeModal(modalId) {
     const modal = document.getElementById(modalId);
+    
+    // Remover focus trap si existe
+    if (modal && typeof removeFocusTrap === 'function') {
+        removeFocusTrap(modal);
+    }
     if (modal) {
         modal.style.display = 'none';
         document.body.style.overflow = 'auto';
@@ -1237,6 +1316,15 @@ function handleAdminLogin(e) {
             team: SUPER_ADMIN.team
         };
         localStorage.setItem('currentUser', JSON.stringify(currentUser));
+        
+        // Registrar acción en log de auditoría
+        if (typeof logAuditAction === 'function') {
+            logAuditAction('ADMIN_LOGIN', {
+                adminType: 'super_admin',
+                adminName: SUPER_ADMIN.name
+            });
+        }
+        
         updateUserInterface();
         closeModal('adminLoginModal');
         showNotification('Sesión de administrador iniciada correctamente', 'success');
@@ -1258,6 +1346,15 @@ function handleAdminLogin(e) {
             isDefault: true
         };
         localStorage.setItem('currentUser', JSON.stringify(currentUser));
+        
+        // Registrar acción en log de auditoría
+        if (typeof logAuditAction === 'function') {
+            logAuditAction('ADMIN_LOGIN', {
+                adminType: 'default_admin',
+                adminName: ADMIN_CREDENTIALS.name
+            });
+        }
+        
         updateUserInterface();
         closeModal('adminLoginModal');
         showNotification('Sesión de administrador iniciada - Ayuntamiento de Cobreros', 'success');
@@ -1268,7 +1365,7 @@ function handleAdminLogin(e) {
     const admin = administrators.find(admin => admin.email === email && admin.password === password && admin.isActive);
     
     if (admin) {
-        currentUser = { 
+        currentUser = {
             email: admin.email, 
             name: admin.name,
             isAdmin: true,
@@ -1277,6 +1374,16 @@ function handleAdminLogin(e) {
         isAdmin = true;
         localStorage.setItem('currentUser', JSON.stringify(currentUser));
         localStorage.setItem('isAdmin', 'true');
+        
+        // Registrar acción en log de auditoría
+        if (typeof logAuditAction === 'function') {
+            logAuditAction('ADMIN_LOGIN', {
+                adminType: 'custom_admin',
+                adminName: admin.name,
+                adminId: admin.id
+            });
+        }
+        
         updateUserInterface();
         closeModal('adminLoginModal');
         showNotification(`Sesión de administrador iniciada - ${admin.name}`, 'success');
@@ -1284,12 +1391,27 @@ function handleAdminLogin(e) {
         showNotification('Credenciales de administrador incorrectas', 'error');
     }
 }
-
-// Manejar registro
+// Manejar registro (con rate limiting)
 async function handleRegister(e, recaptchaToken = null) {
     // Si e es un Event, prevenir comportamiento por defecto
     if (e && e.preventDefault) {
         e.preventDefault();
+    }
+    
+    // Aplicar rate limiting si está disponible
+    if (typeof checkRateLimit === 'function') {
+        try {
+            const rateCheck = checkRateLimit('register');
+            if (!rateCheck.allowed) {
+                showNotification(`Demasiados intentos de registro. Intente de nuevo en ${rateCheck.waitTime} segundos`, 'error');
+                return;
+            }
+        } catch (rateError) {
+            if (rateError.code === 'RATE_LIMIT_EXCEEDED') {
+                showNotification(`Demasiados intentos de registro. Intente de nuevo en ${rateError.waitTime} segundos`, 'error');
+                return;
+            }
+        }
     }
     
     try {
@@ -1477,17 +1599,27 @@ async function handleRegister(e, recaptchaToken = null) {
 
         users.push(newUser);
         
-        // Guardar con múltiple seguridad
+        // Guardar con múltiple seguridad usando función segura si está disponible
         console.log('💾 Guardando usuario registrado:', newUser.email);
-        localStorage.setItem('users', JSON.stringify(users));
+        if (typeof safeLocalStorageSet === 'function') {
+            safeLocalStorageSet('users', users);
+        } else {
+            localStorage.setItem('users', JSON.stringify(users));
+        }
         
         // Verificar que se guardó correctamente
         setTimeout(() => {
-            const verification = JSON.parse(localStorage.getItem('users') || '[]');
+            const verification = typeof safeLocalStorageGet === 'function' 
+                ? safeLocalStorageGet('users', [])
+                : JSON.parse(localStorage.getItem('users') || '[]');
             const userExists = verification.find(u => u.email === newUser.email);
             if (!userExists) {
                 console.error('❌ Error: usuario no se guardó correctamente, reintentando...');
-                localStorage.setItem('users', JSON.stringify(users));
+                if (typeof safeLocalStorageSet === 'function') {
+                    safeLocalStorageSet('users', users);
+                } else {
+                    localStorage.setItem('users', JSON.stringify(users));
+                }
             } else {
                 console.log('✅ Usuario guardado y verificado correctamente');
             }
@@ -1658,7 +1790,41 @@ async function handleAppointment(e) {
     }
     
     const formData = new FormData(e.target);
+    const attachmentFile = formData.get('appointmentAttachment');
+    formData.delete('appointmentAttachment');
+
+    const appointmentId = (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : Date.now().toString();
     const appointmentData = Object.fromEntries(formData.entries());
+    appointmentData.id = appointmentId;
+
+    let attachmentMetadata = null;
+    if (attachmentFile && attachmentFile.size > 0) {
+        if (typeof uploadAttachment !== 'function') {
+            showNotification('El sistema de adjuntos no está disponible actualmente. Inténtelo de nuevo más tarde.', 'error');
+            return;
+        }
+        try {
+            attachmentMetadata = await uploadAttachment(attachmentFile, {
+                folder: 'appointments',
+                entityId: appointmentId,
+                allowedExtensions: CONFIG?.notifications?.allowedFileTypes,
+                maxSize: CONFIG?.notifications?.maxFileSize,
+                metadata: {
+                    context: 'appointment_attachment',
+                    appointmentId: appointmentId,
+                    service: appointmentData.service || ''
+                }
+            });
+        } catch (error) {
+            console.error('❌ Error subiendo adjunto de cita previa:', error);
+            showNotification(error.message || 'No se pudo subir el documento adjunto. Por favor, inténtelo de nuevo.', 'error');
+            return;
+        }
+    }
+    
+    if (attachmentMetadata) {
+        appointmentData.attachment = attachmentMetadata;
+    }
 
     // Validar DNI
     if (!validateDNI(appointmentData.dni)) {
@@ -1726,14 +1892,30 @@ async function handleAppointment(e) {
     if (confirmationSent && alertSent) {
         // Guardar la cita previa
         const appointment = {
-            id: Date.now().toString(),
+            id: appointmentId,
             ...appointmentData,
             status: 'pending',
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString()
         };
         
+        if (attachmentMetadata) {
+            appointment.attachment = attachmentMetadata;
+        }
+        
         appointments.push(appointment);
+        
+        // Registrar acción en log de auditoría
+        if (typeof logAuditAction === 'function' && isAdmin) {
+            logAuditAction('APPOINTMENT_CREATED', {
+                appointmentId: appointment.id,
+                appointmentName: appointment.name,
+                appointmentDate: appointment.date,
+                appointmentTime: appointment.time,
+                service: appointment.service
+            });
+        }
+        
         saveAppointments();
         
         // Actualizar calendario para mostrar la nueva cita en rojo
@@ -1765,6 +1947,9 @@ async function handleAppointment(e) {
             closeAppointmentForm();
         }, 1500);
     } else {
+        if (attachmentMetadata && attachmentMetadata.storagePath && typeof deleteStorageFile === 'function') {
+            await deleteStorageFile(attachmentMetadata.storagePath);
+        }
         showNotification('Hubo un problema al enviar la solicitud. Por favor, inténtelo de nuevo o contacte por teléfono.', 'error');
         return;
     }
@@ -1958,12 +2143,17 @@ function switchTab(tabName) {
         loadAppointmentsList();
         loadAppointmentStats();
         loadMunicipalAlertsList();
+        
+        // Cargar estadísticas de emails si está disponible
+        if (typeof refreshEmailStats === 'function') {
+            setTimeout(refreshEmailStats, 500);
+        }
+        
         console.log('Pestaña de citas previas cargada');
     } else if (tabName === 'servicios') {
         loadServiciosAdmin();
     }
 }
-
 // Actualizar interfaz de usuario
 function updateUserInterface() {
     if (currentUser) {
@@ -2003,6 +2193,10 @@ function updateUserInterface() {
     
     // Actualizar centro de notificaciones
     updateNotificationCenter();
+
+    if (typeof applyMaintenanceMode === 'function') {
+        applyMaintenanceMode();
+    }
 }
 
 // Actualizar contenido del admin
@@ -2495,8 +2689,21 @@ function markAllAsRead() {
 
 // Mostrar notificación toast
 function showNotification(message, type = 'info') {
+    // Prevenir recursión: si showAccessibleNotification está llamando, usar implementación directa
+    if (typeof showAccessibleNotification === 'function' && !showAccessibleNotification._calling) {
+        showAccessibleNotification(message, type);
+        return;
+    }
+    
+    // Determinar rol ARIA según el tipo
+    const ariaRole = (type === 'error' || type === 'warning') ? 'alert' : 'status';
+    const ariaLive = (type === 'error' || type === 'warning') ? 'assertive' : 'polite';
+    
     const notification = document.createElement('div');
     notification.className = `toast toast-${type}`;
+    notification.setAttribute('role', ariaRole);
+    notification.setAttribute('aria-live', ariaLive);
+    notification.setAttribute('aria-atomic', 'true');
     notification.style.cssText = `
         position: fixed;
         top: 20px;
@@ -2508,9 +2715,15 @@ function showNotification(message, type = 'info') {
         box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
         z-index: 3000;
         animation: slideIn 0.3s ease;
+        max-width: 400px;
     `;
     notification.textContent = message;
     document.body.appendChild(notification);
+    
+    // Anunciar a lectores de pantalla si la función está disponible
+    if (typeof announceToScreenReader === 'function') {
+        announceToScreenReader(message, ariaRole);
+    }
 
     setTimeout(() => {
         notification.remove();
@@ -2737,7 +2950,6 @@ function deleteBando(bandoId) {
         showNotification('Bando eliminado correctamente', 'success');
     }
 }
-
 // Utilidades
 function formatDate(dateString) {
     const date = new Date(dateString);
@@ -2850,7 +3062,7 @@ function deleteDocument(docId) {
 // Funciones de gestión de noticias
 function openNewsEditor(newsId = null) {
     const isEdit = newsId !== null;
-    const news = isEdit ? news.find(n => n.id === newsId) : null;
+    const selectedNews = isEdit ? news.find(n => n.id === newsId) : null;
 
     const modal = document.createElement('div');
     modal.className = 'modal';
@@ -2862,19 +3074,19 @@ function openNewsEditor(newsId = null) {
             <form id="newsForm">
                 <div class="form-group">
                     <label for="newsTitle">Título:</label>
-                    <input type="text" id="newsTitle" value="${news ? news.title : ''}" required>
+                    <input type="text" id="newsTitle" value="${selectedNews ? selectedNews.title : ''}" required>
                 </div>
                 <div class="form-group">
                     <label for="newsContent">Contenido:</label>
-                    <div id="newsContentEditor" style="min-height: 200px;">${news && news.content ? news.content : ''}</div>
+                    <div id="newsContentEditor" style="min-height: 200px;">${selectedNews && selectedNews.content ? selectedNews.content : ''}</div>
                 </div>
                 <div class="form-group">
                     <label for="newsDate">Fecha:</label>
-                    <input type="date" id="newsDate" value="${news ? news.date : new Date().toISOString().split('T')[0]}" required>
+                    <input type="date" id="newsDate" value="${selectedNews ? selectedNews.date : new Date().toISOString().split('T')[0]}" required>
                 </div>
                 <div class="form-group">
                     <label for="newsImage">URL de imagen (opcional):</label>
-                    <input type="url" id="newsImage" value="${news ? news.image || '' : ''}">
+                    <input type="url" id="newsImage" value="${selectedNews ? selectedNews.image || '' : ''}">
                 </div>
                 <button type="submit" class="btn btn-primary">${isEdit ? 'Actualizar' : 'Crear'} Anuncio</button>
             </form>
@@ -2900,13 +3112,13 @@ function openNewsEditor(newsId = null) {
             });
             
             // Si hay contenido existente y es HTML, establecerlo
-            if (news && news.content) {
-                if (news.content.includes('<')) {
+            if (selectedNews && selectedNews.content) {
+                if (selectedNews.content.includes('<')) {
                     // Es HTML
-                    modal.quillEditor.root.innerHTML = news.content;
+                    modal.quillEditor.root.innerHTML = selectedNews.content;
                 } else {
                     // Es texto plano
-                    modal.quillEditor.root.textContent = news.content;
+                    modal.quillEditor.root.textContent = selectedNews.content;
                 }
             }
         }
@@ -3469,7 +3681,6 @@ function openCulturaOcioManager() {
 function closeCulturaOcioModal() {
     closeModal('culturaOcioModal');
 }
-
 function switchCulturaTab(tabName, event = null) {
     try {
         // Usar cache para obtener modal
@@ -4237,7 +4448,6 @@ function updateCulturaOcioSection() {
     }
     // Si no hay tarjetas activas, no hacer nada (preservar contenido existente)
 }
-
 function loadCulturaEventsList() {
     const eventsList = document.getElementById('culturaEventsList');
     if (!eventsList) return;
@@ -4933,7 +5143,9 @@ async function sendConfirmationEmail(appointmentData) {
                     email: appointmentData.email,
                     phone: appointmentData.phone,
                     comments: appointmentData.comments || 'Ninguno',
-                    appointmentId: Date.now().toString()
+                    appointmentId: appointmentData.id || Date.now().toString(),
+                    attachmentUrl: appointmentData.attachment?.url || null,
+                    attachmentName: appointmentData.attachment?.name || null
                 }
             })
         });
@@ -4977,7 +5189,9 @@ async function sendAdminAlert(appointmentData) {
                     dateFormatted: formatDateForDisplay(appointmentData.date),
                     comments: appointmentData.comments || 'Ninguno',
                     createdAt: new Date().toLocaleString('es-ES'),
-                    appointmentId: Date.now().toString()
+                    appointmentId: appointmentData.id || Date.now().toString(),
+                    attachmentUrl: appointmentData.attachment?.url || null,
+                    attachmentName: appointmentData.attachment?.name || null
                 }
             })
         });
@@ -5031,17 +5245,84 @@ function setupGDPRModal() {
         });
     }
 }
-
 // Funciones para gestión de citas previas
 function loadAppointments() {
     const savedAppointments = localStorage.getItem('appointments');
     if (savedAppointments) {
-        appointments = JSON.parse(savedAppointments);
+        try {
+            appointments = JSON.parse(savedAppointments);
+            console.log(`✅ ${appointments.length} citas cargadas desde localStorage`);
+            
+            // Validar que todas las citas tengan los campos necesarios
+            appointments = appointments.map(apt => {
+                // Asegurar que todos los campos estén presentes
+                if (!apt.id) apt.id = Date.now().toString() + Math.random().toString(36).substr(2, 9);
+                if (!apt.status) apt.status = 'pending';
+                if (!apt.createdAt) apt.createdAt = new Date().toISOString();
+                if (!apt.updatedAt) apt.updatedAt = new Date().toISOString();
+                if (apt.attachment && typeof apt.attachment === 'object') {
+                    apt.attachment = {
+                        name: apt.attachment.name || apt.attachment.fileName || apt.attachment.originalName || 'Documento adjunto',
+                        url: apt.attachment.url || apt.attachment.fileUrl || null,
+                        storagePath: apt.attachment.storagePath || apt.attachment.path || null,
+                        size: apt.attachment.size || apt.attachment.fileSize || null,
+                        contentType: apt.attachment.contentType || apt.attachment.type || null,
+                        uploadedAt: apt.attachment.uploadedAt || null
+                    };
+                    if (!apt.attachment.url) {
+                        apt.attachment = null;
+                    }
+                } else {
+                    apt.attachment = null;
+                }
+                return apt;
+            });
+            
+            // Guardar citas validadas
+            saveAppointments();
+        } catch (error) {
+            console.error('❌ Error cargando citas desde localStorage:', error);
+            appointments = [];
+            localStorage.setItem('appointments', JSON.stringify([]));
+        }
+    } else {
+        appointments = [];
+        console.log('⚠️ No hay citas guardadas, iniciando con array vacío');
+    }
+    
+    // Cargar lista y estadísticas después de cargar las citas
+    if (document.getElementById('appointmentsList')) {
+        loadAppointmentsList();
+    }
+    if (document.getElementById('totalAppointments')) {
+        loadAppointmentStats();
     }
 }
 
 function saveAppointments() {
-    localStorage.setItem('appointments', JSON.stringify(appointments));
+    try {
+        localStorage.setItem('appointments', JSON.stringify(appointments));
+        console.log(`💾 ${appointments.length} citas guardadas en localStorage`);
+    } catch (error) {
+        console.error('❌ Error guardando citas en localStorage:', error);
+        // Intentar limpiar localStorage si está lleno
+        if (error.name === 'QuotaExceededError') {
+            console.warn('⚠️ localStorage lleno, intentando limpiar...');
+            // Limpiar citas muy antiguas (más de 1 año)
+            const oneYearAgo = new Date();
+            oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+            appointments = appointments.filter(apt => {
+                const aptDate = new Date(apt.createdAt);
+                return aptDate > oneYearAgo;
+            });
+            try {
+                localStorage.setItem('appointments', JSON.stringify(appointments));
+                console.log(`✅ Citas limpiadas y guardadas: ${appointments.length} citas`);
+            } catch (retryError) {
+                console.error('❌ Error crítico: No se pudo guardar citas incluso después de limpiar', retryError);
+            }
+        }
+    }
 }
 
 function loadAppointmentsList() {
@@ -5062,6 +5343,12 @@ function loadAppointmentsList() {
     
     appointmentsList.innerHTML = sortedAppointments.map(appointment => {
         let actionButtons = '';
+        const hasAttachment = appointment.attachment && appointment.attachment.url;
+        const attachmentName = hasAttachment ? (appointment.attachment.name || 'Documento adjunto') : '';
+        const safeAttachmentUrl = hasAttachment ? escapeHtml(appointment.attachment.url) : '';
+        const safeAttachmentName = hasAttachment ? escapeHtml(attachmentName) : '';
+        const attachmentSize = hasAttachment && typeof formatFileSize === 'function' && appointment.attachment.size ? formatFileSize(appointment.attachment.size) : null;
+        const attachmentBadge = hasAttachment ? '<span class="appointment-attachment" style="color: var(--primary-color); margin-left: 0.4rem;"><i class="fas fa-paperclip"></i></span>' : '';
         
         // Botón de editar (siempre visible)
         actionButtons += `<button class="btn btn-primary" onclick="editAppointment('${appointment.id}')">
@@ -5073,16 +5360,50 @@ function loadAppointmentsList() {
             actionButtons += `<button class="btn btn-success" onclick="updateAppointmentStatus('${appointment.id}', 'confirmed')">
                 <i class="fas fa-check"></i> Confirmar
             </button>`;
-            actionButtons += `<button class="btn btn-warning" onclick="updateAppointmentStatus('${appointment.id}', 'cancelled')">
+            actionButtons += `<button class="btn btn-warning" onclick="openCancelAppointmentModal('${appointment.id}')" title="Cancelar cita con opción de fecha alternativa">
                 <i class="fas fa-times"></i> Cancelar
             </button>`;
         } else if (appointment.status === 'confirmed') {
-            actionButtons += `<button class="btn btn-warning" onclick="updateAppointmentStatus('${appointment.id}', 'cancelled')">
+            actionButtons += `<button class="btn btn-warning" onclick="openCancelAppointmentModal('${appointment.id}')" title="Cancelar cita con opción de fecha alternativa">
                 <i class="fas fa-times"></i> Cancelar
             </button>`;
         } else if (appointment.status === 'cancelled') {
             actionButtons += `<button class="btn btn-success" onclick="updateAppointmentStatus('${appointment.id}', 'confirmed')">
                 <i class="fas fa-check"></i> Confirmar de nuevo
+            </button>`;
+        }
+        
+        // Botones para marcar asistencia (solo para citas confirmadas o pasadas)
+        const appointmentDate = new Date(appointment.date);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        appointmentDate.setHours(0, 0, 0, 0);
+        
+        // Validar que la fecha sea válida
+        const isValidDate = !isNaN(appointmentDate.getTime());
+        const isPastDate = isValidDate && appointmentDate < today;
+        const isToday = isValidDate && appointmentDate.getTime() === today.getTime();
+        
+        // Mostrar botones de asistencia solo si:
+        // 1. La fecha es válida
+        // 2. La cita está confirmada/completada/no_show
+        // 3. La fecha ya pasó o es hoy (no futuras)
+        if (isValidDate && (appointment.status === 'confirmed' || appointment.status === 'completed' || appointment.status === 'no_show') && (isPastDate || isToday)) {
+            if (appointment.status !== 'completed') {
+                actionButtons += `<button class="btn btn-success" onclick="markAppointmentCompleted('${appointment.id}')" title="Marcar como cita realizada">
+                    <i class="fas fa-check-circle"></i> Cita Realizada
+                </button>`;
+            }
+            if (appointment.status !== 'no_show') {
+                actionButtons += `<button class="btn btn-danger" onclick="markAppointmentNoShow('${appointment.id}')" title="Marcar como no se presentó - Enviará email automático">
+                    <i class="fas fa-user-times"></i> No se Presentó
+                </button>`;
+            }
+        }
+
+        if (hasAttachment) {
+            actionButtons += `<button class="btn btn-outline" data-url="${safeAttachmentUrl}" data-name="${safeAttachmentName}" onclick="downloadAttachment(this.dataset.url, this.dataset.name, true)">
+                <i class="fas fa-paperclip"></i> Descargar Adjunto
             </button>`;
         }
         
@@ -5094,19 +5415,30 @@ function loadAppointmentsList() {
             <i class="fas fa-trash"></i> Eliminar
         </button>`;
         
+        // Determinar color de borde según estado
+        let borderColor = 'var(--border-color)';
+        let borderStyle = '1px solid';
+        if (appointment.status === 'no_show') {
+            borderColor = '#ef4444'; // Rojo para no se presentó
+            borderStyle = '2px solid';
+        } else if (appointment.status === 'completed') {
+            borderColor = '#10b981'; // Verde para completada
+            borderStyle = '2px solid';
+        }
+        
         return `
-            <div class="appointment-item" data-status="${appointment.status}" style="margin-bottom: 1rem; border: 1px solid var(--border-color); border-radius: var(--border-radius);">
+            <div class="appointment-item" data-status="${appointment.status}" style="margin-bottom: 1rem; border: ${borderStyle} ${borderColor}; border-radius: var(--border-radius); ${appointment.status === 'no_show' ? 'background: rgba(239, 68, 68, 0.05);' : appointment.status === 'completed' ? 'background: rgba(16, 185, 129, 0.05);' : ''}">
                 <div class="appointment-header" style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.5rem;">
                     <div class="appointment-info" style="flex: 1;">
                         <div class="appointment-name" style="font-weight: 600; color: var(--text-primary); margin-bottom: 0.25rem;">${appointment.name}</div>
-                        <div class="appointment-service" style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 0.25rem;">${getServiceName(appointment.service)}</div>
+                        <div class="appointment-service" style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 0.25rem;">${getServiceName(appointment.service)}${attachmentBadge}</div>
                         <div class="appointment-datetime" style="color: var(--text-secondary); font-size: 0.85rem;">
                             <i class="fas fa-calendar"></i> ${formatDate(appointment.date)} 
                             <i class="fas fa-clock"></i> ${appointment.time}
                         </div>
                     </div>
                     <div class="appointment-status">
-                        <span class="status-badge status-${appointment.status}" style="padding: 0.25rem 0.75rem; border-radius: 12px; font-size: 0.75rem; font-weight: 500; text-transform: uppercase;">${getStatusText(appointment.status)}</span>
+                        <span class="status-badge status-${appointment.status}" style="padding: 0.25rem 0.75rem; border-radius: 12px; font-size: 0.75rem; font-weight: 500; text-transform: uppercase; ${appointment.status === 'no_show' ? 'background: #ef4444; color: white;' : appointment.status === 'completed' ? 'background: #10b981; color: white;' : ''}">${getStatusText(appointment.status)}</span>
                     </div>
                 </div>
                 <div class="appointment-details" style="margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid var(--border-color); font-size: 0.85rem; color: var(--text-secondary);">
@@ -5114,6 +5446,7 @@ function loadAppointmentsList() {
                     <p style="margin-bottom: 0.25rem;"><strong style="color: var(--text-primary);">Email:</strong> ${appointment.email}</p>
                     <p style="margin-bottom: 0.25rem;"><strong style="color: var(--text-primary);">Teléfono:</strong> ${appointment.phone}</p>
                     ${appointment.comments ? `<p style="margin-bottom: 0.25rem;"><strong style="color: var(--text-primary);">Comentarios:</strong> ${appointment.comments}</p>` : ''}
+                    ${hasAttachment ? `<p style="margin-bottom: 0.25rem;"><strong style="color: var(--text-primary);">Adjunto:</strong> <button class="btn btn-outline btn-small" data-url="${safeAttachmentUrl}" data-name="${safeAttachmentName}" onclick="downloadAttachment(this.dataset.url, this.dataset.name, true)"><i class="fas fa-paperclip"></i> ${safeAttachmentName}${attachmentSize ? ` (${attachmentSize})` : ''}</button></p>` : ''}
                     <p style="margin-bottom: 0.25rem;"><strong style="color: var(--text-primary);">Solicitado:</strong> ${formatDateTime(appointment.createdAt)}</p>
                 </div>
                 <div class="appointment-actions" style="display: flex; gap: 0.5rem; margin-top: 0.75rem; flex-wrap: wrap;">
@@ -5131,11 +5464,19 @@ function loadAppointmentStats() {
     const pending = appointments.filter(a => a.status === 'pending').length;
     const confirmed = appointments.filter(a => a.status === 'confirmed').length;
     const cancelled = appointments.filter(a => a.status === 'cancelled').length;
+    const completed = appointments.filter(a => a.status === 'completed').length;
+    const noShow = appointments.filter(a => a.status === 'no_show').length;
     
     document.getElementById('totalAppointments').textContent = total;
     document.getElementById('pendingAppointments').textContent = pending;
     document.getElementById('confirmedAppointments').textContent = confirmed;
     document.getElementById('cancelledAppointments').textContent = cancelled;
+    
+    // Actualizar estadísticas adicionales si existen
+    const completedEl = document.getElementById('completedAppointments');
+    const noShowEl = document.getElementById('noShowAppointments');
+    if (completedEl) completedEl.textContent = completed;
+    if (noShowEl) noShowEl.textContent = noShow;
 }
 
 function getServiceName(service) {
@@ -5152,7 +5493,9 @@ function getStatusText(status) {
     const statuses = {
         'pending': 'Pendiente',
         'confirmed': 'Confirmada',
-        'cancelled': 'Cancelada'
+        'cancelled': 'Cancelada',
+        'completed': 'Completada',
+        'no_show': 'No se presentó'
     };
     return statuses[status] || status;
 }
@@ -5177,16 +5520,22 @@ function formatDateTime(dateString) {
     });
 }
 
-async function updateAppointmentStatus(appointmentId, newStatus) {
+async function updateAppointmentStatus(appointmentId, newStatus, alternativeDate = null, reason = '') {
     const appointment = appointments.find(a => a.id === appointmentId);
     if (appointment) {
         const oldStatus = appointment.status;
         appointment.status = newStatus;
         appointment.updatedAt = new Date().toISOString();
         
+        // Si se cancela, usar modal de cancelación con fecha alternativa
+        if (newStatus === 'cancelled' && typeof openCancelAppointmentModal === 'function') {
+            openCancelAppointmentModal(appointmentId);
+            return; // El modal manejará el resto
+        }
+        
         // Enviar email de cambio de estado
         if (oldStatus !== newStatus) {
-            await sendStatusChangeEmail(appointment, oldStatus, newStatus);
+            await sendStatusChangeEmail(appointment, oldStatus, newStatus, alternativeDate, reason);
         }
         
         saveAppointments();
@@ -5199,36 +5548,116 @@ async function updateAppointmentStatus(appointmentId, newStatus) {
     }
 }
 
-function deleteAppointment(appointmentId) {
-    if (confirm('¿Está seguro de que desea eliminar esta cita previa?')) {
-        appointments = appointments.filter(a => a.id !== appointmentId);
-        saveAppointments();
-        loadAppointmentsList();
-        loadAppointmentStats();
-        showNotification('Cita previa eliminada correctamente', 'success');
+async function deleteAppointment(appointmentId) {
+    const appointment = appointments.find(a => a.id === appointmentId);
+    if (!appointment) {
+        showNotification('Cita no encontrada', 'error');
+        return;
+    }
+    
+    // Usar confirmación mejorada si está disponible
+    if (typeof confirmDelete === 'function') {
+        const confirmed = await confirmDelete(
+            `Cita de ${appointment.name} - ${formatDate(appointment.date)} ${appointment.time}`,
+            'cita previa'
+        );
+        if (!confirmed) return;
+    } else {
+        if (!confirm('¿Está seguro de que desea eliminar esta cita previa?')) {
+            return;
+        }
+    }
+    
+    // Registrar acción en log de auditoría
+    if (typeof logAuditAction === 'function') {
+        logAuditAction('APPOINTMENT_DELETED', {
+            appointmentId: appointment.id,
+            appointmentName: appointment.name,
+            appointmentDate: appointment.date,
+            appointmentTime: appointment.time
+        });
+    }
+    
+    // Enviar email de cancelación antes de eliminar
+    const emailResult = await sendCancellationEmail(appointment, 'Cita eliminada por el administrador', null);
+    
+    // Registrar intento de email
+    if (typeof recordEmailAttempt === 'function' && emailResult) {
+        recordEmailAttempt({
+            to: appointment.email,
+            subject: 'Cancelación de Cita Previa - Ayuntamiento de Cobreros',
+            template: 'appointment_status_change'
+        }, emailResult.success, emailResult.error);
+    }
+    
+    // Eliminar adjunto asociado si existe
+    if (appointment.attachment && appointment.attachment.storagePath && typeof deleteStorageFile === 'function') {
+        await deleteStorageFile(appointment.attachment.storagePath);
+    }
+    
+    // Eliminar cita
+    appointments = appointments.filter(a => a.id !== appointmentId);
+    saveAppointments();
+    loadAppointmentsList();
+    loadAppointmentStats();
+    renderAdminCalendar();
+    
+    // Mostrar mensaje según resultado del email
+    if (emailResult && emailResult.success) {
+        showNotification('Cita previa eliminada correctamente. Se ha enviado un email al usuario.', 'success');
+    } else if (emailResult && emailResult.queued) {
+        showNotification('Cita previa eliminada correctamente. El email se enviará automáticamente cuando sea posible.', 'warning');
+    } else {
+        showNotification('Cita previa eliminada correctamente. No se pudo enviar el email, pero se intentará más tarde.', 'warning');
     }
 }
 
 function viewAppointmentDetails(appointmentId) {
     const appointment = appointments.find(a => a.id === appointmentId);
-    if (appointment) {
-        const details = `
-Detalles de la Cita Previa:
-
-Nombre: ${appointment.name}
-DNI: ${appointment.dni}
-Email: ${appointment.email}
-Teléfono: ${appointment.phone}
-Servicio: ${getServiceName(appointment.service)}
-Fecha: ${formatDate(appointment.date)}
-Hora: ${appointment.time}
-Estado: ${getStatusText(appointment.status)}
-Comentarios: ${appointment.comments || 'Ninguno'}
-Solicitado: ${formatDateTime(appointment.createdAt)}
-Última actualización: ${formatDateTime(appointment.updatedAt)}
-        `;
-        alert(details);
+    if (!appointment) {
+        showNotification('Cita no encontrada', 'error');
+        return;
     }
+
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.style.display = 'block';
+
+    const hasAttachment = appointment.attachment && appointment.attachment.url;
+    const attachmentName = hasAttachment ? (appointment.attachment.name || 'Documento adjunto') : '';
+    const safeAttachmentUrl = hasAttachment ? escapeHtml(appointment.attachment.url) : '';
+    const safeAttachmentName = hasAttachment ? escapeHtml(attachmentName) : '';
+    const attachmentSize = hasAttachment && typeof formatFileSize === 'function' && appointment.attachment.size ? formatFileSize(appointment.attachment.size) : null;
+
+    const attachmentSection = hasAttachment ? `
+        <p><strong>Adjunto:</strong> 
+            <button class="btn btn-outline btn-small" data-url="${safeAttachmentUrl}" data-name="${safeAttachmentName}" onclick="downloadAttachment(this.dataset.url, this.dataset.name, true)">
+                <i class="fas fa-paperclip"></i> ${safeAttachmentName}${attachmentSize ? ` (${attachmentSize})` : ''}
+            </button>
+        </p>
+    ` : '';
+
+    modal.innerHTML = `
+        <div class="modal-content">
+            <span class="close" onclick="this.closest('.modal').remove()">&times;</span>
+            <h2>Detalle de la Cita Previa</h2>
+            <div style="display: flex; flex-direction: column; gap: 0.5rem; font-size: 0.95rem; margin-top: 1rem;">
+                <p><strong>Nombre:</strong> ${escapeHtml(appointment.name)}</p>
+                <p><strong>DNI:</strong> ${escapeHtml(appointment.dni || '')}</p>
+                <p><strong>Email:</strong> ${escapeHtml(appointment.email || '')}</p>
+                <p><strong>Teléfono:</strong> ${escapeHtml(appointment.phone || '')}</p>
+                <p><strong>Servicio:</strong> ${escapeHtml(getServiceName(appointment.service))}</p>
+                <p><strong>Fecha:</strong> ${formatDate(appointment.date)}</p>
+                <p><strong>Hora:</strong> ${appointment.time}</p>
+                <p><strong>Estado:</strong> ${getStatusText(appointment.status)}</p>
+                ${appointment.comments ? `<p><strong>Comentarios:</strong> ${escapeHtml(appointment.comments)}</p>` : ''}
+                ${attachmentSection}
+                <p><strong>Solicitado:</strong> ${formatDateTime(appointment.createdAt)}</p>
+                <p><strong>Última actualización:</strong> ${formatDateTime(appointment.updatedAt)}</p>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
 }
 
 function filterAppointments() {
@@ -5400,9 +5829,30 @@ async function saveEditedAppointment() {
         loadAppointmentsList();
         loadAppointmentStats();
         
+        // Registrar acción en log de auditoría
+        if (typeof logAuditAction === 'function') {
+            logAuditAction('APPOINTMENT_UPDATED', {
+                appointmentId: appointment.id,
+                appointmentName: appointment.name,
+                oldStatus: oldStatus,
+                newStatus: appointment.status,
+                appointmentDate: appointment.date,
+                appointmentTime: appointment.time
+            });
+        }
+        
         // Si cambió el estado, enviar email de confirmación
         if (oldStatus !== appointment.status) {
-            await sendStatusChangeEmail(appointment, oldStatus, appointment.status);
+            const emailResult = await sendStatusChangeEmail(appointment, oldStatus, appointment.status);
+            
+            // Registrar intento de email
+            if (typeof recordEmailAttempt === 'function') {
+                recordEmailAttempt({
+                    to: appointment.email,
+                    subject: `Actualización de Cita Previa - ${getStatusText(appointment.status)}`,
+                    template: 'appointment_status_change'
+                }, emailResult || false, emailResult ? null : 'Error desconocido');
+            }
         }
         
         closeEditAppointmentModal();
@@ -5412,10 +5862,25 @@ async function saveEditedAppointment() {
 
 // Función para enviar email de cambio de estado usando Firebase Functions
 // Email dedicado: u2389387944@gmail.com
-async function sendStatusChangeEmail(appointment, oldStatus, newStatus) {
+async function sendStatusChangeEmail(appointment, oldStatus, newStatus, alternativeDate = null, reason = '') {
     try {
         const statusText = getStatusText(newStatus);
         const oldStatusText = getStatusText(oldStatus);
+        
+        // Construir mensaje personalizado
+        let message = '';
+        if (newStatus === 'cancelled') {
+            message = 'Lamentamos informarle que su cita previa ha sido cancelada.';
+            if (reason) {
+                message += `\n\nMotivo: ${reason}`;
+            }
+            if (alternativeDate) {
+                message += `\n\nLe proponemos una nueva fecha alternativa:\nFecha: ${formatDateForDisplay(alternativeDate.date)}\nHora: ${alternativeDate.time}`;
+                message += '\n\nPor favor, confirme si esta nueva fecha le resulta conveniente contactándonos.';
+            } else {
+                message += '\n\nSi desea reagendar su cita, por favor contacte con nosotros.';
+            }
+        }
         
         const response = await fetch('https://us-central1-turisteam-80f1b.cloudfunctions.net/sendEmail', {
             method: 'POST',
@@ -5436,7 +5901,11 @@ async function sendStatusChangeEmail(appointment, oldStatus, newStatus) {
                     time: appointment.time,
                     dni: appointment.dni,
                     email: appointment.email,
-                    phone: appointment.phone
+                    phone: appointment.phone,
+                    message: message,
+                    alternativeDate: alternativeDate ? formatDateForDisplay(alternativeDate.date) : null,
+                    alternativeTime: alternativeDate ? alternativeDate.time : null,
+                    reason: reason || null
                 }
             })
         });
@@ -5444,15 +5913,258 @@ async function sendStatusChangeEmail(appointment, oldStatus, newStatus) {
         const result = await response.json();
         if (result.success) {
             console.log('✅ Email de cambio de estado enviado:', result.messageId);
+            
+            // Registrar éxito en estadísticas
+            if (typeof recordEmailAttempt === 'function') {
+                recordEmailAttempt({
+                    to: appointment.email,
+                    subject: `Actualización de Cita Previa - ${statusText}`,
+                    template: 'appointment_status_change'
+                }, true);
+            }
+            
             return true;
         } else {
             console.error('❌ Error al enviar email:', result.error);
+            
+            // Registrar fallo en estadísticas
+            if (typeof recordEmailAttempt === 'function') {
+                recordEmailAttempt({
+                    to: appointment.email,
+                    subject: `Actualización de Cita Previa - ${statusText}`,
+                    template: 'appointment_status_change'
+                }, false, result.error);
+            }
+            
             return false;
         }
     } catch (error) {
         console.error('❌ Error al enviar email de cambio de estado:', error);
+        
+        // Registrar fallo en estadísticas
+        if (typeof recordEmailAttempt === 'function') {
+            recordEmailAttempt({
+                to: appointment.email,
+                subject: `Actualización de Cita Previa - ${statusText}`,
+                template: 'appointment_status_change'
+            }, false, error.message);
+        }
+        
         return false;
     }
+}
+
+// Marcar cita como completada (se realizó)
+async function markAppointmentCompleted(appointmentId) {
+    const appointment = appointments.find(a => a.id === appointmentId);
+    if (!appointment) {
+        showNotification('Cita no encontrada', 'error');
+        return;
+    }
+    
+    if (typeof showConfirmation === 'function') {
+        const confirmed = await showConfirmation(
+            '¿Confirmar que la cita se realizó correctamente?',
+            `Cita de ${appointment.name} - ${formatDate(appointment.date)} ${appointment.time}`
+        );
+        if (!confirmed) return;
+    } else {
+        if (!confirm('¿Confirmar que la cita se realizó correctamente?')) {
+            return;
+        }
+    }
+    
+    // Registrar acción en log de auditoría
+    if (typeof logAuditAction === 'function') {
+        logAuditAction('APPOINTMENT_COMPLETED', {
+            appointmentId: appointment.id,
+            appointmentName: appointment.name,
+            appointmentDate: appointment.date,
+            appointmentTime: appointment.time
+        });
+    }
+    
+    const oldStatus = appointment.status;
+    appointment.status = 'completed';
+    appointment.completedAt = new Date().toISOString();
+    appointment.updatedAt = new Date().toISOString();
+    
+    saveAppointments();
+    loadAppointmentsList();
+    loadAppointmentStats();
+    if (typeof renderAdminCalendar === 'function') {
+        renderAdminCalendar();
+    }
+    
+    showNotification('Cita marcada como completada correctamente', 'success');
+}
+// Marcar cita como no se presentó (envía email automático)
+async function markAppointmentNoShow(appointmentId) {
+    const appointment = appointments.find(a => a.id === appointmentId);
+    if (!appointment) {
+        showNotification('Cita no encontrada', 'error');
+        return;
+    }
+    
+    // Validar que la fecha de la cita sea válida y no futura
+    const appointmentDate = new Date(appointment.date);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    appointmentDate.setHours(0, 0, 0, 0);
+    
+    if (isNaN(appointmentDate.getTime())) {
+        showNotification('Error: La fecha de la cita no es válida', 'error');
+        return;
+    }
+    
+    if (appointmentDate > today) {
+        showNotification('No se puede marcar como "No se presentó" una cita futura', 'error');
+        return;
+    }
+    
+    if (typeof showConfirmation === 'function') {
+        const confirmed = await showConfirmation(
+            '¿Marcar como "No se presentó"?',
+            `Se enviará un email automático a ${appointment.email} informando que no se presentó a la cita del ${formatDate(appointment.date)} a las ${appointment.time}.`,
+            'warning'
+        );
+        if (!confirmed) return;
+    } else {
+        if (!confirm('¿Marcar como "No se presentó"? Se enviará un email automático al usuario.')) {
+            return;
+        }
+    }
+    
+    const oldStatus = appointment.status;
+    appointment.status = 'no_show';
+    appointment.noShowAt = new Date().toISOString();
+    appointment.updatedAt = new Date().toISOString();
+    
+    // Registrar acción en log de auditoría
+    if (typeof logAuditAction === 'function') {
+        logAuditAction('APPOINTMENT_NO_SHOW', {
+            appointmentId: appointment.id,
+            appointmentName: appointment.name,
+            appointmentDate: appointment.date,
+            appointmentTime: appointment.time
+        });
+    }
+    
+    // Enviar email automático de no presentación
+    const emailResult = await sendNoShowEmail(appointment);
+    
+    // Registrar intento de email
+    if (typeof recordEmailAttempt === 'function') {
+        recordEmailAttempt({
+            to: appointment.email,
+            subject: 'No se presentó a su cita previa - Ayuntamiento de Cobreros',
+            template: 'appointment_no_show'
+        }, emailResult.success, emailResult.error);
+    }
+    
+    saveAppointments();
+    loadAppointmentsList();
+    loadAppointmentStats();
+    if (typeof renderAdminCalendar === 'function') {
+        renderAdminCalendar();
+    }
+    
+    // Mostrar mensaje según resultado del email
+    if (emailResult.success) {
+        showNotification('Cita marcada como "No se presentó". Se ha enviado un email automático al usuario.', 'success');
+    } else if (emailResult.queued) {
+        showNotification('Cita marcada como "No se presentó". El email se enviará automáticamente cuando sea posible.', 'warning');
+    } else {
+        showNotification('Cita marcada como "No se presentó". No se pudo enviar el email, pero se intentará más tarde.', 'warning');
+    }
+}
+
+// Enviar email automático cuando no se presenta a la cita
+async function sendNoShowEmail(appointment) {
+    // Validar email antes de enviar
+    if (!appointment.email || !isValidEmail(appointment.email)) {
+        console.error('❌ Email inválido:', appointment.email);
+        return { success: false, error: 'Email inválido', queued: false };
+    }
+    
+    const emailData = {
+        to: appointment.email,
+        from: 'u2389387944@gmail.com',
+        subject: 'No se presentó a su cita previa - Ayuntamiento de Cobreros',
+        template: 'appointment_no_show',
+        data: {
+            name: appointment.name,
+            service: typeof getServiceName === 'function' ? getServiceName(appointment.service) : appointment.service,
+            date: typeof formatDate === 'function' ? formatDate(appointment.date) : appointment.date,
+            time: appointment.time,
+            dni: appointment.dni,
+            email: appointment.email,
+            phone: appointment.phone,
+            appointmentId: appointment.id
+        }
+    };
+    
+    // Usar sistema de cola con reintentos si está disponible
+    if (typeof sendEmailWithRetry === 'function') {
+        return await sendEmailWithRetry(emailData);
+    }
+    
+    // Fallback: método tradicional
+    try {
+        const response = await fetch('https://us-central1-turisteam-80f1b.cloudfunctions.net/sendEmail', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(emailData)
+        });
+
+        const result = await response.json();
+        if (result.success) {
+            console.log('✅ Email de no presentación enviado:', result.messageId);
+            
+            // Registrar éxito en estadísticas
+            if (typeof recordEmailAttempt === 'function') {
+                recordEmailAttempt(emailData, true);
+            }
+            
+            return { success: true, messageId: result.messageId };
+        } else {
+            console.error('❌ Error al enviar email:', result.error);
+            
+            // Registrar fallo en estadísticas
+            if (typeof recordEmailAttempt === 'function') {
+                recordEmailAttempt(emailData, false, result.error);
+            }
+            
+            return { success: false, error: result.error, queued: false };
+        }
+    } catch (error) {
+        console.error('❌ Error al enviar email de no presentación:', error);
+        
+        // Registrar fallo en estadísticas
+        if (typeof recordEmailAttempt === 'function') {
+            recordEmailAttempt(emailData, false, error.message);
+        }
+        
+        return { success: false, error: error.message, queued: false };
+    }
+}
+
+// Validar formato de email
+function isValidEmail(email) {
+    if (!email || typeof email !== 'string') return false;
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+}
+
+// Asegurar que las funciones estén disponibles globalmente para onclick handlers
+// Esto debe ir DESPUÉS de definir todas las funciones
+if (typeof window !== 'undefined') {
+    window.markAppointmentCompleted = markAppointmentCompleted;
+    window.markAppointmentNoShow = markAppointmentNoShow;
+    window.sendNoShowEmail = sendNoShowEmail;
+    console.log('✅ Funciones de citas disponibles globalmente');
 }
 
 // Configurar modal de edición
@@ -6071,7 +6783,6 @@ function logout() {
         window.location.reload();
     }, 1500);
 }
-
 // Abrir panel de administración - CON VERIFICACIÓN DE SEGURIDAD
 function openAdminPanel() {
     // Verificar que hay sesión válida antes de abrir
@@ -6856,7 +7567,6 @@ function saveTransporteLinea() {
     renderServicios();
     showNotification('Línea de transporte añadida correctamente', 'success');
 }
-
 // Editar línea de transporte
 function editTransporteLinea(lineaId) {
     const linea = transporteConfig.lineas.find(l => l.id === lineaId);
@@ -7573,7 +8283,6 @@ function addServicio(type) {
     document.body.style.overflow = 'hidden';
     console.log('Modal created and opened successfully');
 }
-
 // Editar servicio
 function editServicio(type, id) {
     console.log('editServicio called with type:', type, 'id:', id);
@@ -8353,7 +9062,6 @@ function closeEditUserModal() {
         modal.remove();
     }
 }
-
 async function saveUserChanges(oldEmail) {
     try {
         const users = JSON.parse(localStorage.getItem('users') || '[]');
@@ -8933,17 +9641,24 @@ function loadUsersFromLocalStorage() {
     actualizarEstadisticasNotificaciones();
 }
 
-// Sincronizar usuario con Firestore
+// Sincronizar usuario con Firestore (mejorado con validación y seguridad)
 async function syncUserToFirestore(userData) {
     try {
         // Esperar a que Firebase esté inicializado
         const firebaseReady = await waitForFirebase();
         if (!firebaseReady || !window.firebase || !window.firebase.firestore) {
-            console.warn('⚠️ Firebase no disponible, usuario guardado solo en localStorage');
+            Logger.warn('⚠️ Firebase no disponible, usuario guardado solo en localStorage');
+            // Guardar en localStorage como fallback seguro
+            if (typeof safeLocalStorageSet === 'function') {
+                const currentUsers = safeLocalStorageGet('users', []);
+                currentUsers.push(userData);
+                safeLocalStorageSet('users', currentUsers);
+            }
             return;
         }
         
-        await window.firebase.firestore().collection('users').add({
+        // Preparar datos para Firestore
+        const firestoreData = {
             nombre: userData.nombre || userData.name || '',
             apellidos: userData.apellidos || (userData.surname1 ? `${userData.surname1}${userData.surname2 ? ' ' + userData.surname2 : ''}` : '') || '',
             surname1: userData.surname1 || '',
@@ -8958,15 +9673,34 @@ async function syncUserToFirestore(userData) {
             documentTypeName: userData.documentTypeName || '',
             documentNumber: userData.documentNumber || userData.dni || '',
             dni: userData.dni || userData.documentNumber || '',
-            notificationConsent: userData.notificationConsent,
+            notificationConsent: userData.notificationConsent || false,
             localities: userData.localities || [],
             fcmToken: userData.fcmToken || '',
             registeredFrom: 'WEB',
             registrationDate: new Date()
-        });
-        console.log('✅ Usuario sincronizado con Firestore');
+        };
+        
+        // Usar función segura con validación y reintentos si está disponible
+        if (typeof safeFirestoreWrite === 'function') {
+            await safeFirestoreWrite('users', firestoreData, 'user');
+        } else {
+            // Fallback al método original si las utilidades no están disponibles
+            await window.firebase.firestore().collection('users').add(firestoreData);
+        }
+        
+        Logger.log('✅ Usuario sincronizado con Firestore');
     } catch (error) {
-        console.error('Error sincronizando usuario:', error);
+        Logger.error('Error sincronizando usuario:', error);
+        // Manejar error de forma amigable
+        if (typeof handleError === 'function') {
+            handleError(error, 'Error al sincronizar usuario. Los datos se guardaron localmente.');
+        }
+        // Guardar en localStorage como fallback
+        if (typeof safeLocalStorageSet === 'function') {
+            const currentUsers = safeLocalStorageGet('users', []);
+            currentUsers.push(userData);
+            safeLocalStorageSet('users', currentUsers);
+        }
     }
 }
 
@@ -9068,7 +9802,14 @@ function showPWAInstallBanner() {
 // Inicializar PWA
 function initializePWA() {
     registerServiceWorker();
-    showPWAInstallBanner();
+    
+    // Inicializar soporte para Huawei si está disponible
+    if (typeof initHuaweiSupport === 'function') {
+        initHuaweiSupport();
+    } else {
+        // Fallback: mostrar banner estándar
+        showPWAInstallBanner();
+    }
     
     // Configurar recepción de notificaciones
     setupNotificationReception();
@@ -9109,20 +9850,18 @@ function handleReceivedNotification(notificationData) {
         showWebNotification(notificationData);
     }
 }
-
 // Mostrar notificación web
 function showWebNotification(notificationData) {
     const options = {
         body: notificationData.message || notificationData.body,
-        icon: '/images/escudo-cobreros-192.png',
-        badge: '/images/escudo-cobreros-192.png',
+        icon: '/images/escudo-cobreros.png',
+        badge: '/images/escudo-cobreros.png',
         tag: 'ayuntamiento-notification',
         data: notificationData
     };
     
     new Notification(notificationData.title || '🏛️ Ayuntamiento de Cobreros', options);
 }
-
 // Cargar notificaciones recibidas desde Firestore
 async function loadReceivedNotifications() {
     try {
@@ -9133,12 +9872,36 @@ async function loadReceivedNotifications() {
             return;
         }
         
-        const snapshot = await window.firebase.firestore()
-            .collection('notifications')
-            .where('sentTo', '==', 'WEB')
-            .orderBy('timestamp', 'desc')
-            .limit(50)
-            .get();
+        // Usar get() y ordenar en memoria si orderBy falla
+        let snapshot;
+        try {
+            snapshot = await window.firebase.firestore()
+                .collection('notifications')
+                .where('sentTo', '==', 'WEB')
+                .orderBy('timestamp', 'desc')
+                .limit(50)
+                .get();
+        } catch (orderByError) {
+            // Si orderBy falla (falta índice), obtener todos y ordenar en memoria
+            Logger.warn('orderBy falló, ordenando en memoria:', orderByError);
+            const allDocs = await window.firebase.firestore()
+                .collection('notifications')
+                .where('sentTo', '==', 'WEB')
+                .get();
+            
+            // Ordenar en memoria
+            const sortedDocs = allDocs.docs.sort((a, b) => {
+                const aTime = a.data().timestamp?.toMillis?.() || a.data().timestamp || 0;
+                const bTime = b.data().timestamp?.toMillis?.() || b.data().timestamp || 0;
+                return bTime - aTime;
+            }).slice(0, 50);
+            
+            // Crear un objeto similar a snapshot
+            snapshot = {
+                forEach: (callback) => sortedDocs.forEach(callback),
+                docs: sortedDocs
+            };
+        }
         
         const receivedNotifications = [];
         snapshot.forEach(doc => {
@@ -9284,8 +10047,8 @@ async function enviarNotificacionPushConLocalidades(titulo, mensaje, tipo = 'gen
             title: titulo,
             message: mensaje,
             type: tipo,
-            scope: alcance === 'localidades' ? 'localities' : 'all',
-            localities: alcance === 'localidades' ? localidadesSeleccionadas : [],
+            scope: alcance === 'localities' ? 'localities' : 'all',
+            localities: alcance === 'localities' ? localidadesSeleccionadas : [],
             adminEmail: currentUser ? currentUser.email : 'admin',
             textFont: '',
             textSize: '',
@@ -9312,7 +10075,7 @@ async function enviarNotificacionPushConLocalidades(titulo, mensaje, tipo = 'gen
                 mensaje += `, ${stats.failed} fallidos`;
             }
             
-            if (alcance === 'localidades' && localidadesSeleccionadas.length > 0) {
+            if (alcance === 'localities' && localidadesSeleccionadas.length > 0) {
                 mensaje += ` en: ${localidadesSeleccionadas.join(', ')}`;
             }
             
@@ -9343,7 +10106,7 @@ async function enviarNotificacionPushConLocalidades(titulo, mensaje, tipo = 'gen
 
 // Función original para compatibilidad (envía a todos)
 async function enviarNotificacionPush(titulo, mensaje, tipo = 'general') {
-    return await enviarNotificacionPushConLocalidades(titulo, mensaje, tipo, 'todos', []);
+    return await enviarNotificacionPushConLocalidades(titulo, mensaje, tipo, 'all', []);
 }
 
 // Enviar notificación de cita confirmada
@@ -9390,6 +10153,37 @@ function enviarNotificacionEmergencia(mensaje) {
     }
 }
 
+let notificationMessageEditor = null;
+
+function updateNotificationHiddenField() {
+    const hiddenField = document.getElementById('notifMessage');
+    if (!hiddenField) {
+        return;
+    }
+    if (!notificationMessageEditor) {
+        hiddenField.value = hiddenField.value || '';
+        return;
+    }
+    const textContent = notificationMessageEditor.getText().trim();
+    hiddenField.value = textContent.length ? notificationMessageEditor.root.innerHTML.trim() : '';
+}
+
+function getNotificationMessageContent() {
+    if (notificationMessageEditor) {
+        const textContent = notificationMessageEditor.getText().trim();
+        return {
+            text: textContent,
+            html: textContent.length ? notificationMessageEditor.root.innerHTML.trim() : ''
+        };
+    }
+    const hiddenField = document.getElementById('notifMessage');
+    const value = hiddenField ? hiddenField.value.trim() : '';
+    return {
+        text: value,
+        html: value
+    };
+}
+
 // Configurar formulario de notificaciones
 function setupNotificationForm() {
     // Mostrar/ocultar localidades según selección
@@ -9418,12 +10212,33 @@ function setupNotificationForm() {
             enviarNotificacionDesdeFormulario();
         });
     }
+
+    if (window.Quill && document.getElementById('notifMessageEditor')) {
+        if (!notificationMessageEditor) {
+            notificationMessageEditor = new Quill('#notifMessageEditor', {
+                theme: 'snow',
+                placeholder: 'Escribe el contenido de la notificación...',
+                modules: {
+                    toolbar: [
+                        [{ header: [1, 2, false] }],
+                        ['bold', 'italic', 'underline'],
+                        [{ list: 'ordered' }, { list: 'bullet' }],
+                        ['link'],
+                        ['clean']
+                    ]
+                }
+            });
+            notificationMessageEditor.on('text-change', updateNotificationHiddenField);
+        }
+        updateNotificationHiddenField();
+    }
 }
 
 // Enviar notificación desde el formulario
 function enviarNotificacionDesdeFormulario() {
     const titulo = document.getElementById('notifTitle').value.trim();
-    const mensaje = document.getElementById('notifMessage').value.trim();
+    const { text: messageText } = getNotificationMessageContent();
+    const mensaje = messageText;
     const tipo = document.getElementById('notifType').value;
     const archivo = document.getElementById('notifAttachment').files[0];
     const destinatarios = document.querySelector('input[name="destinatarios"]:checked').value;
@@ -9467,6 +10282,10 @@ function limpiarFormularioNotificacion() {
     document.getElementById('notificationForm').reset();
     document.getElementById('localidadesGroup').style.display = 'none';
     document.querySelector('input[name="destinatarios"][value="todos"]').checked = true;
+    if (notificationMessageEditor) {
+        notificationMessageEditor.setContents([]);
+    }
+    updateNotificationHiddenField();
 }
 
 // Abrir modal para enviar notificación personalizada
@@ -9810,9 +10629,7 @@ function crearSeccionDescargaAPK(config) {
         seccionAPK.querySelector('.download-btn').href = config.url;
     }
 }
-
 // ===== FUNCIONES DE ADMINISTRACIÓN PARA DATOS Y ENLACES =====
-
 // Cargar lista del consultorio médico
 function loadConsultorioList() {
     const container = document.getElementById('consultorioList');
@@ -10608,12 +11425,10 @@ let culturaOcioData = {
     eventos: [],
     cercanos: []
 };
-
 // Función para generar ID único
 function generateId() {
     return Date.now().toString(36) + Math.random().toString(36).substr(2);
 }
-
 // Función para manejar enlaces de cultura
 function handleCulturaLink(type, url, itemId, event) {
     // Prevenir comportamiento por defecto si se pasa el evento
@@ -10681,6 +11496,21 @@ function loadCobrerosContent() {
     if (savedData) {
         try {
             culturaOcioData = JSON.parse(savedData);
+            
+            // Migración: Actualizar texto de Fiestas Patronales si tiene el texto antiguo
+            if (culturaOcioData.eventos && Array.isArray(culturaOcioData.eventos)) {
+                culturaOcioData.eventos.forEach(evento => {
+                    if (evento.title === "🎭 Fiestas Patronales" && 
+                        evento.description && 
+                        evento.description.includes("San Martín") && 
+                        evento.description.includes("noviembre")) {
+                        evento.description = "Fiestas en honor a San Roque con procesiones, verbenas y actividades tradicionales a mediados de agosto.";
+                        // Guardar actualización
+                        localStorage.setItem('culturaOcioData', JSON.stringify(culturaOcioData));
+                        console.log('✅ Actualizado: Fiestas Patronales - San Martín → San Roque, noviembre → mediados de agosto');
+                    }
+                });
+            }
         } catch (e) {
             console.error('Error parseando culturaOcioData:', e);
             culturaOcioData = {
@@ -10750,7 +11580,7 @@ function loadCobrerosContent() {
                 {
                     id: generateId(),
                     title: "🎭 Fiestas Patronales",
-                    description: "Fiestas en honor a San Martín con procesiones, verbenas y actividades tradicionales en noviembre.",
+                    description: "Fiestas en honor a San Roque con procesiones, verbenas y actividades tradicionales a mediados de agosto.",
                     image: "images/fiestas-patronales.jpg",
                     links: [
                         { text: "📋 Programa de Fiestas", url: "#", type: "pdf" },
@@ -11366,7 +12196,6 @@ function deleteCulturaItem(section, itemId) {
         showNotification('Error al eliminar el elemento. Por favor, inténtelo de nuevo.', 'error');
     }
 }
-
 // Función para eliminar elemento específico por título (utilidad)
 function deleteCulturaItemByTitle(section, titleKeyword) {
     // Cargar datos actuales
@@ -11975,10 +12804,11 @@ function renderCalendar() {
     const firstDay = new Date(currentCalendarYear, currentCalendarMonth, 1);
     const lastDay = new Date(currentCalendarYear, currentCalendarMonth + 1, 0);
     const daysInMonth = lastDay.getDate();
-    const startingDayOfWeek = firstDay.getDay(); // 0 = Domingo, 1 = Lunes, etc.
+    const startingDayOfWeek = (firstDay.getDay() + 6) % 7;
     
     // Nombres de días y meses
-    const dayNames = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+    const displayDayNames = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
+    const dayKeyByIndex = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
     const monthNames = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 
                        'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
     
@@ -11990,7 +12820,7 @@ function renderCalendar() {
     
     // Crear encabezados de días
     let calendarHTML = '<div class="calendar-weekdays">';
-    dayNames.forEach(day => {
+    displayDayNames.forEach(day => {
         calendarHTML += `<div class="calendar-weekday">${escapeHtml(day)}</div>`;
     });
     calendarHTML += '</div>';
@@ -12010,69 +12840,96 @@ function renderCalendar() {
         const isPast = date < today;
         const isToday = dateStr === formatDateForStorage(today);
         const dayOfWeek = date.getDay();
-        const dayName = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'][dayOfWeek];
-        const dayConfig = appointmentScheduleConfig.days[dayName];
-        const isEnabled = dayConfig && dayConfig.enabled;
-        
-        // Verificar si hay citas en este día
+        const dayKey = dayKeyByIndex[dayOfWeek];
+        const dayConfig = appointmentScheduleConfig.days[dayKey];
+        const isEnabled = Boolean(dayConfig && dayConfig.enabled);
+
         const appointmentsOnDay = appointments.filter(apt => {
             const aptDate = new Date(apt.date);
             return formatDateForStorage(aptDate) === dateStr && apt.status !== 'cancelled';
         });
-        
-        // Verificar si el día está completamente reservado
+
         const allSlots = [...(dayConfig?.morningHours || []), ...(dayConfig?.afternoonHours || [])];
-        const reservedSlots = appointmentsOnDay.map(apt => apt.time).filter(t => t);
-        const isFullyBooked = isEnabled && allSlots.length > 0 && reservedSlots.length >= allSlots.length;
-        const hasAppointments = appointmentsOnDay.length > 0;
-        
+        const hasHoursConfigured = isEnabled && allSlots.length > 0;
+        const reservedSlots = appointmentsOnDay.map(apt => apt.time).filter(Boolean);
+        const isFullyBooked = hasHoursConfigured && reservedSlots.length >= allSlots.length;
+        const hasAvailableSlots = hasHoursConfigured && reservedSlots.length < allSlots.length && !isPast;
+
         let dayClass = 'calendar-day';
         if (isPast) {
             dayClass += ' past';
-        } else if (isToday) {
-            dayClass += ' today';
-        } else if (!isEnabled) {
-            dayClass += ' disabled';
-        } else if (hasAppointments) {
-            // Día con citas: color rojo
-            dayClass += ' has-appointments';
-        } else if (isEnabled && !isPast) {
-            // Día disponible: color azul
-            dayClass += ' available';
         }
-        
-        if (isFullyBooked) dayClass += ' fully-booked';
-        if (selectedAppointmentDate === dateStr) dayClass += ' selected';
-        
+        if (isToday) {
+            dayClass += ' today';
+        }
+
+        if (!isPast) {
+            if (!isEnabled || !hasHoursConfigured) {
+                dayClass += ' disabled';
+            } else if (isFullyBooked) {
+                dayClass += ' fully-booked';
+            } else if (hasAvailableSlots) {
+                dayClass += ' available';
+            }
+        }
+
+        if (selectedAppointmentDate === dateStr) {
+            dayClass += ' selected';
+        }
+
         const safeDateStr = escapeHtml(dateStr);
-        const appointmentsInfo = hasAppointments ? appointmentsOnDay.map(apt => `${apt.time} - ${apt.name || 'Sin nombre'}`).join(', ') : '';
-        
+        const appointmentsInfo = appointmentsOnDay.map(apt => `${apt.time} - ${apt.name || 'Sin nombre'}`).join(', ');
+
+        let dayTitle;
+        if (isFullyBooked && !isPast) {
+            dayTitle = 'Todas las horas reservadas';
+        } else if (hasAvailableSlots) {
+            dayTitle = 'Disponible para cita';
+        } else if (!isEnabled || !hasHoursConfigured) {
+            dayTitle = getDiaSinCitaMensaje();
+        } else {
+            dayTitle = getDiaSinCitaMensaje();
+        }
+
+        if (appointmentsInfo && !isFullyBooked) {
+            dayTitle += `\nReservas: ${appointmentsInfo}`;
+        }
+
+        let clickAttribute = '';
+        if (!isPast) {
+            clickAttribute = hasAvailableSlots
+                ? `onclick="selectAppointmentDate('${safeDateStr}')"`
+                : 'onclick="mostrarDiaSinCitaMensaje()"';
+        }
+        const cursorStyle = !isPast ? 'pointer' : 'default';
+        const availableIndicator = hasAvailableSlots ? '<span class="available-indicator" aria-hidden="true">✓</span>' : '';
+
         calendarHTML += `
-            <div class="${dayClass}" 
-                 data-date="${safeDateStr}" 
+            <div class="${dayClass}"
+                 data-date="${safeDateStr}"
                  data-day="${day}"
-                 data-appointments="${escapeHtml(JSON.stringify(appointmentsOnDay))}"
-                 ${!isPast && isEnabled ? `onclick="selectAppointmentDate('${safeDateStr}')"` : ''}
-                 ${!isPast && isEnabled ? 'style="cursor: pointer;"' : ''}
-                 title="${hasAppointments ? `Citas: ${appointmentsInfo}` : isEnabled && !isPast ? 'Disponible para cita' : ''}">
+                 data-has-available="${hasAvailableSlots ? 'true' : 'false'}"
+                 data-is-fully-booked="${isFullyBooked ? 'true' : 'false'}"
+                 ${clickAttribute}
+                 style="cursor: ${cursorStyle};"
+                 title="${escapeHtml(dayTitle)}">
                 <span class="day-number">${day}</span>
-                ${hasAppointments ? `<span class="appointments-count" title="${appointmentsOnDay.length} cita(s) reservada(s)">${appointmentsOnDay.length}</span>` : ''}
-                ${!hasAppointments && isEnabled && !isPast ? '<span class="available-indicator" title="Disponible">✓</span>' : ''}
+                ${availableIndicator}
             </div>
         `;
     }
-    
+
     // Calcular días del siguiente mes para completar la última semana
     const totalCells = startingDayOfWeek + daysInMonth;
-    const remainingCells = 7 - (totalCells % 7);
-    if (remainingCells < 7) {
+    const remainingCells = (7 - (totalCells % 7)) % 7;
+    if (remainingCells > 0) {
         const nextMonth = currentCalendarMonth === 11 ? 0 : currentCalendarMonth + 1;
         const nextYear = currentCalendarMonth === 11 ? currentCalendarYear + 1 : currentCalendarYear;
         for (let day = 1; day <= remainingCells; day++) {
             const date = new Date(nextYear, nextMonth, day);
             const dateStr = formatDateForStorage(date);
             const isPast = date < today;
-            
+
             calendarHTML += `
                 <div class="calendar-day next-month ${isPast ? 'past' : ''}" 
                      data-date="${escapeHtml(dateStr)}" 
@@ -12083,7 +12940,7 @@ function renderCalendar() {
             `;
         }
     }
-    
+
     calendarHTML += '</div>';
     calendarGrid.innerHTML = calendarHTML;
 }
@@ -12117,7 +12974,6 @@ function changeCalendarMonth(direction) {
     }
     renderCalendar();
 }
-
 // Seleccionar fecha de cita
 function selectAppointmentDate(dateStr) {
     selectedAppointmentDate = dateStr;
@@ -12147,7 +13003,6 @@ function selectAppointmentDate(dateStr) {
     // Re-renderizar calendario para mostrar selección
     renderCalendar();
 }
-
 // Mostrar horarios disponibles para una fecha
 function showTimeSlots(dateStr) {
     const timeSlotsContainer = document.getElementById('timeSlotsContainer');
@@ -12268,10 +13123,11 @@ function renderAdminCalendar() {
     const firstDay = new Date(adminCalendarYear, adminCalendarMonth, 1);
     const lastDay = new Date(adminCalendarYear, adminCalendarMonth + 1, 0);
     const daysInMonth = lastDay.getDate();
-    const startingDayOfWeek = firstDay.getDay();
+    const startingDayOfWeek = (firstDay.getDay() + 6) % 7;
     
     // Nombres de días y meses
-    const dayNames = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+    const displayDayNames = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
+    const dayKeyByIndex = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
     const monthNames = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 
                        'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
     
@@ -12283,7 +13139,7 @@ function renderAdminCalendar() {
     
     // Crear encabezados de días
     let calendarHTML = '<div class="calendar-weekdays">';
-    dayNames.forEach(day => {
+    displayDayNames.forEach(day => {
         calendarHTML += `<div class="calendar-weekday">${escapeHtml(day)}</div>`;
     });
     calendarHTML += '</div>';
@@ -12303,11 +13159,10 @@ function renderAdminCalendar() {
         const isPast = date < today;
         const isToday = dateStr === formatDateForStorage(today);
         const dayOfWeek = date.getDay();
-        const dayName = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'][dayOfWeek];
-        const dayConfig = appointmentScheduleConfig.days[dayName];
-        const isEnabled = dayConfig && dayConfig.enabled;
+        const dayKey = dayKeyByIndex[dayOfWeek];
+        const dayConfig = appointmentScheduleConfig.days[dayKey];
+        const isEnabled = Boolean(dayConfig && dayConfig.enabled);
         
-        // Obtener citas de este día
         const appointmentsOnDay = appointments.filter(apt => {
             const aptDate = new Date(apt.date);
             return formatDateForStorage(aptDate) === dateStr && apt.status !== 'cancelled';
@@ -12315,58 +13170,78 @@ function renderAdminCalendar() {
         
         const confirmedAppointments = appointmentsOnDay.filter(apt => apt.status === 'confirmed');
         const pendingAppointments = appointmentsOnDay.filter(apt => apt.status === 'pending');
-        const hasAppointments = appointmentsOnDay.length > 0;
         
-        // Verificar si el día está completamente reservado
         const allSlots = [...(dayConfig?.morningHours || []), ...(dayConfig?.afternoonHours || [])];
-        const reservedSlots = appointmentsOnDay.map(apt => apt.time).filter(t => t);
-        const isFullyBooked = isEnabled && allSlots.length > 0 && reservedSlots.length >= allSlots.length;
+        const hasHoursConfigured = isEnabled && allSlots.length > 0;
+        const reservedSlots = appointmentsOnDay.map(apt => apt.time).filter(Boolean);
+        const isFullyBooked = hasHoursConfigured && reservedSlots.length >= allSlots.length;
+        const hasAvailableSlots = hasHoursConfigured && reservedSlots.length < allSlots.length && !isPast;
         
         let dayClass = 'calendar-day';
         if (isPast) {
             dayClass += ' past';
-        } else if (isToday) {
+        }
+        if (isToday) {
             dayClass += ' today';
-        } else if (!isEnabled) {
+        }
+        
+        if (!isEnabled || !hasHoursConfigured) {
             dayClass += ' disabled';
-        } else if (hasAppointments) {
-            // Día con citas: color según estado
-            if (confirmedAppointments.length > 0) {
-                dayClass += ' has-confirmed';
-            } else if (pendingAppointments.length > 0) {
-                dayClass += ' has-pending';
-            } else {
-                dayClass += ' has-appointments';
-            }
-        } else if (isEnabled && !isPast) {
-            // Día disponible: color azul
+        } else if (isFullyBooked) {
+            dayClass += ' fully-booked';
+        } else if (confirmedAppointments.length > 0) {
+            dayClass += ' has-confirmed';
+        } else if (pendingAppointments.length > 0) {
+            dayClass += ' has-pending';
+        } else if (hasAvailableSlots) {
             dayClass += ' available';
         }
         
-        if (isFullyBooked) dayClass += ' fully-booked';
-        if (selectedAdminDate === dateStr) dayClass += ' selected';
+        if (selectedAdminDate === dateStr) {
+            dayClass += ' selected';
+        }
         
         const safeDateStr = escapeHtml(dateStr);
-        const appointmentsInfo = hasAppointments ? appointmentsOnDay.map(apt => `${apt.time} - ${apt.name || 'Sin nombre'} (${apt.status})`).join(', ') : '';
+        const tooltipParts = [];
+        if (isFullyBooked) {
+            tooltipParts.push('Todas las horas reservadas');
+        } else if (hasAvailableSlots) {
+            tooltipParts.push('Disponible para cita');
+        } else if (!isEnabled || !hasHoursConfigured) {
+            tooltipParts.push(getDiaSinCitaMensaje());
+        }
+        if (appointmentsOnDay.length > 0) {
+            tooltipParts.push(`Total reservas: ${appointmentsOnDay.length}`);
+        }
+        if (confirmedAppointments.length > 0) {
+            tooltipParts.push(`Confirmadas: ${confirmedAppointments.length}`);
+        }
+        if (pendingAppointments.length > 0) {
+            tooltipParts.push(`Pendientes: ${pendingAppointments.length}`);
+        }
+        const dayTitle = tooltipParts.join('\n');
+        
+        const availableIndicator = hasAvailableSlots ? '<span class="available-indicator" aria-hidden="true">✓</span>' : '';
         
         calendarHTML += `
             <div class="${dayClass}" 
                  data-date="${safeDateStr}" 
                  data-day="${day}"
-                 ${!isPast && isEnabled ? `onclick="selectAdminDate('${safeDateStr}')"` : ''}
-                 ${!isPast && isEnabled ? 'style="cursor: pointer;"' : ''}
-                 title="${hasAppointments ? `Citas: ${appointmentsInfo}` : isEnabled && !isPast ? 'Disponible para cita' : ''}">
+                 data-has-available="${hasAvailableSlots ? 'true' : 'false'}"
+                 data-is-fully-booked="${isFullyBooked ? 'true' : 'false'}"
+                 onclick="selectAdminDate('${safeDateStr}')"
+                 style="cursor: pointer;"
+                 title="${escapeHtml(dayTitle)}">
                 <span class="day-number">${day}</span>
-                ${hasAppointments ? `<span class="appointments-count" title="${appointmentsOnDay.length} cita(s)">${appointmentsOnDay.length}</span>` : ''}
-                ${!hasAppointments && isEnabled && !isPast ? '<span class="available-indicator" title="Disponible">✓</span>' : ''}
+                ${availableIndicator}
             </div>
         `;
     }
     
     // Calcular días del siguiente mes para completar la última semana
     const totalCells = startingDayOfWeek + daysInMonth;
-    const remainingCells = 7 - (totalCells % 7);
-    if (remainingCells < 7) {
+    const remainingCells = (7 - (totalCells % 7)) % 7;
+    if (remainingCells > 0) {
         const nextMonth = adminCalendarMonth === 11 ? 0 : adminCalendarMonth + 1;
         const nextYear = adminCalendarMonth === 11 ? adminCalendarYear + 1 : adminCalendarYear;
         for (let day = 1; day <= remainingCells; day++) {
@@ -12674,5 +13549,3 @@ document.addEventListener('DOMContentLoaded', function() {
         }, 3000);
     }
 });
-
- 

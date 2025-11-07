@@ -107,6 +107,14 @@ Sistema completo de gestión municipal para el **Ayuntamiento de Cobreros** con 
 - **Service Worker** completo
 - **Banner de instalación** automático
 
+### **📱 PWA para Huawei/HONOR** ⭐ **NUEVO**
+- **Instalable** desde navegador de Huawei o Chrome
+- **Detección automática** de dispositivos Huawei
+- **Banner de instalación** específico para Huawei
+- **Notificaciones push** funcionan
+- **Compatible** con EMUI y HarmonyOS
+- **Instrucciones personalizadas** según navegador
+
 ---
 
 ## 🎨 **Formato de Texto Personalizado**

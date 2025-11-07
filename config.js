@@ -94,6 +94,17 @@ const CONFIG = {
             adminEmail: 'aytocobreros@gmail.com',
             confirmationTemplate: 'confirmacion_cita',
             alertTemplate: 'alerta_nueva_cita'
+        },
+        calendarStyles: {
+            availableBackground: '#e0ecff',
+            availableBorder: '#3b82f6',
+            disabledBackground: '#ffffff',
+            disabledBorder: '#d1d5db',
+            fullyBookedBackground: '#fde2e2',
+            fullyBookedBorder: '#ef4444'
+        },
+        messages: {
+            dayWithoutAppointment: 'Día sin cita previa. Atención presencial sin cita disponible.'
         }
     },
 

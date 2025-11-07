@@ -19,8 +19,13 @@ admin.initializeApp();
 
 
 // ⚠️ IMPORTANTE: Configura tu SECRET KEY en Firebase Console
-
-// firebase functions:config:set recaptcha.secret_key="TU_SECRET_KEY_AQUI"
+// 
+// Ejecuta este comando en la terminal para configurar la SECRET KEY:
+// firebase functions:config:set recaptcha.secret_key="6LdBqQQsAAAAAJvPf3JzsmY2NP30RuAZvyXUmBWd"
+//
+// O usa Firebase Functions v2 (recomendado):
+// firebase functions:secrets:set RECAPTCHA_SECRET_KEY
+// (luego ingresa: 6LdBqQQsAAAAAJvPf3JzsmY2NP30RuAZvyXUmBWd)
 
 const RECAPTCHA_SECRET_KEY = functions.config().recaptcha?.secret_key || 'TU_SECRET_KEY_AQUI';
 

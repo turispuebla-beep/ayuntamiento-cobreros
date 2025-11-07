@@ -80,6 +80,10 @@ export const sendEmail = functions
           htmlContent = generateStatusChangeHTML(data);
           textContent = generateStatusChangeText(data);
           break;
+        case 'appointment_no_show':
+          htmlContent = generateNoShowHTML(data);
+          textContent = generateNoShowText(data);
+          break;
         default:
           htmlContent = '<p>Email del Ayuntamiento de Cobreros</p>';
           textContent = 'Email del Ayuntamiento de Cobreros';
@@ -596,7 +600,22 @@ function generateStatusChangeHTML(data: any): string {
                     </ul>
                 </div>
                 
-                ${data.message ? `<p>${data.message}</p>` : ''}
+                ${data.message ? `<p style="white-space: pre-line;">${data.message}</p>` : ''}
+                
+                ${data.alternativeDate && data.alternativeTime ? `
+                <div class="status-box" style="background-color: #e8f5e9; border-left-color: #4caf50;">
+                    <h3 style="color: #2e7d32;">📅 Fecha Alternativa Propuesta</h3>
+                    <p style="font-size: 16px; color: #2e7d32; font-weight: bold;">
+                        Fecha: ${data.alternativeDate}<br>
+                        Hora: ${data.alternativeTime}
+                    </p>
+                    <p style="margin-top: 10px; color: #555;">
+                        Por favor, confirme si esta nueva fecha le resulta conveniente contactándonos.
+                    </p>
+                </div>
+                ` : ''}
+                
+                ${data.reason ? `<p><strong>Motivo:</strong> ${data.reason}</p>` : ''}
                 
                 <p>Si tiene alguna duda, puede contactarnos en <strong>${APPOINTMENT_EMAIL}</strong> o llamando al <strong>980 62 26 18</strong>.</p>
             </div>
@@ -642,6 +661,106 @@ DETALLES:
 - ID de Cita: ${data.appointmentId || data.id}
 
 ${data.message ? `\n${data.message}\n` : ''}
+
+${data.alternativeDate && data.alternativeTime ? `
+FECHA ALTERNATIVA PROPUESTA:
+Fecha: ${data.alternativeDate}
+Hora: ${data.alternativeTime}
+
+Por favor, confirme si esta nueva fecha le resulta conveniente contactándonos.
+` : ''}
+
+${data.reason ? `\nMotivo: ${data.reason}\n` : ''}
+
+Si tiene alguna duda, puede contactarnos en ${APPOINTMENT_EMAIL} o llamando al 980 62 26 18.
+
+Atentamente,
+Ayuntamiento de Cobreros
+${APPOINTMENT_EMAIL}
+Teléfono: 980 62 26 18
+
+Este es un email automático, por favor no responda a este mensaje.
+  `;
+}
+
+// Función para generar HTML de no presentación
+function generateNoShowHTML(data: any): string {
+  return `
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="UTF-8">
+        <title>No se presentó a su cita previa</title>
+        <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+            .header { background-color: #ef4444; color: white; padding: 20px; text-align: center; }
+            .content { padding: 20px; background-color: #f9f9f9; }
+            .warning-box { background-color: #fef2f2; padding: 15px; margin: 15px 0; border-left: 4px solid #ef4444; border-radius: 4px; }
+            .info-box { background-color: white; padding: 15px; margin: 15px 0; border-left: 4px solid #3b82f6; }
+            .footer { text-align: center; padding: 20px; color: #666; font-size: 12px; }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <h1>⚠️ No se presentó a su cita previa</h1>
+                <h2>Ayuntamiento de Cobreros</h2>
+            </div>
+            
+            <div class="content">
+                <p>Estimado/a <strong>${data.name}</strong>,</p>
+                
+                <div class="warning-box">
+                    <h3 style="color: #dc2626; margin-top: 0;">No se presentó a su cita</h3>
+                    <p>Le informamos que no se presentó a su cita previa programada.</p>
+                </div>
+                
+                <div class="info-box">
+                    <h3>Detalles de la cita:</h3>
+                    <ul style="list-style: none; padding: 0;">
+                        <li><strong>Servicio:</strong> ${data.service}</li>
+                        <li><strong>Fecha:</strong> ${data.date}</li>
+                        <li><strong>Hora:</strong> ${data.time}</li>
+                        <li><strong>ID de Cita:</strong> ${data.appointmentId || data.id}</li>
+                    </ul>
+                </div>
+                
+                <p>Si desea reagendar su cita, por favor contacte con nosotros lo antes posible.</p>
+                
+                <p>Si tiene alguna duda, puede contactarnos en <strong>${APPOINTMENT_EMAIL}</strong> o llamando al <strong>980 62 26 18</strong>.</p>
+            </div>
+            
+            <div class="footer">
+                <p>Atentamente,<br>
+                <strong>Ayuntamiento de Cobreros</strong><br>
+                📧 ${APPOINTMENT_EMAIL}<br>
+                📞 Teléfono: 980 62 26 18</p>
+                
+                <p><em>Este es un email automático, por favor no responda a este mensaje.</em></p>
+            </div>
+        </div>
+    </body>
+    </html>
+  `;
+}
+
+// Función para generar texto plano de no presentación
+function generateNoShowText(data: any): string {
+  return `
+NO SE PRESENTÓ A SU CITA PREVIA - AYUNTAMIENTO DE COBREROS
+
+Estimado/a ${data.name},
+
+Le informamos que no se presentó a su cita previa programada.
+
+DETALLES DE LA CITA:
+- Servicio: ${data.service}
+- Fecha: ${data.date}
+- Hora: ${data.time}
+- ID de Cita: ${data.appointmentId || data.id}
+
+Si desea reagendar su cita, por favor contacte con nosotros lo antes posible.
 
 Si tiene alguna duda, puede contactarnos en ${APPOINTMENT_EMAIL} o llamando al 980 62 26 18.
 

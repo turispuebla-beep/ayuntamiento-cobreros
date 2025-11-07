@@ -6,8 +6,21 @@
     <title>Ayuntamiento de Cobreros</title>
     <link rel="icon" type="image/x-icon" href="images/favicon.ico">
     <link rel="shortcut icon" type="image/x-icon" href="images/favicon.ico">
+    <!-- Preconnect para recursos externos (mejora rendimiento) -->
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="dns-prefetch" href="https://www.gstatic.com">
+    <link rel="dns-prefetch" href="https://www.google.com">
+    
+    <!-- Preload recursos críticos -->
+    <link rel="preload" href="css/styles.css" as="style">
+    <link rel="preload" href="js/script.js" as="script">
+    <link rel="preload" href="images/escudo-cobreros.png" as="image">
+    
     <link rel="stylesheet" href="css/styles.css">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet" media="print" onload="this.media='all'">
+    <noscript><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet"></noscript>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     
     <!-- Quill WYSIWYG Editor -->
@@ -19,16 +32,21 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="Cobreros">
-    <link rel="apple-touch-icon" href="images/escudo-cobreros-192.png">
+    <link rel="apple-touch-icon" href="images/escudo-cobreros.png">
+    
+    <!-- Meta tags para Huawei -->
+    <meta name="huawei-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
     
     <!-- reCAPTCHA v3 -->
-    <script src="https://www.google.com/recaptcha/api.js?render=6LeBYM4rAAAAALaDVtPi1H4jWjpj_Ovjf9g8VnT4"></script>
+    <script src="https://www.google.com/recaptcha/api.js?render=6LdBqQQsAAAAADFZKDVWkWt2ugbV0Cccm6wExZzQ"></script>
     
     <!-- Firebase SDK -->
     <script type="module">
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
         import { getMessaging, getToken, onMessage } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging.js';
         import { getFirestore, collection, addDoc, getDocs, doc, updateDoc, deleteDoc, query, where } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+        import { getStorage, ref as storageRef, uploadBytes, getDownloadURL, deleteObject } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js';
         
         // Configuración de Firebase
         const firebaseConfig = {
@@ -44,6 +62,7 @@
         const app = initializeApp(firebaseConfig);
         const messaging = getMessaging(app);
         const db = getFirestore(app);
+        const storage = getStorage(app);
         
         // Exponer Firebase globalmente para compatibilidad con código existente (sintaxis v8)
         // Crear wrapper compatible con la sintaxis .collection().add()
@@ -87,8 +106,16 @@
                         }
                     })
                 })
+            }),
+            storage: () => ({
+                ref: (path) => storageRef(storage, path),
+                uploadBytes: (path, file, metadata) => uploadBytes(storageRef(storage, path), file, metadata),
+                getDownloadURL: (path) => getDownloadURL(storageRef(storage, path)),
+                deleteObject: (path) => deleteObject(storageRef(storage, path))
             })
         };
+
+        window.firebaseStorage = storage;
         
         // Marcar Firebase como inicializado
         window.firebaseInitialized = true;
@@ -179,7 +206,7 @@
         <div class="container">
             <div class="header-content">
                 <div class="logo-section">
-                    <img src="images/escudo-cobreros.jpg" alt="Escudo de Cobreros" class="logo">
+                    <img src="images/escudo-cobreros.jpg" alt="Escudo de Cobreros" class="logo" loading="eager" fetchpriority="high">
                     <div class="title-section">
                         <h1>Ayuntamiento de Cobreros</h1>
                         <p>Datos y Enlaces de Interés</p>
@@ -320,18 +347,18 @@
                                         <span class="sr-only">Mes siguiente</span>
                                     </button>
                         </div>
-                                <!-- Leyenda del calendario -->
-                                <div class="calendar-legend" style="display: flex; gap: 1rem; margin-bottom: 1rem; padding: 0.75rem; background: var(--bg-secondary); border-radius: 8px; font-size: 0.875rem;">
-                                    <div style="display: flex; align-items: center; gap: 0.5rem;">
-                                        <div style="width: 20px; height: 20px; background: rgba(59, 130, 246, 0.15); border: 2px solid var(--primary-color); border-radius: 4px;"></div>
+                                <!-- Leyenda del calendario (compacta) -->
+                                <div class="calendar-legend">
+                                    <div>
+                                        <div style="width: 16px; height: 16px; background: white; border: 2px solid var(--primary-color); border-radius: 3px;"></div>
                                         <span>Disponible</span>
                                     </div>
-                                    <div style="display: flex; align-items: center; gap: 0.5rem;">
-                                        <div style="width: 20px; height: 20px; background: rgba(239, 68, 68, 0.2); border: 2px solid var(--error-color); border-radius: 4px;"></div>
+                                    <div>
+                                        <div style="width: 16px; height: 16px; background: rgba(239, 68, 68, 0.2); border: 2px solid var(--error-color); border-radius: 3px;"></div>
                                         <span>Con citas</span>
                                     </div>
-                                    <div style="display: flex; align-items: center; gap: 0.5rem;">
-                                        <div style="width: 20px; height: 20px; background: rgba(245, 158, 11, 0.3); border: 2px solid var(--accent-color); border-radius: 4px;"></div>
+                                    <div>
+                                        <div style="width: 16px; height: 16px; background: rgba(59, 130, 246, 0.2); border: 2px solid var(--primary-color); border-radius: 3px;"></div>
                                         <span>Seleccionado</span>
                                     </div>
                                 </div>
@@ -348,12 +375,17 @@
                                 <input type="hidden" id="date" name="date" required aria-required="true">
                                 <input type="hidden" id="time" name="time" required aria-required="true">
                             </div>
-                            <small class="calendar-help-text">Seleccione una fecha en el calendario y luego una hora disponible. Los días en azul están disponibles, los días en rojo tienen citas ya reservadas.</small>
+                            <small class="calendar-help-text" style="font-size: 0.75rem; display: block; margin-top: 0.5rem; color: var(--text-secondary);">Seleccione una fecha en el calendario y luego una hora disponible.</small>
                         </div>
                         <div class="form-group">
                             <label for="comments">Comentarios adicionales:</label>
                             <textarea id="comments" name="comments" rows="4" aria-describedby="comments-help"></textarea>
                             <small id="comments-help" class="form-help">Opcional: Puede agregar información adicional sobre su solicitud</small>
+                        </div>
+                        <div class="form-group">
+                            <label for="appointmentAttachment">Documento adjunto (opcional):</label>
+                            <input type="file" id="appointmentAttachment" name="appointmentAttachment" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png">
+                            <small class="form-help">Formatos permitidos: PDF, DOC, DOCX, JPG, PNG. Máx. 10 MB.</small>
                         </div>
                         <fieldset class="form-group">
                             <legend class="sr-only">Consentimientos</legend>
@@ -1073,22 +1105,26 @@
                                 </button>
                             </div>
                             <!-- Leyenda del calendario -->
-                            <div class="calendar-legend" style="display: flex; gap: 1rem; margin-bottom: 1rem; padding: 0.75rem; background: var(--bg-secondary); border-radius: 8px; font-size: 0.875rem;">
-                                <div style="display: flex; align-items: center; gap: 0.5rem;">
-                                    <div style="width: 20px; height: 20px; background: rgba(59, 130, 246, 0.15); border: 2px solid var(--primary-color); border-radius: 4px;"></div>
+                            <div class="calendar-legend">
+                                <div>
+                                    <div style="width: 16px; height: 16px; background: white; border: 2px solid var(--primary-color); border-radius: 3px;"></div>
                                     <span>Disponible</span>
                                 </div>
-                                <div style="display: flex; align-items: center; gap: 0.5rem;">
-                                    <div style="width: 20px; height: 20px; background: rgba(239, 68, 68, 0.2); border: 2px solid var(--error-color); border-radius: 4px;"></div>
+                                <div>
+                                    <div style="width: 16px; height: 16px; background: rgba(239, 68, 68, 0.2); border: 2px solid var(--error-color); border-radius: 3px;"></div>
                                     <span>Con citas</span>
                                 </div>
-                                <div style="display: flex; align-items: center; gap: 0.5rem;">
-                                    <div style="width: 20px; height: 20px; background: rgba(34, 197, 94, 0.2); border: 2px solid #22c55e; border-radius: 4px;"></div>
+                                <div>
+                                    <div style="width: 16px; height: 16px; background: rgba(34, 197, 94, 0.2); border: 2px solid #22c55e; border-radius: 3px;"></div>
                                     <span>Confirmadas</span>
                                 </div>
-                                <div style="display: flex; align-items: center; gap: 0.5rem;">
-                                    <div style="width: 20px; height: 20px; background: rgba(245, 158, 11, 0.2); border: 2px solid var(--accent-color); border-radius: 4px;"></div>
+                                <div>
+                                    <div style="width: 16px; height: 16px; background: rgba(245, 158, 11, 0.2); border: 2px solid var(--accent-color); border-radius: 3px;"></div>
                                     <span>Pendientes</span>
+                                </div>
+                                <div>
+                                    <div style="width: 16px; height: 16px; background: rgba(59, 130, 246, 0.2); border: 2px solid var(--primary-color); border-radius: 3px;"></div>
+                                    <span>Seleccionado</span>
                                 </div>
                             </div>
                             <div class="calendar-grid" id="adminCalendarGrid" role="grid" aria-label="Calendario de citas previas"></div>
@@ -1145,6 +1181,93 @@
                         <!-- Lista completa de citas -->
                         <div class="appointments-list" id="appointmentsList">
                             <!-- Las citas se cargarán dinámicamente -->
+                        </div>
+                    </div>
+                    
+                    <!-- Herramientas de Backup -->
+                    <div class="admin-section">
+                        <h4>🛠️ Modo Mantenimiento</h4>
+                        <div class="maintenance-settings">
+                            <div class="form-group toggle-group">
+                                <label class="switch">
+                                    <input type="checkbox" id="maintenanceToggle">
+                                    <span class="slider round"></span>
+                                </label>
+                                <div>
+                                    <strong>Activar modo mantenimiento</strong>
+                                    <p style="margin: 0; font-size: 0.85rem; color: var(--text-secondary);">
+                                        Cuando está activo, los ciudadanos verán un aviso y no podrán usar la plataforma. Los administradores seguirán teniendo acceso.
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="maintenanceMessage">Mensaje para la ciudadanía:</label>
+                                <textarea id="maintenanceMessage" rows="3" placeholder="Estamos realizando labores de mantenimiento. Por favor, vuelva a intentarlo más tarde." style="resize: vertical;"></textarea>
+                            </div>
+
+                            <div class="form-group">
+                                <label class="checkbox-option">
+                                    <input type="checkbox" id="maintenanceShowContact" checked>
+                                    <span>Mostrar datos de contacto del ayuntamiento</span>
+                                </label>
+                            </div>
+
+                            <div class="form-group">
+                                <label class="checkbox-option">
+                                    <input type="checkbox" id="maintenanceShowEstimate">
+                                    <span>Mostrar tiempo estimado de finalización</span>
+                                </label>
+                                <input type="text" id="maintenanceEstimate" placeholder="Ej: Hoy a las 18:00" disabled>
+                            </div>
+
+                            <p id="maintenanceLastUpdated" style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 0.5rem;"></p>
+                        </div>
+                    </div>
+
+                    <!-- Herramientas de Backup -->
+                    <div class="admin-section">
+                        <h4>💾 Backup y Restauración</h4>
+                        <div style="display: flex; gap: 0.75rem; flex-wrap: wrap; margin-top: 1rem;">
+                            <button class="btn btn-primary" onclick="exportAppointments()" title="Exportar todas las citas a un archivo JSON">
+                                <i class="fas fa-download"></i> Exportar Citas
+                            </button>
+                            <button class="btn btn-secondary" onclick="importAppointments()" title="Importar citas desde un archivo JSON">
+                                <i class="fas fa-upload"></i> Importar Citas
+                            </button>
+                            <button class="btn btn-danger" onclick="clearAllAppointments()" title="Eliminar todas las citas (se creará un backup automático)">
+                                <i class="fas fa-trash"></i> Limpiar Todas
+                            </button>
+                        </div>
+                        <p style="margin-top: 0.75rem; font-size: 0.85rem; color: var(--text-secondary);">
+                            <i class="fas fa-info-circle"></i> Exportar crea un archivo JSON con todas las citas. Importar agrega citas sin eliminar las existentes.
+                        </p>
+                    </div>
+                    
+                    <!-- Estadísticas de Emails -->
+                    <div class="admin-section">
+                        <h4>📧 Estadísticas de Emails</h4>
+                        <div id="emailStatsContainer" style="margin-top: 1rem;">
+                            <!-- Las estadísticas se cargarán dinámicamente -->
+                        </div>
+                        <button class="btn btn-outline btn-sm" onclick="refreshEmailStats()" style="margin-top: 0.75rem;">
+                            <i class="fas fa-sync"></i> Actualizar
+                        </button>
+                    </div>
+                    
+                    <!-- Logs de Auditoría -->
+                    <div class="admin-section">
+                        <h4>📝 Logs de Auditoría</h4>
+                        <div style="display: flex; gap: 0.75rem; flex-wrap: wrap; margin-top: 1rem;">
+                            <button class="btn btn-primary" onclick="showAuditLogs()" title="Ver logs de auditoría">
+                                <i class="fas fa-list"></i> Ver Logs
+                            </button>
+                            <button class="btn btn-secondary" onclick="exportAuditLogs()" title="Exportar logs de auditoría">
+                                <i class="fas fa-download"></i> Exportar Logs
+                            </button>
+                        </div>
+                        <div id="auditLogsContainer" style="margin-top: 1rem; display: none;">
+                            <!-- Los logs se cargarán dinámicamente -->
                         </div>
                     </div>
                     
@@ -1275,8 +1398,9 @@
                             </div>
                             
                             <div class="form-group">
-                                <label for="notifMessage">Mensaje (opcional):</label>
+                                <label for="notifMessageEditor">Mensaje (opcional):</label>
                                 <div id="notifMessageEditor" style="min-height: 200px;"></div>
+                                <textarea id="notifMessage" name="message" style="display: none;"></textarea>
                             </div>
                             
                             <div class="form-group">
@@ -2943,6 +3067,66 @@
     
     <!-- Chart.js para Estadísticas -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+    <!-- Configuración global del ayuntamiento -->
+    <script src="config.js"></script>
+    
+    <!-- Módulos de Seguridad y Estabilidad -->
+    <script src="js/data-validators.js"></script>
+    <script src="js/error-handler.js"></script>
+    <script src="js/storage-manager.js"></script>
+    <script src="js/rate-limiter.js"></script>
+    
+    <!-- Módulo de Accesibilidad -->
+    <script src="js/accessibility.js"></script>
+    
+    <!-- Soporte para Huawei -->
+    <script src="js/huawei-support.js"></script>
+    
+    <!-- Optimización de imágenes -->
+    <script src="js/image-optimizer.js" defer></script>
+    
+    <!-- Monitoreo de rendimiento -->
+    <script src="js/performance-monitor.js" defer></script>
+    
+    <!-- Code splitting seguro -->
+    <script src="js/code-splitter.js" defer></script>
+    
+    <!-- Mejoras de UX -->
+    <script src="js/loading-states.js"></script>
+    <script src="js/confirmations.js"></script>
+    <script src="js/timeout-manager.js"></script>
+    <script src="js/form-validation-realtime.js"></script>
+    <script src="js/scroll-to-top.js" defer></script>
+    <script src="js/offline-indicator.js" defer></script>
+    <script src="js/friendly-errors.js"></script>
+    
+    <!-- Modal de cancelación de citas -->
+    <script src="js/cancel-appointment-modal.js"></script>
+    
+    <!-- Sistema de persistencia de datos -->
+    <script src="js/data-persistence.js"></script>
+    
+    <!-- Sistema de cola de emails con reintentos -->
+    <script src="js/email-queue.js"></script>
+    
+    <!-- Modo mantenimiento -->
+    <script src="js/maintenance-mode.js"></script>
+
+    <!-- Utilidades de Firebase Storage -->
+    <script src="js/storage-uploader.js"></script>
+
+    <!-- Sistema de estadísticas de emails -->
+    <script src="js/email-stats.js"></script>
+    
+    <!-- Sistema de logs de auditoría -->
+    <script src="js/audit-log.js"></script>
+    
+    <!-- Sistema de backup/restauración de citas -->
+    <script src="js/appointment-backup.js"></script>
+    
+    <!-- Panel de estadísticas para administrador -->
+    <script src="js/admin-stats-panel.js"></script>
     
     <script src="js/script.js?v=2.3"></script>
     <script src="js/recaptcha.js"></script>

@@ -24,6 +24,12 @@
     --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
     --border-radius: 8px;
     --transition: all 0.3s ease;
+    --calendar-available-bg: rgba(59, 130, 246, 0.12);
+    --calendar-available-border: rgba(59, 130, 246, 0.5);
+    --calendar-disabled-bg: #ffffff;
+    --calendar-disabled-border: #d1d5db;
+    --calendar-fully-booked-bg: rgba(239, 68, 68, 0.15);
+    --calendar-fully-booked-border: #ef4444;
 }
 
 body {
@@ -3218,22 +3224,99 @@ a.btn {
     }
 }
 
-/* ===== CALENDARIO DE CITAS PREVIAS MEJORADO ===== */
+/* ===== CALENDARIO DE CITAS PREVIAS MEJORADO (COMPACTO) ===== */
+.appointment-calendar-wrapper {
+    max-width: 100%;
+    margin: 0 auto;
+}
+
+.calendar-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.75rem;
+    padding: 0.5rem;
+}
+
+.calendar-header h3 {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.calendar-nav-btn {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    padding: 0.375rem 0.75rem;
+    cursor: pointer;
+    font-size: 0.875rem;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.calendar-nav-btn:hover {
+    background: var(--primary-color);
+    color: white;
+    border-color: var(--primary-color);
+}
+
+.calendar-legend {
+    display: flex;
+    gap: 0.75rem;
+    margin-bottom: 0.75rem;
+    padding: 0.5rem;
+    background: var(--bg-secondary);
+    border-radius: 6px;
+    font-size: 0.75rem;
+    flex-wrap: wrap;
+}
+
+.calendar-legend > div {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+}
+
+.calendar-legend > div > div {
+    width: 16px;
+    height: 16px;
+    border-radius: 3px;
+    flex-shrink: 0;
+}
+
 .calendar-weekdays {
     display: grid;
     grid-template-columns: repeat(7, 1fr);
-    gap: 0.5rem;
-    margin-bottom: 0.5rem;
+    gap: 0.25rem;
+    margin-bottom: 0.25rem;
     font-weight: 600;
     text-align: center;
     color: var(--text-secondary);
-    font-size: 0.875rem;
+    font-size: 0.75rem;
+}
+
+.calendar-weekday {
+    padding: 0.25rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.calendar-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 0.25rem;
 }
 
 .calendar-days-grid {
     display: grid;
     grid-template-columns: repeat(7, 1fr);
-    gap: 0.5rem;
+    gap: 0.25rem;
+    align-items: stretch;
 }
 
 .calendar-day {
@@ -3242,13 +3325,14 @@ a.btn {
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    border: 2px solid var(--border-color);
-    border-radius: 8px;
-    padding: 0.5rem;
-    background: var(--bg-primary);
+    border: 1.5px solid var(--border-color);
+    border-radius: 6px;
+    padding: 0.25rem;
+    background: white;
     transition: all 0.2s;
     position: relative;
-    min-height: 60px;
+    min-height: 40px;
+    max-width: 100%;
 }
 
 .calendar-day.empty {
@@ -3264,40 +3348,48 @@ a.btn {
 
 .calendar-day.today {
     border-color: var(--primary-color);
-    background: rgba(30, 64, 175, 0.1);
+    background: white;
     font-weight: bold;
+    border-width: 2px;
 }
 
 .calendar-day.disabled {
-    opacity: 0.5;
-    background: var(--bg-tertiary);
-    cursor: not-allowed;
+    opacity: 1;
+    background: var(--calendar-disabled-bg);
+    color: var(--text-secondary);
+    border-color: var(--calendar-disabled-border);
+    border-style: dashed;
+}
+
+.calendar-day.disabled:hover {
+    background: white;
+    transform: none;
+    box-shadow: none;
 }
 
 .calendar-day.available {
-    background: rgba(59, 130, 246, 0.15);
-    border-color: var(--primary-color);
+    background: var(--calendar-available-bg);
+    border-color: var(--calendar-available-border);
     color: var(--primary-color);
 }
 
 .calendar-day.available:hover {
-    background: rgba(59, 130, 246, 0.25);
-    border-color: var(--secondary-color);
+    background: var(--calendar-available-bg);
+    border-color: var(--calendar-available-border);
     transform: translateY(-2px);
     box-shadow: var(--shadow-md);
 }
 
-.calendar-day.has-appointments {
-    background: rgba(239, 68, 68, 0.2);
-    border-color: var(--error-color);
+.calendar-day.has-appointments,
+.calendar-day.fully-booked {
+    background: var(--calendar-fully-booked-bg);
+    border-color: var(--calendar-fully-booked-border);
     color: var(--error-color);
     font-weight: 600;
 }
 
-.calendar-day.has-appointments:hover {
-    background: rgba(239, 68, 68, 0.3);
-    transform: translateY(-2px);
-    box-shadow: var(--shadow-md);
+.calendar-day.fully-booked .day-number {
+    color: var(--error-color);
 }
 
 .calendar-day.has-confirmed {
@@ -3327,46 +3419,52 @@ a.btn {
 }
 
 .calendar-day.selected {
-    border-color: var(--accent-color);
-    background: rgba(245, 158, 11, 0.3);
+    border-color: var(--primary-color);
+    background: rgba(59, 130, 246, 0.2);
+    color: var(--primary-color);
     font-weight: bold;
-    transform: scale(1.05);
-    box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.3);
+    transform: scale(1.03);
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.3);
 }
 
 .calendar-day.fully-booked {
-    background: rgba(239, 68, 68, 0.3);
-    border-color: var(--error-color);
+    background: var(--calendar-fully-booked-bg);
+    border-color: var(--calendar-fully-booked-border);
     opacity: 0.8;
 }
 
-.calendar-day:hover:not(.past):not(.disabled):not(.empty) {
+.calendar-day:hover:not(.past):not(.disabled):not(.empty):not(.has-appointments):not(.has-confirmed):not(.has-pending) {
     border-color: var(--primary-color);
-    background: rgba(30, 64, 175, 0.1);
+    background: var(--calendar-available-bg);
     transform: translateY(-2px);
     box-shadow: var(--shadow-md);
 }
 
 .calendar-day .day-number {
-    font-size: 1rem;
+    font-size: 0.875rem;
     font-weight: 500;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .calendar-day .appointments-count {
     position: absolute;
-    top: 4px;
-    right: 4px;
+    top: 2px;
+    right: 2px;
     background: var(--error-color);
     color: white;
     border-radius: 50%;
-    width: 20px;
-    height: 20px;
+    width: 16px;
+    height: 16px;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 0.7rem;
+    font-size: 0.65rem;
     font-weight: bold;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+    line-height: 1;
 }
 
 .calendar-day.fully-booked .appointments-count {
@@ -3376,11 +3474,11 @@ a.btn {
 
 .calendar-day .available-indicator {
     position: absolute;
-    top: 4px;
-    right: 4px;
+    bottom: 6px;
+    right: 6px;
     color: var(--primary-color);
-    font-size: 0.8rem;
-    font-weight: bold;
+    font-size: 0.75rem;
+    font-weight: 700;
 }
 
 @keyframes pulse {
@@ -3392,23 +3490,34 @@ a.btn {
     }
 }
 
-/* Slots de tiempo */
+/* Slots de tiempo (más compactos) */
+.calendar-time-slots {
+    margin-top: 0.75rem;
+}
+
+.calendar-time-slots h4 {
+    font-size: 0.9rem;
+    margin-bottom: 0.5rem;
+    color: var(--text-primary);
+}
+
 .time-slots-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
-    gap: 0.75rem;
-    margin-top: 1rem;
+    grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+    gap: 0.5rem;
+    margin-top: 0.5rem;
 }
 
 .time-slot {
-    padding: 0.75rem 1rem;
-    border: 2px solid var(--border-color);
-    border-radius: 8px;
+    padding: 0.5rem 0.75rem;
+    border: 1.5px solid var(--border-color);
+    border-radius: 6px;
     background: var(--bg-primary);
     cursor: pointer;
     transition: all 0.2s;
     font-weight: 500;
     text-align: center;
+    font-size: 0.875rem;
 }
 
 .time-slot.available {
@@ -3545,4 +3654,447 @@ a.btn {
     .chart-container {
         height: 250px;
     }
+}
+
+/* ===== MEJORAS DE ACCESIBILIDAD ===== */
+
+/* Modo de alto contraste */
+.high-contrast,
+.high-contrast * {
+    background: #000000 !important;
+    color: #FFFFFF !important;
+    border-color: #FFFFFF !important;
+}
+
+.high-contrast a,
+.high-contrast button {
+    border: 2px solid #FFFFFF !important;
+    outline: 2px solid #FFFFFF !important;
+}
+
+.high-contrast .btn-primary {
+    background: #FFFFFF !important;
+    color: #000000 !important;
+    border: 2px solid #FFFFFF !important;
+}
+
+.high-contrast .btn-primary:hover,
+.high-contrast .btn-primary:focus {
+    background: #FFFF00 !important;
+    color: #000000 !important;
+}
+
+/* Mejoras de contraste para campos inválidos */
+.form-group input.invalid,
+.form-group select.invalid,
+.form-group textarea.invalid {
+    border-color: #ef4444 !important;
+    border-width: 3px !important;
+    outline: 2px solid #ef4444 !important;
+    outline-offset: 2px;
+}
+
+.form-group input.valid {
+    border-color: #10b981 !important;
+}
+
+/* Botón de toggle de accesibilidad */
+.accessibility-toggle {
+    background: var(--bg-secondary);
+    border: 2px solid var(--border-color);
+    padding: 0.5rem 1rem;
+    border-radius: var(--border-radius);
+    cursor: pointer;
+    font-size: 0.875rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: var(--transition);
+}
+
+.accessibility-toggle:hover,
+.accessibility-toggle:focus {
+    background: var(--primary-color);
+    color: white;
+    border-color: var(--primary-color);
+    outline: 3px solid var(--accent-color);
+    outline-offset: 2px;
+}
+
+.accessibility-toggle[aria-pressed="true"] {
+    background: var(--primary-color);
+    color: white;
+    border-color: var(--primary-color);
+}
+
+/* Mejoras para campos de formulario con estados */
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+    outline: 3px solid var(--accent-color);
+    outline-offset: 2px;
+    border-color: var(--primary-color);
+}
+
+/* Mejoras para notificaciones accesibles */
+.toast[role="alert"] {
+    border-left: 4px solid #ef4444;
+}
+
+.toast[role="status"] {
+    border-left: 4px solid #10b981;
+}
+
+/* Mejoras para navegación por teclado */
+.nav-link:focus-visible,
+button:focus-visible,
+a:focus-visible {
+    outline: 3px solid var(--accent-color);
+    outline-offset: 3px;
+    box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.3);
+}
+
+/* Mejoras para modales accesibles */
+.modal[aria-modal="true"] {
+    /* Asegurar que el modal tenga suficiente contraste */
+    background: rgba(0, 0, 0, 0.8);
+}
+
+.modal[aria-modal="true"] .modal-content {
+    background: var(--bg-primary);
+    border: 3px solid var(--primary-color);
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+}
+
+/* Mejoras para elementos interactivos */
+button:not(:disabled):hover,
+a:not([aria-disabled="true"]):hover {
+    opacity: 0.9;
+    transform: translateY(-1px);
+}
+
+button:not(:disabled):active,
+a:not([aria-disabled="true"]):active {
+    transform: translateY(0);
+}
+
+/* Indicadores visuales adicionales para estados */
+[aria-invalid="true"] {
+    border-left: 4px solid #ef4444 !important;
+    padding-left: 0.5rem;
+}
+
+[aria-required="true"]::after {
+    content: " *";
+    color: var(--error-color);
+    font-weight: bold;
+}
+
+/* Mejoras para lectores de pantalla */
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border-width: 0;
+}
+
+/* Mejoras para regiones ARIA live */
+#aria-live-alert,
+#aria-live-status {
+    position: absolute;
+    left: -10000px;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+}
+
+/* ===== CALENDARIO COMPACTO - RESPONSIVE ===== */
+@media (max-width: 768px) {
+    .calendar-day {
+        min-height: 35px;
+        padding: 0.2rem;
+    }
+    
+    .calendar-day .day-number {
+        font-size: 0.8rem;
+    }
+    
+    .calendar-day .appointments-count {
+        width: 14px;
+        height: 14px;
+        font-size: 0.6rem;
+    }
+    
+    .calendar-header h3 {
+        font-size: 0.9rem;
+    }
+    
+    .calendar-nav-btn {
+        padding: 0.25rem 0.5rem;
+        font-size: 0.8rem;
+    }
+    
+    .calendar-legend {
+        font-size: 0.7rem;
+        gap: 0.5rem;
+        padding: 0.4rem;
+    }
+    
+    .time-slots-grid {
+        grid-template-columns: repeat(auto-fill, minmax(70px, 1fr));
+        gap: 0.4rem;
+    }
+    
+    .time-slot {
+        padding: 0.4rem 0.6rem;
+        font-size: 0.8rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .calendar-day {
+        min-height: 32px;
+        padding: 0.15rem;
+    }
+    
+    .calendar-day .day-number {
+        font-size: 0.75rem;
+    }
+    
+    .calendar-weekdays {
+        font-size: 0.7rem;
+    }
+    
+    .calendar-weekday {
+        padding: 0.2rem;
+    }
+}
+
+/* Mejoras para reducir movimiento (prefers-reduced-motion) */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+}
+
+/* Mejoras para tamaño de texto (prefers-contrast) */
+@media (prefers-contrast: high) {
+    body {
+        font-size: 1.1rem;
+    }
+    
+    .btn {
+        padding: 0.875rem 1.5rem;
+        font-size: 1rem;
+    }
+    
+    input,
+    select,
+    textarea {
+        font-size: 1.1rem;
+        padding: 0.875rem;
+    }
+}
+
+/* ===== ESTILOS PARA HUAWEI ===== */
+
+/* Banner de instalación para Huawei */
+#huawei-install-banner {
+    animation: slideInUp 0.3s ease;
+}
+
+@keyframes slideInUp {
+    from {
+        transform: translateY(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+@keyframes slideOut {
+    from {
+        transform: translateY(0);
+        opacity: 1;
+    }
+    to {
+        transform: translateY(100%);
+        opacity: 0;
+    }
+}
+
+/* ===== MODO MANTENIMIENTO ===== */
+#maintenanceOverlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.92);
+    color: #f8fafc;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+    z-index: 9999;
+    text-align: center;
+    backdrop-filter: blur(6px);
+}
+
+#maintenanceOverlay.visible {
+    display: flex;
+}
+
+.maintenance-overlay-content {
+    max-width: 640px;
+    background: rgba(15, 23, 42, 0.85);
+    padding: 2.5rem;
+    border-radius: 16px;
+    box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.6);
+    border: 1px solid rgba(148, 163, 184, 0.3);
+    outline: none;
+}
+
+.maintenance-overlay-content h1 {
+    font-size: 2rem;
+    margin-bottom: 1rem;
+}
+
+.maintenance-overlay-content p {
+    margin-bottom: 1rem;
+    font-size: 1.05rem;
+}
+
+.maintenance-overlay-icon {
+    font-size: 3rem;
+    margin-bottom: 1.5rem;
+}
+
+#maintenanceAdminBanner {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    display: none;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.85rem 1.5rem;
+    color: #fff;
+    z-index: 10000;
+    box-shadow: 0 15px 30px -15px rgba(0, 0, 0, 0.4);
+}
+
+.maintenance-admin-info {
+    display: flex;
+    gap: 0.75rem;
+    align-items: center;
+}
+
+.maintenance-admin-icon {
+    font-size: 1.75rem;
+}
+
+.maintenance-admin-text span {
+    display: block;
+    font-size: 0.9rem;
+    opacity: 0.9;
+}
+
+.maintenance-admin-actions .btn {
+    box-shadow: none;
+}
+
+.maintenance-settings .toggle-group {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.maintenance-settings textarea {
+    width: 100%;
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    padding: 0.85rem;
+    font-size: 0.95rem;
+    min-height: 110px;
+}
+
+.maintenance-settings textarea:focus {
+    border-color: var(--primary-color);
+    outline: 3px solid rgba(59, 130, 246, 0.25);
+}
+
+.maintenance-settings input[type="text"] {
+    width: 100%;
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    padding: 0.75rem;
+    font-size: 0.95rem;
+    margin-top: 0.5rem;
+}
+
+.maintenance-settings input[type="text"]:disabled {
+    background: var(--bg-secondary);
+    cursor: not-allowed;
+    opacity: 0.7;
+}
+
+.maintenance-settings .checkbox-option {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+}
+
+body.maintenance-lock {
+    overflow: hidden;
+}
+
+@media (max-width: 768px) {
+    .maintenance-overlay-content {
+        padding: 1.75rem;
+    }
+
+    .maintenance-overlay-content h1 {
+        font-size: 1.6rem;
+    }
+}
+
+/* Mejoras para dispositivos Huawei */
+@media (max-width: 768px) {
+    #huawei-install-banner {
+        left: 10px;
+        right: 10px;
+        bottom: 10px;
+    }
+}
+
+/* Indicador de dispositivo Huawei */
+.huawei-device-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.25rem 0.75rem;
+    background: linear-gradient(135deg, #FF6B00 0%, #FF8C00 100%);
+    color: white;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.huawei-device-indicator::before {
+    content: "📱";
+    font-size: 1rem;
 }

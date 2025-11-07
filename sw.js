@@ -1,75 +1,180 @@
 // Service Worker para PWA del Ayuntamiento de Cobreros
-const CACHE_NAME = 'ayuntamiento-cobreros-v1';
-const urlsToCache = [
+const CACHE_NAME = 'ayuntamiento-cobreros-v2.3';
+const STATIC_CACHE = 'ayuntamiento-static-v2.3';
+const DYNAMIC_CACHE = 'ayuntamiento-dynamic-v2.3';
+
+// Recursos críticos para cache inmediato
+const CRITICAL_RESOURCES = [
   '/',
   '/index.html',
-  '/css/styles.css',
-  '/js/script.js',
-  '/images/escudo-cobreros.png',
-  '/images/escudo-cobreros-192.png',
-  '/images/escudo-cobreros-512.png',
   '/manifest.json'
 ];
 
-// Instalación del Service Worker
-self.addEventListener('install', event => {
-  event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then(cache => {
-        console.log('Cache abierto');
-        return cache.addAll(urlsToCache);
-      })
-  );
-});
+// Recursos estáticos (CSS, JS, imágenes)
+const STATIC_RESOURCES = [
+  '/css/styles.css',
+  '/js/script.js',
+  '/js/data-validators.js',
+  '/js/error-handler.js',
+  '/js/storage-manager.js',
+  '/js/rate-limiter.js',
+  '/js/accessibility.js',
+  '/js/huawei-support.js',
+  '/images/escudo-cobreros.png',
+  '/images/escudo-cobreros.png',
+  '/images/favicon.ico'
+];
 
-// Activación del Service Worker
-self.addEventListener('activate', event => {
+// Instalación del Service Worker (mejorada)
+self.addEventListener('install', event => {
+  console.log('Service Worker: Instalando...');
+  
   event.waitUntil(
-    caches.keys().then(cacheNames => {
-      return Promise.all(
-        cacheNames.map(cacheName => {
-          if (cacheName !== CACHE_NAME) {
-            console.log('Eliminando cache antiguo:', cacheName);
-            return caches.delete(cacheName);
-          }
-        })
-      );
+    Promise.all([
+      // Cache de recursos críticos
+      caches.open(STATIC_CACHE).then(cache => {
+        console.log('Service Worker: Cacheando recursos críticos');
+        return cache.addAll(CRITICAL_RESOURCES);
+      }),
+      // Cache de recursos estáticos
+      caches.open(STATIC_CACHE).then(cache => {
+        console.log('Service Worker: Cacheando recursos estáticos');
+        // Agregar recursos estáticos sin bloquear si fallan
+        return Promise.allSettled(
+          STATIC_RESOURCES.map(url => 
+            cache.add(url).catch(err => {
+              console.warn(`No se pudo cachear ${url}:`, err);
+              return null;
+            })
+          )
+        );
+      })
+    ]).then(() => {
+      console.log('Service Worker: Instalación completada');
+      // Forzar activación inmediata
+      return self.skipWaiting();
     })
   );
 });
 
-// Interceptar peticiones
-self.addEventListener('fetch', event => {
-  event.respondWith(
-    caches.match(event.request)
-      .then(response => {
-        // Cache hit - devolver respuesta desde cache
-        if (response) {
-          return response;
-        }
-        
-        // Clonar la petición
-        const fetchRequest = event.request.clone();
-        
-        return fetch(fetchRequest).then(response => {
-          // Verificar si recibimos una respuesta válida
-          if (!response || response.status !== 200 || response.type !== 'basic') {
-            return response;
+// Activación del Service Worker (mejorada)
+self.addEventListener('activate', event => {
+  console.log('Service Worker: Activando...');
+  
+  event.waitUntil(
+    caches.keys().then(cacheNames => {
+      return Promise.all([
+        // Eliminar caches antiguos
+        ...cacheNames.map(cacheName => {
+          if (cacheName !== STATIC_CACHE && 
+              cacheName !== DYNAMIC_CACHE && 
+              cacheName !== CACHE_NAME) {
+            console.log('Service Worker: Eliminando cache antiguo:', cacheName);
+            return caches.delete(cacheName);
           }
-          
-          // Clonar la respuesta
-          const responseToCache = response.clone();
-          
-          caches.open(CACHE_NAME)
-            .then(cache => {
-              cache.put(event.request, responseToCache);
-            });
-          
-          return response;
-        });
-      })
+        }),
+        // Tomar control de todas las páginas
+        self.clients.claim()
+      ]);
+    }).then(() => {
+      console.log('Service Worker: Activación completada');
+    })
   );
 });
+
+// Interceptar peticiones (estrategia mejorada)
+self.addEventListener('fetch', event => {
+  const { request } = event;
+  const url = new URL(request.url);
+  
+  // Ignorar peticiones no GET
+  if (request.method !== 'GET') {
+    return;
+  }
+  
+  // Ignorar peticiones a Firebase/APIs externas (no cachear)
+  if (url.origin.includes('firebase') || 
+      url.origin.includes('googleapis') ||
+      url.origin.includes('gstatic')) {
+    return fetch(request);
+  }
+  
+  // Estrategia según tipo de recurso
+  if (request.destination === 'document' || url.pathname === '/') {
+    // HTML: Network First (siempre actualizado)
+    event.respondWith(networkFirstStrategy(request));
+  } else if (request.destination === 'script' || 
+             request.destination === 'style' ||
+             url.pathname.match(/\.(js|css)$/)) {
+    // CSS/JS: Cache First (rápido, actualizar en background)
+    event.respondWith(cacheFirstStrategy(request));
+  } else if (request.destination === 'image') {
+    // Imágenes: Cache First (largo tiempo)
+    event.respondWith(cacheFirstStrategy(request, DYNAMIC_CACHE));
+  } else {
+    // Otros: Network First
+    event.respondWith(networkFirstStrategy(request));
+  }
+});
+
+// Estrategia: Network First (siempre intentar red primero)
+async function networkFirstStrategy(request) {
+  try {
+    const networkResponse = await fetch(request);
+    
+    // Si la respuesta es válida, cachearla
+    if (networkResponse && networkResponse.status === 200) {
+      const cache = await caches.open(DYNAMIC_CACHE);
+      cache.put(request, networkResponse.clone());
+    }
+    
+    return networkResponse;
+  } catch (error) {
+    // Si falla la red, intentar cache
+    const cachedResponse = await caches.match(request);
+    if (cachedResponse) {
+      return cachedResponse;
+    }
+    
+    // Si no hay cache, devolver error
+    throw error;
+  }
+}
+
+// Estrategia: Cache First (rápido, actualizar en background)
+async function cacheFirstStrategy(request, cacheName = STATIC_CACHE) {
+  // Intentar cache primero
+  const cachedResponse = await caches.match(request);
+  if (cachedResponse) {
+    // Actualizar cache en background (no bloquear)
+    fetch(request).then(networkResponse => {
+      if (networkResponse && networkResponse.status === 200) {
+        caches.open(cacheName).then(cache => {
+          cache.put(request, networkResponse.clone());
+        });
+      }
+    }).catch(() => {
+      // Ignorar errores de actualización en background
+    });
+    
+    return cachedResponse;
+  }
+  
+  // Si no hay cache, obtener de red
+  try {
+    const networkResponse = await fetch(request);
+    
+    if (networkResponse && networkResponse.status === 200) {
+      const cache = await caches.open(cacheName);
+      cache.put(request, networkResponse.clone());
+    }
+    
+    return networkResponse;
+  } catch (error) {
+    // Si falla, devolver error
+    throw error;
+  }
+}
 
 // Manejar notificaciones push
 self.addEventListener('push', event => {
@@ -78,8 +183,8 @@ self.addEventListener('push', event => {
   let notificationData = {
     title: '🏛️ Ayuntamiento de Cobreros',
     body: 'Nueva notificación del Ayuntamiento de Cobreros',
-    icon: '/images/escudo-cobreros-192.png',
-    badge: '/images/escudo-cobreros-192.png',
+    icon: '/images/escudo-cobreros.png',
+    badge: '/images/escudo-cobreros.png',
     type: 'general',
     localities: '',
     sentFrom: 'WEB'
