@@ -1302,6 +1302,25 @@ function handleAdminLogin(e) {
     const formData = new FormData(e.target);
     const email = formData.get('email');
     const password = formData.get('password');
+    const adminFeedback = document.getElementById('adminLoginFeedback');
+
+    const clearAdminLoginFeedback = () => {
+        if (adminFeedback) {
+            adminFeedback.textContent = '';
+            adminFeedback.style.display = 'none';
+        }
+    };
+
+    const showAdminLoginError = (message) => {
+        if (adminFeedback) {
+            adminFeedback.textContent = message;
+            adminFeedback.style.display = 'block';
+        } else {
+            showNotification(message, 'error');
+        }
+    };
+
+    clearAdminLoginFeedback();
 
     // Verificar credenciales de super admin (TURISTEAM)
     if (email === SUPER_ADMIN.email && password === SUPER_ADMIN.password) {
@@ -1309,64 +1328,63 @@ function handleAdminLogin(e) {
         isAdmin = true;
         localStorage.setItem('isSuperAdmin', 'true');
         localStorage.setItem('isAdmin', 'true');
-        currentUser = { 
-            email, 
+        currentUser = {
+            email,
             name: SUPER_ADMIN.name,
             isSuperAdmin: true,
             team: SUPER_ADMIN.team
         };
         localStorage.setItem('currentUser', JSON.stringify(currentUser));
-        
-        // Registrar acción en log de auditoría
+
         if (typeof logAuditAction === 'function') {
             logAuditAction('ADMIN_LOGIN', {
                 adminType: 'super_admin',
                 adminName: SUPER_ADMIN.name
             });
         }
-        
+
         updateUserInterface();
+        e.target.reset();
+        clearAdminLoginFeedback();
         closeModal('adminLoginModal');
         showNotification('Sesión de administrador iniciada correctamente', 'success');
         return;
     }
 
-    // Verificar credenciales del administrador del ayuntamiento (OCULTAS)
-    // Las credenciales están codificadas para no ser visibles en el código
     const adminEmail = ADMIN_CREDENTIALS.email;
     const adminPassword = ADMIN_CREDENTIALS.password;
-    
+
     if (email === adminEmail && password === adminPassword) {
         isAdmin = true;
         localStorage.setItem('isAdmin', 'true');
-        currentUser = { 
-            email: adminEmail, 
+        currentUser = {
+            email: adminEmail,
             name: ADMIN_CREDENTIALS.name,
             isAdmin: true,
             isDefault: true
         };
         localStorage.setItem('currentUser', JSON.stringify(currentUser));
-        
-        // Registrar acción en log de auditoría
+
         if (typeof logAuditAction === 'function') {
             logAuditAction('ADMIN_LOGIN', {
                 adminType: 'default_admin',
                 adminName: ADMIN_CREDENTIALS.name
             });
         }
-        
+
         updateUserInterface();
+        e.target.reset();
+        clearAdminLoginFeedback();
         closeModal('adminLoginModal');
         showNotification('Sesión de administrador iniciada - Ayuntamiento de Cobreros', 'success');
         return;
     }
 
-    // Verificar credenciales de administradores creados
     const admin = administrators.find(admin => admin.email === email && admin.password === password && admin.isActive);
-    
+
     if (admin) {
         currentUser = {
-            email: admin.email, 
+            email: admin.email,
             name: admin.name,
             isAdmin: true,
             adminId: admin.id
@@ -1374,8 +1392,7 @@ function handleAdminLogin(e) {
         isAdmin = true;
         localStorage.setItem('currentUser', JSON.stringify(currentUser));
         localStorage.setItem('isAdmin', 'true');
-        
-        // Registrar acción en log de auditoría
+
         if (typeof logAuditAction === 'function') {
             logAuditAction('ADMIN_LOGIN', {
                 adminType: 'custom_admin',
@@ -1383,12 +1400,14 @@ function handleAdminLogin(e) {
                 adminId: admin.id
             });
         }
-        
+
         updateUserInterface();
+        e.target.reset();
+        clearAdminLoginFeedback();
         closeModal('adminLoginModal');
         showNotification(`Sesión de administrador iniciada - ${admin.name}`, 'success');
     } else {
-        showNotification('Credenciales de administrador incorrectas', 'error');
+        showAdminLoginError('Credenciales de administrador incorrectas');
     }
 }
 // Manejar registro (con rate limiting)
