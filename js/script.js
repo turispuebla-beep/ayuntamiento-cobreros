@@ -183,6 +183,7 @@ const TARJETAS_A_ELIMINAR = [
 ];
 
 const PUSH_WARNING_SESSION_PREFIX = 'pushWarningShown:';
+const PWA_INSTALLED_KEY = 'pwaInstalled';
 
 let deferredPwaPrompt = null;
 
@@ -2454,7 +2455,55 @@ function detectDevicePlatform() {
     return 'desktop';
 }
 
+function isRunningStandalone() {
+    if (typeof window === 'undefined') {
+        return false;
+    }
+    const standaloneMatchMedia = window.matchMedia && window.matchMedia('(display-mode: standalone)').matches;
+    const standaloneNavigator = typeof window.navigator !== 'undefined' && window.navigator.standalone === true;
+    return !!(standaloneMatchMedia || standaloneNavigator);
+}
+
+function markPwaInstalled() {
+    try {
+        localStorage.setItem(PWA_INSTALLED_KEY, 'installed');
+    } catch (error) {
+        if (typeof Logger !== 'undefined' && Logger && typeof Logger.warn === 'function') {
+            Logger.warn('No se pudo guardar el estado de instalación PWA:', error);
+        }
+    }
+}
+
+function clearPwaInstalledFlag() {
+    try {
+        localStorage.removeItem(PWA_INSTALLED_KEY);
+    } catch (error) {
+        if (typeof Logger !== 'undefined' && Logger && typeof Logger.warn === 'function') {
+            Logger.warn('No se pudo limpiar el estado de instalación PWA:', error);
+        }
+    }
+}
+
+function isPwaInstalled() {
+    if (isRunningStandalone()) {
+        markPwaInstalled();
+        return true;
+    }
+    try {
+        return localStorage.getItem(PWA_INSTALLED_KEY) === 'installed';
+    } catch (error) {
+        if (typeof Logger !== 'undefined' && Logger && typeof Logger.warn === 'function') {
+            Logger.warn('No se pudo consultar el estado de instalación PWA:', error);
+        }
+        return false;
+    }
+}
+
 function renderPwaInstallBanner(force = false) {
+    if (!force && isPwaInstalled()) {
+        return;
+    }
+
     const existingBanner = document.getElementById('pwa-install-banner');
     if (existingBanner) {
         if (!force) {
@@ -2473,7 +2522,7 @@ function renderPwaInstallBanner(force = false) {
             <div class="pwa-banner-content">
                 <div class="pwa-banner-text">
                     <h3>📱 Recibe avisos en tu móvil</h3>
-                    <p>Abre esta web desde el navegador de tu móvil o tablet para instalar la app del Ayuntamiento y recibir avisos en tiempo real.</p>
+                    <p>Abre esta web desde el navegador de tu móvil o tablet para instalar la app del Ayuntamiento y recibir avisos en tiempo real una vez completes el registro como usuario/a.</p>
                 </div>
                 <button class="pwa-banner-close" onclick="closePWAInstallBanner()" aria-label="Cerrar aviso">
                     Entendido
@@ -2486,7 +2535,7 @@ function renderPwaInstallBanner(force = false) {
                 <div class="pwa-banner-header">
                     <div>
                         <h3>Instala la app del Ayuntamiento</h3>
-                        <p>Descárgala para recibir avisos directos en tu dispositivo móvil.</p>
+                        <p>Instálala, completa tu registro como usuario/a y acepta las notificaciones para recibir avisos directos en tu dispositivo móvil.</p>
                     </div>
                     <button class="pwa-banner-close" onclick="closePWAInstallBanner()" aria-label="Cerrar aviso">×</button>
                 </div>
@@ -2577,6 +2626,7 @@ async function handlePwaInstallOption(platform) {
                 showPwaInstructionModal(platform === 'android' ? 'android' : 'huawei');
             } else {
                 closePWAInstallBanner();
+                markPwaInstalled();
             }
             deferredPwaPrompt = null;
         } else {
@@ -2591,6 +2641,7 @@ async function handlePwaInstallOption(platform) {
             const { outcome } = await deferredPwaPrompt.userChoice;
             if (outcome === 'accepted') {
                 closePWAInstallBanner();
+                markPwaInstalled();
                 deferredPwaPrompt = null;
                 return;
             }
@@ -11872,6 +11923,7 @@ function showPWAInstallBanner() {
         // Prevenir que se muestre automáticamente
         e.preventDefault();
         deferredPwaPrompt = e;
+        clearPwaInstalledFlag();
         renderPwaInstallBanner(true);
     });
     
@@ -11892,6 +11944,29 @@ window.closePWAInstallBanner = () => {
     closePwaInstructionModal();
 };
 
+if (typeof window !== 'undefined') {
+    window.addEventListener('appinstalled', () => {
+        markPwaInstalled();
+        closePWAInstallBanner();
+    });
+
+    if (window.matchMedia) {
+        const standaloneMatcher = window.matchMedia('(display-mode: standalone)');
+        if (standaloneMatcher) {
+            const updateStandaloneStatus = (event) => {
+                if (event.matches) {
+                    markPwaInstalled();
+                }
+            };
+            if (typeof standaloneMatcher.addEventListener === 'function') {
+                standaloneMatcher.addEventListener('change', updateStandaloneStatus);
+            } else if (typeof standaloneMatcher.addListener === 'function') {
+                standaloneMatcher.addListener(updateStandaloneStatus);
+            }
+        }
+    }
+}
+
 // Inicializar PWA
 function initializePWA() {
     registerServiceWorker();
@@ -11902,6 +11977,10 @@ function initializePWA() {
     } else {
         // Fallback: mostrar banner estándar
         showPWAInstallBanner();
+    }
+
+    if (isRunningStandalone()) {
+        markPwaInstalled();
     }
     
     // Configurar recepción de notificaciones
