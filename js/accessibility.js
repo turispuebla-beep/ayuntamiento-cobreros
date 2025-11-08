@@ -315,24 +315,7 @@ function setupHighContrastMode() {
     prefersHighContrast.addEventListener('change', handleContrastChange);
   }
     
-  // Agregar toggle manual
-  const contrastToggle = document.createElement('button');
-  contrastToggle.id = 'contrast-toggle';
-  contrastToggle.className = 'accessibility-toggle';
-  contrastToggle.setAttribute('aria-label', 'Alternar modo de alto contraste');
-  contrastToggle.innerHTML = '<span aria-hidden="true">🔍</span> <span class="sr-only">Alto contraste</span>';
-  contrastToggle.onclick = () => {
-    document.documentElement.classList.toggle('high-contrast');
-    const isActive = document.documentElement.classList.contains('high-contrast');
-    contrastToggle.setAttribute('aria-pressed', isActive);
-    announceToScreenReader(isActive ? 'Modo de alto contraste activado' : 'Modo de alto contraste desactivado');
-  };
-    
-  // Agregar al header si existe
-  const headerActions = document.querySelector('.header-actions');
-  if (headerActions) {
-    headerActions.insertBefore(contrastToggle, headerActions.firstChild);
-  }
+  // Se eliminó el toggle manual para evitar confusión con el buscador.
 }
 
 /**

@@ -206,15 +206,27 @@ let isSuperAdmin = false; // Super administrador oculto
 let notifications = [];
 let users = [];
 let news = [];
+const NEWS_ATTACHMENT_MAX_SIZE = 3 * 1024 * 1024; // 3MB
+const BANDO_ATTACHMENT_MAX_SIZE = 3 * 1024 * 1024; // 3MB
+const DEFAULT_QUILL_TOOLBAR = [
+    [{ 'header': [1, 2, 3, false] }],
+    ['bold', 'italic', 'underline', 'strike'],
+    [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+    [{ 'align': [] }],
+    ['link', 'blockquote', 'code-block', 'clean']
+];
 let bandos = [];
 let administrators = []; // Lista de administradores creados
 let documents = []; // Lista de documentos subidos
 let events = []; // Lista de eventos de cultura y ocio
 let quickAccess = []; // Lista de tarjetas de acceso rápido
+let documentDescriptionEditor = null;
 // Estado del sistema de citas previas - Se carga desde localStorage
 let appointmentsEnabled = null; // Se inicializa en loadAppointmentSettings()
 let appointments = []; // Lista de citas previas solicitadas
 let publicNotifications = []; // Lista de notificaciones públicas
+let selectedReceivedNotifications = new Set();
+let selectedUserNotifications = new Set();
 
 function applyCalendarStylesFromConfig() {
     if (typeof CONFIG === 'undefined' || !CONFIG?.appointments?.calendarStyles) {
@@ -312,6 +324,7 @@ document.addEventListener('DOMContentLoaded', function() {
     renderEventos();
     updateCulturaOcioSection();
     loadQuickAccess();
+    initializeDocumentDescriptionEditor();
     
     if (typeof applyMaintenanceMode === 'function') {
         applyMaintenanceMode();
@@ -372,8 +385,10 @@ function initializeApp() {
     // SEGURIDAD: Verificar sesión al iniciar, pero NO restaurar automáticamente isAdmin
     // Solo restaurar si hay un usuario válido y la sesión es reciente
     
-    const savedUser = localStorage.getItem('currentUser');
-    const savedAdmin = localStorage.getItem('isAdmin');
+    const rememberSession = localStorage.getItem('rememberUserSession') === 'true';
+    const savedUser = rememberSession ? localStorage.getItem('currentUser') : null;
+    const savedAdmin = rememberSession ? localStorage.getItem('isAdmin') : null;
+    const savedSuperAdmin = rememberSession ? localStorage.getItem('isSuperAdmin') : null;
     
     // Por defecto, no hay sesión
     currentUser = null;
@@ -386,17 +401,27 @@ function initializeApp() {
         adminBtn.style.display = 'none';
     }
     
-    // SEGURIDAD: NO restaurar sesión automáticamente desde localStorage
-    // Esto previene acceso no autorizado. El usuario DEBE iniciar sesión explícitamente.
-    // Limpiar cualquier sesión guardada al iniciar la página
-    localStorage.removeItem('currentUser');
-    localStorage.removeItem('isAdmin');
-    localStorage.removeItem('isSuperAdmin');
-    
-    // Asegurar que no hay sesión activa
-    currentUser = null;
-    isAdmin = false;
-    isSuperAdmin = false;
+    if (!rememberSession) {
+        // Limpiar cualquier sesión guardada al iniciar la página si no se solicitó recordar
+        localStorage.removeItem('currentUser');
+        localStorage.removeItem('isAdmin');
+        localStorage.removeItem('isSuperAdmin');
+    } else if (savedUser) {
+        try {
+            currentUser = JSON.parse(savedUser);
+            isAdmin = savedAdmin === 'true';
+            isSuperAdmin = savedSuperAdmin === 'true';
+        } catch (error) {
+            console.warn('No se pudo restaurar la sesión guardada:', error);
+            currentUser = null;
+            isAdmin = false;
+            isSuperAdmin = false;
+            localStorage.removeItem('currentUser');
+            localStorage.removeItem('isAdmin');
+            localStorage.removeItem('isSuperAdmin');
+            localStorage.removeItem('rememberUserSession');
+        }
+    }
     
     // Actualizar interfaz
     updateUserInterface();
@@ -565,7 +590,6 @@ function createAdminButton() {
     
     Logger.log('Botón de admin creado dinámicamente');
 }
-
 // Limpiar todos los formularios al cargar la página
 function clearAllForms() {
     Logger.log('Limpiando formularios...');
@@ -794,6 +818,16 @@ function setupEventListeners() {
     }
     document.getElementById('adminLoginForm').addEventListener('submit', handleAdminLogin);
     
+    const loginPasswordToggle = document.getElementById('loginPasswordToggle');
+    if (loginPasswordToggle) {
+        loginPasswordToggle.addEventListener('click', () => togglePasswordVisibility('loginPassword', loginPasswordToggle));
+    }
+
+    const loginRemember = document.getElementById('loginRemember');
+    if (loginRemember) {
+        loginRemember.checked = localStorage.getItem('rememberUserSession') === 'true';
+    }
+    
     // Manejar cambio de tipo de documento en registro
     const documentTypeSelect = document.getElementById('documentType');
     if (documentTypeSelect) {
@@ -876,7 +910,6 @@ function setupEventListeners() {
         });
     }
     document.getElementById('appointmentForm').addEventListener('submit', handleAppointment);
-    document.getElementById('notificationForm').addEventListener('submit', handleNotification);
     document.getElementById('logoForm').addEventListener('submit', handleLogoUpload);
     document.getElementById('createAdminForm').addEventListener('submit', handleCreateAdmin);
     document.getElementById('documentUploadForm').addEventListener('submit', handleDocumentUpload);
@@ -1068,6 +1101,7 @@ function loadData() {
     }
 
     updateContent();
+    refreshStatistics();
 }
 
 // Actualizar contenido de la página
@@ -1086,18 +1120,45 @@ function updateNewsSection() {
     news.forEach(article => {
         const newsItem = document.createElement('article');
         newsItem.className = 'news-item';
-        newsItem.innerHTML = `
+        const attachment = article.attachment;
+        const isImageAttachment = attachment && attachment.type.startsWith('image/');
+        const isPdfAttachment = attachment && attachment.type === 'application/pdf';
+        const displayImage = article.image || (isImageAttachment ? attachment.dataUrl : null);
+
+        const mediaHtml = displayImage ? `
             <div class="news-image">
-                <img src="${article.image}" alt="${article.title}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                <img src="${displayImage}" alt="${article.title}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
                 <div style="display: none; align-items: center; justify-content: center; height: 100%; background: #f3f4f6; color: #6b7280;">
                     <i class="fas fa-newspaper" style="font-size: 3rem;"></i>
                 </div>
             </div>
+        ` : isPdfAttachment ? `
+            <div class="news-image news-image--pdf" style="display: flex; align-items: center; justify-content: center; background: #f3f4f6; color: #ef4444;">
+                <div style="text-align: center;">
+                    <i class="fas fa-file-pdf" style="font-size: 3rem;"></i>
+                    <p style="margin-top: 0.5rem; font-weight: 600;">PDF adjunto</p>
+                </div>
+            </div>
+        ` : `
+            <div class="news-image news-image--placeholder" style="display: flex; align-items: center; justify-content: center; background: #f3f4f6; color: #6b7280;">
+                <i class="fas fa-newspaper" style="font-size: 3rem;"></i>
+            </div>
+        `;
+
+        const attachmentButton = attachment ? `
+            <a class="btn btn-outline btn-small" href="${attachment.dataUrl}" target="_blank" download="${attachment.name}">
+                <i class="fas ${isPdfAttachment ? 'fa-file-download' : 'fa-image'}"></i> Ver ${isPdfAttachment ? 'documento' : 'imagen'}
+            </a>
+        ` : '';
+
+        newsItem.innerHTML = `
+            ${mediaHtml}
             <div class="news-content">
                 <h3>${article.title}</h3>
                 <p class="news-date">${formatDate(article.date)}</p>
                 <p>${article.content.substring(0, 100)}...</p>
                 <button class="btn btn-outline btn-small" onclick="showNewsDetail(${article.id})">Leer más</button>
+                ${attachmentButton}
             </div>
         `;
         newsGrid.appendChild(newsItem);
@@ -1107,21 +1168,76 @@ function updateNewsSection() {
 // Actualizar sección de bando
 function updateBandoSection() {
     const bandoContent = document.getElementById('bandoContent');
-    if (!bandoContent || bandos.length === 0) return;
+    if (!bandoContent) return;
 
-    const latestBando = bandos[bandos.length - 1];
-    bandoContent.innerHTML = `
-        <div class="bando-item">
-            <h3>${latestBando.title}</h3>
-            <p class="bando-date">Publicado: ${formatDate(latestBando.date)}</p>
-            <div class="bando-text">
-                <p>${latestBando.content.substring(0, 200)}...</p>
+    if (bandos.length === 0) {
+        bandoContent.innerHTML = '<p class="bando-empty">No hay bandos municipales publicados.</p>';
+        return;
+    }
+
+    bandoContent.innerHTML = '';
+
+    const sortedBandos = [...bandos].sort((a, b) => {
+        const dateA = new Date(a.date || 0);
+        const dateB = new Date(b.date || 0);
+        return dateB - dateA;
+    });
+
+    sortedBandos.forEach((bando, index) => {
+        const attachment = bando.attachment;
+        const isImageAttachment = attachment && attachment.type && attachment.type.startsWith('image/');
+        const isPdfAttachment = attachment && attachment.type === 'application/pdf';
+        const displayImage = isImageAttachment ? attachment.dataUrl : null;
+
+        const mediaHtml = displayImage ? `
+            <div class="bando-media">
+                <img src="${displayImage}" alt="Imagen del bando ${bando.title}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                <div style="display:none; align-items:center; justify-content:center; height:100%; background:#f3f4f6; color:#6b7280;">
+                    <i class="fas fa-bullhorn" style="font-size:2.5rem;"></i>
             </div>
-            <button class="btn btn-outline btn-small" onclick="showBandoDetail(${latestBando.id})">Leer completo</button>
+            </div>
+        ` : isPdfAttachment ? `
+            <div class="bando-media bando-media--pdf" style="display:flex; align-items:center; justify-content:center; background:#f3f4f6; color:#ef4444;">
+                <div style="text-align:center;">
+                    <i class="fas fa-file-pdf" style="font-size:2.5rem;"></i>
+                    <p style="margin-top:0.5rem; font-weight:600;">PDF adjunto</p>
+                </div>
+            </div>
+        ` : `
+            <div class="bando-media bando-media--placeholder" style="display:flex; align-items:center; justify-content:center; background:#f3f4f6; color:#6b7280;">
+                <i class="fas fa-bullhorn" style="font-size:2.5rem;"></i>
         </div>
     `;
-}
 
+        const attachmentButton = attachment ? `
+            <a class="btn btn-outline btn-small" href="${attachment.dataUrl}" target="_blank" download="${attachment.name}">
+                <i class="fas ${isPdfAttachment ? 'fa-file-download' : 'fa-image'}"></i> Ver ${isPdfAttachment ? 'documento' : 'imagen'}
+            </a>
+        ` : '';
+
+        const contentPreview = typeof bando.content === 'string'
+            ? bando.content.replace(/<[^>]+>/g, '').substring(0, 160)
+            : '';
+
+        const bandoItem = document.createElement('article');
+        bandoItem.className = 'bando-item';
+        bandoItem.setAttribute('data-index', index);
+        bandoItem.innerHTML = `
+            ${mediaHtml}
+            <div class="bando-content-body">
+                <h3>${bando.title}</h3>
+                <p class="bando-date">Publicado: ${formatDate(bando.date)}</p>
+                <p>${contentPreview}${contentPreview.length === 160 ? '...' : ''}</p>
+                <div class="bando-actions">
+                    <button class="btn btn-outline btn-small" onclick="showBandoDetail(${bando.id})">Leer completo</button>
+                    ${attachmentButton}
+                </div>
+            </div>
+        `;
+
+        bandoContent.appendChild(bandoItem);
+    });
+}
 // Navegación suave
 function scrollToSection(sectionId) {
     const section = document.getElementById(sectionId);
@@ -1256,6 +1372,7 @@ function handleLogin(e) {
     const formData = new FormData(e.target);
     const email = formData.get('email');
     const password = formData.get('password');
+    const rememberSession = formData.get('rememberSession') === 'on';
 
     // Buscar usuario en la lista de usuarios registrados
     const user = users.find(u => u.email === email && u.password === password);
@@ -1272,6 +1389,11 @@ function handleLogin(e) {
             isRegularUser: true
         };
         localStorage.setItem('currentUser', JSON.stringify(currentUser));
+        if (rememberSession) {
+            localStorage.setItem('rememberUserSession', 'true');
+        } else {
+            localStorage.removeItem('rememberUserSession');
+        }
         updateUserInterface();
         closeModal('loginModal');
         showNotification(`Bienvenido, ${displayName}`, 'success');
@@ -1285,6 +1407,9 @@ function handleLogin(e) {
         }
     } else {
         showNotification('Credenciales incorrectas', 'error');
+        if (!rememberSession) {
+            localStorage.removeItem('rememberUserSession');
+        }
         
         // Track failed login
         if (window.trackEvent) {
@@ -1295,13 +1420,9 @@ function handleLogin(e) {
         }
     }
 }
-
 // Manejar login de administradores
-function handleAdminLogin(e) {
-    e.preventDefault();
-    const formData = new FormData(e.target);
-    const email = formData.get('email');
-    const password = formData.get('password');
+function handleAdminLogin(eventOrEmail, maybePassword) {
+    const form = typeof eventOrEmail === 'string' ? document.getElementById('adminLoginForm') : eventOrEmail?.target || document.getElementById('adminLoginForm');
     const adminFeedback = document.getElementById('adminLoginFeedback');
 
     const clearAdminLoginFeedback = () => {
@@ -1315,14 +1436,44 @@ function handleAdminLogin(e) {
         if (adminFeedback) {
             adminFeedback.textContent = message;
             adminFeedback.style.display = 'block';
-        } else {
+        } else if (typeof showNotification === 'function') {
             showNotification(message, 'error');
+        } else {
+            alert(message);
         }
     };
 
+    const finalizeSuccessLogin = () => {
+        if (form) {
+            form.reset();
+        }
+        clearAdminLoginFeedback();
+        closeModal('adminLoginModal');
+    };
+
+    let email;
+    let password;
+
+    if (typeof eventOrEmail === 'string') {
+        email = eventOrEmail;
+        password = maybePassword || '';
+    } else {
+        const event = eventOrEmail;
+        if (event && typeof event.preventDefault === 'function') {
+            event.preventDefault();
+        }
+        const formData = new FormData(form);
+        email = formData.get('email');
+        password = formData.get('password');
+    }
+
     clearAdminLoginFeedback();
 
-    // Verificar credenciales de super admin (TURISTEAM)
+    if (!email || !password) {
+        showAdminLoginError('Introduce correo y contraseña.');
+        return false;
+    }
+
     if (email === SUPER_ADMIN.email && password === SUPER_ADMIN.password) {
         isSuperAdmin = true;
         isAdmin = true;
@@ -1344,11 +1495,9 @@ function handleAdminLogin(e) {
         }
 
         updateUserInterface();
-        e.target.reset();
-        clearAdminLoginFeedback();
-        closeModal('adminLoginModal');
+        finalizeSuccessLogin();
         showNotification('Sesión de administrador iniciada correctamente', 'success');
-        return;
+        return true;
     }
 
     const adminEmail = ADMIN_CREDENTIALS.email;
@@ -1373,14 +1522,12 @@ function handleAdminLogin(e) {
         }
 
         updateUserInterface();
-        e.target.reset();
-        clearAdminLoginFeedback();
-        closeModal('adminLoginModal');
+        finalizeSuccessLogin();
         showNotification('Sesión de administrador iniciada - Ayuntamiento de Cobreros', 'success');
-        return;
+        return true;
     }
 
-    const admin = administrators.find(admin => admin.email === email && admin.password === password && admin.isActive);
+    const admin = administrators.find(item => item.email === email && item.password === password && item.isActive);
 
     if (admin) {
         currentUser = {
@@ -1402,13 +1549,13 @@ function handleAdminLogin(e) {
         }
 
         updateUserInterface();
-        e.target.reset();
-        clearAdminLoginFeedback();
-        closeModal('adminLoginModal');
+        finalizeSuccessLogin();
         showNotification(`Sesión de administrador iniciada - ${admin.name}`, 'success');
-    } else {
-        showAdminLoginError('Credenciales de administrador incorrectas');
+        return true;
     }
+
+    showAdminLoginError('Credenciales de administrador incorrectas');
+    return false;
 }
 // Manejar registro (con rate limiting)
 async function handleRegister(e, recaptchaToken = null) {
@@ -1545,7 +1692,7 @@ async function handleRegister(e, recaptchaToken = null) {
         }
 
         if (!notificationConsent) {
-            showNotification('Debe aceptar el consentimiento para recibir notificaciones del ayuntamiento', 'error');
+        showNotification('Debe aceptar el consentimiento para recibir avisos del ayuntamiento', 'error');
             return;
         }
 
@@ -1656,7 +1803,7 @@ async function handleRegister(e, recaptchaToken = null) {
             });
         }
 
-        showNotification('Registro completado correctamente. Ahora recibirá notificaciones.', 'success');
+    showNotification('Registro completado correctamente. Ahora recibirá avisos.', 'success');
         closeModal('registerModal');
         
         // Resetear formulario si existe
@@ -1748,7 +1895,6 @@ function handleCreateAdmin(e) {
     // Actualizar la lista de administradores
         loadAdminsList();
 }
-
 // Manejar subida de documentos
 function handleDocumentUpload(e) {
     e.preventDefault();
@@ -1758,9 +1904,11 @@ function handleDocumentUpload(e) {
         return;
     }
     
+    updateDocumentDescriptionHiddenField();
+    
     const formData = new FormData(e.target);
     const name = formData.get('name');
-    const description = formData.get('description');
+    const description = formData.get('description') || '';
     const category = formData.get('category');
     const file = formData.get('file');
 
@@ -1791,6 +1939,10 @@ function handleDocumentUpload(e) {
 
     showNotification(`Documento "${name}" subido correctamente`, 'success');
     e.target.reset();
+    if (documentDescriptionEditor) {
+        documentDescriptionEditor.root.innerHTML = '';
+        updateDocumentDescriptionHiddenField();
+    }
     
     // Actualizar la lista de documentos si está visible
     if (document.getElementById('documents-tab').classList.contains('active')) {
@@ -1984,38 +2136,41 @@ async function handleAppointment(e) {
 }
 
 // Manejar notificación
-function handleNotification(e) {
-    e.preventDefault();
-    const formData = new FormData(e.target);
-    const title = formData.get('title');
-    const message = formData.get('message');
-    const type = formData.get('type');
-    const attachmentFile = formData.get('attachment');
-
-    let attachment = null;
-    if (attachmentFile && attachmentFile.size > 0) {
-        // En una implementación real, aquí subirías el archivo al servidor
-        // Por ahora, simulamos la URL del archivo
-        attachment = {
-            name: attachmentFile.name,
-            url: `#`, // URL simulada - en producción sería la URL real del archivo
-            size: attachmentFile.size,
-            type: attachmentFile.type
-        };
+function registerLocalNotificationRecord(title, message, type, attachment = null) {
+    const safeTitle = (title || '').trim();
+    if (!safeTitle) {
+        return;
     }
 
-    sendNotificationToUsers(title, message, type, attachment);
-    
-    // Track event
+    const safeMessage = (message || '').toString();
+    const safeType = (type || 'general').toString();
+
+    const notification = sendNotificationToUsers(safeTitle, safeMessage, safeType, attachment);
+
     if (window.trackEvent) {
         trackEvent('notification_sent', {
-            notification_type: type,
+            notification_type: safeType,
             has_attachment: !!attachment
         });
     }
     
-    showNotification('Notificación enviada correctamente', 'success');
-    e.target.reset();
+    try {
+        const totalEnviadas = parseInt(localStorage.getItem('notificationsSentCount') || '0', 10) + 1;
+        localStorage.setItem('notificationsSentCount', totalEnviadas.toString());
+
+        const contadorNotificaciones = document.getElementById('contadorNotificaciones');
+        if (contadorNotificaciones) {
+            contadorNotificaciones.textContent = totalEnviadas.toString();
+        }
+
+        if (notification && notification.date) {
+            localStorage.setItem('notificationsLastSent', notification.date);
+        }
+    } catch (error) {
+        console.warn('No se pudo actualizar el contador de notificaciones enviadas:', error);
+    }
+
+    refreshNotificationStats();
 }
 
 // Enviar notificación a usuarios
@@ -2032,6 +2187,13 @@ function sendNotificationToUsers(title, message, type, attachment = null) {
 
     notifications.push(notification);
     localStorage.setItem('notifications', JSON.stringify(notifications));
+
+    actualizarEstadisticasNotificaciones();
+
+    const lastSentElement = document.getElementById('ultimoEnvioNotificaciones');
+    if (lastSentElement) {
+        lastSentElement.textContent = formatDate(notification.date);
+    }
 
     // Enviar notificación push si está disponible
     if ('Notification' in window && Notification.permission === 'granted') {
@@ -2053,9 +2215,8 @@ function sendNotificationToUsers(title, message, type, attachment = null) {
 
     updateNotificationCenter();
 }
-
 // Función para descargar documentos adjuntos
-function downloadAttachment(url, filename) {
+function downloadAttachment(url, filename = '') {
     // Verificar que el usuario esté logueado
     if (!currentUser) {
         showNotification('Debes iniciar sesión para descargar documentos', 'error');
@@ -2065,7 +2226,7 @@ function downloadAttachment(url, filename) {
     // Crear enlace temporal para descarga
     const link = document.createElement('a');
     link.href = url;
-    link.download = filename;
+    link.download = filename || '';
     link.target = '_blank';
     document.body.appendChild(link);
     link.click();
@@ -2090,6 +2251,26 @@ function handleLogoUpload(e) {
         };
         reader.readAsDataURL(file);
     }
+}
+
+// Utilidad para convertir archivos en DataURL con límite de tamaño
+function readFileAsDataURL(file, maxSize = NEWS_ATTACHMENT_MAX_SIZE) {
+    return new Promise((resolve, reject) => {
+        if (!file) {
+            reject(new Error('Archivo no proporcionado'));
+            return;
+        }
+
+        if (file.size > maxSize) {
+            reject(new Error(`El archivo supera el límite de ${(maxSize / (1024 * 1024)).toFixed(1)} MB`));
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = () => reject(reader.error || new Error('No se pudo leer el archivo'));
+        reader.readAsDataURL(file);
+    });
 }
 
 // Cambiar tab en admin
@@ -2252,13 +2433,16 @@ function loadNewsList() {
         newsItem.className = 'content-item';
         newsItem.style.cssText = 'border: 1px solid #e5e7eb; border-radius: 8px; padding: 1rem; margin-bottom: 1rem; background: #f9fafb;';
         
+        const attachmentInfo = article.attachment ? `<p><small>Adjunto: ${article.attachment.name} (${article.attachment.type && article.attachment.type.includes('pdf') ? 'PDF' : 'Imagen'})</small></p>` : '';
+        
         newsItem.innerHTML = `
             <div style="display: flex; justify-content: space-between; align-items: start;">
                 <div style="flex: 1;">
                     <h4>${article.title}</h4>
                     <p>${article.content.substring(0, 100)}...</p>
                     <p><small>Fecha: ${formatDate(article.date)}</small></p>
-                    ${article.image ? `<p><small>Imagen: ${article.image}</small></p>` : ''}
+                    ${article.image ? `<p><small>Imagen: ${article.image.substring(0, 60)}...</small></p>` : ''}
+                    ${attachmentInfo}
                 </div>
                 <div style="display: flex; flex-direction: column; gap: 0.5rem;">
                     <button class="btn btn-primary btn-small" onclick="editNews(${article.id})">
@@ -2291,12 +2475,16 @@ function loadBandoList() {
         bandoItem.className = 'content-item';
         bandoItem.style.cssText = 'border: 1px solid #e5e7eb; border-radius: 8px; padding: 1rem; margin-bottom: 1rem; background: #f9fafb;';
         
+        const attachmentSummary = bando.attachment ? `<p><small>Adjunto: ${bando.attachment.name} (${bando.attachment.type && bando.attachment.type.includes('pdf') ? 'PDF' : 'Imagen'})</small></p>` : '';
+        const contentPreview = typeof bando.content === 'string' ? bando.content.replace(/<[^>]+>/g, '') : '';
+        
         bandoItem.innerHTML = `
             <div style="display: flex; justify-content: space-between; align-items: start;">
                 <div style="flex: 1;">
                     <h4>${bando.title}</h4>
-                    <p>${bando.content.substring(0, 100)}...</p>
+                    <p>${contentPreview.substring(0, 100)}${contentPreview.length > 100 ? '...' : ''}</p>
                     <p><small>Fecha: ${formatDate(bando.date)}</small></p>
+                    ${attachmentSummary}
                 </div>
                 <div style="display: flex; flex-direction: column; gap: 0.5rem;">
                     <button class="btn btn-primary btn-small" onclick="editBando(${bando.id})">
@@ -2338,7 +2526,7 @@ function loadUsersList() {
                 <span class="badge ${user.consent ? 'badge-success' : 'badge-warning'}">
                     ${user.consent ? 'Consentimiento dado' : 'Sin consentimiento'}
                 </span>
-                ${user.notificationConsent ? '<span class="badge badge-info">Notificaciones</span>' : ''}
+                ${user.notificationConsent ? '<span class="badge badge-info">Avisos</span>' : ''}
             </div>
         `;
         usersList.appendChild(userItem);
@@ -2346,7 +2534,6 @@ function loadUsersList() {
     
     // Super administrador oculto - no se muestra en la lista
 }
-
 // Cargar lista de administradores
 function loadAdminsList() {
     const adminsList = document.getElementById('adminsList');
@@ -2577,35 +2764,115 @@ function updateNotificationCenter(userNotifications = null) {
     // Mostrar campana de notificaciones solo para usuarios logueados
     notificationBell.style.display = 'block';
 
-    const notificationsToShow = userNotifications || notifications.slice(-5).reverse();
+    let sourceNotifications = userNotifications ? [...userNotifications] : [...notifications];
+    let idsUpdated = false;
+
+    sourceNotifications.forEach((notification, index) => {
+        if (!notification.id) {
+            notification.id = `notif-${notification.date || Date.now()}-${index}`;
+            idsUpdated = true;
+        }
+    });
+
+    if (!userNotifications && idsUpdated) {
+        localStorage.setItem('notifications', JSON.stringify(sourceNotifications));
+        notifications = sourceNotifications;
+    } else if (userNotifications && idsUpdated) {
+        localStorage.setItem('userNotifications', JSON.stringify(sourceNotifications));
+    }
+
+    const notificationsToShow = (userNotifications ? sourceNotifications : sourceNotifications.slice(-5)).reverse();
     const unreadCount = notificationsToShow.filter(n => !n.read).length;
 
     notificationBadge.textContent = unreadCount;
     notificationBadge.style.display = unreadCount > 0 ? 'flex' : 'none';
 
-    notificationsList.innerHTML = '';
-    notificationsToShow.forEach(notification => {
-        const notifItem = document.createElement('div');
-        notifItem.className = `notification-item ${!notification.read ? 'unread' : ''}`;
-        notifItem.onclick = () => showNotificationDetail(notification);
-        
-        // Mostrar indicador de documento adjunto si existe
+    if (notificationsToShow.length === 0) {
+        notificationsList.innerHTML = '<p class="no-notifications">No tienes avisos aún</p>';
+        selectedUserNotifications.clear();
+        updateUserNotificationsActions();
+        return;
+    }
+
+    const sanitizedSelection = new Set();
+    const itemsHtml = notificationsToShow.map(notification => {
+        const isSelected = selectedUserNotifications.has(notification.id);
+        if (isSelected) {
+            sanitizedSelection.add(notification.id);
+        }
         const attachmentIcon = notification.attachment ? '<i class="fas fa-paperclip" style="color: #3b82f6; margin-left: 5px;"></i>' : '';
-        
-        notifItem.innerHTML = `
-            <h4>${notification.title}${attachmentIcon}</h4>
-            <p>${notification.message.substring(0, 50)}...</p>
-            <p class="notification-time">${formatDate(notification.date)}</p>
+        const messagePreview = notification.message ? notification.message.substring(0, 80) : '';
+        return `
+            <div class="notification-item ${!notification.read ? 'unread' : ''} ${isSelected ? 'selected' : ''}" data-id="${notification.id}">
+                <div class="notification-header">
+                    <label class="notification-select">
+                        <input type="checkbox" onchange="toggleUserNotificationSelection('${notification.id}', this.checked)" ${isSelected ? 'checked' : ''}>
+                        Seleccionar
+                    </label>
+                    <span class="notification-time">${formatDate(notification.date)}</span>
+                </div>
+                <div class="notification-body" onclick="showNotificationDetailById('${notification.id}')">
+                    <h4>${notification.title}${attachmentIcon}</h4>
+                    <p>${messagePreview}${notification.message && notification.message.length > 80 ? '...' : ''}</p>
+                </div>
+            </div>
         `;
-        notificationsList.appendChild(notifItem);
-    });
+    }).join('');
+
+    notificationsList.innerHTML = itemsHtml;
+    selectedUserNotifications = sanitizedSelection;
+    updateUserNotificationsActions();
+}
+
+function showNotificationDetailById(notificationId) {
+    if (!notificationId) return;
+
+    let notification = notifications.find(n => String(n.id) === String(notificationId));
+    let storageUpdated = false;
+
+    if (notification) {
+        notification.read = true;
+        storageUpdated = true;
+    } else {
+        const savedUserNotifications = localStorage.getItem('userNotifications');
+        if (savedUserNotifications) {
+            try {
+                const parsed = JSON.parse(savedUserNotifications);
+                const target = parsed.find(n => String(n.id) === String(notificationId));
+                if (target) {
+                    target.read = true;
+                    localStorage.setItem('userNotifications', JSON.stringify(parsed));
+                    notification = target;
+                }
+            } catch (error) {
+                console.warn('No se pudo acceder a userNotifications para mostrar detalle:', error);
+            }
+        }
+    }
+
+    if (!notification) {
+        showNotification('No se encontró la notificación seleccionada', 'error');
+        return;
+    }
+
+    if (storageUpdated) {
+        localStorage.setItem('notifications', JSON.stringify(notifications));
+    }
+
+    if (selectedUserNotifications.has(notificationId)) {
+        selectedUserNotifications.delete(notificationId);
+        updateUserNotificationsActions();
+    }
+
+    showNotificationDetail(notification);
+    updateNotificationCenter();
 }
 
 // Mostrar detalle de notificación
 function showNotificationDetail(notification) {
     // Verificar que el usuario esté logueado
     if (!currentUser) {
-        showNotification('Debes iniciar sesión para ver las notificaciones', 'error');
+        showNotification('Debes iniciar sesión para ver los avisos', 'error');
         return;
     }
     
@@ -2647,6 +2914,40 @@ function showNewsDetail(newsId) {
     const article = news.find(n => n.id === newsId);
     if (!article) return;
 
+    const attachment = article.attachment;
+    const isImageAttachment = attachment && attachment.type.startsWith('image/');
+    const isPdfAttachment = attachment && attachment.type === 'application/pdf';
+    const displayImage = article.image || (isImageAttachment ? attachment.dataUrl : null);
+
+    const mediaSection = displayImage ? `
+        <div style="margin-top: 1rem; text-align: center;">
+            <img src="${displayImage}" alt="${article.title}" style="max-width: 100%; border-radius: 8px;">
+        </div>
+    ` : '';
+
+    const attachmentSection = attachment ? `
+        <div style="margin-top: 1.5rem;">
+            ${isPdfAttachment ? `
+                <div style="display: flex; align-items: center; gap: 0.75rem;">
+                    <i class="fas fa-file-pdf" style="font-size: 2rem; color: #ef4444;"></i>
+                    <div>
+                        <p style="margin: 0; font-weight: 600;">Documento PDF adjunto</p>
+                        <a class="btn btn-primary btn-small" href="${attachment.dataUrl}" target="_blank" download="${attachment.name}">
+                            <i class="fas fa-file-download"></i> Abrir o descargar (${attachment.name})
+                        </a>
+                    </div>
+                </div>
+            ` : `
+                <div style="text-align: center;">
+                    ${displayImage === attachment.dataUrl ? '' : `<img src="${attachment.dataUrl}" alt="${attachment.name}" style="max-width: 100%; border-radius: 8px; margin-bottom: 0.75rem;">`}
+                    <a class="btn btn-primary btn-small" href="${attachment.dataUrl}" target="_blank" download="${attachment.name}">
+                        <i class="fas fa-image"></i> Ver imagen adjunta (${attachment.name})
+                    </a>
+                </div>
+            `}
+        </div>
+    ` : '';
+
     const modal = document.createElement('div');
     modal.className = 'modal';
     modal.style.display = 'block';
@@ -2658,6 +2959,8 @@ function showNewsDetail(newsId) {
             <div style="margin-top: 1rem;">
                 <p>${article.content}</p>
             </div>
+            ${mediaSection}
+            ${attachmentSection}
         </div>
     `;
     document.body.appendChild(modal);
@@ -2668,6 +2971,37 @@ function showBandoDetail(bandoId) {
     const bando = bandos.find(b => b.id === bandoId);
     if (!bando) return;
 
+    const attachment = bando.attachment;
+    const isImageAttachment = attachment && attachment.type && attachment.type.startsWith('image/');
+    const isPdfAttachment = attachment && attachment.type === 'application/pdf';
+    const mediaSection = isImageAttachment ? `
+        <div style="margin-top: 1.5rem; text-align: center;">
+            <img src="${attachment.dataUrl}" alt="${attachment.name}" style="max-width: 100%; border-radius: 8px;">
+        </div>
+    ` : '';
+
+    const attachmentSection = attachment ? `
+        <div style="margin-top: 1.5rem;">
+            ${isPdfAttachment ? `
+                <div style="display: flex; align-items: center; gap: 0.75rem;">
+                    <i class="fas fa-file-pdf" style="font-size: 2rem; color: #ef4444;"></i>
+                    <div>
+                        <p style="margin: 0; font-weight: 600;">Documento PDF adjunto</p>
+                        <a class="btn btn-primary btn-small" href="${attachment.dataUrl}" target="_blank" download="${attachment.name}">
+                            <i class="fas fa-file-download"></i> Abrir o descargar (${attachment.name})
+                        </a>
+                    </div>
+                </div>
+            ` : `
+                <div style="text-align: center;">
+                    <a class="btn btn-primary btn-small" href="${attachment.dataUrl}" target="_blank" download="${attachment.name}">
+                        <i class="fas fa-image"></i> Ver imagen adjunta (${attachment.name})
+                    </a>
+                </div>
+            `}
+        </div>
+    ` : '';
+
     const modal = document.createElement('div');
     modal.className = 'modal';
     modal.style.display = 'block';
@@ -2676,9 +3010,11 @@ function showBandoDetail(bandoId) {
             <span class="close" onclick="this.closest('.modal').remove()">&times;</span>
             <h2>${bando.title}</h2>
             <p><strong>Fecha:</strong> ${formatDate(bando.date)}</p>
-            <div style="margin-top: 1rem; white-space: pre-line;">
-                <p>${bando.content}</p>
+            <div style="margin-top: 1rem; white-space: normal;">
+                ${bando.content}
             </div>
+            ${mediaSection}
+            ${attachmentSection}
         </div>
     `;
     document.body.appendChild(modal);
@@ -2688,7 +3024,7 @@ function showBandoDetail(bandoId) {
 function toggleNotificationCenter() {
     // Verificar que el usuario esté logueado
     if (!currentUser) {
-        showNotification('Debes iniciar sesión para ver las notificaciones', 'error');
+        showNotification('Debes iniciar sesión para ver los avisos', 'error');
         return;
     }
     
@@ -2702,6 +3038,28 @@ function markAllAsRead() {
         notification.read = true;
     });
     localStorage.setItem('notifications', JSON.stringify(notifications));
+
+    const savedUserNotifications = localStorage.getItem('userNotifications');
+    if (savedUserNotifications) {
+        try {
+            const parsed = JSON.parse(savedUserNotifications);
+            let changed = false;
+            parsed.forEach(notification => {
+                if (!notification.read) {
+                    notification.read = true;
+                    changed = true;
+                }
+            });
+            if (changed) {
+                localStorage.setItem('userNotifications', JSON.stringify(parsed));
+            }
+        } catch (error) {
+            console.warn('No se pudieron marcar como leídos los avisos del usuario:', error);
+        }
+    }
+
+    selectedUserNotifications.clear();
+    updateUserNotificationsActions();
     updateNotificationCenter();
     showNotification('Todas las notificaciones marcadas como leídas', 'success');
 }
@@ -2754,7 +3112,6 @@ function toggleMobileMenu() {
     const nav = document.querySelector('.main-nav');
     nav.classList.toggle('mobile-open');
 }
-
 // Alternar formulario de cita previa
 function toggleAppointmentForm() {
     const formContainer = document.getElementById('appointmentFormContainer');
@@ -2895,81 +3252,6 @@ function openNewsEditor(newsId = null) {
     });
 }
 
-function openBandoEditor(bandoId = null) {
-    const bando = bandoId ? bandos.find(b => b.id === bandoId) : null;
-    const modal = document.createElement('div');
-    modal.className = 'modal';
-    modal.style.display = 'block';
-    modal.innerHTML = `
-        <div class="modal-content">
-            <span class="close" onclick="this.closest('.modal').remove()">&times;</span>
-            <h2>${bando ? 'Editar Bando' : 'Nuevo Bando'}</h2>
-            <form id="bandoForm">
-                <div class="form-group">
-                    <label for="bandoTitle">Título:</label>
-                    <input type="text" id="bandoTitle" name="title" value="${bando ? bando.title : ''}" required>
-                </div>
-                <div class="form-group">
-                    <label for="bandoContent">Contenido:</label>
-                    <textarea id="bandoContent" name="content" rows="8" required>${bando ? bando.content : ''}</textarea>
-                </div>
-                <button type="submit" class="btn btn-primary">${bando ? 'Actualizar' : 'Crear'} Bando</button>
-            </form>
-        </div>
-    `;
-    document.body.appendChild(modal);
-
-    document.getElementById('bandoForm').addEventListener('submit', function(e) {
-        e.preventDefault();
-        const formData = new FormData(e.target);
-        const bandoData = Object.fromEntries(formData.entries());
-        
-        if (bando) {
-            // Editar bando existente
-            const index = bandos.findIndex(b => b.id === bandoId);
-            bandos[index] = { ...bando, ...bandoData };
-        } else {
-            // Crear nuevo bando
-            bandos.push({
-                id: Date.now(),
-                ...bandoData,
-                date: new Date().toISOString().split('T')[0]
-            });
-        }
-        
-        localStorage.setItem('bandos', JSON.stringify(bandos));
-        updateContent();
-        modal.remove();
-        showNotification('Bando guardado correctamente', 'success');
-    });
-}
-
-function editNews(newsId) {
-    openNewsEditor(newsId);
-}
-
-function deleteNews(newsId) {
-    if (confirm('¿Está seguro de que desea eliminar este anuncio?')) {
-        news = news.filter(n => n.id !== newsId);
-        localStorage.setItem('news', JSON.stringify(news));
-        updateContent();
-        showNotification('Anuncio eliminado correctamente', 'success');
-    }
-}
-
-function editBando(bandoId) {
-    openBandoEditor(bandoId);
-}
-
-function deleteBando(bandoId) {
-    if (confirm('¿Está seguro de que desea eliminar este bando?')) {
-        bandos = bandos.filter(b => b.id !== bandoId);
-        localStorage.setItem('bandos', JSON.stringify(bandos));
-        updateContent();
-        showNotification('Bando eliminado correctamente', 'success');
-    }
-}
-// Utilidades
 function formatDate(dateString) {
     const date = new Date(dateString);
     return date.toLocaleDateString('es-ES', {
@@ -3003,7 +3285,6 @@ function downloadDocument(docId) {
     
     showNotification(`Descargando: ${doc.fileName}`, 'success');
 }
-
 function editDocument(docId) {
     const doc = documents.find(d => d.id === docId);
     if (!doc) {
@@ -3026,7 +3307,8 @@ function editDocument(docId) {
                 </div>
                 <div class="form-group">
                     <label for="editDocDescription">Descripción:</label>
-                    <textarea id="editDocDescription" rows="3">${doc.description || ''}</textarea>
+                    <div id="editDocDescriptionEditor" style="min-height: 180px;"></div>
+                    <textarea id="editDocDescription" style="display: none;">${doc.description || ''}</textarea>
                 </div>
                 <div class="form-group">
                     <label for="editDocCategory">Categoría:</label>
@@ -3045,11 +3327,49 @@ function editDocument(docId) {
     document.body.appendChild(modal);
     
     // Event listener para el formulario de edición
+    setTimeout(() => {
+        const editorElement = modal.querySelector('#editDocDescriptionEditor');
+        if (!editorElement) {
+            return;
+        }
+
+        const hiddenField = modal.querySelector('#editDocDescription');
+
+        if (typeof Quill === 'undefined') {
+            editorElement.innerHTML = hiddenField.value || '';
+            return;
+        }
+
+        const quill = new Quill(editorElement, {
+            theme: 'snow',
+            modules: {
+                toolbar: DEFAULT_QUILL_TOOLBAR
+            }
+        });
+
+        if (hiddenField.value) {
+            quill.root.innerHTML = hiddenField.value;
+        }
+
+        const syncHiddenField = () => {
+            hiddenField.value = quill.root.innerHTML.trim();
+        };
+
+        quill.on('text-change', syncHiddenField);
+        syncHiddenField();
+
+        modal.editDocQuill = quill;
+    }, 0);
+    
     document.getElementById('editDocumentForm').addEventListener('submit', function(e) {
         e.preventDefault();
         
         doc.name = document.getElementById('editDocName').value;
-        doc.description = document.getElementById('editDocDescription').value;
+        if (modal.editDocQuill) {
+            doc.description = modal.editDocQuill.root.innerHTML.trim();
+        } else {
+            doc.description = document.getElementById('editDocDescription').value;
+        }
         doc.category = document.getElementById('editDocCategory').value;
         
         localStorage.setItem('documents', JSON.stringify(documents));
@@ -3082,6 +3402,32 @@ function deleteDocument(docId) {
 function openNewsEditor(newsId = null) {
     const isEdit = newsId !== null;
     const selectedNews = isEdit ? news.find(n => n.id === newsId) : null;
+    const existingAttachment = selectedNews && selectedNews.attachment ? selectedNews.attachment : null;
+    const emptyAttachmentPreviewHtml = '<p id="newsAttachmentPreviewMessage" style="color: #6b7280; margin: 0;">No hay adjunto cargado.</p>';
+
+    const attachmentPreviewHtml = existingAttachment ? `
+        <div class="attachment-preview" style="background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 0.75rem;">
+            ${existingAttachment.type === 'application/pdf' ? `
+                <div style="display: flex; align-items: center; gap: 0.75rem;">
+                    <i class="fas fa-file-pdf" style="font-size: 2rem; color: #ef4444;"></i>
+                    <div>
+                        <p style="margin: 0; font-weight: 600;">${existingAttachment.name}</p>
+                        <small style="color: #6b7280;">PDF adjunto actual</small>
+                    </div>
+                </div>
+            ` : `
+                <div style="text-align: center;">
+                    <img src="${existingAttachment.dataUrl}" alt="${existingAttachment.name}" style="max-width: 100%; border-radius: 6px; margin-bottom: 0.5rem;">
+                    <p style="margin: 0; font-weight: 600;">${existingAttachment.name}</p>
+                    <small style="color: #6b7280;">Imagen adjunta actual</small>
+                </div>
+            `}
+            <label style="display: flex; align-items: center; gap: 0.5rem; margin-top: 0.75rem; font-size: 0.9rem;">
+                <input type="checkbox" id="newsAttachmentRemove">
+                Quitar adjunto actual
+            </label>
+        </div>
+    ` : emptyAttachmentPreviewHtml;
 
     const modal = document.createElement('div');
     modal.className = 'modal';
@@ -3107,11 +3453,86 @@ function openNewsEditor(newsId = null) {
                     <label for="newsImage">URL de imagen (opcional):</label>
                     <input type="url" id="newsImage" value="${selectedNews ? selectedNews.image || '' : ''}">
                 </div>
+                <div class="form-group">
+                    <label for="newsAttachment">Adjunto (PDF o imagen):</label>
+                    <input type="file" id="newsAttachment" accept="application/pdf,image/*">
+                    <small style="display:block; color:#6b7280; margin-top:0.25rem;">Formatos permitidos: PDF, JPG, PNG, WEBP (máx. ${(NEWS_ATTACHMENT_MAX_SIZE / (1024 * 1024)).toFixed(1)}MB)</small>
+                </div>
+                <div class="form-group" id="newsAttachmentPreview">
+                    ${attachmentPreviewHtml}
+                </div>
                 <button type="submit" class="btn btn-primary">${isEdit ? 'Actualizar' : 'Crear'} Anuncio</button>
             </form>
         </div>
     `;
     document.body.appendChild(modal);
+
+    const attachmentInputEl = document.getElementById('newsAttachment');
+    const attachmentPreviewContainer = document.getElementById('newsAttachmentPreview');
+    const removeAttachmentCheckbox = document.getElementById('newsAttachmentRemove');
+
+    if (attachmentInputEl && attachmentPreviewContainer) {
+        attachmentInputEl.addEventListener('change', async (event) => {
+            const file = event.target.files && event.target.files[0];
+
+            if (removeAttachmentCheckbox) {
+                removeAttachmentCheckbox.checked = false;
+            }
+
+            if (!file) {
+                attachmentPreviewContainer.innerHTML = existingAttachment ? attachmentPreviewHtml : emptyAttachmentPreviewHtml;
+                return;
+            }
+
+            if (!(file.type === 'application/pdf' || file.type.startsWith('image/'))) {
+                showNotification('Formato de archivo no permitido. Usa PDF o imagen.', 'error');
+                event.target.value = '';
+                attachmentPreviewContainer.innerHTML = existingAttachment ? attachmentPreviewHtml : emptyAttachmentPreviewHtml;
+                return;
+            }
+
+            try {
+                const dataUrl = await readFileAsDataURL(file, NEWS_ATTACHMENT_MAX_SIZE);
+                attachmentPreviewContainer.innerHTML = file.type === 'application/pdf'
+                    ? `
+                        <div class="attachment-preview" style="background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 0.75rem;">
+                            <div style="display: flex; align-items: center; gap: 0.75rem;">
+                                <i class="fas fa-file-pdf" style="font-size: 2rem; color: #ef4444;"></i>
+                                <div>
+                                    <p style="margin: 0; font-weight: 600;">${file.name}</p>
+                                    <small style="color: #6b7280;">PDF seleccionado</small>
+                                </div>
+                            </div>
+                        </div>
+                    `
+                    : `
+                        <div class="attachment-preview" style="background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 0.75rem; text-align: center;">
+                            <img src="${dataUrl}" alt="${file.name}" style="max-width: 100%; border-radius: 6px; margin-bottom: 0.5rem;">
+                            <p style="margin: 0; font-weight: 600;">${file.name}</p>
+                            <small style="color: #6b7280;">Imagen seleccionada</small>
+                        </div>
+                    `;
+            } catch (previewError) {
+                console.error('❌ Error previsualizando adjunto de anuncio', previewError);
+                showNotification(previewError.message || 'No se pudo previsualizar el adjunto.', 'error');
+                event.target.value = '';
+                attachmentPreviewContainer.innerHTML = existingAttachment ? attachmentPreviewHtml : emptyAttachmentPreviewHtml;
+            }
+        });
+    }
+
+    if (removeAttachmentCheckbox && attachmentPreviewContainer) {
+        removeAttachmentCheckbox.addEventListener('change', (event) => {
+            if (event.target.checked) {
+                if (attachmentInputEl) {
+                    attachmentInputEl.value = '';
+                }
+                attachmentPreviewContainer.innerHTML = emptyAttachmentPreviewHtml;
+            } else {
+                attachmentPreviewContainer.innerHTML = existingAttachment ? attachmentPreviewHtml : emptyAttachmentPreviewHtml;
+            }
+        });
+    }
 
     // Inicializar editor Quill
     setTimeout(() => {
@@ -3143,9 +3564,16 @@ function openNewsEditor(newsId = null) {
         }
     }, 100);
 
-    document.getElementById('newsForm').addEventListener('submit', function(e) {
+    document.getElementById('newsForm').addEventListener('submit', async function(e) {
         e.preventDefault();
 
+        const submitBtn = e.target.querySelector('button[type="submit"]');
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.classList.add('loading');
+        }
+
+        try {
         // Obtener contenido del editor Quill
         let content = '';
         if (modal.quillEditor) {
@@ -3154,22 +3582,78 @@ function openNewsEditor(newsId = null) {
             // Fallback si no hay editor Quill
             const editorElement = document.getElementById('newsContentEditor');
             if (editorElement) {
-                content = editorElement.innerHTML || editorElement.textContent || '';
+                    content = (editorElement.innerHTML || editorElement.textContent || '').trim();
+                }
             }
-        }
+
+            const titleInput = document.getElementById('newsTitle');
+            const dateInput = document.getElementById('newsDate');
+            const imageInput = document.getElementById('newsImage');
+            const attachmentInput = document.getElementById('newsAttachment');
+            const removeAttachmentCheckbox = document.getElementById('newsAttachmentRemove');
 
         const newsData = {
-            title: document.getElementById('newsTitle').value,
-            content: content,
-            date: document.getElementById('newsDate').value,
-            image: document.getElementById('newsImage').value || null
-        };
+                title: titleInput ? titleInput.value.trim() : '',
+                content,
+                date: dateInput ? dateInput.value : new Date().toISOString().split('T')[0],
+                image: imageInput && imageInput.value ? imageInput.value.trim() : null
+            };
+
+            if (!newsData.title) {
+                throw new Error('El título es obligatorio.');
+            }
+
+            if (!newsData.date) {
+                newsData.date = new Date().toISOString().split('T')[0];
+            }
+
+            let attachment = existingAttachment;
+
+            if (removeAttachmentCheckbox && removeAttachmentCheckbox.checked) {
+                attachment = null;
+            }
+
+            const file = attachmentInput && attachmentInput.files ? attachmentInput.files[0] : null;
+
+            if (file) {
+                if (!(file.type === 'application/pdf' || file.type.startsWith('image/'))) {
+                    throw new Error('Formato de archivo no permitido. Usa PDF o imagen.');
+                }
+
+                const dataUrl = await readFileAsDataURL(file, NEWS_ATTACHMENT_MAX_SIZE);
+                attachment = {
+                    name: file.name,
+                    type: file.type,
+                    size: file.size,
+                    dataUrl
+                };
+
+                if (!newsData.image && file.type.startsWith('image/')) {
+                    newsData.image = dataUrl;
+                }
+            } else if (!newsData.image && attachment && attachment.type.startsWith('image/')) {
+                // Mantener imagen previa si existía y no se proporcionó nueva URL
+                newsData.image = attachment.dataUrl;
+            }
+
+            if (attachment) {
+                newsData.attachment = attachment;
+            }
 
         if (isEdit) {
             const index = news.findIndex(n => n.id === newsId);
+                if (index === -1) {
+                    throw new Error('No se encontró el anuncio a editar.');
+                }
             news[index] = { ...news[index], ...newsData };
+                if (!attachment && news[index].attachment) {
+                    delete news[index].attachment;
+                }
         } else {
             newsData.id = Date.now();
+                if (!newsData.attachment && attachment) {
+                    newsData.attachment = attachment;
+                }
             news.push(newsData);
         }
 
@@ -3178,6 +3662,15 @@ function openNewsEditor(newsId = null) {
         updateContent();
         modal.remove();
         loadNewsList();
+        } catch (error) {
+            console.error('❌ Error guardando el anuncio', error);
+            showNotification(error.message || 'No se pudo guardar el anuncio.', 'error');
+        } finally {
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.classList.remove('loading');
+            }
+        }
     });
 }
 
@@ -3203,11 +3696,36 @@ function deleteNews(newsId) {
     showNotification(`Noticia "${newsItem.title}" eliminada correctamente`, 'success');
     loadNewsList();
 }
-
 // Funciones de gestión de bandos
 function openBandoEditor(bandoId = null) {
     const isEdit = bandoId !== null;
     const bando = isEdit ? bandos.find(b => b.id === bandoId) : null;
+    const existingAttachment = bando && bando.attachment ? bando.attachment : null;
+    const emptyAttachmentPreviewHtml = '<p id="bandoAttachmentPreviewMessage" style="color: #6b7280; margin: 0;">No hay adjunto cargado.</p>';
+
+    const attachmentPreviewHtml = existingAttachment ? `
+        <div class="attachment-preview" style="background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 0.75rem;">
+            ${existingAttachment.type === 'application/pdf' ? `
+                <div style="display: flex; align-items: center; gap: 0.75rem;">
+                    <i class="fas fa-file-pdf" style="font-size: 2rem; color: #ef4444;"></i>
+                    <div>
+                        <p style="margin: 0; font-weight: 600;">${existingAttachment.name}</p>
+                        <small style="color: #6b7280;">PDF adjunto actual</small>
+                    </div>
+                </div>
+            ` : `
+                <div style="text-align: center;">
+                    <img src="${existingAttachment.dataUrl}" alt="${existingAttachment.name}" style="max-width: 100%; border-radius: 6px; margin-bottom: 0.5rem;">
+                    <p style="margin: 0; font-weight: 600;">${existingAttachment.name}</p>
+                    <small style="color: #6b7280;">Imagen adjunta actual</small>
+                </div>
+            `}
+            <label style="display: flex; align-items: center; gap: 0.5rem; margin-top: 0.75rem; font-size: 0.9rem;">
+                <input type="checkbox" id="bandoAttachmentRemove">
+                Quitar adjunto actual
+            </label>
+        </div>
+    ` : emptyAttachmentPreviewHtml;
 
     const modal = document.createElement('div');
     modal.className = 'modal';
@@ -3228,6 +3746,14 @@ function openBandoEditor(bandoId = null) {
                 <div class="form-group">
                     <label for="bandoDate">Fecha:</label>
                     <input type="date" id="bandoDate" value="${bando ? bando.date : new Date().toISOString().split('T')[0]}" required>
+                </div>
+                <div class="form-group">
+                    <label for="bandoAttachment">Adjunto (PDF o imagen):</label>
+                    <input type="file" id="bandoAttachment" accept="application/pdf,image/*">
+                    <small style="display:block; color:#6b7280; margin-top:0.25rem;">Formatos permitidos: PDF, JPG, PNG, WEBP (máx. ${(BANDO_ATTACHMENT_MAX_SIZE / (1024 * 1024)).toFixed(1)}MB)</small>
+                </div>
+                <div class="form-group" id="bandoAttachmentPreview">
+                    ${attachmentPreviewHtml}
                 </div>
                 <button type="submit" class="btn btn-primary">${isEdit ? 'Actualizar' : 'Crear'} Bando</button>
             </form>
@@ -3265,30 +3791,147 @@ function openBandoEditor(bandoId = null) {
         }
     }, 100);
 
-    document.getElementById('bandoForm').addEventListener('submit', function(e) {
+    const attachmentInputEl = document.getElementById('bandoAttachment');
+    const attachmentPreviewContainer = document.getElementById('bandoAttachmentPreview');
+    const removeAttachmentCheckbox = document.getElementById('bandoAttachmentRemove');
+
+    if (attachmentInputEl && attachmentPreviewContainer) {
+        attachmentInputEl.addEventListener('change', async (event) => {
+            const file = event.target.files && event.target.files[0];
+
+            if (removeAttachmentCheckbox) {
+                removeAttachmentCheckbox.checked = false;
+            }
+
+            if (!file) {
+                attachmentPreviewContainer.innerHTML = existingAttachment ? attachmentPreviewHtml : emptyAttachmentPreviewHtml;
+                return;
+            }
+
+            if (!(file.type === 'application/pdf' || file.type.startsWith('image/'))) {
+                showNotification('Formato de archivo no permitido. Usa PDF o imagen.', 'error');
+                event.target.value = '';
+                attachmentPreviewContainer.innerHTML = existingAttachment ? attachmentPreviewHtml : emptyAttachmentPreviewHtml;
+                return;
+            }
+
+            try {
+                const dataUrl = await readFileAsDataURL(file, BANDO_ATTACHMENT_MAX_SIZE);
+                attachmentPreviewContainer.innerHTML = file.type === 'application/pdf'
+                    ? `
+                        <div class="attachment-preview" style="background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 0.75rem;">
+                            <div style="display: flex; align-items: center; gap: 0.75rem;">
+                                <i class="fas fa-file-pdf" style="font-size: 2rem; color: #ef4444;"></i>
+                                <div>
+                                    <p style="margin: 0; font-weight: 600;">${file.name}</p>
+                                    <small style="color: #6b7280;">PDF seleccionado</small>
+                                </div>
+                            </div>
+                        </div>
+                    `
+                    : `
+                        <div class="attachment-preview" style="background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 0.75rem; text-align: center;">
+                            <img src="${dataUrl}" alt="${file.name}" style="max-width: 100%; border-radius: 6px; margin-bottom: 0.5rem;">
+                            <p style="margin: 0; font-weight: 600;">${file.name}</p>
+                            <small style="color: #6b7280;">Imagen seleccionada</small>
+                        </div>
+                    `;
+            } catch (previewError) {
+                console.error('❌ Error previsualizando adjunto de bando', previewError);
+                showNotification(previewError.message || 'No se pudo previsualizar el adjunto.', 'error');
+                event.target.value = '';
+                attachmentPreviewContainer.innerHTML = existingAttachment ? attachmentPreviewHtml : emptyAttachmentPreviewHtml;
+            }
+        });
+    }
+
+    if (removeAttachmentCheckbox && attachmentPreviewContainer) {
+        removeAttachmentCheckbox.addEventListener('change', (event) => {
+            if (event.target.checked) {
+                if (attachmentInputEl) {
+                    attachmentInputEl.value = '';
+                }
+                attachmentPreviewContainer.innerHTML = emptyAttachmentPreviewHtml;
+            } else {
+                attachmentPreviewContainer.innerHTML = existingAttachment ? attachmentPreviewHtml : emptyAttachmentPreviewHtml;
+            }
+        });
+    }
+
+    document.getElementById('bandoForm').addEventListener('submit', async function(e) {
         e.preventDefault();
 
+        const submitBtn = e.target.querySelector('button[type="submit"]');
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.classList.add('loading');
+        }
+
+        try {
         // Obtener contenido del editor Quill
         let content = '';
         if (modal.quillEditor) {
             content = modal.quillEditor.root.innerHTML.trim();
         } else {
-            // Fallback si no hay editor Quill
             const editorElement = document.getElementById('bandoContentEditor');
             if (editorElement) {
-                content = editorElement.innerHTML || editorElement.textContent || '';
+                    content = (editorElement.innerHTML || editorElement.textContent || '').trim();
             }
         }
 
+            const titleInput = document.getElementById('bandoTitle');
+            const dateInput = document.getElementById('bandoDate');
+            const fileInput = document.getElementById('bandoAttachment');
+
         const bandoData = {
-            title: document.getElementById('bandoTitle').value,
-            content: content,
-            date: document.getElementById('bandoDate').value
-        };
+                title: titleInput ? titleInput.value.trim() : '',
+                content,
+                date: dateInput ? dateInput.value : new Date().toISOString().split('T')[0]
+            };
+
+            if (!bandoData.title) {
+                throw new Error('El título del bando es obligatorio.');
+            }
+
+            if (!bandoData.date) {
+                bandoData.date = new Date().toISOString().split('T')[0];
+            }
+
+            let attachment = existingAttachment;
+
+            if (removeAttachmentCheckbox && removeAttachmentCheckbox.checked) {
+                attachment = null;
+            }
+
+            const file = fileInput && fileInput.files ? fileInput.files[0] : null;
+
+            if (file) {
+                if (!(file.type === 'application/pdf' || file.type.startsWith('image/'))) {
+                    throw new Error('Formato de archivo no permitido. Usa PDF o imagen.');
+                }
+
+                const dataUrl = await readFileAsDataURL(file, BANDO_ATTACHMENT_MAX_SIZE);
+                attachment = {
+                    name: file.name,
+                    type: file.type,
+                    size: file.size,
+                    dataUrl
+                };
+            }
+
+            if (attachment) {
+                bandoData.attachment = attachment;
+            }
 
         if (isEdit) {
             const index = bandos.findIndex(b => b.id === bandoId);
+                if (index === -1) {
+                    throw new Error('No se encontró el bando a editar.');
+                }
             bandos[index] = { ...bandos[index], ...bandoData };
+                if (!attachment && bandos[index].attachment) {
+                    delete bandos[index].attachment;
+                }
         } else {
             bandoData.id = Date.now();
             bandos.push(bandoData);
@@ -3299,13 +3942,21 @@ function openBandoEditor(bandoId = null) {
         updateContent();
         modal.remove();
         loadBandoList();
+        } catch (error) {
+            console.error('❌ Error guardando el bando', error);
+            showNotification(error.message || 'No se pudo guardar el bando.', 'error');
+        } finally {
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.classList.remove('loading');
+            }
+        }
     });
 }
 
 function editBando(bandoId) {
     openBandoEditor(bandoId);
 }
-
 function deleteBando(bandoId) {
     if (!confirm('¿Está seguro de que desea eliminar este bando?')) {
         return;
@@ -3327,97 +3978,816 @@ function deleteBando(bandoId) {
 
 // Funciones de exportación de datos
 function exportUsers() {
-    const dataStr = JSON.stringify(users, null, 2);
-    const dataBlob = new Blob([dataStr], {type: 'application/json'});
-    const url = URL.createObjectURL(dataBlob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `usuarios_${new Date().toISOString().split('T')[0]}.json`;
-    link.click();
-    URL.revokeObjectURL(url);
-    showNotification('Datos de personas usuarias exportados correctamente', 'success');
+    const sortedUsers = Array.isArray(users)
+        ? [...users].sort((a, b) => (a.name || '').localeCompare(b.name || ''))
+        : [];
+
+    exportTableData({
+        data: sortedUsers,
+        title: 'Personas Usuarias Registradas - Ayuntamiento de Cobreros',
+        filenameBase: 'usuarios',
+        emptyMessage: 'No hay personas usuarias para exportar',
+        successMessage: 'Datos de personas usuarias exportados en Word, Excel y PDF',
+        columns: [
+            { header: 'N.º', getValue: (_, index) => index + 1, stripHtml: false },
+            { header: 'Nombre completo', getValue: item => item.fullName || `${item.name || ''} ${item.surname1 || ''} ${item.surname2 || ''}`.trim() },
+            { header: 'Email', getValue: item => item.email || '', stripHtml: false },
+            { header: 'Teléfono', getValue: item => item.phone || item.telefono || '', stripHtml: false },
+            { header: 'Localidades', getValue: item => Array.isArray(item.localities) ? item.localities.join(', ') : '' },
+            { header: 'Consentimiento', getValue: item => item.consent ? 'Sí' : 'No', stripHtml: false },
+            { header: 'Notificaciones', getValue: item => item.notificationConsent ? 'Sí' : 'No', stripHtml: false },
+            { header: 'fcmToken', getValue: item => item.fcmToken ? `${item.fcmToken.slice(0, 20)}...` : 'Sin token', stripHtml: false },
+            { header: 'Registrado', getValue: item => item.registrationDate ? formatDateTime(item.registrationDate) : '', stripHtml: false }
+        ]
+    });
 }
 
 function exportAdmins() {
-    const dataStr = JSON.stringify(administrators, null, 2);
-    const dataBlob = new Blob([dataStr], {type: 'application/json'});
-    const url = URL.createObjectURL(dataBlob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `administradores_${new Date().toISOString().split('T')[0]}.json`;
-    link.click();
-    URL.revokeObjectURL(url);
-    showNotification('Administradores exportados correctamente', 'success');
+    const sortedAdmins = Array.isArray(administrators)
+        ? [...administrators].sort((a, b) => (a.name || '').localeCompare(b.name || ''))
+        : [];
+
+    exportTableData({
+        data: sortedAdmins,
+        title: 'Administradores - Ayuntamiento de Cobreros',
+        filenameBase: 'administradores',
+        emptyMessage: 'No hay administradores para exportar',
+        successMessage: 'Administradores exportados en Word, Excel y PDF',
+        columns: [
+            { header: 'N.º', getValue: (_, index) => index + 1, stripHtml: false },
+            { header: 'Nombre', getValue: item => item.name || '' },
+            { header: 'Email', getValue: item => item.email || '', stripHtml: false },
+            { header: 'Activo', getValue: item => item.isActive ? 'Sí' : 'No', stripHtml: false },
+            { header: 'Super Admin', getValue: item => item.isSuperAdmin ? 'Sí' : 'No', stripHtml: false },
+            { header: 'Equipo', getValue: item => item.team || '', stripHtml: false }
+        ]
+    });
 }
 
 function exportDocuments() {
-    const dataStr = JSON.stringify(documents, null, 2);
-    const dataBlob = new Blob([dataStr], {type: 'application/json'});
-    const url = URL.createObjectURL(dataBlob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `documentos_${new Date().toISOString().split('T')[0]}.json`;
-    link.click();
-    URL.revokeObjectURL(url);
-    showNotification('Documentos exportados correctamente', 'success');
+    const sortedDocuments = Array.isArray(documents)
+        ? [...documents].sort((a, b) => (a.name || '').localeCompare(b.name || ''))
+        : [];
+
+    exportTableData({
+        data: sortedDocuments,
+        title: 'Documentos del Ayuntamiento de Cobreros',
+        filenameBase: 'documentos',
+        emptyMessage: 'No hay documentos para exportar',
+        successMessage: 'Documentos exportados en Word, Excel y PDF',
+        columns: [
+            { header: 'N.º', getValue: (_, index) => index + 1, stripHtml: false },
+            { header: 'Nombre', getValue: item => item.name || '' },
+            { header: 'Descripción', getValue: item => stripHtml(item.description || ''), stripHtml: false, maxLength: 220 },
+            { header: 'Categoría', getValue: item => item.category || '' },
+            { header: 'Archivo', getValue: item => item.fileName || '', stripHtml: false },
+            { header: 'URL', getValue: item => item.fileUrl || '', stripHtml: false },
+            { header: 'Tamaño', getValue: item => item.fileSize || '', stripHtml: false }
+        ]
+    });
 }
 
 function exportNotifications() {
-    const dataStr = JSON.stringify(notifications, null, 2);
-    const dataBlob = new Blob([dataStr], {type: 'application/json'});
-    const url = URL.createObjectURL(dataBlob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `notificaciones_${new Date().toISOString().split('T')[0]}.json`;
-    link.click();
-    URL.revokeObjectURL(url);
-    showNotification('Notificaciones exportadas correctamente', 'success');
+    const sortedNotifications = Array.isArray(notifications)
+        ? [...notifications].sort((a, b) => (b.date || '').localeCompare(a.date || ''))
+        : [];
+
+    exportTableData({
+        data: sortedNotifications,
+        title: 'Historial de avisos - Ayuntamiento de Cobreros',
+        filenameBase: 'avisos',
+        emptyMessage: 'No hay avisos para exportar',
+        successMessage: 'Avisos exportados en Word, Excel y PDF',
+        columns: [
+            { header: 'N.º', getValue: (_, index) => index + 1, stripHtml: false },
+            { header: 'Título', getValue: item => item.title || '' },
+            { header: 'Mensaje', getValue: item => stripHtml(item.message || ''), stripHtml: false, maxLength: 220 },
+            { header: 'Tipo', getValue: item => item.type || 'general', stripHtml: false },
+            { header: 'Fecha', getValue: item => item.date ? formatDateTime(item.date) : '', stripHtml: false },
+            { header: 'Adjunto', getValue: item => item.attachment ? (item.attachment.name || 'Documento adjunto') : 'N/A', stripHtml: false },
+            { header: 'Estado', getValue: item => item.sent ? 'Enviada' : 'Pendiente', stripHtml: false }
+        ]
+    });
 }
 
 function exportNews() {
-    const dataStr = JSON.stringify(news, null, 2);
-    const dataBlob = new Blob([dataStr], {type: 'application/json'});
-    const url = URL.createObjectURL(dataBlob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `noticias_${new Date().toISOString().split('T')[0]}.json`;
-    link.click();
-    URL.revokeObjectURL(url);
-    showNotification('Noticias exportadas correctamente', 'success');
+    const sortedNews = Array.isArray(news)
+        ? [...news].sort((a, b) => (b.date || '').localeCompare(a.date || ''))
+        : [];
+
+    exportTableData({
+        data: sortedNews,
+        title: 'Anuncios - Ayuntamiento de Cobreros',
+        filenameBase: 'anuncios',
+        emptyMessage: 'No hay anuncios para exportar',
+        successMessage: 'Anuncios exportados en Word, Excel y PDF',
+        columns: [
+            { header: 'N.º', getValue: (_, index) => index + 1, stripHtml: false },
+            { header: 'Título', getValue: item => item.title || '' },
+            { header: 'Fecha', getValue: item => item.date ? formatDate(item.date) : '' },
+            { header: 'Resumen', getValue: item => stripHtml(item.content || ''), stripHtml: false, maxLength: 200 },
+            { header: 'Imagen', getValue: item => item.image || '', stripHtml: false }
+        ]
+    });
 }
 
 function exportBandos() {
-    const dataStr = JSON.stringify(bandos, null, 2);
-    const dataBlob = new Blob([dataStr], {type: 'application/json'});
-    const url = URL.createObjectURL(dataBlob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `bandos_${new Date().toISOString().split('T')[0]}.json`;
-    link.click();
-    URL.revokeObjectURL(url);
-    showNotification('Bandos exportados correctamente', 'success');
+    const sortedBandos = Array.isArray(bandos)
+        ? [...bandos].sort((a, b) => (b.date || '').localeCompare(a.date || ''))
+        : [];
+
+    exportTableData({
+        data: sortedBandos,
+        title: 'Bandos Municipales - Ayuntamiento de Cobreros',
+        filenameBase: 'bandos',
+        emptyMessage: 'No hay bandos para exportar',
+        successMessage: 'Bandos exportados en Word, Excel y PDF',
+        columns: [
+            { header: 'N.º', getValue: (_, index) => index + 1, stripHtml: false },
+            { header: 'Título', getValue: item => item.title || '' },
+            { header: 'Fecha', getValue: item => item.date ? formatDate(item.date) : '' },
+            { header: 'Contenido', getValue: item => stripHtml(item.content || ''), stripHtml: false, maxLength: 220 },
+            { header: 'Adjunto', getValue: item => (item.attachment && item.attachment.name) || '', stripHtml: false }
+        ]
+    });
 }
 
 function exportEvents() {
-    const dataStr = JSON.stringify(events, null, 2);
-    const dataBlob = new Blob([dataStr], {type: 'application/json'});
-    const url = URL.createObjectURL(dataBlob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `eventos_${new Date().toISOString().split('T')[0]}.json`;
-    link.click();
-    URL.revokeObjectURL(url);
-    showNotification('Eventos exportados correctamente', 'success');
+    const sortedEvents = Array.isArray(events)
+        ? [...events].sort((a, b) => (a.date || '').localeCompare(b.date || ''))
+        : [];
+
+    exportTableData({
+        data: sortedEvents,
+        title: 'Eventos de Cultura y Ocio - Ayuntamiento de Cobreros',
+        filenameBase: 'eventos',
+        emptyMessage: 'No hay eventos para exportar',
+        successMessage: 'Eventos exportados en Word, Excel y PDF',
+        columns: [
+            { header: 'N.º', getValue: (_, index) => index + 1, stripHtml: false },
+            { header: 'Título', getValue: item => item.title || '' },
+            { header: 'Fecha', getValue: item => item.date ? formatDate(item.date) : '' },
+            { header: 'Hora', getValue: item => item.time || '', stripHtml: false },
+            { header: 'Ubicación', getValue: item => item.location || '' },
+            { header: 'Categoría', getValue: item => item.category || '' },
+            { header: 'Descripción', getValue: item => stripHtml(item.description || ''), stripHtml: false, maxLength: 220 }
+        ]
+    });
 }
 
-// Funciones para gestionar eventos
+function downloadBlob(blob, filename) {
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+}
+
+function getCurrentDateForFilename() {
+    const now = new Date();
+    const day = String(now.getDate()).padStart(2, '0');
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const year = now.getFullYear();
+    return `${day}-${month}-${year}`;
+}
+
+function stripHtml(value) {
+    if (value === null || value === undefined) {
+        return '';
+    }
+    return value.toString().replace(/<[^>]*>/g, ' ');
+}
+
+function sanitizeExportValue(value, maxLength, options = {}) {
+    const { stripHtmlContent = true } = options;
+
+    let result;
+    if (value === null || value === undefined) {
+        result = '';
+    } else if (typeof value === 'boolean') {
+        result = value ? 'Sí' : 'No';
+    } else if (value instanceof Date) {
+        result = value.toLocaleString('es-ES');
+                        } else {
+        result = value.toString();
+    }
+
+    if (stripHtmlContent) {
+        result = stripHtml(result);
+    }
+
+    result = result.replace(/\r?\n|\r/g, ' ').replace(/\s+/g, ' ').trim();
+
+    if (maxLength && result.length > maxLength) {
+        result = `${result.slice(0, Math.max(0, maxLength - 3))}...`;
+    }
+
+    return result;
+}
+
+function buildRowsFromColumns(data, columns) {
+    return data.map((item, index) =>
+        columns.map(col => {
+            try {
+                const raw = col.getValue ? col.getValue(item, index) : (col.key ? item[col.key] : '');
+                return sanitizeExportValue(raw, col.maxLength, { stripHtmlContent: col.stripHtml !== false });
+            } catch (error) {
+                console.error('Error preparando datos para exportación:', error);
+                return '';
+            }
+        })
+    );
+}
+
+function buildHtmlTable(headers, rows) {
+    if (!Array.isArray(headers) || headers.length === 0) {
+        return '<table><tbody><tr><td>Sin datos</td></tr></tbody></table>';
+    }
+
+    const headerRow = headers.map(header => `<th>${escapeHtml(header)}</th>`).join('');
+    const bodyRows = rows.length
+        ? rows.map(row => `<tr>${row.map(cell => `<td>${escapeHtml(cell)}</td>`).join('')}</tr>`).join('')
+        : `<tr><td colspan="${headers.length}" style="text-align: center;">Sin datos</td></tr>`;
+
+    return `
+        <table>
+            <thead>
+                <tr>${headerRow}</tr>
+            </thead>
+            <tbody>
+                ${bodyRows}
+            </tbody>
+        </table>
+    `;
+}
+
+function updateDocumentDescriptionHiddenField() {
+    const hiddenField = document.getElementById('documentDescription');
+    if (!hiddenField) {
+        return;
+    }
+
+    if (documentDescriptionEditor) {
+        hiddenField.value = documentDescriptionEditor.root.innerHTML.trim();
+                    } else {
+        const editorElement = document.getElementById('documentDescriptionEditor');
+        if (editorElement) {
+            hiddenField.value = editorElement.innerHTML || editorElement.textContent || '';
+        }
+    }
+}
+
+function initializeDocumentDescriptionEditor() {
+    const editorElement = document.getElementById('documentDescriptionEditor');
+    if (!editorElement) {
+                    return;
+                }
+                
+    if (typeof Quill === 'undefined') {
+        console.warn('Quill no está disponible para el editor de documentos. Reintentando en 500ms.');
+        setTimeout(initializeDocumentDescriptionEditor, 500);
+        return;
+    }
+
+    if (documentDescriptionEditor) {
+        return;
+    }
+
+    documentDescriptionEditor = new Quill('#documentDescriptionEditor', {
+                    theme: 'snow',
+                    modules: {
+            toolbar: DEFAULT_QUILL_TOOLBAR
+        }
+    });
+
+    editorElement.quillEditor = documentDescriptionEditor;
+
+    const hiddenField = document.getElementById('documentDescription');
+    if (hiddenField) {
+        const syncHiddenField = () => updateDocumentDescriptionHiddenField();
+        documentDescriptionEditor.on('text-change', syncHiddenField);
+        syncHiddenField();
+    }
+}
+
+function togglePasswordVisibility(inputId, triggerButton) {
+    const input = document.getElementById(inputId);
+    if (!input) {
+        return;
+    }
+
+    const isPassword = input.type === 'password';
+    input.type = isPassword ? 'text' : 'password';
+
+    if (triggerButton) {
+        triggerButton.setAttribute('aria-label', isPassword ? 'Ocultar contraseña' : 'Mostrar contraseña');
+        const icon = triggerButton.querySelector('i');
+        if (icon) {
+            icon.classList.toggle('fa-eye', !isPassword);
+            icon.classList.toggle('fa-eye-slash', isPassword);
+        }
+    }
+}
+
+function buildKeyValueTable(entries) {
+    if (!Array.isArray(entries) || entries.length === 0) {
+        return '<p style="margin: 0.5rem 0;">Sin datos.</p>';
+    }
+
+    const rows = entries.map(entry => `
+        <tr>
+            <th scope="row">${escapeHtml(entry.label || '')}</th>
+            <td>${escapeHtml(entry.value || '')}</td>
+        </tr>
+    `).join('');
+
+    return `
+        <table class="kv-table">
+            <tbody>
+                ${rows}
+            </tbody>
+        </table>
+    `;
+}
+
+function getStatisticsSnapshot() {
+    const totalUsers = Array.isArray(users) ? users.length : 0;
+    const totalAdmins = Array.isArray(administrators) ? administrators.length : 0;
+    const totalDocuments = Array.isArray(documents) ? documents.length : 0;
+    const totalNotificationsStored = Array.isArray(notifications) ? notifications.length : 0;
+    const totalNews = Array.isArray(news) ? news.length : 0;
+    const totalBandos = Array.isArray(bandos) ? bandos.length : 0;
+    const totalEvents = Array.isArray(events) ? events.length : 0;
+    const totalQuickAccess = Array.isArray(quickAccess) ? quickAccess.length : 0;
+    const totalTarjetasCultura = Array.isArray(culturaOcioConfig?.tarjetas) ? culturaOcioConfig.tarjetas.length : 0;
+    const totalInstalaciones = Array.isArray(culturaOcioConfig?.instalaciones) ? culturaOcioConfig.instalaciones.length : 0;
+    const totalPestanas = Array.isArray(culturaOcioConfig?.pestanasPersonalizadas) ? culturaOcioConfig.pestanasPersonalizadas.length : 0;
+
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const weekAgo = new Date(now);
+    weekAgo.setDate(now.getDate() - 7);
+
+    const localitiesSet = new Set();
+    let newUsersCount = 0;
+    let activeUsersRecent = 0;
+    let usersWithNotifications = 0;
+
+    if (Array.isArray(users)) {
+        users.forEach(user => {
+            if (Array.isArray(user.localities)) {
+                user.localities.forEach(locality => {
+                    if (locality && typeof locality === 'string') {
+                        localitiesSet.add(locality.trim());
+                    }
+                });
+            }
+
+            const registrationDate = normalizeToDate(user.registrationDate || user.createdAt || user.created_at);
+            if (registrationDate) {
+                if (registrationDate >= startOfMonth) {
+                    newUsersCount++;
+                }
+                if (registrationDate >= weekAgo) {
+                    activeUsersRecent++;
+                }
+            }
+
+            if (user.notificationConsent && user.fcmToken) {
+                usersWithNotifications++;
+            }
+        });
+    }
+
+    if (activeUsersRecent === 0 && Array.isArray(users)) {
+        activeUsersRecent = usersWithNotifications;
+    }
+
+    const notificationsSentCountRaw = parseInt(localStorage.getItem('notificationsSentCount') || '0', 10);
+    const notificationsSentFallback = Array.isArray(notifications) ? notifications.length : 0;
+    const totalNotificationsSent = Number.isNaN(notificationsSentCountRaw)
+        ? notificationsSentFallback
+        : Math.max(notificationsSentCountRaw, notificationsSentFallback);
+
+    let notificationsSuccessRate = '-';
+    let notificationsInvalidTokens = 0;
+    const statsSummaryRaw = localStorage.getItem('notificationsStatsSummary');
+    if (statsSummaryRaw) {
+        try {
+            const statsSummary = JSON.parse(statsSummaryRaw);
+            if (typeof statsSummary.sent === 'number' && typeof statsSummary.totalUsers === 'number' && statsSummary.totalUsers > 0) {
+                notificationsSuccessRate = `${((statsSummary.sent / statsSummary.totalUsers) * 100).toFixed(0)}%`;
+            } else if (typeof statsSummary.successRate === 'string') {
+                notificationsSuccessRate = statsSummary.successRate;
+            }
+            if (typeof statsSummary.invalidTokens === 'number') {
+                notificationsInvalidTokens = statsSummary.invalidTokens;
+            }
+        } catch (error) {
+            console.warn('No se pudo procesar estadísticas de notificaciones guardadas:', error);
+        }
+    }
+
+    let mostUsedNotificationType = '-';
+    if (Array.isArray(notifications) && notifications.length > 0) {
+        const typeCounts = notifications.reduce((acc, notif) => {
+            const type = (notif.type || 'general').toString().trim().toLowerCase();
+            acc[type] = (acc[type] || 0) + 1;
+            return acc;
+        }, {});
+        const topEntry = Object.entries(typeCounts).sort((a, b) => b[1] - a[1])[0];
+        if (topEntry) {
+            mostUsedNotificationType = topEntry[0];
+        }
+    }
+
+    const totalAppointments = Array.isArray(appointments) ? appointments.length : 0;
+    const pendingAppointments = Array.isArray(appointments) ? appointments.filter(a => a.status === 'pending').length : 0;
+    const confirmedAppointments = Array.isArray(appointments) ? appointments.filter(a => a.status === 'confirmed').length : 0;
+    const cancelledAppointments = Array.isArray(appointments) ? appointments.filter(a => a.status === 'cancelled').length : 0;
+    const completedAppointments = Array.isArray(appointments) ? appointments.filter(a => a.status === 'completed').length : 0;
+    const noShowAppointments = Array.isArray(appointments) ? appointments.filter(a => a.status === 'no_show').length : 0;
+
+    return {
+        users: {
+            total: totalUsers,
+            newThisMonth: newUsersCount,
+            activeThisWeek: activeUsersRecent,
+            localitiesCount: localitiesSet.size,
+            localitiesList: Array.from(localitiesSet).sort().join(', ') || 'Sin localidades registradas',
+            withNotifications: usersWithNotifications
+        },
+        notifications: {
+            totalStored: totalNotificationsStored,
+            totalSent: totalNotificationsSent,
+            successRate: notificationsSuccessRate,
+            invalidTokens: notificationsInvalidTokens,
+            mostUsedType: mostUsedNotificationType
+        },
+        appointments: {
+            total: totalAppointments,
+            pending: pendingAppointments,
+            confirmed: confirmedAppointments,
+            cancelled: cancelledAppointments,
+            completed: completedAppointments,
+            noShow: noShowAppointments
+        },
+        content: {
+            news: totalNews,
+            bandos: totalBandos,
+            events: totalEvents,
+            quickAccess: totalQuickAccess,
+            culturaTarjetas: totalTarjetasCultura,
+            culturaInstalaciones: totalInstalaciones,
+            culturaPestanas: totalPestanas,
+            documents: totalDocuments,
+            admins: totalAdmins
+        }
+    };
+}
+
+function exportTableData({
+    data,
+    title,
+    filenameBase,
+    columns,
+    emptyMessage,
+    successMessage,
+    extraPdfInfo = []
+}) {
+    if (!Array.isArray(data) || data.length === 0) {
+        showNotification(emptyMessage || 'No hay datos para exportar', 'warning');
+        return;
+    }
+
+    if (!Array.isArray(columns) || columns.length === 0) {
+        console.warn('No se especificaron columnas para exportación.');
+        showNotification('No se pudo exportar: configuración incompleta.', 'error');
+        return;
+    }
+
+    const exportDate = getCurrentDateForFilename();
+    const generatedAt = new Date().toLocaleString('es-ES');
+    const headers = columns.map(col => col.header);
+    const rows = buildRowsFromColumns(data, columns);
+
+    const tableHtml = buildHtmlTable(headers, rows);
+
+    const baseStyles = `
+        body { font-family: Arial, sans-serif; color: #1f2937; }
+        h1, h2, h3 { color: #1f2937; }
+        table { border-collapse: collapse; width: 100%; margin-top: 1.5rem; }
+        th, td { border: 1px solid #1f2937; padding: 6px 8px; text-align: left; vertical-align: top; }
+        th { background: #e5e7eb; }
+        caption { caption-side: top; text-align: left; font-weight: 600; margin-bottom: 0.5rem; }
+        p.meta { font-size: 0.95rem; margin: 0.25rem 0; }
+    `;
+
+    const wordContent = `
+        <!DOCTYPE html>
+        <html>
+            <head>
+                <meta charset="utf-8">
+                <style>${baseStyles}</style>
+            </head>
+            <body>
+                <h1>${escapeHtml(title)}</h1>
+                <p class="meta"><strong>Generado:</strong> ${escapeHtml(generatedAt)}</p>
+                ${tableHtml}
+            </body>
+        </html>
+    `;
+    const wordBlob = new Blob(['\ufeff', wordContent], { type: 'application/msword' });
+    downloadBlob(wordBlob, `${filenameBase}_${exportDate}.doc`);
+
+    const excelContent = `
+        <!DOCTYPE html>
+        <html>
+            <head>
+                <meta charset="UTF-8">
+                <style>${baseStyles}</style>
+            </head>
+            <body>
+                <h2>${escapeHtml(title)}</h2>
+                <p class="meta">Generado: ${escapeHtml(generatedAt)}</p>
+                ${tableHtml}
+            </body>
+        </html>
+    `;
+    const excelBlob = new Blob(['\ufeff', excelContent], { type: 'application/vnd.ms-excel' });
+    downloadBlob(excelBlob, `${filenameBase}_${exportDate}.xls`);
+
+    const pdfLines = [
+        title,
+        `Generado: ${generatedAt}`,
+        ...extraPdfInfo.filter(Boolean),
+        ''
+    ];
+
+    const headerLine = headers.join(' | ');
+    pdfLines.push(headerLine);
+    pdfLines.push('-'.repeat(Math.min(160, headerLine.length || 40)));
+
+    rows.forEach(row => {
+        const truncatedRow = row.map(cell => (cell.length > 120 ? `${cell.slice(0, 117)}...` : cell));
+        pdfLines.push(truncatedRow.join(' | '));
+    });
+
+    const pdfBlob = createPdfBlobFromLines(pdfLines);
+    downloadBlob(pdfBlob, `${filenameBase}_${exportDate}.pdf`);
+
+    showNotification(successMessage || 'Datos exportados en Word, Excel y PDF', 'success');
+}
+
+function createPdfBlobFromLines(lines) {
+    const pageWidth = 612; // 8.5in * 72
+    const pageHeight = 792; // 11in * 72
+    const margin = 48; // 2/3 in
+    const fontSize = 12;
+    const lineHeight = Math.round(fontSize * 1.3);
+    const availableHeight = pageHeight - margin * 2;
+    const linesPerPage = Math.max(1, Math.floor(availableHeight / lineHeight));
+
+    const sanitizedLines = Array.isArray(lines) && lines.length > 0 ? lines : ['Sin datos'];
+    const pages = [];
+    for (let i = 0; i < sanitizedLines.length; i += linesPerPage) {
+        pages.push(sanitizedLines.slice(i, i + linesPerPage));
+    }
+    if (pages.length === 0) {
+        pages.push(['Sin datos']);
+    }
+
+    const escapePdfText = (text) => {
+        if (text === null || text === undefined) return '';
+        return text.toString()
+            .replace(/\\/g, '\\\\')
+            .replace(/\(/g, '\\(')
+            .replace(/\)/g, '\\)')
+            .replace(/\r?\n|\r/g, ' ');
+    };
+
+    const buildContentStream = (pageLines) => {
+        let stream = 'BT\n/F1 ' + fontSize + ' Tf\n';
+        stream += `${margin} ${pageHeight - margin} Td\n`;
+        pageLines.forEach((line, index) => {
+            const safeLine = escapePdfText(line);
+            if (index === 0) {
+                stream += `(${safeLine}) Tj\n`;
+    } else {
+                stream += `0 -${lineHeight} Td\n(${safeLine}) Tj\n`;
+            }
+        });
+        stream += 'ET\n';
+        return stream;
+    };
+
+    const totalObjects = 3 + pages.length * 2;
+    const offsets = new Array(totalObjects + 1).fill(0);
+    let pdf = '%PDF-1.4\n';
+
+    const writeObject = (objNumber, body) => {
+        offsets[objNumber] = pdf.length;
+        pdf += `${objNumber} 0 obj\n${body}\nendobj\n`;
+    };
+
+    const kidsRefs = pages.map((_, idx) => `${4 + idx * 2 + 1} 0 R`).join(' ');
+
+    writeObject(1, '<< /Type /Catalog /Pages 2 0 R >>');
+    writeObject(2, `<< /Type /Pages /Kids [ ${kidsRefs} ] /Count ${pages.length} >>`);
+    writeObject(3, '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>');
+
+    pages.forEach((pageLines, index) => {
+        const content = buildContentStream(pageLines);
+        const contentLength = content.length;
+        const contentObjNumber = 4 + index * 2;
+        const pageObjNumber = contentObjNumber + 1;
+
+        writeObject(contentObjNumber, `<< /Length ${contentLength} >>\nstream\n${content}endstream`);
+        writeObject(pageObjNumber,
+            `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${pageWidth} ${pageHeight}] ` +
+            `/Contents ${contentObjNumber} 0 R /Resources << /Font << /F1 3 0 R >> >> >>`);
+    });
+
+    const xrefOffset = pdf.length;
+    pdf += `xref\n0 ${totalObjects + 1}\n`;
+    pdf += '0000000000 65535 f \n';
+    for (let i = 1; i <= totalObjects; i++) {
+        pdf += `${offsets[i].toString().padStart(10, '0')} 00000 n \n`;
+    }
+    pdf += `trailer\n<< /Size ${totalObjects + 1} /Root 1 0 R >>\nstartxref\n${xrefOffset}\n%%EOF`;
+
+    return new Blob([pdf], { type: 'application/pdf' });
+}
+
+function exportAppointments() {
+    try {
+        if (!appointments || appointments.length === 0) {
+            showNotification('No hay citas para exportar', 'warning');
+                return;
+            }
+            
+        const exportDate = getCurrentDateForFilename();
+        const sortedAppointments = [...appointments].sort((a, b) => {
+            const dateA = a.date || '';
+            const dateB = b.date || '';
+            if (dateA !== dateB) {
+                return dateA.localeCompare(dateB);
+            }
+            const timeA = a.time || '';
+            const timeB = b.time || '';
+            if (timeA !== timeB) {
+                return timeA.localeCompare(timeB);
+            }
+            return (a.createdAt || '').localeCompare(b.createdAt || '');
+        });
+
+        const headers = [
+            'N.º',
+            'Nombre',
+            'DNI',
+            'Email',
+            'Teléfono',
+            'Servicio',
+            'Fecha',
+            'Hora',
+            'Estado',
+            'Creada',
+            'Actualizada',
+            'Comentarios'
+        ];
+
+        const tableRows = sortedAppointments.map((appointment, index) => {
+            const serviceName = getServiceName(appointment.service);
+            const statusLabel = getStatusText(appointment.status);
+            const createdAt = appointment.createdAt ? formatDateTime(appointment.createdAt) : '';
+            const updatedAt = appointment.updatedAt ? formatDateTime(appointment.updatedAt) : '';
+            const comments = appointment.comments ? appointment.comments : '';
+
+            return `
+                <tr>
+                    <td>${index + 1}</td>
+                    <td>${escapeHtml(appointment.name || '')}</td>
+                    <td>${escapeHtml(appointment.dni || '')}</td>
+                    <td>${escapeHtml(appointment.email || '')}</td>
+                    <td>${escapeHtml(appointment.phone || '')}</td>
+                    <td>${escapeHtml(serviceName || '')}</td>
+                    <td>${escapeHtml(appointment.date || '')}</td>
+                    <td>${escapeHtml(appointment.time || '')}</td>
+                    <td>${escapeHtml(statusLabel || '')}</td>
+                    <td>${escapeHtml(createdAt)}</td>
+                    <td>${escapeHtml(updatedAt)}</td>
+                    <td>${escapeHtml(comments)}</td>
+                </tr>
+            `;
+        }).join('');
+
+        const tableHtml = `
+            <table>
+                <thead>
+                    <tr>${headers.map(header => `<th>${escapeHtml(header)}</th>`).join('')}</tr>
+                </thead>
+                <tbody>
+                    ${tableRows}
+                </tbody>
+            </table>
+        `;
+
+        const title = 'Listado de Citas Previas - Ayuntamiento de Cobreros';
+        const generatedAt = new Date().toLocaleString('es-ES');
+
+        // Word
+        const wordContent = `
+            <!DOCTYPE html>
+            <html>
+                <head>
+                    <meta charset="utf-8">
+                    <style>
+                        body { font-family: Arial, sans-serif; color: #1f2937; }
+                        h1 { text-align: center; }
+                        table { border-collapse: collapse; width: 100%; margin-top: 1.5rem; }
+                        th, td { border: 1px solid #1f2937; padding: 6px 8px; text-align: left; }
+                        th { background: #e5e7eb; }
+                        caption { caption-side: top; text-align: left; font-weight: 600; margin-bottom: 0.5rem; }
+                    </style>
+                </head>
+                <body>
+                    <h1>${escapeHtml(title)}</h1>
+                    <p><strong>Generado:</strong> ${escapeHtml(generatedAt)}</p>
+                    ${tableHtml}
+                </body>
+            </html>
+        `;
+        const wordBlob = new Blob(['\ufeff', wordContent], { type: 'application/msword' });
+        downloadBlob(wordBlob, `citas_${exportDate}.doc`);
+
+        // Excel
+        const excelContent = `
+            <!DOCTYPE html>
+            <html>
+                <head>
+                    <meta charset="UTF-8">
+                </head>
+                <body>
+                    <h2>${escapeHtml(title)}</h2>
+                    <p>Generado: ${escapeHtml(generatedAt)}</p>
+                    ${tableHtml}
+                </body>
+            </html>
+        `;
+        const excelBlob = new Blob(['\ufeff', excelContent], { type: 'application/vnd.ms-excel' });
+        downloadBlob(excelBlob, `citas_${exportDate}.xls`);
+
+        // PDF
+        const pdfLines = [
+            title,
+            `Generado: ${generatedAt}`,
+            ''
+        ];
+
+        pdfLines.push(headers.join(' | '));
+        pdfLines.push('-'.repeat(112));
+
+        sortedAppointments.forEach((appointment, index) => {
+            const serviceName = getServiceName(appointment.service);
+            const statusLabel = getStatusText(appointment.status);
+            const createdAt = appointment.createdAt ? formatDateTime(appointment.createdAt) : '';
+            const updatedAt = appointment.updatedAt ? formatDateTime(appointment.updatedAt) : '';
+            const baseLine = `${index + 1}. ${appointment.date || ''} ${appointment.time || ''} | ${serviceName || 'Sin servicio'} | ${appointment.name || 'Sin nombre'} | ${statusLabel}`;
+            pdfLines.push(baseLine.trim());
+
+            if (appointment.phone || appointment.email) {
+                const contactLine = `   Contacto: ${(appointment.phone || 'Sin teléfono')} | ${(appointment.email || 'Sin email')}`;
+                pdfLines.push(contactLine);
+            }
+            if (appointment.dni) {
+                pdfLines.push(`   DNI: ${appointment.dni}`);
+            }
+            if (appointment.comments) {
+                pdfLines.push(`   Comentarios: ${appointment.comments}`);
+            }
+            pdfLines.push(`   Creada: ${createdAt} | Actualizada: ${updatedAt}`);
+            pdfLines.push('');
+        });
+
+        const pdfBlob = createPdfBlobFromLines(pdfLines);
+        downloadBlob(pdfBlob, `citas_${exportDate}.pdf`);
+
+        showNotification('Citas exportadas en Word, Excel y PDF', 'success');
+    } catch (error) {
+        console.error('Error exportando citas:', error);
+        showNotification('Error al exportar las citas. Inténtelo de nuevo.', 'error');
+    }
+}
+
 function openEventEditor(eventId = null) {
     const modal = document.getElementById('eventModal');
     const modalTitle = document.getElementById('eventModalTitle');
     const form = document.getElementById('eventForm');
     
     if (eventId) {
-        // Editar evento existente
         const event = events.find(e => e.id === eventId);
         if (event) {
             modalTitle.textContent = '✏️ Editar Evento';
@@ -3428,92 +4798,58 @@ function openEventEditor(eventId = null) {
             document.getElementById('eventLocation').value = event.location;
             document.getElementById('eventCategory').value = event.category;
             
-            // Inicializar editor Quill con el contenido del evento
             setTimeout(() => {
                 const editorElement = document.getElementById('eventDescriptionEditor');
-                if (!editorElement || typeof Quill === 'undefined') return;
+                if (!editorElement) return;
                 
-                // Verificar si el editor ya existe
-                if (editorElement.quillEditor || modal.eventQuillEditor) {
-                    // El editor ya existe, solo actualizar el contenido
-                    const quillInstance = editorElement.quillEditor || modal.eventQuillEditor;
-                    if (event.description) {
-                        if (event.description.includes('<')) {
-                            quillInstance.root.innerHTML = event.description;
-                        } else {
-                            quillInstance.root.textContent = event.description;
-                        }
-                    } else {
-                        quillInstance.root.innerHTML = '';
-                    }
+                if (typeof Quill === 'undefined') {
+                    editorElement.innerHTML = event.description || '';
                     return;
                 }
                 
-                // Crear nuevo editor
-                modal.eventQuillEditor = new Quill('#eventDescriptionEditor', {
-                    theme: 'snow',
-                    modules: {
-                        toolbar: [
-                            [{ 'header': [1, 2, 3, false] }],
-                            ['bold', 'italic', 'underline', 'strike'],
-                            [{ 'list': 'ordered'}, { 'list': 'bullet' }],
-                            [{ 'align': [] }],
-                            ['link', 'image', 'blockquote', 'code-block']
-                        ]
-                    }
-                });
-                
-                // Guardar referencia también en el elemento
-                editorElement.quillEditor = modal.eventQuillEditor;
-                
-                // Establecer contenido
-                if (event.description) {
-                    if (event.description.includes('<')) {
-                        // Es HTML
-                        modal.eventQuillEditor.root.innerHTML = event.description;
-                    } else {
-                        // Es texto plano
-                        modal.eventQuillEditor.root.textContent = event.description;
-                    }
+                if (!modal.eventQuillEditor) {
+                    modal.eventQuillEditor = new Quill('#eventDescriptionEditor', {
+                        theme: 'snow',
+                        modules: {
+                            toolbar: DEFAULT_QUILL_TOOLBAR
+                        }
+                    });
+                    editorElement.quillEditor = modal.eventQuillEditor;
                 }
-            }, 100);
+                
+                if (event.description) {
+                    modal.eventQuillEditor.root.innerHTML = event.description;
+                } else {
+                    modal.eventQuillEditor.root.innerHTML = '';
+                }
+            }, 0);
         }
     } else {
-        // Nuevo evento
         modalTitle.textContent = '🎉 Nuevo Evento';
         form.reset();
         document.getElementById('eventId').value = '';
         
-        // Inicializar editor Quill vacío (solo si no existe)
         setTimeout(() => {
             const editorElement = document.getElementById('eventDescriptionEditor');
-            if (!editorElement || typeof Quill === 'undefined') return;
+            if (!editorElement) return;
             
-            // Verificar si el editor ya existe
-            if (editorElement.quillEditor || modal.eventQuillEditor) {
-                // El editor ya existe, solo limpiar el contenido
-                const quillInstance = editorElement.quillEditor || modal.eventQuillEditor;
-                quillInstance.root.innerHTML = '';
+            if (typeof Quill === 'undefined') {
+                editorElement.innerHTML = '';
                 return;
             }
             
-            // Crear nuevo editor
-            modal.eventQuillEditor = new Quill('#eventDescriptionEditor', {
-                theme: 'snow',
-                modules: {
-                    toolbar: [
-                        [{ 'header': [1, 2, 3, false] }],
-                        ['bold', 'italic', 'underline', 'strike'],
-                        [{ 'list': 'ordered'}, { 'list': 'bullet' }],
-                        [{ 'align': [] }],
-                        ['link', 'image', 'blockquote', 'code-block']
-                    ]
-                }
-            });
-            
-            // Guardar referencia también en el elemento
-            editorElement.quillEditor = modal.eventQuillEditor;
-        }, 100);
+            if (!modal.eventQuillEditor) {
+                modal.eventQuillEditor = new Quill('#eventDescriptionEditor', {
+                    theme: 'snow',
+                    modules: {
+                        toolbar: DEFAULT_QUILL_TOOLBAR
+                    }
+                });
+                editorElement.quillEditor = modal.eventQuillEditor;
+            } else {
+                modal.eventQuillEditor.root.innerHTML = '';
+            }
+        }, 0);
     }
     
     openModal('eventModal');
@@ -3807,7 +5143,6 @@ function switchCulturaTab(tabName, event = null) {
         showNotification('Error al cambiar de pestaña. Por favor, inténtelo de nuevo.', 'error');
     }
 }
-
 function loadCulturaOcioConfig() {
     const saved = localStorage.getItem('culturaOcioConfig');
     if (saved) {
@@ -3952,7 +5287,6 @@ function addCulturaTarjeta() {
     
     openModal('tarjetaConfigModal');
 }
-
 function editCulturaTarjeta(tarjetaId) {
     const tarjeta = culturaOcioConfig.tarjetas.find(t => t.id === tarjetaId);
     if (!tarjeta) return;
@@ -4596,7 +5930,6 @@ function editCulturaCard(cardId) {
     loadCulturaCardsList();
     showNotification('Tarjeta actualizada correctamente', 'success');
 }
-
 function deleteCulturaCard(cardId) {
     if (confirm('¿Estás seguro de que quieres eliminar esta tarjeta?')) {
         culturaOcioConfig.tarjetas = culturaOcioConfig.tarjetas.filter(c => c.id !== cardId);
@@ -4606,7 +5939,6 @@ function deleteCulturaCard(cardId) {
         showNotification('Tarjeta eliminada correctamente', 'success');
     }
 }
-
 function loadCulturaInstalacionesList() {
     const instalacionesList = document.getElementById('culturaInstalacionesList');
     if (!instalacionesList) return;
@@ -4702,32 +6034,217 @@ function deleteCulturaInstalacion(instalacionId) {
 }
 
 function exportCulturaOcio() {
-    const data = {
-        config: culturaOcioConfig,
-        events: events
-    };
-    
-    const dataStr = JSON.stringify(data, null, 2);
-    const dataBlob = new Blob([dataStr], {type: 'application/json'});
-    const url = URL.createObjectURL(dataBlob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `cultura_ocio_${new Date().toISOString().split('T')[0]}.json`;
-    link.click();
-    URL.revokeObjectURL(url);
-    showNotification('Datos de Cultura y Ocio exportados correctamente', 'success');
+    try {
+        const tarjetas = Array.isArray(culturaOcioConfig.tarjetas) ? [...culturaOcioConfig.tarjetas] : [];
+        const instalaciones = Array.isArray(culturaOcioConfig.instalaciones) ? [...culturaOcioConfig.instalaciones] : [];
+        const pestañas = Array.isArray(culturaOcioConfig.pestanasPersonalizadas) ? [...culturaOcioConfig.pestanasPersonalizadas] : [];
+        const eventos = Array.isArray(events) ? [...events] : [];
+
+        if (
+            (!culturaOcioConfig || !Object.keys(culturaOcioConfig).length) &&
+            tarjetas.length === 0 &&
+            instalaciones.length === 0 &&
+            pestañas.length === 0 &&
+            eventos.length === 0
+        ) {
+            showNotification('No hay datos de Cultura y Ocio para exportar', 'warning');
+            return;
+        }
+
+        const exportDate = getCurrentDateForFilename();
+        const generatedAt = new Date().toLocaleString('es-ES');
+        const title = 'Cultura y Ocio - Ayuntamiento de Cobreros';
+
+        const baseStyles = `
+            body { font-family: Arial, sans-serif; color: #1f2937; }
+            h1, h2, h3 { color: #1f2937; }
+            table { border-collapse: collapse; width: 100%; margin-top: 1.5rem; }
+            th, td { border: 1px solid #1f2937; padding: 6px 8px; text-align: left; vertical-align: top; }
+            th { background: #e5e7eb; }
+            p.meta { font-size: 0.95rem; margin: 0.25rem 0; }
+        `;
+
+        const sections = [];
+        const pdfLines = [
+            title,
+            `Generado: ${generatedAt}`,
+            ''
+        ];
+
+        const descripcionGeneral = stripHtml(culturaOcioConfig?.descripcion || '');
+
+        let sectionsHtml = `
+            <h1>${escapeHtml(title)}</h1>
+            <p class="meta"><strong>Generado:</strong> ${escapeHtml(generatedAt)}</p>
+            <h2>Configuración General</h2>
+            <p><strong>Título:</strong> ${escapeHtml(culturaOcioConfig?.titulo || '')}</p>
+            ${descripcionGeneral ? `<p><strong>Descripción:</strong> ${escapeHtml(descripcionGeneral)}</p>` : '<p><strong>Descripción:</strong> Sin descripción.</p>'}
+        `;
+
+        pdfLines.push('Configuración general:');
+        pdfLines.push(`Título: ${culturaOcioConfig?.titulo || 'Sin título'}`);
+        if (descripcionGeneral) {
+            pdfLines.push(`Descripción: ${descripcionGeneral}`);
+        }
+        pdfLines.push('');
+
+        const tarjetaColumns = [
+            { header: 'N.º', getValue: (_, index) => index + 1, stripHtml: false },
+            { header: 'Título', getValue: item => item.titulo || item.title || '' },
+            { header: 'Descripción', getValue: item => stripHtml(item.descripcion || item.description || ''), stripHtml: false, maxLength: 220 },
+            { header: 'Enlace', getValue: item => item.enlace || item.link || '', stripHtml: false },
+            { header: 'Icono', getValue: item => item.icono || '', stripHtml: false },
+            { header: 'Orden', getValue: item => item.orden != null ? item.orden : '', stripHtml: false },
+            { header: 'Activa', getValue: item => item.activa === undefined ? '' : (item.activa ? 'Sí' : 'No'), stripHtml: false }
+        ];
+        const tarjetaRows = buildRowsFromColumns(tarjetas, tarjetaColumns);
+
+        if (tarjetaRows.length) {
+            sectionsHtml += `<h2>Tarjetas</h2>${buildHtmlTable(tarjetaColumns.map(c => c.header), tarjetaRows)}`;
+            const headerLine = tarjetaColumns.map(c => c.header).join(' | ');
+            pdfLines.push('Tarjetas:');
+            pdfLines.push(headerLine);
+            pdfLines.push('-'.repeat(Math.min(160, headerLine.length || 40)));
+            tarjetaRows.forEach(row => pdfLines.push(row.map(cell => (cell.length > 120 ? `${cell.slice(0, 117)}...` : cell)).join(' | ')));
+            pdfLines.push('');
+        } else {
+            sectionsHtml += '<h2>Tarjetas</h2><p>Sin tarjetas registradas.</p>';
+            pdfLines.push('Tarjetas: Sin datos');
+            pdfLines.push('');
+        }
+
+        const instalacionesColumns = [
+            { header: 'N.º', getValue: (_, index) => index + 1, stripHtml: false },
+            { header: 'Nombre', getValue: item => item.nombre || '' },
+            { header: 'Descripción', getValue: item => stripHtml(item.descripcion || ''), stripHtml: false, maxLength: 220 },
+            { header: 'Icono', getValue: item => item.icono || '', stripHtml: false },
+            { header: 'Orden', getValue: item => item.orden != null ? item.orden : '', stripHtml: false },
+            { header: 'Activa', getValue: item => item.activa === undefined ? '' : (item.activa ? 'Sí' : 'No'), stripHtml: false }
+        ];
+        const instalacionesRows = buildRowsFromColumns(instalaciones, instalacionesColumns);
+
+        if (instalacionesRows.length) {
+            sectionsHtml += `<h2>Instalaciones</h2>${buildHtmlTable(instalacionesColumns.map(c => c.header), instalacionesRows)}`;
+            const headerLine = instalacionesColumns.map(c => c.header).join(' | ');
+            pdfLines.push('Instalaciones:');
+            pdfLines.push(headerLine);
+            pdfLines.push('-'.repeat(Math.min(160, headerLine.length || 40)));
+            instalacionesRows.forEach(row => pdfLines.push(row.map(cell => (cell.length > 120 ? `${cell.slice(0, 117)}...` : cell)).join(' | ')));
+            pdfLines.push('');
+        } else {
+            sectionsHtml += '<h2>Instalaciones</h2><p>Sin instalaciones registradas.</p>';
+            pdfLines.push('Instalaciones: Sin datos');
+            pdfLines.push('');
+        }
+
+        const pestañasColumns = [
+            { header: 'N.º', getValue: (_, index) => index + 1, stripHtml: false },
+            { header: 'Nombre', getValue: item => item.nombre || item.title || '' },
+            { header: 'ID', getValue: item => item.id || '', stripHtml: false },
+            { header: 'Elementos', getValue: item => Array.isArray(item.elementos) ? item.elementos.length : 0, stripHtml: false },
+            { header: 'Activa', getValue: item => item.activa === undefined ? '' : (item.activa ? 'Sí' : 'No'), stripHtml: false },
+            { header: 'Creada', getValue: item => item.createdAt ? formatDateTime(item.createdAt) : '', stripHtml: false }
+        ];
+        const pestañasRows = buildRowsFromColumns(pestañas, pestañasColumns);
+
+        if (pestañasRows.length) {
+            sectionsHtml += `<h2>Pestañas Personalizadas</h2>${buildHtmlTable(pestañasColumns.map(c => c.header), pestañasRows)}`;
+            const headerLine = pestañasColumns.map(c => c.header).join(' | ');
+            pdfLines.push('Pestañas personalizadas:');
+            pdfLines.push(headerLine);
+            pdfLines.push('-'.repeat(Math.min(160, headerLine.length || 40)));
+            pestañasRows.forEach(row => pdfLines.push(row.map(cell => (cell.length > 120 ? `${cell.slice(0, 117)}...` : cell)).join(' | ')));
+            pdfLines.push('');
+        } else {
+            sectionsHtml += '<h2>Pestañas Personalizadas</h2><p>No hay pestañas personalizadas.</p>';
+            pdfLines.push('Pestañas personalizadas: Sin datos');
+            pdfLines.push('');
+        }
+
+        const eventosColumns = [
+            { header: 'N.º', getValue: (_, index) => index + 1, stripHtml: false },
+            { header: 'Título', getValue: item => item.title || '' },
+            { header: 'Fecha', getValue: item => item.date ? formatDate(item.date) : '' },
+            { header: 'Hora', getValue: item => item.time || '', stripHtml: false },
+            { header: 'Ubicación', getValue: item => item.location || '' },
+            { header: 'Categoría', getValue: item => item.category || '' },
+            { header: 'Descripción', getValue: item => stripHtml(item.description || ''), stripHtml: false, maxLength: 220 }
+        ];
+        const eventosRows = buildRowsFromColumns(eventos, eventosColumns);
+
+        if (eventosRows.length) {
+            sectionsHtml += `<h2>Eventos</h2>${buildHtmlTable(eventosColumns.map(c => c.header), eventosRows)}`;
+            const headerLine = eventosColumns.map(c => c.header).join(' | ');
+            pdfLines.push('Eventos:');
+            pdfLines.push(headerLine);
+            pdfLines.push('-'.repeat(Math.min(160, headerLine.length || 40)));
+            eventosRows.forEach(row => pdfLines.push(row.map(cell => (cell.length > 120 ? `${cell.slice(0, 117)}...` : cell)).join(' | ')));
+            pdfLines.push('');
+        } else {
+            sectionsHtml += '<h2>Eventos</h2><p>Sin eventos registrados.</p>';
+            pdfLines.push('Eventos: Sin datos');
+            pdfLines.push('');
+        }
+
+        const wordContent = `
+            <!DOCTYPE html>
+            <html>
+                <head>
+                    <meta charset="utf-8">
+                    <style>${baseStyles}</style>
+                </head>
+                <body>
+                    ${sectionsHtml}
+                </body>
+            </html>
+        `;
+        const wordBlob = new Blob(['\ufeff', wordContent], { type: 'application/msword' });
+        downloadBlob(wordBlob, `cultura_ocio_${exportDate}.doc`);
+
+        const excelContent = `
+            <!DOCTYPE html>
+            <html>
+                <head>
+                    <meta charset="UTF-8">
+                    <style>${baseStyles}</style>
+                </head>
+                <body>
+                    ${sectionsHtml}
+                </body>
+            </html>
+        `;
+        const excelBlob = new Blob(['\ufeff', excelContent], { type: 'application/vnd.ms-excel' });
+        downloadBlob(excelBlob, `cultura_ocio_${exportDate}.xls`);
+
+        const pdfBlob = createPdfBlobFromLines(pdfLines);
+        downloadBlob(pdfBlob, `cultura_ocio_${exportDate}.pdf`);
+
+        showNotification('Datos de Cultura y Ocio exportados en Word, Excel y PDF', 'success');
+    } catch (error) {
+        console.error('Error exportando Cultura y Ocio:', error);
+        showNotification('Error al exportar Cultura y Ocio. Inténtelo de nuevo.', 'error');
+    }
 }
 
 function exportQuickAccess() {
-    const dataStr = JSON.stringify(quickAccess, null, 2);
-    const dataBlob = new Blob([dataStr], {type: 'application/json'});
-    const url = URL.createObjectURL(dataBlob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `acceso_rapido_${new Date().toISOString().split('T')[0]}.json`;
-    link.click();
-    URL.revokeObjectURL(url);
-    showNotification('Tarjetas de acceso rápido exportadas correctamente', 'success');
+    const data = Array.isArray(quickAccess) ? [...quickAccess] : [];
+
+    exportTableData({
+        data,
+        title: 'Tarjetas de Acceso Rápido - Ayuntamiento de Cobreros',
+        filenameBase: 'acceso_rapido',
+        emptyMessage: 'No hay tarjetas de acceso rápido para exportar',
+        successMessage: 'Tarjetas de acceso rápido exportadas en Word, Excel y PDF',
+        columns: [
+            { header: 'N.º', getValue: (_, index) => index + 1, stripHtml: false },
+            { header: 'Título', getValue: item => item.titulo || item.title || '' },
+            { header: 'Descripción', getValue: item => stripHtml(item.descripcion || item.description || ''), stripHtml: false, maxLength: 220 },
+            { header: 'Enlace', getValue: item => item.enlace || item.link || '', stripHtml: false },
+            { header: 'Icono', getValue: item => item.icono || '', stripHtml: false },
+            { header: 'Orden', getValue: item => item.orden != null ? item.orden : '', stripHtml: false },
+            { header: 'Activa', getValue: item => item.activa === undefined ? '' : (item.activa ? 'Sí' : 'No'), stripHtml: false }
+        ]
+    });
 }
 
 function exportAllData() {
@@ -4797,7 +6314,7 @@ function handleDataImport(e) {
                 case 'notifications':
                     notifications = data;
                     localStorage.setItem('notifications', JSON.stringify(notifications));
-                    showNotification('Notificaciones importadas correctamente', 'success');
+                    showNotification('Avisos importados correctamente', 'success');
                     break;
                 default:
                     showNotification('Tipo de datos no válido', 'error');
@@ -4839,7 +6356,7 @@ function showUserStats() {
                 </div>
                 <div class="stat-card" style="background: #fef3c7; padding: 1rem; border-radius: 8px; text-align: center;">
                     <h3>${usersWithNotifications}</h3>
-                    <p>Con Notificaciones</p>
+                    <p>Con avisos</p>
                 </div>
             </div>
         </div>
@@ -4852,51 +6369,382 @@ function loadSystemStats() {
     const statsContainer = document.getElementById('systemStats');
     if (!statsContainer) return;
 
-    const totalUsers = users.length;
-    const totalAdmins = administrators.length;
-    const totalDocuments = documents.length;
-    const totalNotifications = notifications.length;
-    const totalNews = news.length;
-    const totalBandos = bandos.length;
-    const totalEvents = events.length;
-    const totalQuickAccess = quickAccess.length;
+    const snapshot = getStatisticsSnapshot();
+    const ultimaNotificacion = localStorage.getItem('notificationsLastSent');
 
     statsContainer.innerHTML = `
         <div class="stats-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
             <div class="stat-card" style="background: #f0f9ff; padding: 1rem; border-radius: 8px; text-align: center; border: 1px solid #0ea5e9;">
-                <h3 style="color: #0ea5e9; margin: 0;">${totalUsers}</h3>
+                <h3 style="color: #0ea5e9; margin: 0;">${snapshot.users.total}</h3>
                 <p style="margin: 0.5rem 0 0 0; color: #64748b;">Usuarios Registrados</p>
             </div>
             <div class="stat-card" style="background: #f0fdf4; padding: 1rem; border-radius: 8px; text-align: center; border: 1px solid #22c55e;">
-                <h3 style="color: #22c55e; margin: 0;">${totalAdmins}</h3>
-                <p style="margin: 0.5rem 0 0 0; color: #64748b;">Administradores</p>
+                <h3 style="color: #22c55e; margin: 0;">${snapshot.users.withNotifications}</h3>
+                <p style="margin: 0.5rem 0 0 0; color: #64748b;">Usuarios con avisos activos</p>
             </div>
             <div class="stat-card" style="background: #fef3c7; padding: 1rem; border-radius: 8px; text-align: center; border: 1px solid #f59e0b;">
-                <h3 style="color: #f59e0b; margin: 0;">${totalDocuments}</h3>
-                <p style="margin: 0.5rem 0 0 0; color: #64748b;">Documentos</p>
+                <h3 style="color: #f59e0b; margin: 0;">${snapshot.notifications.totalSent}</h3>
+                <p style="margin: 0.5rem 0 0 0; color: #64748b;">Avisos enviados</p>
             </div>
             <div class="stat-card" style="background: #fdf2f8; padding: 1rem; border-radius: 8px; text-align: center; border: 1px solid #ec4899;">
-                <h3 style="color: #ec4899; margin: 0;">${totalNotifications}</h3>
-                <p style="margin: 0.5rem 0 0 0; color: #64748b;">Notificaciones</p>
+                <h3 style="color: #ec4899; margin: 0;">${snapshot.notifications.totalStored}</h3>
+                <p style="margin: 0.5rem 0 0 0; color: #64748b;">Avisos almacenados</p>
             </div>
             <div class="stat-card" style="background: #f3e8ff; padding: 1rem; border-radius: 8px; text-align: center; border: 1px solid #a855f7;">
-                <h3 style="color: #a855f7; margin: 0;">${totalNews}</h3>
-                <p style="margin: 0.5rem 0 0 0; color: #64748b;">Noticias</p>
+                <h3 style="color: #a855f7; margin: 0;">${snapshot.content.documents}</h3>
+                <p style="margin: 0.5rem 0 0 0; color: #64748b;">Documentos</p>
             </div>
             <div class="stat-card" style="background: #ecfdf5; padding: 1rem; border-radius: 8px; text-align: center; border: 1px solid #10b981;">
-                <h3 style="color: #10b981; margin: 0;">${totalBandos}</h3>
-                <p style="margin: 0.5rem 0 0 0; color: #64748b;">Bandos</p>
+                <h3 style="color: #10b981; margin: 0;">${snapshot.content.news}</h3>
+                <p style="margin: 0.5rem 0 0 0; color: #64748b;">Noticias</p>
             </div>
             <div class="stat-card" style="background: #fef2f2; padding: 1rem; border-radius: 8px; text-align: center; border: 1px solid #ef4444;">
-                <h3 style="color: #ef4444; margin: 0;">${totalEvents}</h3>
-                <p style="margin: 0.5rem 0 0 0; color: #64748b;">Eventos</p>
+                <h3 style="color: #ef4444; margin: 0;">${snapshot.content.bandos}</h3>
+                <p style="margin: 0.5rem 0 0 0; color: #64748b;">Bandos</p>
             </div>
             <div class="stat-card" style="background: #f0fdfa; padding: 1rem; border-radius: 8px; text-align: center; border: 1px solid #14b8a6;">
-                <h3 style="color: #14b8a6; margin: 0;">${totalQuickAccess}</h3>
-                <p style="margin: 0.5rem 0 0 0; color: #64748b;">Acceso Rápido</p>
+                <h3 style="color: #14b8a6; margin: 0;">${snapshot.content.events}</h3>
+                <p style="margin: 0.5rem 0 0 0; color: #64748b;">Eventos</p>
+            </div>
+            <div class="stat-card" style="background: #f1f5f9; padding: 1rem; border-radius: 8px; text-align: center; border: 1px solid #94a3b8;">
+                <h3 style="color: #475569; margin: 0;">${snapshot.content.quickAccess}</h3>
+                <p style="margin: 0.5rem 0 0 0; color: #64748b;">Acceso rápido</p>
+                <small style="display:block; margin-top:0.5rem; color:#94a3b8;">Último envío: ${ultimaNotificacion ? formatDate(ultimaNotificacion) : 'Sin registros'}</small>
             </div>
         </div>
     `;
+}
+
+function normalizeToDate(value) {
+    if (!value) {
+        return null;
+    }
+    if (value instanceof Date) {
+        return value;
+    }
+    if (typeof value === 'string') {
+        const parsed = new Date(value);
+        return Number.isNaN(parsed.getTime()) ? null : parsed;
+    }
+    if (typeof value.toDate === 'function') {
+        try {
+            return value.toDate();
+        } catch (error) {
+            console.warn('No se pudo convertir valor a fecha mediante toDate():', error);
+        }
+    }
+    if (typeof value === 'object' && typeof value.seconds === 'number') {
+        return new Date(value.seconds * 1000);
+    }
+    return null;
+}
+
+function refreshNotificationStats() {
+    const totalNotificationsEl = document.getElementById('totalNotifications');
+    const successRateEl = document.getElementById('successRate');
+    const invalidTokensEl = document.getElementById('invalidTokens');
+    const mostUsedTypeEl = document.getElementById('mostUsedType');
+
+    if (!totalNotificationsEl && !successRateEl && !invalidTokensEl && !mostUsedTypeEl) {
+        return;
+    }
+
+    const storedSent = parseInt(localStorage.getItem('notificationsSentCount') || '0', 10);
+    const sentFallback = Array.isArray(notifications) ? notifications.length : 0;
+    const totalSent = Number.isNaN(storedSent) ? sentFallback : Math.max(storedSent, sentFallback);
+
+    if (totalNotificationsEl) {
+        totalNotificationsEl.textContent = totalSent.toString();
+    }
+
+    let successRateValue = '-';
+    let invalidTokensValue = 0;
+
+    const statsSummaryRaw = localStorage.getItem('notificationsStatsSummary');
+    if (statsSummaryRaw) {
+        try {
+            const statsSummary = JSON.parse(statsSummaryRaw);
+            if (typeof statsSummary.sent === 'number' && typeof statsSummary.totalUsers === 'number' && statsSummary.totalUsers > 0) {
+                successRateValue = `${((statsSummary.sent / statsSummary.totalUsers) * 100).toFixed(0)}%`;
+            } else if (typeof statsSummary.successRate === 'string') {
+                successRateValue = statsSummary.successRate;
+            }
+            if (typeof statsSummary.invalidTokens === 'number') {
+                invalidTokensValue = statsSummary.invalidTokens;
+            }
+        } catch (error) {
+            console.warn('No se pudo procesar estadísticas de notificaciones guardadas:', error);
+        }
+    }
+
+    if (successRateEl) {
+        successRateEl.textContent = successRateValue;
+    }
+    if (invalidTokensEl) {
+        invalidTokensEl.textContent = invalidTokensValue.toString();
+    }
+
+    if (mostUsedTypeEl) {
+        if (Array.isArray(notifications) && notifications.length > 0) {
+            const typeCounts = notifications.reduce((acc, notif) => {
+                const type = (notif.type || 'general').toString().trim().toLowerCase();
+                acc[type] = (acc[type] || 0) + 1;
+                return acc;
+            }, {});
+            const topEntry = Object.entries(typeCounts).sort((a, b) => b[1] - a[1])[0];
+            mostUsedTypeEl.textContent = topEntry ? topEntry[0] : '-';
+        } else {
+            mostUsedTypeEl.textContent = '-';
+        }
+    }
+}
+
+function refreshStatistics(showNotificationToast = false) {
+    const totalUsersEl = document.getElementById('totalUsers');
+    const newUsersMonthEl = document.getElementById('newUsersMonth');
+    const activeUsersEl = document.getElementById('activeUsers');
+    const usersByLocalitiesEl = document.getElementById('usersByLocalities');
+
+    const hasUserStatsElements = totalUsersEl || newUsersMonthEl || activeUsersEl || usersByLocalitiesEl;
+
+    const totalUsersCount = Array.isArray(users) ? users.length : 0;
+    if (totalUsersEl) {
+        totalUsersEl.textContent = totalUsersCount.toString();
+    }
+
+    if (hasUserStatsElements) {
+        const now = new Date();
+        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+        const weekAgo = new Date(now);
+        weekAgo.setDate(now.getDate() - 7);
+
+        let newUsersCount = 0;
+        let activeUsersCount = 0;
+        const localitiesSet = new Set();
+
+        if (Array.isArray(users)) {
+            users.forEach(user => {
+                const registrationDate = normalizeToDate(user.registrationDate || user.createdAt || user.created_at);
+                if (registrationDate) {
+                    if (registrationDate >= startOfMonth) {
+                        newUsersCount++;
+                    }
+                    if (registrationDate >= weekAgo) {
+                        activeUsersCount++;
+                    }
+                }
+                if (Array.isArray(user.localities)) {
+                    user.localities.forEach(locality => {
+                        if (locality && typeof locality === 'string') {
+                            localitiesSet.add(locality.trim());
+                        }
+                    });
+                }
+            });
+        }
+
+        if (newUsersMonthEl) {
+            newUsersMonthEl.textContent = newUsersCount.toString();
+        }
+
+        if (activeUsersEl) {
+            if (activeUsersCount === 0 && Array.isArray(users)) {
+                activeUsersCount = users.filter(user => user.notificationConsent && user.fcmToken).length;
+            }
+            activeUsersEl.textContent = activeUsersCount.toString();
+        }
+
+        if (usersByLocalitiesEl) {
+            usersByLocalitiesEl.textContent = localitiesSet.size.toString();
+        }
+    }
+
+    refreshNotificationStats();
+
+    if (showNotificationToast) {
+        showNotification('Estadísticas actualizadas', 'success');
+    }
+}
+
+function exportStatisticsPDF() {
+    try {
+        const stats = getStatisticsSnapshot();
+        if (!stats) {
+            showNotification('No se pudieron obtener las estadísticas.', 'error');
+            return;
+        }
+
+        const exportDate = getCurrentDateForFilename();
+        const generatedAt = new Date().toLocaleString('es-ES');
+        const title = 'Estadísticas Avanzadas - Ayuntamiento de Cobreros';
+
+        const baseStyles = `
+            body { font-family: Arial, sans-serif; color: #1f2937; }
+            h1, h2 { color: #1f2937; margin-bottom: 0.5rem; }
+            .section { margin-bottom: 2rem; }
+            .kv-table { border-collapse: collapse; width: 100%; margin-top: 0.5rem; }
+            .kv-table th, .kv-table td { border: 1px solid #1f2937; padding: 6px 8px; text-align: left; vertical-align: top; }
+            .kv-table th { background: #e5e7eb; width: 35%; }
+            p.meta { font-size: 0.95rem; margin: 0.25rem 0; }
+        `;
+
+        const usersSection = buildKeyValueTable([
+            { label: 'Total registrados', value: stats.users.total },
+            { label: 'Nuevos este mes', value: stats.users.newThisMonth },
+            { label: 'Activos (última semana)', value: stats.users.activeThisWeek },
+            { label: 'Usuarios con notificaciones activas', value: stats.users.withNotifications },
+            { label: 'Localidades activas', value: stats.users.localitiesCount },
+            { label: 'Listado de localidades', value: stats.users.localitiesList }
+        ]);
+
+        const notificationsSection = buildKeyValueTable([
+            { label: 'Total almacenadas', value: stats.notifications.totalStored },
+            { label: 'Total enviadas', value: stats.notifications.totalSent },
+            { label: 'Tasa de éxito', value: stats.notifications.successRate },
+            { label: 'Tokens inválidos detectados', value: stats.notifications.invalidTokens },
+            { label: 'Tipo más utilizado', value: stats.notifications.mostUsedType }
+        ]);
+
+        const appointmentsSection = buildKeyValueTable([
+            { label: 'Total citas', value: stats.appointments.total },
+            { label: 'Pendientes', value: stats.appointments.pending },
+            { label: 'Confirmadas', value: stats.appointments.confirmed },
+            { label: 'Canceladas', value: stats.appointments.cancelled },
+            { label: 'Completadas', value: stats.appointments.completed },
+            { label: 'No se presentó', value: stats.appointments.noShow }
+        ]);
+
+        const contentSection = buildKeyValueTable([
+            { label: 'Anuncios publicados', value: stats.content.news },
+            { label: 'Bandos publicados', value: stats.content.bandos },
+            { label: 'Eventos programados', value: stats.content.events },
+            { label: 'Tarjetas de acceso rápido', value: stats.content.quickAccess },
+            { label: 'Tarjetas de Cultura y Ocio', value: stats.content.culturaTarjetas },
+            { label: 'Instalaciones de Cultura y Ocio', value: stats.content.culturaInstalaciones },
+            { label: 'Pestañas personalizadas', value: stats.content.culturaPestanas },
+            { label: 'Documentos en la biblioteca', value: stats.content.documents },
+            { label: 'Administradores registrados', value: stats.content.admins }
+        ]);
+
+        const sectionsHtml = `
+            <h1>${escapeHtml(title)}</h1>
+            <p class="meta"><strong>Generado:</strong> ${escapeHtml(generatedAt)}</p>
+
+            <div class="section">
+                <h2>Usuarios</h2>
+                ${usersSection}
+            </div>
+
+            <div class="section">
+                <h2>Avisos</h2>
+                ${notificationsSection}
+            </div>
+
+            <div class="section">
+                <h2>Citas previas</h2>
+                ${appointmentsSection}
+            </div>
+
+            <div class="section">
+                <h2>Contenido publicado</h2>
+                ${contentSection}
+            </div>
+        `;
+
+        const wordContent = `
+            <!DOCTYPE html>
+            <html>
+                <head>
+                    <meta charset="utf-8">
+                    <style>${baseStyles}</style>
+                </head>
+                <body>
+                    ${sectionsHtml}
+                </body>
+            </html>
+        `;
+        const wordBlob = new Blob(['\ufeff', wordContent], { type: 'application/msword' });
+        downloadBlob(wordBlob, `estadisticas_${exportDate}.doc`);
+
+        const excelContent = `
+            <!DOCTYPE html>
+            <html>
+                <head>
+                    <meta charset="UTF-8">
+                    <style>${baseStyles}</style>
+                </head>
+                <body>
+                    ${sectionsHtml}
+                </body>
+            </html>
+        `;
+        const excelBlob = new Blob(['\ufeff', excelContent], { type: 'application/vnd.ms-excel' });
+        downloadBlob(excelBlob, `estadisticas_${exportDate}.xls`);
+
+        const pdfLines = [
+            title,
+            `Generado: ${generatedAt}`,
+            ''
+        ];
+
+        const addSectionToPdf = (heading, entries) => {
+            pdfLines.push(heading);
+            if (Array.isArray(entries) && entries.length > 0) {
+                entries.forEach(entry => {
+                    pdfLines.push(`${entry.label}: ${entry.value}`);
+                });
+            } else {
+                pdfLines.push('Sin datos.');
+            }
+            pdfLines.push('');
+        };
+
+        addSectionToPdf('Usuarios', [
+            { label: 'Total registrados', value: stats.users.total },
+            { label: 'Nuevos este mes', value: stats.users.newThisMonth },
+            { label: 'Activos (última semana)', value: stats.users.activeThisWeek },
+            { label: 'Usuarios con notificaciones activas', value: stats.users.withNotifications },
+            { label: 'Localidades activas', value: stats.users.localitiesCount },
+            { label: 'Localidades', value: stats.users.localitiesList }
+        ]);
+
+        addSectionToPdf('Avisos', [
+            { label: 'Total almacenadas', value: stats.notifications.totalStored },
+            { label: 'Total enviadas', value: stats.notifications.totalSent },
+            { label: 'Tasa de éxito', value: stats.notifications.successRate },
+            { label: 'Tokens inválidos', value: stats.notifications.invalidTokens },
+            { label: 'Tipo más usado', value: stats.notifications.mostUsedType }
+        ]);
+
+        addSectionToPdf('Citas previas', [
+            { label: 'Total citas', value: stats.appointments.total },
+            { label: 'Pendientes', value: stats.appointments.pending },
+            { label: 'Confirmadas', value: stats.appointments.confirmed },
+            { label: 'Canceladas', value: stats.appointments.cancelled },
+            { label: 'Completadas', value: stats.appointments.completed },
+            { label: 'No se presentó', value: stats.appointments.noShow }
+        ]);
+
+        addSectionToPdf('Contenido publicado', [
+            { label: 'Anuncios', value: stats.content.news },
+            { label: 'Bandos', value: stats.content.bandos },
+            { label: 'Eventos', value: stats.content.events },
+            { label: 'Tarjetas de acceso rápido', value: stats.content.quickAccess },
+            { label: 'Tarjetas de Cultura y Ocio', value: stats.content.culturaTarjetas },
+            { label: 'Instalaciones de Cultura y Ocio', value: stats.content.culturaInstalaciones },
+            { label: 'Pestañas personalizadas', value: stats.content.culturaPestanas },
+            { label: 'Documentos', value: stats.content.documents },
+            { label: 'Administradores', value: stats.content.admins }
+        ]);
+
+        const pdfBlob = createPdfBlobFromLines(pdfLines);
+        downloadBlob(pdfBlob, `estadisticas_${exportDate}.pdf`);
+
+        showNotification('Estadísticas exportadas en Word, Excel y PDF', 'success');
+    } catch (error) {
+        console.error('Error exportando estadísticas:', error);
+        showNotification('Error al exportar las estadísticas. Inténtelo de nuevo.', 'error');
+    }
 }
 
 // Obtener información del super admin
@@ -5245,7 +7093,6 @@ function closeGDPRModal() {
         document.body.style.overflow = 'auto';
     }
 }
-
 function setupGDPRModal() {
     const modal = document.getElementById('gdprModal');
     if (modal) {
@@ -5343,7 +7190,6 @@ function saveAppointments() {
         }
     }
 }
-
 function loadAppointmentsList() {
     const appointmentsList = document.getElementById('appointmentsList');
     if (!appointmentsList) {
@@ -5878,7 +7724,6 @@ async function saveEditedAppointment() {
         showNotification('Cita previa actualizada correctamente', 'success');
     }
 }
-
 // Función para enviar email de cambio de estado usando Firebase Functions
 // Email dedicado: u2389387944@gmail.com
 async function sendStatusChangeEmail(appointment, oldStatus, newStatus, alternativeDate = null, reason = '') {
@@ -6097,7 +7942,6 @@ async function markAppointmentNoShow(appointmentId) {
         showNotification('Cita marcada como "No se presentó". No se pudo enviar el email, pero se intentará más tarde.', 'warning');
     }
 }
-
 // Enviar email automático cuando no se presenta a la cita
 async function sendNoShowEmail(appointment) {
     // Validar email antes de enviar
@@ -6403,7 +8247,7 @@ function updatePublicNotificationsScroll() {
     });
     
     if (activeNotifications.length === 0) {
-        scrollContent.innerHTML = '<div class="scroll-item">No hay notificaciones activas</div>';
+        scrollContent.innerHTML = '<div class="scroll-item">No hay avisos activos</div>';
         return;
     }
     
@@ -6434,7 +8278,7 @@ function loadPublicNotificationsList() {
     if (!notificationsList) return;
     
     if (publicNotifications.length === 0) {
-        notificationsList.innerHTML = '<div class="no-data" style="padding: 2rem; text-align: center; color: var(--text-secondary);">No hay notificaciones públicas creadas</div>';
+        notificationsList.innerHTML = '<div class="no-data" style="padding: 2rem; text-align: center; color: var(--text-secondary);">No hay avisos públicos creados</div>';
         return;
     }
     
@@ -6498,7 +8342,7 @@ function openNotificationEditor(notificationId = null) {
         // Editar notificación existente
         const notification = publicNotifications.find(n => n.id === notificationId);
         if (notification) {
-            modalTitle.textContent = 'Editar Notificación Pública';
+            modalTitle.textContent = 'Editar aviso público';
             document.getElementById('notificationId').value = notification.id;
             document.getElementById('notificationType').value = notification.type;
             document.getElementById('notificationTitle').value = notification.title;
@@ -6510,7 +8354,7 @@ function openNotificationEditor(notificationId = null) {
         }
     } else {
         // Nueva notificación
-        modalTitle.textContent = 'Nueva Notificación Pública';
+        modalTitle.textContent = 'Nuevo aviso público';
         form.reset();
         document.getElementById('notificationId').value = '';
         document.getElementById('notificationStartDate').value = new Date().toISOString().split('T')[0];
@@ -6525,7 +8369,6 @@ function closePublicNotificationModal() {
     modal.style.display = 'none';
     document.body.style.overflow = 'auto';
 }
-
 function savePublicNotification() {
     const form = document.getElementById('publicNotificationForm');
     const formData = new FormData(form);
@@ -6560,7 +8403,7 @@ function savePublicNotification() {
     loadPublicNotificationsList();
     closePublicNotificationModal();
     
-    showNotification(`Notificación ${notificationId ? 'actualizada' : 'creada'} correctamente`, 'success');
+    showNotification(`Aviso ${notificationId ? 'actualizado' : 'creado'} correctamente`, 'success');
 }
 
 function editPublicNotification(notificationId) {
@@ -6577,7 +8420,7 @@ function toggleNotificationStatus(notificationId) {
         updatePublicNotificationsScroll();
         loadPublicNotificationsList();
         
-        showNotification(`Notificación ${notification.active ? 'activada' : 'desactivada'}`, 'success');
+        showNotification(`Aviso ${notification.active ? 'activado' : 'desactivado'}`, 'success');
     }
 }
 
@@ -6587,14 +8430,14 @@ function deletePublicNotification(notificationId) {
         savePublicNotifications();
         updatePublicNotificationsScroll();
         loadPublicNotificationsList();
-        showNotification('Notificación eliminada', 'success');
+        showNotification('Aviso eliminado', 'success');
     }
 }
 
 function refreshPublicNotifications() {
     loadPublicNotifications();
     loadPublicNotificationsList();
-    showNotification('Notificaciones actualizadas', 'success');
+    showNotification('Avisos actualizados', 'success');
 }
 
 // Configurar modal de notificaciones públicas
@@ -6774,7 +8617,7 @@ async function register() {
     
     // Si dio consentimiento para notificaciones, mostrar mensaje
     if (notificationConsent && fcmToken) {
-        showNotification('Notificaciones push activadas correctamente', 'success');
+        showNotification('Avisos push activados correctamente', 'success');
     }
 }
 
@@ -6786,6 +8629,11 @@ function logout() {
     localStorage.removeItem('currentUser');
     localStorage.removeItem('isAdmin');
     localStorage.removeItem('isSuperAdmin');
+    localStorage.removeItem('rememberUserSession');
+    selectedUserNotifications.clear();
+    selectedReceivedNotifications.clear();
+    updateUserNotificationsActions();
+    updateReceivedNotificationsActions();
     
     // Cerrar panel de administración si está abierto
     const adminModal = document.getElementById('adminModal');
@@ -6865,7 +8713,6 @@ let servicios = {
     medical: [],
     itv: []
 };
-
 // Configuración de teléfonos de interés
 let telefonosInteresConfig = {
     titulo: 'TELÉFONOS DE INTERÉS',
@@ -7171,7 +9018,6 @@ function loadConsultorioFotosInModal() {
     html += '</div>';
     container.innerHTML = html;
 }
-
 // Eliminar documento del consultorio
 function deleteConsultorioDocument(index) {
     if (confirm('¿Estás seguro de que quieres eliminar este documento?')) {
@@ -7662,7 +9508,6 @@ function editTransporteLinea(lineaId) {
         modal.remove();
     });
 }
-
 // Actualizar línea de transporte
 function updateTransporteLinea(lineaId) {
     const linea = transporteConfig.lineas.find(l => l.id === lineaId);
@@ -7804,7 +9649,6 @@ function updateFotoUrl(index, url) {
         }
     });
 }
-
 function removeDocumentoFromLinea(index) {
     transporteConfig.lineas.forEach(linea => {
         if (linea.documentos && linea.documentos[index]) {
@@ -8391,7 +10235,6 @@ function editServicio(type, id) {
     document.body.style.overflow = 'hidden';
     console.log('Edit modal created and opened successfully');
 }
-
 // Guardar servicio desde modal dinámico
 function saveServicioFromModal(button) {
     console.log('saveServicioFromModal called');
@@ -8463,7 +10306,6 @@ function saveServicioFromModal(button) {
     modal.remove();
     document.body.style.overflow = 'auto';
 }
-
 // Guardar servicio (función original mantenida para compatibilidad)
 function saveServicio() {
     console.log('saveServicio called');
@@ -8927,7 +10769,6 @@ function loadAdminsList() {
     
     adminsList.innerHTML = html;
 }
-
 // Funciones auxiliares para gestión de usuarios
 function editUser(email) {
     // Cargar usuarios
@@ -9042,7 +10883,7 @@ function editUser(email) {
                     
                     <div class="form-group checkbox-group">
                         <input type="checkbox" id="editUserNotificationConsent" ${user.notificationConsent ? 'checked' : ''}>
-                        <label for="editUserNotificationConsent">Consentimiento para recibir notificaciones</label>
+                        <label for="editUserNotificationConsent">Consentimiento para recibir avisos</label>
                     </div>
                     
                     <div class="form-group">
@@ -9263,7 +11104,6 @@ function editAdmin(adminId) {
     modal.style.display = 'block';
     document.body.style.overflow = 'hidden';
 }
-
 // Guardar administrador editado
 function saveEditedAdmin() {
     const adminId = document.getElementById('editAdminId').value;
@@ -9554,7 +11394,6 @@ async function migrateUsersToFirestore() {
         loadUsersFromLocalStorage();
     }
 }
-
 // Función auxiliar para esperar a que Firebase esté inicializado
 async function waitForFirebase(maxWait = 5000) {
     if (window.firebase && window.firebase.firestore) {
@@ -9644,6 +11483,7 @@ async function loadUsersFromFirestore() {
         console.log(`✅ Cargados ${users.length} usuarios desde Firestore`);
         
         // Actualizar estadísticas
+        refreshStatistics();
         actualizarEstadisticasNotificaciones();
         
     } catch (error) {
@@ -9657,6 +11497,7 @@ async function loadUsersFromFirestore() {
 function loadUsersFromLocalStorage() {
     users = JSON.parse(localStorage.getItem('users') || '[]');
     console.log(`✅ Cargados ${users.length} usuarios desde localStorage`);
+    refreshStatistics();
     actualizarEstadisticasNotificaciones();
 }
 
@@ -9856,7 +11697,7 @@ function setupNotificationReception() {
 
 // Manejar notificación recibida
 function handleReceivedNotification(notificationData) {
-    console.log('Notificación recibida en la web:', notificationData);
+    console.log('Aviso recibido en la web:', notificationData);
     
     // Agregar a la lista de notificaciones recibidas
     addReceivedNotificationToList(notificationData);
@@ -9943,16 +11784,28 @@ function displayReceivedNotifications(notifications) {
     if (!container) return;
     
     if (notifications.length === 0) {
-        container.innerHTML = '<p class="no-notifications">No hay notificaciones recibidas</p>';
+        container.innerHTML = '<p class="no-notifications">No hay avisos recibidos</p>';
+        selectedReceivedNotifications.clear();
+        updateReceivedNotificationsActions();
         return;
     }
     
-    container.innerHTML = notifications.map(notification => `
-        <div class="notification-item received" data-id="${notification.id}">
+    const sanitizedSet = new Set();
+    const itemsHtml = notifications.map(notification => {
+        const isSelected = selectedReceivedNotifications.has(notification.id);
+        if (isSelected) {
+            sanitizedSet.add(notification.id);
+        }
+        return `
+        <div class="notification-item received ${isSelected ? 'selected' : ''}" data-id="${notification.id}">
             <div class="notification-header">
                 <span class="notification-type ${notification.type}">
                     ${getTypeIcon(notification.type)} ${notification.type.toUpperCase()}
                 </span>
+                <label class="notification-select">
+                    <input type="checkbox" onchange="toggleReceivedNotificationSelection('${notification.id}', this.checked)" ${isSelected ? 'checked' : ''}>
+                    Seleccionar
+                </label>
                 <span class="notification-time">
                     ${formatNotificationTime(notification.timestamp)}
                 </span>
@@ -9969,7 +11822,22 @@ function displayReceivedNotifications(notifications) {
                 <button onclick="markNotificationAsRead('${notification.id}')" class="btn btn-small">✓ Leído</button>
             </div>
         </div>
-    `).join('');
+    `;
+    }).join('');
+
+    // Eliminar selecciones que ya no existen
+    selectedReceivedNotifications = sanitizedSet;
+    
+    container.innerHTML = itemsHtml;
+    updateReceivedNotificationsActions();
+
+    if (notifications.length > 0 && container.style.display === 'none') {
+        container.style.display = 'block';
+        const toggleText = document.getElementById('notificationsToggleText');
+        if (toggleText) {
+            toggleText.textContent = 'Ocultar recibidas';
+        }
+    }
 }
 
 // Alternar vista de notificaciones
@@ -9987,10 +11855,158 @@ function toggleNotificationsView() {
     }
 }
 
+function toggleUserNotificationSelection(notificationId, isChecked) {
+    if (isChecked) {
+        selectedUserNotifications.add(notificationId);
+    } else {
+        selectedUserNotifications.delete(notificationId);
+    }
+
+    const notificationElement = document.querySelector(`#notificationsList [data-id="${notificationId}"]`);
+    if (notificationElement) {
+        notificationElement.classList.toggle('selected', isChecked);
+    }
+
+    updateUserNotificationsActions();
+}
+
+function updateUserNotificationsActions() {
+    const deleteBtn = document.getElementById('deleteUserNotificationsBtn');
+    if (deleteBtn) {
+        const count = selectedUserNotifications.size;
+        deleteBtn.disabled = count === 0;
+        deleteBtn.textContent = count > 0
+            ? `🗑️ Eliminar (${count})`
+            : '🗑️ Eliminar seleccionadas';
+    }
+}
+
+function toggleReceivedNotificationSelection(notificationId, isChecked) {
+    if (isChecked) {
+        selectedReceivedNotifications.add(notificationId);
+    } else {
+        selectedReceivedNotifications.delete(notificationId);
+    }
+
+    const notificationElement = document.querySelector(`[data-id="${notificationId}"]`);
+    if (notificationElement) {
+        notificationElement.classList.toggle('selected', isChecked);
+    }
+
+    updateReceivedNotificationsActions();
+}
+
+function updateReceivedNotificationsActions() {
+    const deleteBtn = document.getElementById('deleteSelectedNotificationsBtn');
+    if (deleteBtn) {
+        const count = selectedReceivedNotifications.size;
+        deleteBtn.disabled = count === 0;
+        deleteBtn.textContent = count > 0
+            ? `🗑️ Eliminar (${count})`
+            : '🗑️ Eliminar seleccionadas';
+    }
+}
+
 // Actualizar notificaciones recibidas
-function refreshReceivedNotifications() {
-    loadReceivedNotifications();
-    showNotification('Notificaciones actualizadas', 'success');
+async function refreshReceivedNotifications() {
+    const refreshBtn = document.getElementById('refreshReceivedNotificationsBtn');
+    if (refreshBtn) {
+        refreshBtn.disabled = true;
+        refreshBtn.dataset.originalText = refreshBtn.textContent;
+        refreshBtn.textContent = 'Actualizando...';
+    }
+
+    try {
+        await loadReceivedNotifications();
+        showNotification('Avisos actualizados', 'success');
+    } catch (error) {
+        console.error('Error actualizando notificaciones:', error);
+        showNotification('No se pudieron actualizar los avisos', 'error');
+    } finally {
+        if (refreshBtn) {
+            refreshBtn.disabled = false;
+            refreshBtn.textContent = refreshBtn.dataset.originalText || '🔄 Actualizar';
+        }
+    }
+}
+
+async function deleteSelectedNotifications() {
+    if (selectedReceivedNotifications.size === 0) {
+        return;
+    }
+
+    if (!confirm(`¿Eliminar ${selectedReceivedNotifications.size} notificación(es) seleccionadas?`)) {
+        return;
+    }
+
+    try {
+        const firebaseReady = await waitForFirebase();
+        if (!firebaseReady || !window.firebase || !window.firebase.firestore) {
+            showNotification('Firebase no está disponible para eliminar avisos', 'error');
+            return;
+        }
+
+        const idsToDelete = Array.from(selectedReceivedNotifications);
+        const failed = [];
+
+        for (const id of idsToDelete) {
+            try {
+                await window.firebase.firestore()
+                    .collection('notifications')
+                    .doc(id)
+                    .delete();
+            } catch (error) {
+                console.error('Error eliminando notificación:', id, error);
+                failed.push(id);
+            }
+        }
+
+        if (failed.length === 0) {
+            showNotification('Avisos eliminados correctamente', 'success');
+        } else {
+            showNotification(`Algunos avisos no se pudieron eliminar (${failed.length}).`, 'warning');
+        }
+
+        selectedReceivedNotifications.clear();
+        updateReceivedNotificationsActions();
+        await loadReceivedNotifications();
+    } catch (error) {
+        console.error('Error eliminando notificaciones seleccionadas:', error);
+        showNotification('No se pudieron eliminar los avisos seleccionados', 'error');
+    }
+}
+
+function deleteSelectedUserNotifications() {
+    if (selectedUserNotifications.size === 0) {
+        return;
+    }
+
+    if (!confirm(`¿Eliminar ${selectedUserNotifications.size} notificación(es) seleccionadas?`)) {
+        return;
+    }
+
+    const idsToDelete = Array.from(selectedUserNotifications).map(String);
+
+    if (notifications.length > 0) {
+        notifications = notifications.filter(notification => !idsToDelete.includes(String(notification.id)));
+        localStorage.setItem('notifications', JSON.stringify(notifications));
+    }
+
+    const savedUserNotifications = localStorage.getItem('userNotifications');
+    if (savedUserNotifications) {
+        try {
+            const parsed = JSON.parse(savedUserNotifications);
+            const filtered = parsed.filter(notification => !idsToDelete.includes(String(notification.id)));
+            localStorage.setItem('userNotifications', JSON.stringify(filtered));
+        } catch (error) {
+            console.warn('No se pudieron actualizar las notificaciones del usuario:', error);
+        }
+    }
+
+    selectedUserNotifications.clear();
+    updateUserNotificationsActions();
+    updateNotificationCenter();
+    showNotification('Avisos seleccionados eliminados', 'success');
 }
 
 // Obtener icono según el tipo
@@ -10033,23 +12049,16 @@ async function markNotificationAsRead(notificationId) {
             .update({ read: true });
         
         // Remover de la lista
+        selectedReceivedNotifications.delete(notificationId);
         const notificationElement = document.querySelector(`[data-id="${notificationId}"]`);
         if (notificationElement) {
             notificationElement.remove();
         }
+        updateReceivedNotificationsActions();
         
-        showNotification('Notificación marcada como leída', 'success');
+        showNotification('Aviso marcado como leído', 'success');
     } catch (error) {
         console.error('Error marcando notificación como leída:', error);
-    }
-}
-
-// Descargar archivo adjunto
-function downloadAttachment(attachmentUrl) {
-    if (attachmentUrl) {
-        window.open(attachmentUrl, '_blank');
-    } else {
-        showNotification('No hay archivo adjunto disponible', 'error');
     }
 }
 
@@ -10088,7 +12097,7 @@ async function enviarNotificacionPushConLocalidades(titulo, mensaje, tipo = 'gen
         if (result.success) {
             // Mostrar estadísticas
             const stats = result.stats || {};
-            let mensaje = `Notificación enviada: ${stats.sent || 0} exitosos`;
+            let mensaje = `Aviso enviado: ${stats.sent || 0} exitosos`;
             
             if (stats.failed > 0) {
                 mensaje += `, ${stats.failed} fallidos`;
@@ -10097,11 +12106,21 @@ async function enviarNotificacionPushConLocalidades(titulo, mensaje, tipo = 'gen
             if (alcance === 'localities' && localidadesSeleccionadas.length > 0) {
                 mensaje += ` en: ${localidadesSeleccionadas.join(', ')}`;
             }
+
+            if (stats && typeof stats === 'object' && Object.keys(stats).length > 0) {
+                try {
+                    localStorage.setItem('notificationsStatsSummary', JSON.stringify(stats));
+                } catch (storageError) {
+                    console.warn('No se pudo guardar el resumen de estadísticas de notificaciones:', storageError);
+                }
+            }
+
+            refreshNotificationStats();
             
             showNotification(mensaje, 'success');
             
             // Log detallado
-            console.log('✅ Notificación enviada exitosamente:', {
+            console.log('✅ Aviso enviado exitosamente:', {
                 titulo,
                 tipo,
                 alcance,
@@ -10202,7 +12221,6 @@ function getNotificationMessageContent() {
         html: value
     };
 }
-
 // Configurar formulario de notificaciones
 function setupNotificationForm() {
     // Mostrar/ocultar localidades según selección
@@ -10226,9 +12244,9 @@ function setupNotificationForm() {
     // Configurar envío del formulario
     const form = document.getElementById('notificationForm');
     if (form) {
-        form.addEventListener('submit', function(e) {
+        form.addEventListener('submit', async function(e) {
             e.preventDefault();
-            enviarNotificacionDesdeFormulario();
+            await enviarNotificacionDesdeFormulario();
         });
     }
 
@@ -10254,46 +12272,71 @@ function setupNotificationForm() {
 }
 
 // Enviar notificación desde el formulario
-function enviarNotificacionDesdeFormulario() {
-    const titulo = document.getElementById('notifTitle').value.trim();
-    const { text: messageText } = getNotificationMessageContent();
-    const mensaje = messageText;
-    const tipo = document.getElementById('notifType').value;
-    const archivo = document.getElementById('notifAttachment').files[0];
-    const destinatarios = document.querySelector('input[name="destinatarios"]:checked').value;
-    
-    // Validaciones
+async function enviarNotificacionDesdeFormulario() {
+    const tituloInput = document.getElementById('notifTitle');
+    const tipoSelect = document.getElementById('notifType');
+    const attachmentInput = document.getElementById('notifAttachment');
+    const destinatariosInput = document.querySelector('input[name="destinatarios"]:checked');
+    const submitBtn = document.querySelector('#notificationForm button[type="submit"]');
+
+    const titulo = tituloInput ? tituloInput.value.trim() : '';
+    const tipo = tipoSelect ? tipoSelect.value : '';
+    const archivo = attachmentInput && attachmentInput.files ? attachmentInput.files[0] : null;
+    const destinatarios = destinatariosInput ? destinatariosInput.value : 'todos';
+    const { text: mensajePlano } = getNotificationMessageContent();
+    const mensaje = mensajePlano;
+
     if (!titulo) {
-        alert('Por favor, ingrese un título para la notificación.');
+        showNotification('Por favor, ingrese un título para la notificación.', 'error');
         return;
     }
     
     if (!tipo) {
-        alert('Por favor, seleccione un tipo de notificación.');
+        showNotification('Seleccione un tipo de notificación.', 'error');
         return;
     }
     
+    let localidades = [];
     if (destinatarios === 'localidades') {
         const localidadesSeleccionadas = Array.from(document.querySelectorAll('input[name="localidades"]:checked'));
         if (localidadesSeleccionadas.length === 0) {
-            alert('Por favor, seleccione al menos una localidad.');
+            showNotification('Seleccione al menos una localidad.', 'error');
             return;
         }
+        localidades = localidadesSeleccionadas.map(cb => cb.value);
     }
-    
-    // Obtener localidades seleccionadas
-    let localidades = [];
-    if (destinatarios === 'localidades') {
-        localidades = Array.from(document.querySelectorAll('input[name="localidades"]:checked')).map(cb => cb.value);
+
+    const alcance = destinatarios === 'localidades' ? 'localities' : 'all';
+    const tieneAdjunto = !!archivo;
+
+    const attachmentMeta = archivo ? {
+        name: archivo.name,
+        url: '#',
+        size: archivo.size,
+        type: archivo.type
+    } : null;
+
+    if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.classList.add('loading');
     }
-    
-    // Enviar notificación
-    enviarNotificacionPushConLocalidades(titulo, mensaje, tipo, destinatarios, localidades, archivo);
-    
-    // Limpiar formulario después del envío
+
+    try {
+        const enviado = await enviarNotificacionPushConLocalidades(titulo, mensaje, tipo, alcance, localidades, tieneAdjunto);
+
+        if (enviado) {
+            registerLocalNotificationRecord(titulo, mensaje, tipo, attachmentMeta);
     limpiarFormularioNotificacion();
-    
-    alert('Notificación enviada correctamente.');
+        }
+    } catch (error) {
+        console.error('❌ Error al enviar la notificación:', error);
+        showNotification('No se pudo enviar la notificación. Revise la consola para más detalles.', 'error');
+    } finally {
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.classList.remove('loading');
+        }
+    }
 }
 
 // Limpiar formulario de notificación
@@ -10315,7 +12358,7 @@ function abrirModalNotificacion() {
     modal.innerHTML = `
         <div class="modal-content">
             <span class="close" onclick="this.closest('.modal').remove()">&times;</span>
-            <h2>📱 Enviar Notificación Push</h2>
+            <h2>📱 Enviar aviso push</h2>
             <form id="notificacionForm">
                 <div class="form-group">
                     <label for="notifTitulo">Título:</label>
@@ -10531,7 +12574,13 @@ function actualizarEstadisticasNotificaciones() {
     
     console.log('Estadísticas por localidad:', estadisticasPorLocalidad);
     
-    showNotification(`Estadísticas actualizadas: ${usuariosConNotificaciones.length} personas con notificaciones activadas`, 'success');
+    const contadorNotificaciones = document.getElementById('contadorNotificaciones');
+    if (contadorNotificaciones) {
+        const totalEnviadas = parseInt(localStorage.getItem('notificationsSentCount') || '0', 10);
+        contadorNotificaciones.textContent = totalEnviadas.toString();
+    }
+
+    refreshNotificationStats();
 }
 
 // Mostrar modal de descarga de APK
@@ -10557,7 +12606,7 @@ function mostrarDescargaAPK() {
                 
                 <div class="form-group">
                     <label for="apkDescripcion">Descripción de la aplicación:</label>
-                    <textarea id="apkDescripcion" rows="3" placeholder="Aplicación oficial del Ayuntamiento de Cobreros para recibir notificaciones push..."></textarea>
+                    <textarea id="apkDescripcion" rows="3" placeholder="Aplicación oficial del Ayuntamiento de Cobreros para recibir avisos push..."></textarea>
                 </div>
                 
                 <div class="form-group">
@@ -10817,7 +12866,6 @@ function showConsultorioTab(tabName) {
     // Activar el botón correspondiente
     event.target.classList.add('active');
 }
-
 // Mostrar pestaña de ITV
 function showItvTab(tabName) {
     // Ocultar todas las pestañas
@@ -11507,7 +13555,6 @@ function toggleAccordion(sectionId) {
     
     console.log(`📂 Acordeón ${sectionId} ${isActive ? 'cerrado' : 'abierto'}`);
 }
-
 // Cargar contenido inicial de Cobreros
 function loadCobrerosContent() {
     // Cargar datos desde localStorage si existen
@@ -12098,7 +14145,6 @@ function validateCulturaItem(item) {
     
     return errors;
 }
-
 // Función para guardar elemento de cultura y ocio (mejorada con validaciones)
 function saveCulturaItem() {
     try {
@@ -12275,7 +14321,6 @@ function loadCulturaOcioAdmin() {
         }
     });
 }
-
 // Función para renderizar sección administrativa (con sanitización)
 function renderCulturaAdminSection(section, container) {
     const items = culturaOcioData[section] || [];
@@ -12715,7 +14760,6 @@ function getDayConfig(checkboxId) {
         afternoonHours: afternoonHours
     };
 }
-
 // Guardar configuración de horarios
 function saveAppointmentScheduleConfig() {
     if (!isAdmin) {
@@ -12862,18 +14906,18 @@ function renderCalendar() {
         const dayKey = dayKeyByIndex[dayOfWeek];
         const dayConfig = appointmentScheduleConfig.days[dayKey];
         const isEnabled = Boolean(dayConfig && dayConfig.enabled);
-
+        
         const appointmentsOnDay = appointments.filter(apt => {
             const aptDate = new Date(apt.date);
             return formatDateForStorage(aptDate) === dateStr && apt.status !== 'cancelled';
         });
-
+        
         const allSlots = [...(dayConfig?.morningHours || []), ...(dayConfig?.afternoonHours || [])];
         const hasHoursConfigured = isEnabled && allSlots.length > 0;
         const reservedSlots = appointmentsOnDay.map(apt => apt.time).filter(Boolean);
         const isFullyBooked = hasHoursConfigured && reservedSlots.length >= allSlots.length;
         const hasAvailableSlots = hasHoursConfigured && reservedSlots.length < allSlots.length && !isPast;
-
+        
         let dayClass = 'calendar-day';
         if (isPast) {
             dayClass += ' past';
@@ -12884,18 +14928,18 @@ function renderCalendar() {
 
         if (!isPast) {
             if (!isEnabled || !hasHoursConfigured) {
-                dayClass += ' disabled';
+            dayClass += ' disabled';
             } else if (isFullyBooked) {
                 dayClass += ' fully-booked';
             } else if (hasAvailableSlots) {
-                dayClass += ' available';
+            dayClass += ' available';
             }
         }
-
+        
         if (selectedAppointmentDate === dateStr) {
             dayClass += ' selected';
         }
-
+        
         const safeDateStr = escapeHtml(dateStr);
         const appointmentsInfo = appointmentsOnDay.map(apt => `${apt.time} - ${apt.name || 'Sin nombre'}`).join(', ');
 
@@ -12922,10 +14966,10 @@ function renderCalendar() {
         }
         const cursorStyle = !isPast ? 'pointer' : 'default';
         const availableIndicator = hasAvailableSlots ? '<span class="available-indicator" aria-hidden="true">✓</span>' : '';
-
+        
         calendarHTML += `
-            <div class="${dayClass}"
-                 data-date="${safeDateStr}"
+            <div class="${dayClass}" 
+                 data-date="${safeDateStr}" 
                  data-day="${day}"
                  data-has-available="${hasAvailableSlots ? 'true' : 'false'}"
                  data-is-fully-booked="${isFullyBooked ? 'true' : 'false'}"
@@ -12937,7 +14981,7 @@ function renderCalendar() {
             </div>
         `;
     }
-
+    
     // Calcular días del siguiente mes para completar la última semana
     const totalCells = startingDayOfWeek + daysInMonth;
     const remainingCells = (7 - (totalCells % 7)) % 7;
@@ -12948,7 +14992,7 @@ function renderCalendar() {
             const date = new Date(nextYear, nextMonth, day);
             const dateStr = formatDateForStorage(date);
             const isPast = date < today;
-
+            
             calendarHTML += `
                 <div class="calendar-day next-month ${isPast ? 'past' : ''}" 
                      data-date="${escapeHtml(dateStr)}" 
@@ -12959,7 +15003,7 @@ function renderCalendar() {
             `;
         }
     }
-
+    
     calendarHTML += '</div>';
     calendarGrid.innerHTML = calendarHTML;
 }
@@ -13209,9 +15253,9 @@ function renderAdminCalendar() {
         } else if (isFullyBooked) {
             dayClass += ' fully-booked';
         } else if (confirmedAppointments.length > 0) {
-            dayClass += ' has-confirmed';
-        } else if (pendingAppointments.length > 0) {
-            dayClass += ' has-pending';
+                dayClass += ' has-confirmed';
+            } else if (pendingAppointments.length > 0) {
+                dayClass += ' has-pending';
         } else if (hasAvailableSlots) {
             dayClass += ' available';
         }
@@ -13296,7 +15340,6 @@ function changeAdminCalendarMonth(direction) {
     }
     renderAdminCalendar();
 }
-
 // Seleccionar fecha en el calendario del admin
 function selectAdminDate(dateStr) {
     selectedAdminDate = dateStr;
