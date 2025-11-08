@@ -182,6 +182,40 @@ const TARJETAS_A_ELIMINAR = [
     'Vinos de la Tierra'
 ];
 
+const PUSH_WARNING_SESSION_PREFIX = 'pushWarningShown:';
+
+let deferredPwaPrompt = null;
+
+const PLATFORM_ICONS = {
+    android: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="%23A4C639" d="M17.6 8.48l1.42-2.46a.5.5 0 10-.87-.5l-1.47 2.55A8.04 8.04 0 0012 7a8.04 8.04 0 00-3.68.99L6.85 5.52a.5.5 0 10-.87.5l1.42 2.46A7.03 7.03 0 005 13v5a1 1 0 001 1h1v3a1 1 0 002 0v-3h6v3a1 1 0 002 0v-3h1a1 1 0 001-1v-5a7.03 7.03 0 00-2.4-4.52zM9 11a1 1 0 110-2 1 1 0 010 2zm6 0a1 1 0 110-2 1 1 0 010 2z"/></svg>',
+    ios: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="%23000000" d="M16.74 13.66c.02 2.42 2.11 3.22 2.13 3.23-.02.05-.33 1.14-1.09 2.26-.66.97-1.34 1.95-2.42 1.97-1.06.02-1.4-.64-2.62-.64-1.22 0-1.6.62-2.61.66-1.05.04-1.86-1.05-2.53-2.02-1.38-2.01-2.44-5.69-1.02-8.17.7-1.21 1.95-1.98 3.32-2 .1 0 .21.02.31.04.82.23 1.68.81 2.2.81.51 0 1.42-.8 2.4-.82 1.02-.02 1.99.53 2.53 1.36-1.11.6-1.67 1.58-1.64 3.32zm-2.01-6.08c.45-.54.76-1.3.68-2.06-.66.03-1.46.44-1.94.98-.42.48-.78 1.26-.68 2.02.72.06 1.46-.37 1.94-.94z"/></svg>',
+    huawei: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><rect width="24" height="24" rx="5" fill="%23d81b60"/><path fill="%23ffffff" d="M6.5 6.5h2.1v4.6h6.8V6.5h2.1v11h-2.1v-4.8H8.6v4.8H6.5z"/></svg>'
+};
+
+const PWA_INSTRUCTIONS = {
+    android: `
+        <ol>
+            <li>Abre el menú <strong>⋮</strong> del navegador.</li>
+            <li>Selecciona <strong>"Añadir a pantalla principal"</strong>.</li>
+            <li>Confirma el nombre y pulsa <strong>Añadir</strong>.</li>
+        </ol>
+    `,
+    huawei: `
+        <ol>
+            <li>Pulsa el menú <strong>⋮</strong> (o los tres puntos) de tu navegador.</li>
+            <li>Elige <strong>"Agregar a pantalla principal"</strong>.</li>
+            <li>Confirma con <strong>Añadir</strong> para crear el acceso directo.</li>
+        </ol>
+    `,
+    ios: `
+        <ol>
+            <li>En Safari, pulsa el botón <strong>Compartir</strong> (<span aria-hidden="true">⬆️</span>).</li>
+            <li>Selecciona <strong>"Añadir a pantalla de inicio"</strong>.</li>
+            <li>Confirma pulsando <strong>Añadir</strong> para instalar la app.</li>
+        </ol>
+    `
+};
+
 // Función genérica para eliminar tarjetas por títulos
 function removeTarjetasByTitles(titles) {
     if (!culturaOcioConfig.tarjetas || !Array.isArray(culturaOcioConfig.tarjetas)) {
@@ -1758,6 +1792,7 @@ async function handleRegister(e, recaptchaToken = null) {
             notificationConsent: notificationConsent,
             localities: selectedLocalities,
             fcmToken: fcmToken,
+            lastNotificationError: '',
             consentDate: new Date().toISOString(),
             registeredAt: new Date().toISOString(),
             registrationDate: new Date().toISOString()
@@ -2214,6 +2249,7 @@ function sendNotificationToUsers(title, message, type, attachment = null) {
     });
 
     updateNotificationCenter();
+    return notification;
 }
 // Función para descargar documentos adjuntos
 function downloadAttachment(url, filename = '') {
@@ -2354,6 +2390,222 @@ function switchTab(tabName) {
         loadServiciosAdmin();
     }
 }
+
+function checkPushTokenStatusForCurrentUser() {
+    if (!currentUser || !currentUser.email || !Array.isArray(users)) {
+        return;
+    }
+
+    const currentEmail = (currentUser.email || '').toLowerCase();
+    if (!currentEmail) {
+        return;
+    }
+
+    const userRecord = users.find(user => (user.email || '').toLowerCase() === currentEmail);
+    if (!userRecord) {
+        return;
+    }
+
+    const warningKey = `${PUSH_WARNING_SESSION_PREFIX}${currentEmail}`;
+    let warningAlreadyShown = false;
+    try {
+        warningAlreadyShown = sessionStorage.getItem(warningKey) === 'shown';
+    } catch (storageError) {
+        Logger.warn('No se pudo consultar sessionStorage para avisos push:', storageError);
+    }
+
+    if (warningAlreadyShown) {
+        return;
+    }
+
+    const lastError = (userRecord.lastNotificationError || '').toLowerCase();
+    const hasConsent = !!userRecord.notificationConsent;
+    const hasToken = !!userRecord.fcmToken;
+
+    let message = '';
+
+    if (!hasConsent && lastError) {
+        message = 'Detectamos que tu instalación anterior dejó de recibir avisos. Vuelve a instalar la PWA o inicia sesión en el dispositivo instalado y activa los avisos para registrarlo de nuevo.';
+    } else if (hasConsent && !hasToken) {
+        message = 'Para seguir recibiendo avisos en este dispositivo, instala la PWA y acepta las notificaciones o vuelve a activar el permiso de avisos.';
+    }
+
+    if (message) {
+        showNotification(message, 'warning');
+        try {
+            sessionStorage.setItem(warningKey, 'shown');
+        } catch (storageError) {
+            Logger.warn('No se pudo guardar el aviso push en sessionStorage:', storageError);
+        }
+    }
+}
+
+function detectDevicePlatform() {
+    const ua = (navigator.userAgent || navigator.vendor || window.opera || '').toLowerCase();
+    if (/iphone|ipad|ipod/.test(ua)) {
+        return 'ios';
+    }
+    if (/android/.test(ua)) {
+        if (/huawei|honor|hw-/.test(ua)) {
+            return 'huawei';
+        }
+        return 'android';
+    }
+    return 'desktop';
+}
+
+function renderPwaInstallBanner(force = false) {
+    const existingBanner = document.getElementById('pwa-install-banner');
+    if (existingBanner) {
+        if (!force) {
+            return;
+        }
+        existingBanner.remove();
+    }
+
+    const platform = detectDevicePlatform();
+    const banner = document.createElement('div');
+    banner.id = 'pwa-install-banner';
+    banner.className = `pwa-install-banner pwa-install-banner--${platform}`;
+
+    if (platform === 'desktop') {
+        banner.innerHTML = `
+            <div class="pwa-banner-content">
+                <div class="pwa-banner-text">
+                    <h3>📱 Recibe avisos en tu móvil</h3>
+                    <p>Abre esta web desde el navegador de tu móvil o tablet para instalar la app del Ayuntamiento y recibir avisos en tiempo real.</p>
+                </div>
+                <button class="pwa-banner-close" onclick="closePWAInstallBanner()" aria-label="Cerrar aviso">
+                    Entendido
+                </button>
+            </div>
+        `;
+    } else {
+        banner.innerHTML = `
+            <div class="pwa-banner-content">
+                <div class="pwa-banner-header">
+                    <div>
+                        <h3>Instala la app del Ayuntamiento</h3>
+                        <p>Descárgala para recibir avisos directos en tu dispositivo móvil.</p>
+                    </div>
+                    <button class="pwa-banner-close" onclick="closePWAInstallBanner()" aria-label="Cerrar aviso">×</button>
+                </div>
+                <div class="pwa-install-options">
+                    <button class="pwa-install-option" onclick="handlePwaInstallOption('android')">
+                        <img src="${PLATFORM_ICONS.android}" alt="Android" loading="lazy">
+                        <div>
+                            <span>Android</span>
+                            <small>Instalar ahora</small>
+                        </div>
+                    </button>
+                    <button class="pwa-install-option" onclick="handlePwaInstallOption('huawei')">
+                        <img src="${PLATFORM_ICONS.huawei}" alt="Huawei" loading="lazy">
+                        <div>
+                            <span>Huawei</span>
+                            <small>Instalar en HMS</small>
+                        </div>
+                    </button>
+                    <button class="pwa-install-option" onclick="handlePwaInstallOption('ios')">
+                        <img src="${PLATFORM_ICONS.ios}" alt="iOS" loading="lazy">
+                        <div>
+                            <span>iOS</span>
+                            <small>Ver instrucciones</small>
+                        </div>
+                    </button>
+                </div>
+            </div>
+        `;
+    }
+
+    document.body.appendChild(banner);
+    requestAnimationFrame(() => banner.classList.add('visible'));
+}
+
+function closePwaInstructionModal() {
+    const modal = document.getElementById('pwa-instructions-modal');
+    if (modal) {
+        modal.classList.remove('visible');
+        setTimeout(() => modal.remove(), 200);
+    }
+}
+
+function showPwaInstructionModal(platform) {
+    closePwaInstructionModal();
+    const modal = document.createElement('div');
+    modal.id = 'pwa-instructions-modal';
+    modal.className = 'pwa-instructions-modal';
+
+    const titles = {
+        android: 'Cómo instalar en Android',
+        huawei: 'Cómo instalar en Huawei',
+        ios: 'Cómo instalar en iOS'
+    };
+
+    modal.innerHTML = `
+        <div class="pwa-instructions-content" role="dialog" aria-modal="true" aria-labelledby="pwa-instructions-title">
+            <div class="pwa-instructions-header">
+                <h3 id="pwa-instructions-title">${titles[platform] || 'Instalar la app'}</h3>
+                <button class="pwa-instructions-close" onclick="closePwaInstructionModal()" aria-label="Cerrar instrucciones">×</button>
+            </div>
+            <div class="pwa-instructions-body">
+                ${PWA_INSTRUCTIONS[platform] || ''}
+            </div>
+            <div class="pwa-instructions-footer">
+                <button class="btn btn-primary" onclick="closePwaInstructionModal()">Entendido</button>
+            </div>
+        </div>
+    `;
+
+    modal.addEventListener('click', (event) => {
+        if (event.target === modal) {
+            closePwaInstructionModal();
+        }
+    });
+
+    document.body.appendChild(modal);
+    requestAnimationFrame(() => modal.classList.add('visible'));
+}
+
+async function handlePwaInstallOption(platform) {
+    const actualPlatform = detectDevicePlatform();
+
+    if (platform === 'android' || (platform === 'huawei' && actualPlatform === 'android')) {
+        if (deferredPwaPrompt) {
+            deferredPwaPrompt.prompt();
+            const { outcome } = await deferredPwaPrompt.userChoice;
+            if (outcome !== 'accepted') {
+                showPwaInstructionModal(platform === 'android' ? 'android' : 'huawei');
+            } else {
+                closePWAInstallBanner();
+            }
+            deferredPwaPrompt = null;
+        } else {
+            showPwaInstructionModal(platform === 'android' ? 'android' : 'huawei');
+        }
+        return;
+    }
+
+    if (platform === 'huawei' && actualPlatform === 'huawei') {
+        if (deferredPwaPrompt) {
+            deferredPwaPrompt.prompt();
+            const { outcome } = await deferredPwaPrompt.userChoice;
+            if (outcome === 'accepted') {
+                closePWAInstallBanner();
+                deferredPwaPrompt = null;
+                return;
+            }
+            deferredPwaPrompt = null;
+        }
+        showPwaInstructionModal('huawei');
+        return;
+    }
+
+    showPwaInstructionModal('ios');
+}
+
+window.handlePwaInstallOption = handlePwaInstallOption;
+window.closePwaInstructionModal = closePwaInstructionModal;
+
 // Actualizar interfaz de usuario
 function updateUserInterface() {
     if (currentUser) {
@@ -2393,6 +2645,8 @@ function updateUserInterface() {
     
     // Actualizar centro de notificaciones
     updateNotificationCenter();
+
+    checkPushTokenStatusForCurrentUser();
 
     if (typeof applyMaintenanceMode === 'function') {
         applyMaintenanceMode();
@@ -10994,6 +11248,7 @@ async function saveUserChanges(oldEmail) {
             localities: selectedLocalities,
             consent: consent,
             notificationConsent: notificationConsent,
+            lastNotificationError: notificationConsent ? '' : (user.lastNotificationError || ''),
             updatedAt: new Date().toISOString()
         };
         
@@ -11463,6 +11718,7 @@ async function loadUsersFromFirestore() {
                 notificationConsent: userData.notificationConsent || false,
                 localities: userData.localities || [],
                 fcmToken: userData.fcmToken || '',
+                lastNotificationError: userData.lastNotificationError || '',
                 registeredFrom: userData.registeredFrom || 'WEB',
                 registrationDate: userData.registrationDate || new Date()
             });
@@ -11485,6 +11741,8 @@ async function loadUsersFromFirestore() {
         // Actualizar estadísticas
         refreshStatistics();
         actualizarEstadisticasNotificaciones();
+
+        checkPushTokenStatusForCurrentUser();
         
     } catch (error) {
         console.error('Error cargando usuarios desde Firestore:', error);
@@ -11499,6 +11757,8 @@ function loadUsersFromLocalStorage() {
     console.log(`✅ Cargados ${users.length} usuarios desde localStorage`);
     refreshStatistics();
     actualizarEstadisticasNotificaciones();
+
+    checkPushTokenStatusForCurrentUser();
 }
 
 // Sincronizar usuario con Firestore (mejorado con validación y seguridad)
@@ -11536,6 +11796,7 @@ async function syncUserToFirestore(userData) {
             notificationConsent: userData.notificationConsent || false,
             localities: userData.localities || [],
             fcmToken: userData.fcmToken || '',
+            lastNotificationError: userData.lastNotificationError || null,
             registeredFrom: 'WEB',
             registrationDate: new Date()
         };
@@ -11607,57 +11868,29 @@ function installPWA() {
 
 // Mostrar banner de instalación PWA
 function showPWAInstallBanner() {
-    let deferredPrompt;
-    
     window.addEventListener('beforeinstallprompt', (e) => {
         // Prevenir que se muestre automáticamente
         e.preventDefault();
-        deferredPrompt = e;
-        
-        // Mostrar banner personalizado
-        const installBanner = document.createElement('div');
-        installBanner.id = 'pwa-install-banner';
-        installBanner.innerHTML = `
-            <div style="position: fixed; bottom: 20px; left: 20px; right: 20px; background: #1e3a8a; color: white; padding: 16px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.3); z-index: 1000; display: flex; align-items: center; gap: 12px;">
-                <div style="flex: 1;">
-                    <div style="font-weight: bold; margin-bottom: 4px;">📱 Instalar App</div>
-                    <div style="font-size: 14px; opacity: 0.9;">Instala la app del Ayuntamiento de Cobreros en tu iPhone</div>
-                </div>
-                <button onclick="installPWAApp()" style="background: white; color: #1e3a8a; border: none; padding: 8px 16px; border-radius: 6px; font-weight: bold; cursor: pointer;">
-                    Instalar
-                </button>
-                <button onclick="closePWAInstallBanner()" style="background: transparent; color: white; border: none; padding: 8px; cursor: pointer; font-size: 18px;">
-                    ×
-                </button>
-            </div>
-        `;
-        document.body.appendChild(installBanner);
+        deferredPwaPrompt = e;
+        renderPwaInstallBanner(true);
     });
     
-    // Función para instalar la app
-    window.installPWAApp = () => {
-        if (deferredPrompt) {
-            deferredPrompt.prompt();
-            deferredPrompt.userChoice.then((choiceResult) => {
-                if (choiceResult.outcome === 'accepted') {
-                    console.log('✅ Usuario aceptó instalar la PWA');
-                } else {
-                    console.log('❌ Usuario rechazó instalar la PWA');
-                }
-                deferredPrompt = null;
-                closePWAInstallBanner();
-            });
-        }
-    };
-    
-    // Función para cerrar el banner
-    window.closePWAInstallBanner = () => {
-        const banner = document.getElementById('pwa-install-banner');
-        if (banner) {
-            banner.remove();
-        }
-    };
+    const platform = detectDevicePlatform();
+    if (platform !== 'android') {
+        setTimeout(() => renderPwaInstallBanner(), 1000);
+    }
 }
+
+window.installPWAApp = () => handlePwaInstallOption('android');
+
+window.closePWAInstallBanner = () => {
+    const banner = document.getElementById('pwa-install-banner');
+    if (banner) {
+        banner.classList.remove('visible');
+        setTimeout(() => banner.remove(), 150);
+    }
+    closePwaInstructionModal();
+};
 
 // Inicializar PWA
 function initializePWA() {
