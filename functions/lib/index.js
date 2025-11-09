@@ -15,19 +15,29 @@ var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (
 }) : function(o, v) {
     o["default"] = v;
 });
-var __importStar = (this && this.__importStar) || function (mod) {
-    if (mod && mod.__esModule) return mod;
-    var result = {};
-    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
-    __setModuleDefault(result, mod);
-    return result;
-};
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.createBackup = exports.createDailyBackup = exports.sendPushNotification = exports.sendEmail = void 0;
-const functions = __importStar(require("firebase-functions"));
+const functions = __importStar(require("firebase-functions/v1"));
 const admin = __importStar(require("firebase-admin"));
 const nodemailer = __importStar(require("nodemailer"));
 const cors_1 = __importDefault(require("cors"));
@@ -35,6 +45,14 @@ const cors_1 = __importDefault(require("cors"));
 admin.initializeApp();
 // Configurar CORS
 const corsHandler = (0, cors_1.default)({ origin: true });
+function escapeHtml(text = '') {
+    return text
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
 // Tamaño de lote para envío masivo (máximo recomendado de FCM)
 const BATCH_SIZE = 500;
 // ⚙️ CONFIGURACIÓN DE EMAIL PARA CITAS PREVIAS
@@ -100,6 +118,10 @@ exports.sendEmail = functions
                 case 'appointment_no_show':
                     htmlContent = generateNoShowHTML(data);
                     textContent = generateNoShowText(data);
+                    break;
+                case 'general_notice':
+                    htmlContent = generateGeneralNoticeHTML(data);
+                    textContent = generateGeneralNoticeText(data);
                     break;
                 default:
                     htmlContent = '<p>Email del Ayuntamiento de Cobreros</p>';
@@ -357,10 +379,10 @@ function generateAppointmentConfirmationHTML(data) {
                     <h3>📅 Detalles de su cita:</h3>
                     <ul>
                         <li><strong>Servicio:</strong> ${data.service}</li>
-                        <li><strong>Fecha:</strong> <span class="highlight">${data.date}</span></li>
-                        <li><strong>Hora:</strong> <span class="highlight">${data.time}</span></li>
+                        <li><strong>Fecha:</strong> <span class="highlight">${data.date || data.dateFormatted || 'No especificada'}</span></li>
+                        <li><strong>Hora:</strong> <span class="highlight">${data.time || 'No especificada'}</span></li>
                         <li><strong>DNI:</strong> ${data.dni}</li>
-                        <li><strong>ID de Cita:</strong> ${data.appointmentId || data.id}</li>
+                        <li><strong>ID de Cita:</strong> ${data.appointmentId || data.id || 'N/A'}</li>
                         ${data.comments ? `<li><strong>Comentarios:</strong> ${data.comments}</li>` : ''}
                     </ul>
                 </div>
@@ -394,10 +416,10 @@ Le confirmamos que su solicitud de cita previa ha sido recibida correctamente.
 
 DETALLES DE SU CITA:
 - Servicio: ${data.service}
-- Fecha: ${data.date}
-- Hora: ${data.time}
+- Fecha: ${data.date || data.dateFormatted || 'No especificada'}
+- Hora: ${data.time || 'No especificada'}
 - DNI: ${data.dni}
-- ID de Cita: ${data.appointmentId || data.id}
+- ID de Cita: ${data.appointmentId || data.id || 'N/A'}
 ${data.comments ? `- Comentarios: ${data.comments}` : ''}
 
 IMPORTANTE: Nos pondremos en contacto con usted para confirmar la disponibilidad de la fecha y hora solicitada.
@@ -656,7 +678,6 @@ Teléfono: 980 62 26 18
 Este es un email automático, por favor no responda a este mensaje.
   `;
 }
-
 // Función para generar HTML de no presentación
 function generateNoShowHTML(data) {
     return `
@@ -718,7 +739,6 @@ function generateNoShowHTML(data) {
     </html>
   `;
 }
-
 // Función para generar texto plano de no presentación
 function generateNoShowText(data) {
     return `
@@ -746,7 +766,87 @@ Teléfono: 980 62 26 18
 Este es un email automático, por favor no responda a este mensaje.
   `;
 }
+function generateGeneralNoticeHTML(data) {
+    const title = escapeHtml((data === null || data === void 0 ? void 0 : data.title) || 'Aviso municipal');
+    const messageRaw = ((data === null || data === void 0 ? void 0 : data.message) || '').toString();
+    const messageHtml = messageRaw
+        ? messageRaw
+            .split(/\r?\n/)
+            .filter((line) => line.trim().length > 0)
+            .map((line) => `<p>${escapeHtml(line.trim())}</p>`)
+            .join('\n')
+        : '<p>Sin contenido adicional.</p>';
+    const attachmentUrl = typeof (data === null || data === void 0 ? void 0 : data.attachmentUrl) === 'string' && data.attachmentUrl
+        ? data.attachmentUrl
+        : '';
+    const attachmentName = escapeHtml((data === null || data === void 0 ? void 0 : data.attachmentName) || 'Documento adjunto');
+    const attachmentBlock = attachmentUrl
+        ? `<p style="margin-top: 16px;"><a href="${attachmentUrl}" target="_blank" rel="noopener noreferrer">📎 ${attachmentName}</a></p>`
+        : '';
+    const sentAtDate = (data === null || data === void 0 ? void 0 : data.sentAt) ? new Date(data.sentAt) : new Date();
+    const sentAt = escapeHtml(sentAtDate.toLocaleString('es-ES'));
+    return `
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="UTF-8">
+        <title>${title}</title>
+        <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; background-color: #f9f9f9; }
+            .container { max-width: 640px; margin: 0 auto; padding: 24px; background-color: #ffffff; border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.05); }
+            .header { background-color: #1d4ed8; color: #fff; padding: 24px; border-radius: 10px 10px 0 0; text-align: center; }
+            .header h1 { margin: 0; font-size: 24px; }
+            .title { font-size: 22px; margin: 24px 0 12px; color: #111827; }
+            .content { padding: 8px 0; }
+            .footer { margin-top: 32px; font-size: 13px; color: #6b7280; text-align: center; }
+            a.button { display: inline-block; margin-top: 16px; padding: 12px 20px; background-color: #2563eb; color: #fff; text-decoration: none; border-radius: 8px; font-weight: bold; }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <h1>Ayuntamiento de Cobreros</h1>
+                <p>Comunicación oficial</p>
+            </div>
 
+            <h2 class="title">${title}</h2>
+
+            <div class="content">
+                ${messageHtml}
+                ${attachmentBlock}
+            </div>
+
+            <div class="footer">
+                <p>Enviado el: ${sentAt}</p>
+                <p>Este es un mensaje automático del Ayuntamiento de Cobreros. Por favor, no responda a este correo.</p>
+            </div>
+        </div>
+    </body>
+    </html>
+  `;
+}
+function generateGeneralNoticeText(data) {
+    const title = ((data === null || data === void 0 ? void 0 : data.title) || 'Aviso municipal').toString();
+    const message = ((data === null || data === void 0 ? void 0 : data.message) || '').toString();
+    const sentAtDate = (data === null || data === void 0 ? void 0 : data.sentAt) ? new Date(data.sentAt) : new Date();
+    const sentAt = sentAtDate.toLocaleString('es-ES');
+    const attachmentUrl = typeof (data === null || data === void 0 ? void 0 : data.attachmentUrl) === 'string' && data.attachmentUrl
+        ? `\nAdjunto: ${data.attachmentUrl}`
+        : '';
+    return `
+AVISO MUNICIPAL - AYUNTAMIENTO DE COBREROS
+
+${title.toUpperCase()}
+
+${message}
+
+${attachmentUrl}
+
+Enviado el: ${sentAt}
+
+Este es un mensaje automático del Ayuntamiento de Cobreros. No responda a este correo.
+  `;
+}
 // ===== SISTEMA DE BACKUP AUTOMÁTICO =====
 /**
  * 🔄 Función programada para crear backups automáticos

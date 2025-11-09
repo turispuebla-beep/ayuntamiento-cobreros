@@ -15,6 +15,9 @@
     
     <!-- Preload recursos críticos -->
     <link rel="preload" href="css/styles.css" as="style">
+    <link rel="preload" href="js/modules/logger.js" as="script">
+    <link rel="preload" href="js/modules/utils.js" as="script">
+    <link rel="preload" href="js/modules/metrics.js" as="script">
     <link rel="preload" href="js/script.js" as="script">
     <link rel="preload" href="images/escudo-cobreros.png" as="image">
     
@@ -53,7 +56,7 @@
             apiKey: "AIzaSyAwgSjagdxd7pthmRAINDeTIPXx3zAMUeo",
             authDomain: "turisteam-80f1b.firebaseapp.com",
             projectId: "turisteam-80f1b",
-            storageBucket: "turisteam-80f1b.appspot.com",
+            storageBucket: "turisteam-80f1b.firebasestorage.app",
             messagingSenderId: "623846192437",
             appId: "1:623846192437:web:dc176bf38c1cbb9bac487c"
         };
@@ -1507,6 +1510,14 @@
                                     </label>
                                 </div>
                             </div>
+
+                            <div class="form-group">
+                                <label class="checkbox-option">
+                                    <input type="checkbox" id="notifSendEmail" name="sendEmail">
+                                    <span>Enviar también por correo electrónico a quienes hayan dado su consentimiento</span>
+                                </label>
+                                <small>Los avisos por email se envían a usuarios registrados con consentimiento activo.</small>
+                            </div>
                             
                             <div class="form-actions">
                                 <button type="submit" class="btn btn-primary">
@@ -2286,7 +2297,7 @@
                 <span class="close" onclick="closePublicNotificationModal()">&times;</span>
             </div>
             <div class="modal-body">
-                <form id="publicNotificationForm">
+                <form id="publicNotificationForm" class="notification-form-grid">
                     <input type="hidden" id="notificationId" name="id">
                     <div class="form-group">
                         <label for="notificationType">Tipo de notificación:</label>
@@ -2304,7 +2315,7 @@
                         <label for="notificationTitle">Título de la notificación:</label>
                         <input type="text" id="notificationTitle" name="title" placeholder="Ej: Hoy cerrado por festivo" required>
                     </div>
-                    <div class="form-group">
+                    <div class="form-group full-width">
                         <label for="notificationMessage">Mensaje completo:</label>
                         <textarea id="notificationMessage" name="message" rows="3" placeholder="Descripción detallada de la notificación..." required></textarea>
                     </div>
@@ -3244,7 +3255,10 @@
     <!-- Panel de estadísticas para administrador -->
     <script src="js/admin-stats-panel.js"></script>
     
-    <script src="js/script.js?v=2.3"></script>
+    <script src="js/modules/logger.js?v=1.0"></script>
+    <script src="js/modules/utils.js?v=1.0"></script>
+    <script src="js/modules/metrics.js?v=1.0"></script>
+    <script src="js/script.js?v=2.5"></script>
     <script src="js/recaptcha.js"></script>
 </body> 
 

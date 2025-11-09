@@ -1790,6 +1790,57 @@ a.btn {
     text-align: center;
 }
 
+#publicNotificationModal .modal-content {
+    max-width: 760px;
+    padding: 2.5rem 2.25rem;
+}
+
+.notification-form-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 1.5rem;
+}
+
+.notification-form-grid .form-group {
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+.notification-form-grid .form-group.full-width {
+    grid-column: 1 / -1;
+}
+
+.notification-form-grid textarea {
+    min-height: 160px;
+    resize: vertical;
+}
+
+#publicNotificationModal .modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 1rem;
+    flex-wrap: wrap;
+    padding-top: 1.5rem;
+}
+
+@media (max-width: 768px) {
+    #publicNotificationModal .modal-content {
+        width: 94%;
+        padding: 2rem 1.5rem;
+    }
+
+    .notification-form-grid {
+        grid-template-columns: 1fr;
+        gap: 1.25rem;
+    }
+
+    #publicNotificationModal .modal-footer {
+        flex-direction: column-reverse;
+        align-items: stretch;
+    }
+}
+
 /* Admin Modal */
 .admin-modal .modal-content {
     max-width: 900px;

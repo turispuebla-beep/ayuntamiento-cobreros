@@ -1,13 +1,23 @@
-import * as functions from 'firebase-functions';
+import * as functions from 'firebase-functions/v1';
 import * as admin from 'firebase-admin';
 import * as nodemailer from 'nodemailer';
 import cors from 'cors';
+import type { Request, Response } from 'express';
 
 // Inicializar Firebase Admin
 admin.initializeApp();
 
 // Configurar CORS
 const corsHandler = cors({ origin: true });
+
+function escapeHtml(text: string = ''): string {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
 
 // Tamaño de lote para envío masivo (máximo recomendado de FCM)
 const BATCH_SIZE = 500;
@@ -41,7 +51,7 @@ function createTransporter() {
 // ✅ Usa Firebase Secrets (GMAIL_PASSWORD se expone automáticamente como process.env)
 export const sendEmail = functions
   .runWith({ secrets: ['GMAIL_PASSWORD'] })
-  .https.onRequest((req, res) => {
+  .https.onRequest((req: Request, res: Response) => {
   return corsHandler(req, res, async () => {
     // Validar que el secret esté configurado (solo en runtime)
     const runtimeGmailPassword = process.env.GMAIL_PASSWORD;
@@ -83,6 +93,10 @@ export const sendEmail = functions
         case 'appointment_no_show':
           htmlContent = generateNoShowHTML(data);
           textContent = generateNoShowText(data);
+          break;
+        case 'general_notice':
+          htmlContent = generateGeneralNoticeHTML(data);
+          textContent = generateGeneralNoticeText(data);
           break;
         default:
           htmlContent = '<p>Email del Ayuntamiento de Cobreros</p>';
@@ -773,6 +787,95 @@ Este es un email automático, por favor no responda a este mensaje.
   `;
 }
 
+function generateGeneralNoticeHTML(data: any): string {
+  const title = escapeHtml(data?.title || 'Aviso municipal');
+  const messageRaw = (data?.message || '').toString();
+  const messageHtml = messageRaw
+    ? messageRaw
+        .split(/\r?\n/)
+        .filter((line: string) => line.trim().length > 0)
+        .map((line: string) => `<p>${escapeHtml(line.trim())}</p>`)
+        .join('\n')
+    : '<p>Sin contenido adicional.</p>';
+
+  const attachmentUrl =
+    typeof data?.attachmentUrl === 'string' && data.attachmentUrl
+      ? data.attachmentUrl
+      : '';
+  const attachmentName = escapeHtml(data?.attachmentName || 'Documento adjunto');
+  const attachmentBlock = attachmentUrl
+    ? `<p style="margin-top: 16px;"><a href="${attachmentUrl}" target="_blank" rel="noopener noreferrer">📎 ${attachmentName}</a></p>`
+    : '';
+
+  const sentAtDate = data?.sentAt ? new Date(data.sentAt) : new Date();
+  const sentAt = escapeHtml(sentAtDate.toLocaleString('es-ES'));
+
+  return `
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="UTF-8">
+        <title>${title}</title>
+        <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; background-color: #f9f9f9; }
+            .container { max-width: 640px; margin: 0 auto; padding: 24px; background-color: #ffffff; border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.05); }
+            .header { background-color: #1d4ed8; color: #fff; padding: 24px; border-radius: 10px 10px 0 0; text-align: center; }
+            .header h1 { margin: 0; font-size: 24px; }
+            .title { font-size: 22px; margin: 24px 0 12px; color: #111827; }
+            .content { padding: 8px 0; }
+            .footer { margin-top: 32px; font-size: 13px; color: #6b7280; text-align: center; }
+            a.button { display: inline-block; margin-top: 16px; padding: 12px 20px; background-color: #2563eb; color: #fff; text-decoration: none; border-radius: 8px; font-weight: bold; }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <h1>Ayuntamiento de Cobreros</h1>
+                <p>Comunicación oficial</p>
+            </div>
+
+            <h2 class="title">${title}</h2>
+
+            <div class="content">
+                ${messageHtml}
+                ${attachmentBlock}
+            </div>
+
+            <div class="footer">
+                <p>Enviado el: ${sentAt}</p>
+                <p>Este es un mensaje automático del Ayuntamiento de Cobreros. Por favor, no responda a este correo.</p>
+            </div>
+        </div>
+    </body>
+    </html>
+  `;
+}
+
+function generateGeneralNoticeText(data: any): string {
+  const title = (data?.title || 'Aviso municipal').toString();
+  const message = (data?.message || '').toString();
+  const sentAtDate = data?.sentAt ? new Date(data.sentAt) : new Date();
+  const sentAt = sentAtDate.toLocaleString('es-ES');
+  const attachmentUrl =
+    typeof data?.attachmentUrl === 'string' && data.attachmentUrl
+      ? `\nAdjunto: ${data.attachmentUrl}`
+      : '';
+
+  return `
+AVISO MUNICIPAL - AYUNTAMIENTO DE COBREROS
+
+${title.toUpperCase()}
+
+${message}
+
+${attachmentUrl}
+
+Enviado el: ${sentAt}
+
+Este es un mensaje automático del Ayuntamiento de Cobreros. No responda a este correo.
+  `;
+}
+
 // ===== SISTEMA DE BACKUP AUTOMÁTICO =====
 
 /**
@@ -790,7 +893,7 @@ Este es un email automático, por favor no responda a este mensaje.
 export const createDailyBackup = functions.pubsub
   .schedule('0 2 * * *') // Diariamente a las 02:00 UTC
   .timeZone('Europe/Madrid')
-  .onRun(async (context) => {
+  .onRun(async (context: functions.EventContext) => {
     try {
       console.log('🔄 Iniciando backup automático diario...');
       

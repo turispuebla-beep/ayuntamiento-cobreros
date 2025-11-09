@@ -1,191 +1,49 @@
-// ===== SISTEMA DE LOGGING OPTIMIZADO =====
-// Sistema de logging que se desactiva en producción para mejor rendimiento
-const DEBUG_MODE = localStorage.getItem('debugMode') === 'true' || 
-                   window.location.hostname === 'localhost' || 
-                   window.location.hostname === '127.0.0.1';
-
-const Logger = {
-    log: (...args) => {
-        if (DEBUG_MODE) {
-            console.log(...args);
-        }
-    },
-    error: (...args) => {
-        // Siempre mostrar errores
-        console.error(...args);
-    },
-    warn: (...args) => {
-        // Mostrar warnings en desarrollo
-        if (DEBUG_MODE) {
-            console.warn(...args);
-        }
-    },
-    info: (...args) => {
-        if (DEBUG_MODE) {
-            console.info(...args);
-        }
-    }
-};
-
-// ===== FUNCIONES DE UTILIDAD Y SEGURIDAD =====
-
-// Función para escapar HTML y prevenir XSS
-function escapeHtml(text) {
-    if (text == null) return '';
-    const div = document.createElement('div');
-    div.textContent = String(text);
-    return div.innerHTML;
-}
-
-// Función mejorada para escapar caracteres especiales en HTML
-function escapeForHtml(text) {
-    if (text == null) return '';
-    return String(text)
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#039;');
-}
-
-// Validar URL
-function isValidUrl(url) {
-    if (!url || typeof url !== 'string') return false;
-    try {
-        new URL(url);
-        return true;
-    } catch {
-        // Intentar como URL relativa
-        return url.startsWith('/') || url.startsWith('./') || url.startsWith('../');
-    }
-}
-
-// Objeto de validadores reutilizables
-const validators = {
-    required(value, fieldName) {
-        if (!value || (typeof value === 'string' && value.trim() === '')) {
-            return `${fieldName} es obligatorio`;
-        }
-        return null;
-    },
-    url(value) {
-        if (!value) return null; // URL opcional
-        if (!isValidUrl(value)) {
-            return 'URL inválida';
-        }
-        return null;
-    },
-    positiveNumber(value) {
-        const num = parseInt(value);
-        if (isNaN(num) || num < 1) {
-            return 'Debe ser un número mayor a 0';
-        }
-        return null;
-    },
-    email(value) {
-        if (!value) return null;
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(value)) {
-            return 'Email inválido';
-        }
-        return null;
-    },
-    postalCode(value) {
-        if (!value) return null;
-        const postalCodeRegex = /^[0-9]{5}$/;
-        if (!postalCodeRegex.test(value)) {
-            return 'El código postal debe tener 5 dígitos';
-        }
-        return null;
-    }
-};
-
-// Función de debouncing
-function debounce(func, wait) {
-    let timeout;
-    return function executedFunction(...args) {
-        const later = () => {
-            clearTimeout(timeout);
-            func(...args);
-        };
-        clearTimeout(timeout);
-        timeout = setTimeout(later, wait);
-    };
-}
-
-// Cache de elementos DOM para Cultura y Ocio
-const culturaOcioCache = {
-    modal: null,
-    containers: {},
-    getModal() {
-        if (!this.modal) {
-            this.modal = document.getElementById('culturaOcioModal');
-        }
-        return this.modal;
-    },
-    getContainer(id) {
-        if (!this.containers[id]) {
-            this.containers[id] = document.getElementById(id);
-        }
-        return this.containers[id];
-    },
-    clear() {
-        this.modal = null;
-        this.containers = {};
-    }
-};
-
-// Función para crear badges reutilizables
-function createBadge(text, color = '#3b82f6') {
-    const badge = document.createElement('span');
-    badge.style.cssText = `background: ${color}; color: white; padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.75rem;`;
-    badge.textContent = text;
-    return badge;
-}
-
-// Función para crear botones de acción reutilizables
-function createActionButton(text, icon, onClick, variant = 'primary') {
-    const button = document.createElement('button');
-    button.className = `btn btn-sm btn-${variant}`;
-    button.innerHTML = `<i class="fas fa-${icon}"></i> ${text}`;
-    button.onclick = onClick;
-    button.style.cssText = 'padding: 0.5rem 1rem; font-size: 0.875rem;';
-    return button;
-}
-
-// Función para mostrar estado de carga
-function showLoadingState(containerId, message = 'Cargando...') {
-    const container = document.getElementById(containerId);
-    if (!container) return;
-    container.innerHTML = `
-        <div class="loading-state" style="text-align: center; padding: 2rem; color: #6b7280;">
-            <div style="display: inline-block; width: 40px; height: 40px; border: 4px solid #e5e7eb; border-top-color: #3b82f6; border-radius: 50%; animation: spin 1s linear infinite;"></div>
-            <p style="margin-top: 1rem;">${escapeHtml(message)}</p>
-        </div>
-    `;
-    // Agregar animación si no existe
-    if (!document.getElementById('loading-spinner-style')) {
-        const style = document.createElement('style');
-        style.id = 'loading-spinner-style';
-        style.textContent = `
-            @keyframes spin {
-                to { transform: rotate(360deg); }
-            }
-        `;
-        document.head.appendChild(style);
-    }
-}
-
-// Configuración de tarjetas a eliminar (en lugar de hardcodeado)
-const TARJETAS_A_ELIMINAR = [
-    'Quesos Artesanales',
-    'Vinos de la Tierra'
-];
-
 const PUSH_WARNING_SESSION_PREFIX = 'pushWarningShown:';
+const CLOUD_FUNCTIONS_BASE_URL = 'https://us-central1-turisteam-80f1b.cloudfunctions.net';
 const PWA_INSTALLED_KEY = 'pwaInstalled';
 
 let deferredPwaPrompt = null;
+
+function getFriendlyStorageErrorMessage(error) {
+    if (!error) {
+        return 'No se pudo subir el documento adjunto. Inténtalo de nuevo.';
+    }
+
+    const code = error.code || '';
+    const message = (typeof error.message === 'string' ? error.message : '').toLowerCase();
+
+    switch (code) {
+        case 'storage/unauthorized':
+            return 'No tienes permisos para subir documentos. Inicia sesión de nuevo o contacta con el administrador.';
+        case 'storage/canceled':
+            return 'Se canceló la subida del documento.';
+        case 'storage/quota-exceeded':
+            return 'Has alcanzado el límite de almacenamiento disponible.';
+        case 'storage/retry-limit-exceeded':
+            return 'No se pudo subir el documento por problemas de red. Inténtalo de nuevo más tarde.';
+        case 'storage/invalid-checksum':
+            return 'El archivo se corrompió durante la subida. Vuelve a intentarlo.';
+        case 'storage/object-not-found':
+            return 'No se pudo encontrar el archivo adjunto en el servidor.';
+        default:
+            break;
+    }
+
+    if (message.includes('does not have storage bucket')) {
+        return 'El proyecto de Firebase no tiene configurado un bucket de Storage. Revisa la configuración.';
+    }
+    if (message.includes('network') || message.includes('fetch')) {
+        return 'No hay conexión estable. Comprueba tu red e inténtalo de nuevo.';
+    }
+    if (message.includes('maximum upload retry')) {
+        return 'La subida tardó demasiado y se canceló. Inténtalo otra vez.';
+    }
+    if (message.includes('unknown error')) {
+        return 'Ocurrió un error desconocido al subir el documento. Revisa la consola para más detalles.';
+    }
+
+    return 'No se pudo subir el documento adjunto. Vuelve a intentarlo y revisa la consola para más detalles.';
+}
 
 const PLATFORM_ICONS = {
     android: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="%23A4C639" d="M17.6 8.48l1.42-2.46a.5.5 0 10-.87-.5l-1.47 2.55A8.04 8.04 0 0012 7a8.04 8.04 0 00-3.68.99L6.85 5.52a.5.5 0 10-.87.5l1.42 2.46A7.03 7.03 0 005 13v5a1 1 0 001 1h1v3a1 1 0 002 0v-3h6v3a1 1 0 002 0v-3h1a1 1 0 001-1v-5a7.03 7.03 0 00-2.4-4.52zM9 11a1 1 0 110-2 1 1 0 010 2zm6 0a1 1 0 110-2 1 1 0 010 2z"/></svg>',
@@ -2163,25 +2021,34 @@ async function handleAppointment(e) {
 
     // Enviar notificación a usuarios registrados
     if (users.length > 0) {
-        sendNotificationToUsers(
-            'Nueva solicitud de cita',
-            `Se ha recibido una nueva solicitud de cita para ${appointmentData.service} de ${appointmentData.name}`,
-            'general'
-        );
+        await sendNotificationToUsers({
+            title: 'Nueva solicitud de cita',
+            message: `Se ha recibido una nueva solicitud de cita para ${appointmentData.service} de ${appointmentData.name}`,
+            type: 'general',
+            sendPush: false,
+            sendEmail: false
+        });
     }
 }
 
 // Manejar notificación
-function registerLocalNotificationRecord(title, message, type, attachment = null) {
+async function registerLocalNotificationRecord(title, message, type, attachment = null, options = {}) {
     const safeTitle = (title || '').trim();
     if (!safeTitle) {
-        return;
+        return null;
     }
 
     const safeMessage = (message || '').toString();
     const safeType = (type || 'general').toString();
 
-    const notification = sendNotificationToUsers(safeTitle, safeMessage, safeType, attachment);
+    const result = await sendNotificationToUsers({
+        title: safeTitle,
+        message: safeMessage,
+        type: safeType,
+        attachment,
+        ...options
+    });
+    const notification = result?.notification || null;
 
     if (window.trackEvent) {
         trackEvent('notification_sent', {
@@ -2199,30 +2066,125 @@ function registerLocalNotificationRecord(title, message, type, attachment = null
             contadorNotificaciones.textContent = totalEnviadas.toString();
         }
 
-        if (notification && notification.date) {
+        if (notification?.date) {
             localStorage.setItem('notificationsLastSent', notification.date);
         }
     } catch (error) {
         console.warn('No se pudo actualizar el contador de notificaciones enviadas:', error);
     }
 
+    if (options.sendEmail !== false && result?.email?.attempted) {
+        const { attempted, success, failed } = result.email;
+        const status = failed === 0
+            ? 'success'
+            : success > 0
+                ? 'warning'
+                : 'error';
+        const summary = `Aviso por email: ${success}/${attempted} enviados${failed ? `, ${failed} fallidos` : ''}.`;
+        showNotification(summary, status);
+    }
+
     refreshNotificationStats();
+    return result;
 }
 
 // Enviar notificación a usuarios
-function sendNotificationToUsers(title, message, type, attachment = null) {
+async function sendGeneralNoticeEmail(toEmail, payload = {}) {
+    if (!toEmail) {
+        return false;
+    }
+
+    const {
+        title = 'Aviso municipal',
+        message = '',
+        attachmentName = null,
+        attachmentUrl = null
+    } = payload || {};
+
+    try {
+        const response = await fetch(`${CLOUD_FUNCTIONS_BASE_URL}/sendEmail`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                to: toEmail,
+                subject: `Aviso Municipal: ${title}`,
+                template: 'general_notice',
+                data: {
+                    title,
+                    message,
+                    attachmentName,
+                    attachmentUrl,
+                    sentAt: new Date().toISOString()
+                }
+            })
+        });
+
+        const result = await response.json();
+        if (result && result.success) {
+            console.log(`✅ Email de aviso enviado a ${toEmail}`);
+            return true;
+        }
+        console.warn(`⚠️ No se pudo enviar el email a ${toEmail}:`, result?.error || result);
+        return false;
+    } catch (error) {
+        console.error(`❌ Error enviando email de aviso a ${toEmail}:`, error);
+        return false;
+    }
+}
+
+async function sendNotificationToUsers(titleOrOptions, message, type, attachment = null, legacyOptions = {}) {
+    let options;
+    if (typeof titleOrOptions === 'object' && titleOrOptions !== null && !Array.isArray(titleOrOptions)) {
+        options = { ...titleOrOptions };
+    } else {
+        options = {
+            title: titleOrOptions,
+            message,
+            type,
+            attachment,
+            ...legacyOptions
+        };
+    }
+
+    const {
+        title = '',
+        message: bodyMessage = '',
+        type: notificationType = 'general',
+        attachment: attachmentData = options.attachment ?? attachment ?? null,
+        scope = options.scope || 'all',
+        localities = Array.isArray(options.localities) ? options.localities : [],
+        sendPush = options.sendPush !== false,
+        sendEmail = options.sendEmail !== false,
+        recipients = options.recipients || null
+    } = options;
+
+    if (!title || !bodyMessage) {
+        console.warn('sendNotificationToUsers: título o mensaje no proporcionado');
+        return {
+            notification: null,
+            push: { attempted: sendPush, success: false },
+            email: { attempted: 0, success: 0, failed: 0 }
+        };
+    }
+
     const notification = {
         id: Date.now(),
         title,
-        message,
-        type,
+        message: bodyMessage,
+        type: notificationType,
         date: new Date().toISOString(),
         sent: true,
-        attachment: attachment // Agregar soporte para documentos adjuntos
+        attachment: attachmentData || null
     };
 
     notifications.push(notification);
-    localStorage.setItem('notifications', JSON.stringify(notifications));
+    try {
+        localStorage.setItem('notifications', JSON.stringify(notifications));
+    } catch (storageError) {
+        console.warn('No se pudo guardar el historial de avisos en localStorage:', storageError);
+    }
 
     actualizarEstadisticasNotificaciones();
 
@@ -2231,26 +2193,72 @@ function sendNotificationToUsers(title, message, type, attachment = null) {
         lastSentElement.textContent = formatDate(notification.date);
     }
 
-    // Enviar notificación push si está disponible
     if ('Notification' in window && Notification.permission === 'granted') {
-        new Notification(title, {
-            body: message,
-            icon: 'images/escudo-cobreros.jpg'
-        });
+        try {
+            new Notification(title, {
+                body: bodyMessage,
+                icon: 'images/escudo-cobreros.jpg'
+            });
+        } catch (browserNotificationError) {
+            console.warn('No se pudo mostrar la notificación local del navegador:', browserNotificationError);
+        }
     }
 
-    // Enviar por email (simulado) solo a usuarios con consentimiento
-    users.forEach(user => {
-        if (user.consent && user.notificationConsent) {
-            console.log(`Enviando notificación a ${user.email}: ${title} - ${message}`);
-            if (attachment) {
-                console.log(`Documento adjunto: ${attachment.name}`);
+    updateNotificationCenter();
+
+    let pushSuccess = false;
+    if (sendPush) {
+        try {
+            pushSuccess = await enviarNotificacionPushConLocalidades(
+                title,
+                bodyMessage,
+                notificationType,
+                scope === 'localities' ? 'localities' : 'all',
+                scope === 'localities' ? localities : [],
+                !!(attachmentData && attachmentData.url),
+                attachmentData?.url || null,
+                attachmentData?.type || null
+            );
+        } catch (pushError) {
+            console.error('❌ Error al enviar aviso push:', pushError);
+            pushSuccess = false;
+        }
+    }
+
+    const emailResult = { attempted: 0, success: 0, failed: 0 };
+    if (sendEmail) {
+        const targetRecipients = Array.isArray(recipients)
+            ? recipients
+            : users.filter(user => user && user.consent && user.notificationConsent && user.email);
+
+        for (const recipient of targetRecipients) {
+            const email = typeof recipient === 'string' ? recipient : recipient.email;
+            if (!email) {
+                continue;
+            }
+            emailResult.attempted += 1;
+            const emailSent = await sendGeneralNoticeEmail(email, {
+                title,
+                message: bodyMessage,
+                attachmentName: attachmentData?.name || null,
+                attachmentUrl: attachmentData?.url || null
+            });
+            if (emailSent) {
+                emailResult.success += 1;
+            } else {
+                emailResult.failed += 1;
             }
         }
-    });
+    }
 
-    updateNotificationCenter();
-    return notification;
+    return {
+        notification,
+        push: {
+            attempted: sendPush,
+            success: sendPush ? !!pushSuccess : false
+        },
+        email: emailResult
+    };
 }
 // Función para descargar documentos adjuntos
 function downloadAttachment(url, filename = '') {
@@ -2517,6 +2525,13 @@ function renderPwaInstallBanner(force = false) {
     banner.id = 'pwa-install-banner';
     banner.className = `pwa-install-banner pwa-install-banner--${platform}`;
 
+    if (typeof Metrics !== 'undefined' && Metrics && typeof Metrics.recordEvent === 'function') {
+        Metrics.recordEvent('pwa', 'install_banner_rendered', {
+            platform,
+            forced: !!force
+        });
+    }
+
     if (platform === 'desktop') {
         banner.innerHTML = `
             <div class="pwa-banner-content">
@@ -2570,6 +2585,69 @@ function renderPwaInstallBanner(force = false) {
     requestAnimationFrame(() => banner.classList.add('visible'));
 }
 
+async function validatePwaInstallationStatus(showWarnings = true) {
+    const platform = detectDevicePlatform();
+    const installedFlag = isPwaInstalled();
+    const standalone = isRunningStandalone();
+    let hasServiceWorker = false;
+
+    if ('serviceWorker' in navigator) {
+        try {
+            const registrations = await navigator.serviceWorker.getRegistrations();
+            hasServiceWorker = Array.isArray(registrations) && registrations.length > 0;
+        } catch (error) {
+            if (typeof Logger !== 'undefined' && Logger && typeof Logger.warn === 'function') {
+                Logger.warn('No se pudo validar el estado de la PWA:', error);
+            }
+        }
+    }
+
+    const hasPushToken = !!(currentUser && currentUser.notificationConsent && currentUser.fcmToken);
+    const pushPermission = typeof Notification !== 'undefined' ? Notification.permission : 'default';
+    const installationHealthy = installedFlag && (standalone || hasServiceWorker) && hasPushToken && pushPermission !== 'denied';
+
+    if (typeof Metrics !== 'undefined' && Metrics && typeof Metrics.recordEvent === 'function') {
+        Metrics.recordEvent('pwa', 'installation_status_checked', {
+            platform,
+            installedFlag,
+            standalone,
+            hasServiceWorker,
+            hasPushToken,
+            pushPermission
+        });
+    }
+
+    if (!installationHealthy && installedFlag) {
+        clearPwaInstalledFlag();
+        if (typeof Metrics !== 'undefined' && Metrics && typeof Metrics.recordEvent === 'function') {
+            Metrics.recordEvent('pwa', 'installation_lost', {
+                platform,
+                standalone,
+                hasServiceWorker,
+                hasPushToken,
+                pushPermission
+            });
+        }
+        if (showWarnings && typeof showNotification === 'function') {
+            showNotification('Detectamos que la app instalada ya no está activa o perdió permisos. Vuelve a instalarla y acepta los avisos para seguir recibiendo notificaciones.', 'warning');
+        }
+        setTimeout(() => renderPwaInstallBanner(true), 300);
+        return false;
+    }
+
+    if (typeof Metrics !== 'undefined' && Metrics && typeof Metrics.recordEvent === 'function') {
+        Metrics.recordEvent('pwa', 'installation_valid', {
+            platform,
+            standalone,
+            hasServiceWorker,
+            hasPushToken,
+            pushPermission
+        });
+    }
+
+    return installationHealthy;
+}
+
 function closePwaInstructionModal() {
     const modal = document.getElementById('pwa-instructions-modal');
     if (modal) {
@@ -2613,10 +2691,23 @@ function showPwaInstructionModal(platform) {
 
     document.body.appendChild(modal);
     requestAnimationFrame(() => modal.classList.add('visible'));
+
+    if (typeof Metrics !== 'undefined' && Metrics && typeof Metrics.recordEvent === 'function') {
+        Metrics.recordEvent('pwa', 'instructions_shown', {
+            platform
+        });
+    }
 }
 
 async function handlePwaInstallOption(platform) {
     const actualPlatform = detectDevicePlatform();
+
+    if (typeof Metrics !== 'undefined' && Metrics && typeof Metrics.recordEvent === 'function') {
+        Metrics.recordEvent('pwa', 'install_option_selected', {
+            requestedPlatform: platform,
+            actualPlatform
+        });
+    }
 
     if (platform === 'android' || (platform === 'huawei' && actualPlatform === 'android')) {
         if (deferredPwaPrompt) {
@@ -2627,6 +2718,11 @@ async function handlePwaInstallOption(platform) {
             } else {
                 closePWAInstallBanner();
                 markPwaInstalled();
+                if (typeof Metrics !== 'undefined' && Metrics && typeof Metrics.recordEvent === 'function') {
+                    Metrics.recordEvent('pwa', 'install_prompt_accepted', {
+                        platform: actualPlatform
+                    });
+                }
             }
             deferredPwaPrompt = null;
         } else {
@@ -2642,6 +2738,11 @@ async function handlePwaInstallOption(platform) {
             if (outcome === 'accepted') {
                 closePWAInstallBanner();
                 markPwaInstalled();
+                if (typeof Metrics !== 'undefined' && Metrics && typeof Metrics.recordEvent === 'function') {
+                    Metrics.recordEvent('pwa', 'install_prompt_accepted', {
+                        platform: actualPlatform
+                    });
+                }
                 deferredPwaPrompt = null;
                 return;
             }
@@ -2656,6 +2757,7 @@ async function handlePwaInstallOption(platform) {
 
 window.handlePwaInstallOption = handlePwaInstallOption;
 window.closePwaInstructionModal = closePwaInstructionModal;
+window.validatePwaInstallationStatus = validatePwaInstallationStatus;
 
 // Actualizar interfaz de usuario
 function updateUserInterface() {
@@ -3999,6 +4101,7 @@ function deleteNews(newsId) {
     localStorage.setItem('news', JSON.stringify(news));
     
     showNotification(`Noticia "${newsItem.title}" eliminada correctamente`, 'success');
+    updateContent();
     loadNewsList();
 }
 // Funciones de gestión de bandos
@@ -4278,6 +4381,7 @@ function deleteBando(bandoId) {
     localStorage.setItem('bandos', JSON.stringify(bandos));
     
     showNotification(`Bando "${bandoItem.title}" eliminado correctamente`, 'success');
+    updateContent();
     loadBandoList();
 }
 
@@ -7295,7 +7399,7 @@ function validateNIE(nie) {
 // Email dedicado: u2389387944@gmail.com
 async function sendConfirmationEmail(appointmentData) {
     try {
-        const response = await fetch('https://us-central1-turisteam-80f1b.cloudfunctions.net/sendEmail', {
+        const response = await fetch(`${CLOUD_FUNCTIONS_BASE_URL}/sendEmail`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -7340,7 +7444,7 @@ async function sendConfirmationEmail(appointmentData) {
 // Email dedicado: u2389387944@gmail.com
 async function sendAdminAlert(appointmentData) {
     try {
-        const response = await fetch('https://us-central1-turisteam-80f1b.cloudfunctions.net/sendEmail', {
+        const response = await fetch(`${CLOUD_FUNCTIONS_BASE_URL}/sendEmail`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -8051,7 +8155,7 @@ async function sendStatusChangeEmail(appointment, oldStatus, newStatus, alternat
             }
         }
         
-        const response = await fetch('https://us-central1-turisteam-80f1b.cloudfunctions.net/sendEmail', {
+        const response = await fetch(`${CLOUD_FUNCTIONS_BASE_URL}/sendEmail`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -8279,7 +8383,7 @@ async function sendNoShowEmail(appointment) {
     
     // Fallback: método tradicional
     try {
-        const response = await fetch('https://us-central1-turisteam-80f1b.cloudfunctions.net/sendEmail', {
+        const response = await fetch(`${CLOUD_FUNCTIONS_BASE_URL}/sendEmail`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -11924,12 +12028,23 @@ function showPWAInstallBanner() {
         e.preventDefault();
         deferredPwaPrompt = e;
         clearPwaInstalledFlag();
+        if (typeof Metrics !== 'undefined' && Metrics && typeof Metrics.recordEvent === 'function') {
+            Metrics.recordEvent('pwa', 'beforeinstallprompt_captured', {
+                platform: detectDevicePlatform()
+            });
+        }
         renderPwaInstallBanner(true);
     });
     
     const platform = detectDevicePlatform();
     if (platform !== 'android') {
         setTimeout(() => renderPwaInstallBanner(), 1000);
+    }
+
+    if (typeof Metrics !== 'undefined' && Metrics && typeof Metrics.recordEvent === 'function') {
+        Metrics.recordEvent('pwa', 'banner_schedule', {
+            platform
+        });
     }
 }
 
@@ -11942,12 +12057,22 @@ window.closePWAInstallBanner = () => {
         setTimeout(() => banner.remove(), 150);
     }
     closePwaInstructionModal();
+    if (typeof Metrics !== 'undefined' && Metrics && typeof Metrics.recordEvent === 'function') {
+        Metrics.recordEvent('pwa', 'install_banner_closed', {
+            platform: detectDevicePlatform()
+        });
+    }
 };
 
 if (typeof window !== 'undefined') {
     window.addEventListener('appinstalled', () => {
         markPwaInstalled();
         closePWAInstallBanner();
+        if (typeof Metrics !== 'undefined' && Metrics && typeof Metrics.recordEvent === 'function') {
+            Metrics.recordEvent('pwa', 'appinstalled', {
+                platform: detectDevicePlatform()
+            });
+        }
     });
 
     if (window.matchMedia) {
@@ -11956,6 +12081,11 @@ if (typeof window !== 'undefined') {
             const updateStandaloneStatus = (event) => {
                 if (event.matches) {
                     markPwaInstalled();
+                    if (typeof Metrics !== 'undefined' && Metrics && typeof Metrics.recordEvent === 'function') {
+                        Metrics.recordEvent('pwa', 'display_mode_standalone', {
+                            platform: detectDevicePlatform()
+                        });
+                    }
                 }
             };
             if (typeof standaloneMatcher.addEventListener === 'function') {
@@ -11985,6 +12115,10 @@ function initializePWA() {
     
     // Configurar recepción de notificaciones
     setupNotificationReception();
+
+    validatePwaInstallationStatus(false);
+    setTimeout(() => validatePwaInstallationStatus(true), 5000);
+    setInterval(() => validatePwaInstallationStatus(true), 60 * 60 * 1000);
 }
 
 // ===== SISTEMA DE NOTIFICACIONES RECIBIDAS =====
@@ -12396,7 +12530,7 @@ async function enviarNotificacionPushConLocalidades(titulo, mensaje, tipo = 'gen
         };
 
         // Enviar a Firebase Function
-        const response = await fetch('https://us-central1-turisteam-80f1b.cloudfunctions.net/sendPushNotification', {
+        const response = await fetch(`${CLOUD_FUNCTIONS_BASE_URL}/sendPushNotification`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -12589,6 +12723,7 @@ async function enviarNotificacionDesdeFormulario() {
     const tipoSelect = document.getElementById('notifType');
     const attachmentInput = document.getElementById('notifAttachment');
     const destinatariosInput = document.querySelector('input[name="destinatarios"]:checked');
+    const sendEmailCheckbox = document.getElementById('notifSendEmail');
     const submitBtn = document.querySelector('#notificationForm button[type="submit"]');
 
     const titulo = tituloInput ? tituloInput.value.trim() : '';
@@ -12620,13 +12755,55 @@ async function enviarNotificacionDesdeFormulario() {
 
     const alcance = destinatarios === 'localidades' ? 'localities' : 'all';
     const tieneAdjunto = !!archivo;
+    const sendEmail = sendEmailCheckbox ? sendEmailCheckbox.checked : false;
 
-    const attachmentMeta = archivo ? {
-        name: archivo.name,
-        url: '#',
-        size: archivo.size,
-        type: archivo.type
-    } : null;
+    let attachmentMeta = null;
+    if (archivo) {
+        try {
+            if (typeof uploadAttachment === 'function') {
+                showNotification('Subiendo documento adjunto, por favor espera…', 'info');
+                const entityId = (currentUser && (currentUser.uid || currentUser.id)) ||
+                    (currentUser && currentUser.email ? currentUser.email.replace(/[^a-zA-Z0-9]/g, '_') : 'admin');
+                const uploadResult = await uploadAttachment(archivo, {
+                    folder: 'uploads/notifications',
+                    entityId: entityId || 'admin',
+                    metadata: {
+                        context: 'notification_attachment',
+                        notificationTitle: titulo,
+                        notificationType: tipo
+                    },
+                    allowedExtensions: ['.pdf', '.jpg', '.jpeg', '.png', '.doc', '.docx'],
+                    maxSize: 10 * 1024 * 1024
+                });
+                attachmentMeta = {
+                    name: archivo.name,
+                    url: uploadResult.url,
+                    storagePath: uploadResult.storagePath,
+                    size: uploadResult.size,
+                    type: uploadResult.contentType || archivo.type || 'application/octet-stream',
+                    uploadedAt: uploadResult.uploadedAt || new Date().toISOString()
+                };
+                showNotification('Documento adjunto subido correctamente.', 'success');
+            } else {
+                const dataUrl = await readFileAsDataURL(archivo, 10 * 1024 * 1024);
+                attachmentMeta = {
+                    name: archivo.name,
+                    url: dataUrl,
+                    size: archivo.size,
+                    type: archivo.type
+                };
+            }
+        } catch (uploadError) {
+            console.error('❌ Error subiendo el adjunto de la notificación:', uploadError);
+            const friendlyMessage = getFriendlyStorageErrorMessage(uploadError);
+            showNotification(friendlyMessage, 'error');
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.classList.remove('loading');
+            }
+            return;
+        }
+    }
 
     if (submitBtn) {
         submitBtn.disabled = true;
@@ -12634,11 +12811,15 @@ async function enviarNotificacionDesdeFormulario() {
     }
 
     try {
-        const enviado = await enviarNotificacionPushConLocalidades(titulo, mensaje, tipo, alcance, localidades, tieneAdjunto);
+        const result = await registerLocalNotificationRecord(titulo, mensaje, tipo, attachmentMeta, {
+            scope: alcance,
+            localities: localidades,
+            sendPush: true,
+            sendEmail
+        });
 
-        if (enviado) {
-            registerLocalNotificationRecord(titulo, mensaje, tipo, attachmentMeta);
-    limpiarFormularioNotificacion();
+        if (result?.notification) {
+            limpiarFormularioNotificacion();
         }
     } catch (error) {
         console.error('❌ Error al enviar la notificación:', error);
@@ -12656,6 +12837,10 @@ function limpiarFormularioNotificacion() {
     document.getElementById('notificationForm').reset();
     document.getElementById('localidadesGroup').style.display = 'none';
     document.querySelector('input[name="destinatarios"][value="todos"]').checked = true;
+    const sendEmailCheckbox = document.getElementById('notifSendEmail');
+    if (sendEmailCheckbox) {
+        sendEmailCheckbox.checked = false;
+    }
     if (notificationMessageEditor) {
         notificationMessageEditor.setContents([]);
     }

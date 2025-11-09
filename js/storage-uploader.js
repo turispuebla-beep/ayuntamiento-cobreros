@@ -103,8 +103,8 @@ async function uploadAttachment(file, {
     throw new Error('Firebase Storage no está disponible en este momento.');
   }
 
-  const storageService = window.firebase.storage();
-  if (!storageService || !storageService.uploadBytes) {
+  const storageService = window.firebase.storage && window.firebase.storage();
+  if (!storageService || (typeof storageService.ref !== 'function' && typeof storageService.uploadBytes !== 'function')) {
     throw new Error('Firebase Storage no está configurado correctamente.');
   }
 
@@ -122,12 +122,28 @@ async function uploadAttachment(file, {
     }
   };
 
-  await storageService.uploadBytes(storagePath, file, uploadMetadata);
-  const url = await storageService.getDownloadURL(storagePath);
+  let downloadUrl = null;
+  let finalStoragePath = storagePath;
+
+  if (typeof storageService.uploadBytes === 'function' && typeof storageService.getDownloadURL === 'function') {
+    await storageService.uploadBytes(storagePath, file, uploadMetadata);
+    downloadUrl = await storageService.getDownloadURL(storagePath);
+  } else if (typeof storageService.ref === 'function') {
+    const fileRef = storageService.ref(storagePath);
+    if (fileRef && typeof fileRef.put === 'function') {
+      await fileRef.put(file, uploadMetadata);
+      downloadUrl = await fileRef.getDownloadURL();
+      finalStoragePath = fileRef.fullPath || storagePath;
+    } else {
+      throw new Error('La referencia de Storage no soporta el método put().');
+    }
+  } else {
+    throw new Error('No se encontró un método compatible para subir archivos a Storage.');
+  }
 
   return {
-    url,
-    storagePath,
+    url: downloadUrl,
+    storagePath: finalStoragePath,
     contentType: uploadMetadata.contentType,
     size: file.size,
     name: file.name,

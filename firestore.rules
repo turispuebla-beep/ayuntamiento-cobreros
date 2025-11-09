@@ -1,96 +1,138 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    // Función auxiliar para verificar autenticación
+
     function isAuthenticated() {
       return request.auth != null;
     }
-    
-    // Función para verificar si es administrador
+
+    function adminDocument(uid) {
+      return get(/databases/$(database)/documents/admins/$(uid));
+    }
+
     function isAdmin() {
-      return isAuthenticated() && 
-             exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+      return isAuthenticated() &&
+             exists(/databases/$(database)/documents/admins/$(request.auth.uid)) &&
+             (adminDocument(request.auth.uid).data.isActive == true ||
+              !('isActive' in adminDocument(request.auth.uid).data));
     }
-    
-    // Función para verificar si es super admin
+
     function isSuperAdmin() {
-      return isAuthenticated() && 
-             get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.isSuperAdmin == true;
+      return isAuthenticated() &&
+             exists(/databases/$(database)/documents/admins/$(request.auth.uid)) &&
+             adminDocument(request.auth.uid).data.isSuperAdmin == true;
     }
-    
-    // Función para validar estructura de usuario
-    function isValidUser() {
-      let data = request.resource.data;
-      return data.keys().hasAll(['email', 'nombre', 'surname1', 'phone', 'address', 'city', 'postalCode']) &&
+
+    function isSameUser(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function optionalStringField(data, field, maxLength) {
+      return !(field in data) || (data[field] is string && data[field].size() <= maxLength);
+    }
+
+    function isStringList(value, maxItems) {
+      return value is list &&
+             value.size() <= maxItems &&
+             value.where(item => !(item is string) || item.size() > 120).size() == 0;
+    }
+
+    function isValidUserData(data) {
+      let allowedKeys = [
+        'nombre', 'apellidos', 'surname1', 'surname2', 'fullName',
+        'email', 'telefono', 'direccion', 'ciudad', 'codigoPostal',
+        'documentType', 'documentTypeName', 'documentNumber', 'dni',
+        'notificationConsent', 'localities', 'fcmToken', 'lastNotificationError',
+        'registeredFrom', 'registrationDate', 'lastNotificationCheck', 'lastNotificationAt'
+      ];
+
+      return data.keys().hasOnly(allowedKeys) &&
              data.email is string &&
-             data.nombre is string &&
-             data.surname1 is string &&
-             data.phone is string &&
-             data.address is string &&
-             data.city is string &&
-             data.postalCode is string &&
-             data.postalCode.matches('^[0-9]{5}$') &&
-             data.email.matches('^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$');
+             data.email.size() <= 320 &&
+             data.email.matches('^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$') &&
+             optionalStringField(data, 'nombre', 120) &&
+             optionalStringField(data, 'apellidos', 160) &&
+             optionalStringField(data, 'surname1', 120) &&
+             optionalStringField(data, 'surname2', 120) &&
+             optionalStringField(data, 'fullName', 200) &&
+             optionalStringField(data, 'telefono', 32) &&
+             optionalStringField(data, 'direccion', 200) &&
+             optionalStringField(data, 'ciudad', 120) &&
+             optionalStringField(data, 'codigoPostal', 10) &&
+             optionalStringField(data, 'documentType', 50) &&
+             optionalStringField(data, 'documentTypeName', 120) &&
+             optionalStringField(data, 'documentNumber', 50) &&
+             optionalStringField(data, 'dni', 50) &&
+             optionalStringField(data, 'fcmToken', 400) &&
+             optionalStringField(data, 'lastNotificationError', 400) &&
+             optionalStringField(data, 'registeredFrom', 40) &&
+             optionalStringField(data, 'lastNotificationCheck', 40) &&
+             optionalStringField(data, 'lastNotificationAt', 40) &&
+             (!( 'notificationConsent' in data) || data.notificationConsent is bool) &&
+             (!( 'localities' in data) || isStringList(data.localities, 20)) &&
+             (!( 'registrationDate' in data) || data.registrationDate is timestamp);
     }
-    
-    // Colección de usuarios
+
     match /users/{userId} {
-      // Los usuarios solo pueden leer/escribir sus propios datos
-      allow read: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
-      allow create: if isAuthenticated() && request.auth.uid == userId && isValidUser();
-      allow update: if isAuthenticated() && (request.auth.uid == userId || isAdmin()) && isValidUser();
-      allow delete: if isAdmin();
+      allow get: if isSameUser(userId) || isAdmin();
+      allow list: if isAdmin();
+      allow create: if isSameUser(userId) && isValidUserData(request.resource.data);
+      allow update: if (isSameUser(userId) && isValidUserData(request.resource.data))
+                    || (isAdmin() && isValidUserData(request.resource.data));
+      allow delete: if isSuperAdmin();
     }
-    
-    // Colección de administradores
+
     match /admins/{adminId} {
-      allow read: if isAdmin();
-      allow write: if isSuperAdmin();
+      allow get: if isSuperAdmin() || request.auth.uid == adminId;
+      allow list: if isSuperAdmin();
+      allow create, update, delete: if isSuperAdmin();
     }
-    
-    // Colección de notificaciones
+
     match /notifications/{notificationId} {
-      allow read: if isAuthenticated();
-      allow create: if isAdmin();
-      allow update, delete: if isAdmin();
+      allow get: if isAuthenticated();
+      allow list: if isAdmin();
+      allow create, update, delete: if isAdmin();
     }
-    
-    // Colección de noticias
+
+    match /notification_stats/{statId} {
+      allow get, list: if isAdmin();
+      allow create, update, delete: if isAdmin();
+    }
+
     match /news/{newsId} {
-      allow read: if true; // Público
-      allow write: if isAdmin();
+      allow get, list: if true;
+      allow create, update, delete: if isAdmin();
     }
-    
-    // Colección de bandos
+
     match /bandos/{bandoId} {
-      allow read: if true; // Público
-      allow write: if isAdmin();
+      allow get, list: if true;
+      allow create, update, delete: if isAdmin();
     }
-    
-    // Colección de eventos
+
     match /events/{eventId} {
-      allow read: if true; // Público
-      allow write: if isAdmin();
+      allow get, list: if true;
+      allow create, update, delete: if isAdmin();
     }
-    
-    // Colección de documentos
+
     match /documents/{documentId} {
-      allow read: if isAuthenticated();
-      allow write: if isAdmin();
+      allow get, list: if isAuthenticated();
+      allow create, update, delete: if isAdmin();
     }
-    
-    // Colección de citas previas
+
     match /appointments/{appointmentId} {
-      allow read: if isAuthenticated();
+      allow get: if isAuthenticated();
+      allow list: if isAdmin();
       allow create: if isAuthenticated();
       allow update, delete: if isAdmin();
     }
-    
-    // Colección de estadísticas (solo lectura para admins)
+
     match /statistics/{statId} {
-      allow read: if isAdmin();
-      allow write: if isAdmin();
+      allow get, list: if isAdmin();
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
     }
   }
 }
