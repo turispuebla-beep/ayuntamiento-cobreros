@@ -253,8 +253,16 @@ function initializeRecaptcha() {
             
       await handleFormWithRecaptcha('adminLoginForm', RECAPTCHA_CONFIG.actions.admin_login, async (token) => {
         // Aquí va la lógica original de admin login
-        const email = document.getElementById('adminLoginEmail').value;
-        const password = document.getElementById('adminLoginPassword').value;
+        const emailInput = adminLoginForm.querySelector('#adminEmail, input[type="email"]');
+        const passwordInput = adminLoginForm.querySelector('#adminPassword, input[type="password"]');
+        const email = emailInput ? emailInput.value : '';
+        const password = passwordInput ? passwordInput.value : '';
+
+        if (!emailInput || !passwordInput) {
+          recaptchaLogWarn('⚠️ No se encontraron los campos de acceso admin dentro del formulario');
+          showNotification('No se pudo validar el formulario de acceso admin. Refresca la página e inténtalo de nuevo.', 'error');
+          return;
+        }
                 
         recaptchaLogInfo('👨‍💼 Procesando admin login con reCAPTCHA válido');
                 

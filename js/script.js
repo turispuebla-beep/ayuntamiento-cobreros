@@ -3447,6 +3447,8 @@ function markAllAsRead() {
     localStorage.setItem('notifications', JSON.stringify(notifications));
 
     const savedUserNotifications = localStorage.getItem('userNotifications');
+    let updatedUserNotifications = null;
+
     if (savedUserNotifications) {
         try {
             const parsed = JSON.parse(savedUserNotifications);
@@ -3460,6 +3462,7 @@ function markAllAsRead() {
             if (changed) {
                 localStorage.setItem('userNotifications', JSON.stringify(parsed));
             }
+            updatedUserNotifications = parsed;
         } catch (error) {
             console.warn('No se pudieron marcar como leídos los avisos del usuario:', error);
         }
@@ -3467,7 +3470,7 @@ function markAllAsRead() {
 
     selectedUserNotifications.clear();
     updateUserNotificationsActions();
-    updateNotificationCenter();
+    updateNotificationCenter(updatedUserNotifications);
     showNotification('Todas las notificaciones marcadas como leídas', 'success');
 }
 
