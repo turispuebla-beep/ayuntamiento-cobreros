@@ -128,8 +128,9 @@ exports.sendEmail = functions
                     textContent = 'Email del Ayuntamiento de Cobreros';
             }
             // Configurar el email
+            const defaultFrom = `"Ayto Cobreros Cita/Avisos" <${APPOINTMENT_EMAIL}>`;
             const mailOptions = {
-                from: from || APPOINTMENT_EMAIL,
+                from: from || defaultFrom,
                 to: to,
                 subject: subject,
                 text: textContent,

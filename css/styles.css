@@ -1513,6 +1513,169 @@ a.btn {
     color: var(--primary-color);
 }
 
+.carnet-card {
+    margin-top: 3rem;
+    background: var(--bg-primary);
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow-sm);
+    padding: 2.5rem;
+    display: grid;
+    grid-template-columns: minmax(260px, 1fr) minmax(320px, 1.2fr);
+    gap: 2.5rem;
+    align-items: start;
+}
+
+.carnet-info h3 {
+    color: var(--primary-color);
+    margin-bottom: 1rem;
+}
+
+.carnet-info p {
+    color: var(--text-secondary);
+    margin-bottom: 0.75rem;
+}
+
+.carnet-account {
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.carnet-fees {
+    list-style: none;
+    margin: 1rem 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.carnet-fees li {
+    padding: 0.5rem 0.75rem;
+    background: var(--bg-secondary);
+    border-radius: 8px;
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    font-weight: 500;
+    color: var(--text-primary);
+}
+
+.carnet-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+}
+
+.carnet-form .form-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 1rem;
+}
+
+.carnet-form .form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.carnet-form .form-group.full-width {
+    grid-column: 1 / -1;
+}
+
+.carnet-form input,
+.carnet-form select,
+.carnet-form textarea {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    transition: var(--transition);
+}
+
+.carnet-form input:focus,
+.carnet-form select:focus,
+.carnet-form textarea:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+}
+
+.carnet-form textarea {
+    resize: vertical;
+    min-height: 90px;
+}
+
+.carnet-form fieldset {
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.carnet-form fieldset legend {
+    font-weight: 600;
+    color: var(--text-primary);
+    padding: 0 0.5rem;
+}
+
+.carnet-form fieldset label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+}
+
+.carnet-form .consent-group {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    font-size: 0.9rem;
+}
+
+.carnet-form .consent-group input {
+    margin-top: 0.2rem;
+    width: auto;
+}
+
+.carnet-form .form-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.carnet-form .form-actions .btn {
+    align-self: flex-start;
+}
+
+.carnet-form .form-feedback {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+}
+
+.carnet-form .form-feedback.success {
+    color: var(--success-color, #15803d);
+}
+
+.carnet-form .form-feedback.error {
+    color: var(--error-color, #dc2626);
+}
+
+@media (max-width: 900px) {
+    .carnet-card {
+        grid-template-columns: 1fr;
+        padding: 2rem;
+    }
+
+    .carnet-fees li {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+}
+
 /* Culture and Leisure */
 .culture-content {
     display: grid;
@@ -2089,6 +2252,72 @@ a.btn {
 .admin-section h4 {
     color: var(--primary-color);
     margin-bottom: 1rem;
+}
+
+.carnet-admin-actions {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+    margin-bottom: 1rem;
+}
+
+.table-responsive {
+    width: 100%;
+    overflow-x: auto;
+    background: var(--bg-primary);
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow-sm);
+}
+
+.admin-table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 720px;
+}
+
+.admin-table thead {
+    background: var(--primary-color);
+    color: white;
+}
+
+.admin-table th,
+.admin-table td {
+    padding: 0.75rem 1rem;
+    text-align: left;
+    border-bottom: 1px solid var(--border-color);
+    vertical-align: top;
+}
+
+.admin-table tbody tr:nth-child(even) {
+    background: var(--bg-secondary);
+}
+
+.admin-table tbody tr:hover {
+    background: rgba(59, 130, 246, 0.08);
+}
+
+.admin-table td p {
+    margin: 0.25rem 0;
+}
+
+#carnetRequestsEmpty {
+    text-align: center;
+    padding: 1.5rem;
+    color: var(--text-secondary);
+}
+
+.admin-section .form-feedback {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+}
+
+.admin-section .form-feedback.success {
+    color: var(--success-color, #15803d);
+}
+
+.admin-section .form-feedback.error {
+    color: var(--error-color, #dc2626);
 }
 
 .content-list,

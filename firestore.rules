@@ -73,6 +73,33 @@ service cloud.firestore {
              (!( 'registrationDate' in data) || data.registrationDate is timestamp);
     }
 
+    function isValidCarnetRequestData(data) {
+      return data.keys().hasOnly([
+        'nombre', 'apellidos', 'nombreCompleto',
+        'documentoTipo', 'documentoNumero',
+        'direccion', 'email', 'telefono',
+        'tipoSolicitante', 'tipoSolicitanteLabel',
+        'cuota', 'dataConsent',
+        'createdAt', 'createdAtString',
+        'source'
+      ]) &&
+      data.nombre is string && data.nombre.size() > 0 && data.nombre.size() <= 120 &&
+      optionalStringField(data, 'apellidos', 160) &&
+      optionalStringField(data, 'nombreCompleto', 200) &&
+      data.documentoTipo is string && data.documentoTipo.size() > 0 && data.documentoTipo.size() <= 20 &&
+      data.documentoNumero is string && data.documentoNumero.size() > 0 && data.documentoNumero.size() <= 50 &&
+      data.direccion is string && data.direccion.size() > 0 && data.direccion.size() <= 240 &&
+      optionalStringField(data, 'email', 320) &&
+      optionalStringField(data, 'telefono', 40) &&
+      data.tipoSolicitante is string && data.tipoSolicitante.size() > 0 && data.tipoSolicitante.size() <= 40 &&
+      optionalStringField(data, 'tipoSolicitanteLabel', 80) &&
+      optionalStringField(data, 'cuota', 40) &&
+      (!( 'dataConsent' in data) || data.dataConsent == true) &&
+      data.createdAt is timestamp &&
+      optionalStringField(data, 'createdAtString', 40) &&
+      optionalStringField(data, 'source', 40);
+    }
+
     match /users/{userId} {
       allow get: if isSameUser(userId) || isAdmin();
       allow list: if isAdmin();
@@ -97,6 +124,13 @@ service cloud.firestore {
     match /notification_stats/{statId} {
       allow get, list: if isAdmin();
       allow create, update, delete: if isAdmin();
+    }
+
+    match /config/{configId} {
+      allow get: if true;
+      allow list: if false;
+      allow create, update: if isAdmin();
+      allow delete: if isSuperAdmin();
     }
 
     match /news/{newsId} {
@@ -129,6 +163,12 @@ service cloud.firestore {
     match /statistics/{statId} {
       allow get, list: if isAdmin();
       allow create, update, delete: if isAdmin();
+    }
+
+    match /carnet_requests/{requestId} {
+      allow get, list: if isAdmin();
+      allow create: if isValidCarnetRequestData(request.resource.data);
+      allow update, delete: if isAdmin();
     }
 
     match /{document=**} {

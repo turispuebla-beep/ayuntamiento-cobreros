@@ -104,8 +104,9 @@ export const sendEmail = functions
       }
 
       // Configurar el email
+      const defaultFrom = `"Ayto Cobreros Cita/Avisos" <${APPOINTMENT_EMAIL}>`;
       const mailOptions = {
-        from: from || APPOINTMENT_EMAIL,
+        from: from || defaultFrom,
         to: to,
         subject: subject,
         text: textContent,

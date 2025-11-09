@@ -120,6 +120,18 @@ let appointments = []; // Lista de citas previas solicitadas
 let publicNotifications = []; // Lista de notificaciones públicas
 let selectedReceivedNotifications = new Set();
 let selectedUserNotifications = new Set();
+const DEFAULT_CARNET_CONFIG = {
+    accountNumber: '',
+    feeEmpadronado: '',
+    feeDescendiente: '',
+    feeVisitante: '',
+    instructions: 'Una vez enviada la solicitud, realiza el ingreso de la cuota correspondiente indicando tu nombre y apellidos en el concepto.',
+    emailRecipient: 'aytocobreros@gmail.com',
+    updatedAt: null
+};
+let carnetConfig = { ...DEFAULT_CARNET_CONFIG };
+let carnetRequests = [];
+const CARNET_REQUESTS_LOCAL_KEY = 'carnetRequests';
 
 function applyCalendarStylesFromConfig() {
     if (typeof CONFIG === 'undefined' || !CONFIG?.appointments?.calendarStyles) {
@@ -271,6 +283,9 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Inicializar PWA
     initializePWA();
+
+    // Inicializar módulo de carnés micológicos
+    initializeCarnetModule();
 });
 
 // Inicializar la aplicación
@@ -807,6 +822,31 @@ function setupEventListeners() {
     document.getElementById('createAdminForm').addEventListener('submit', handleCreateAdmin);
     document.getElementById('documentUploadForm').addEventListener('submit', handleDocumentUpload);
     document.getElementById('importDataForm').addEventListener('submit', handleDataImport);
+
+    const carnetForm = document.getElementById('carnetForm');
+    if (carnetForm) {
+        carnetForm.addEventListener('submit', handleCarnetFormSubmit);
+    }
+
+    const carnetConfigSaveBtn = document.getElementById('carnetConfigSaveBtn');
+    if (carnetConfigSaveBtn) {
+        carnetConfigSaveBtn.addEventListener('click', handleCarnetConfigSave);
+    }
+
+    const carnetConfigResetBtn = document.getElementById('carnetConfigResetBtn');
+    if (carnetConfigResetBtn) {
+        carnetConfigResetBtn.addEventListener('click', handleCarnetConfigReset);
+    }
+
+    const carnetRefreshBtn = document.getElementById('carnetRefreshBtn');
+    if (carnetRefreshBtn) {
+        carnetRefreshBtn.addEventListener('click', loadCarnetRequestsAdmin);
+    }
+
+    const carnetExportBtn = document.getElementById('carnetExportBtn');
+    if (carnetExportBtn) {
+        carnetExportBtn.addEventListener('click', exportCarnetRequests);
+    }
 
     // Tabs del admin
     document.querySelectorAll('.tab-btn').forEach(btn => {
@@ -2346,6 +2386,9 @@ function switchTab(tabName) {
         loadDocumentsList();
     } else if (tabName === 'notifications') {
         loadNotificationsHistory();
+    } else if (tabName === 'carnets') {
+        populateCarnetAdminForm();
+        loadCarnetRequestsAdmin();
     } else if (tabName === 'appointments') {
         loadAppointmentScheduleConfigUI(); // Cargar configuración de horarios
         // Renderizar calendario después de un breve delay para asegurar que el DOM esté listo
@@ -3040,6 +3083,589 @@ function loadDocumentsList() {
         documentsList.appendChild(docItem);
     });
 }
+
+// ===== CARNÉ MICOLÓGICO =====
+
+function initializeCarnetModule() {
+    loadCarnetRequestsFromLocal();
+    renderCarnetPublicInfo();
+    loadCarnetConfig();
+}
+
+function loadCarnetRequestsFromLocal() {
+    try {
+        const saved = localStorage.getItem(CARNET_REQUESTS_LOCAL_KEY);
+        carnetRequests = saved ? JSON.parse(saved) : [];
+    } catch (error) {
+        console.warn('No se pudo cargar el historial local de carnés:', error);
+        carnetRequests = [];
+    }
+}
+
+function persistCarnetRequestsLocal() {
+    try {
+        localStorage.setItem(CARNET_REQUESTS_LOCAL_KEY, JSON.stringify(carnetRequests.slice(0, 500)));
+    } catch (error) {
+        console.warn('No se pudo guardar el historial local de carnés:', error);
+    }
+}
+
+async function loadCarnetConfig() {
+    try {
+        const storedConfig = localStorage.getItem('carnetConfig');
+        if (storedConfig) {
+            const parsed = JSON.parse(storedConfig);
+            carnetConfig = { ...DEFAULT_CARNET_CONFIG, ...parsed };
+        } else {
+            carnetConfig = { ...DEFAULT_CARNET_CONFIG };
+        }
+    } catch (error) {
+        console.warn('No se pudo leer la configuración local del carné:', error);
+        carnetConfig = { ...DEFAULT_CARNET_CONFIG };
+    }
+
+    renderCarnetPublicInfo();
+    populateCarnetAdminForm();
+
+    const firebaseReady = await waitForFirebase(7000);
+    if (!firebaseReady || !window.firebase || !window.firebase.firestore) {
+        return;
+    }
+
+    try {
+        const configDoc = window.firebase.firestore().collection('config').doc('carnet');
+        if (configDoc && typeof configDoc.get === 'function') {
+            const snapshot = await configDoc.get();
+            const exists = snapshot && (typeof snapshot.exists === 'function' ? snapshot.exists() : snapshot.exists);
+            if (exists && snapshot && typeof snapshot.data === 'function') {
+                const data = snapshot.data();
+                const remoteConfig = { ...DEFAULT_CARNET_CONFIG, ...data };
+                if (data.updatedAt && typeof data.updatedAt.toDate === 'function') {
+                    remoteConfig.updatedAt = data.updatedAt.toDate().toISOString();
+                } else if (data.updatedAtString) {
+                    remoteConfig.updatedAt = data.updatedAtString;
+                }
+                carnetConfig = remoteConfig;
+                localStorage.setItem('carnetConfig', JSON.stringify(carnetConfig));
+                renderCarnetPublicInfo();
+                populateCarnetAdminForm();
+            }
+        }
+    } catch (error) {
+        console.warn('No se pudo cargar la configuración del carné desde Firestore:', error);
+    }
+}
+
+function renderCarnetPublicInfo() {
+    const instructionsEl = document.getElementById('carnetInstructions');
+    const accountEl = document.getElementById('carnetAccountNumber');
+    const feeEmpEl = document.getElementById('carnetFeeEmpadronado');
+    const feeDesEl = document.getElementById('carnetFeeDescendiente');
+    const feeVisEl = document.getElementById('carnetFeeVisitante');
+
+    if (instructionsEl) {
+        const instructions = (carnetConfig.instructions || DEFAULT_CARNET_CONFIG.instructions || '').trim();
+        const safeInstructions = escapeHtml(instructions).replace(/\n/g, '<br>');
+        instructionsEl.innerHTML = safeInstructions || 'Completa el formulario y sigue las instrucciones para formalizar tu solicitud.';
+    }
+
+    if (accountEl) {
+        const account = (carnetConfig.accountNumber || '').trim();
+        accountEl.textContent = account || 'Consultar en el ayuntamiento';
+    }
+
+    if (feeEmpEl) {
+        feeEmpEl.textContent = (carnetConfig.feeEmpadronado || 'Consultar');
+    }
+    if (feeDesEl) {
+        feeDesEl.textContent = (carnetConfig.feeDescendiente || 'Consultar');
+    }
+    if (feeVisEl) {
+        feeVisEl.textContent = (carnetConfig.feeVisitante || 'Consultar');
+    }
+}
+
+function populateCarnetAdminForm() {
+    const accountInput = document.getElementById('carnetConfigAccount');
+    if (!accountInput) {
+        return;
+    }
+
+    accountInput.value = carnetConfig.accountNumber || '';
+
+    const emailInput = document.getElementById('carnetConfigEmail');
+    if (emailInput) {
+        emailInput.value = carnetConfig.emailRecipient || DEFAULT_CARNET_CONFIG.emailRecipient;
+    }
+
+    const feeEmpInput = document.getElementById('carnetConfigFeeEmpadronado');
+    if (feeEmpInput) {
+        feeEmpInput.value = carnetConfig.feeEmpadronado || '';
+    }
+
+    const feeDescInput = document.getElementById('carnetConfigFeeDescendiente');
+    if (feeDescInput) {
+        feeDescInput.value = carnetConfig.feeDescendiente || '';
+    }
+
+    const feeVisInput = document.getElementById('carnetConfigFeeVisitante');
+    if (feeVisInput) {
+        feeVisInput.value = carnetConfig.feeVisitante || '';
+    }
+
+    const instructionsInput = document.getElementById('carnetConfigInstructions');
+    if (instructionsInput) {
+        instructionsInput.value = carnetConfig.instructions || '';
+    }
+
+    const feedback = document.getElementById('carnetConfigFeedback');
+    if (feedback) {
+        feedback.classList.remove('success', 'error');
+        if (carnetConfig.updatedAt) {
+            feedback.textContent = `Última actualización: ${formatDateTime(carnetConfig.updatedAt)}`;
+        } else {
+            feedback.textContent = '';
+        }
+    }
+}
+
+async function saveCarnetConfig(updates = {}, options = {}) {
+    carnetConfig = {
+        ...DEFAULT_CARNET_CONFIG,
+        ...carnetConfig,
+        ...updates,
+        updatedAt: new Date().toISOString()
+    };
+
+    try {
+        localStorage.setItem('carnetConfig', JSON.stringify(carnetConfig));
+    } catch (error) {
+        console.warn('No se pudo guardar la configuración local del carné:', error);
+    }
+
+    renderCarnetPublicInfo();
+    populateCarnetAdminForm();
+
+    if (options.skipRemote) {
+        return carnetConfig;
+    }
+
+    const firebaseReady = await waitForFirebase(7000);
+    if (!firebaseReady || !window.firebase || !window.firebase.firestore) {
+        return carnetConfig;
+    }
+
+    try {
+        const docRef = window.firebase.firestore().collection('config').doc('carnet');
+        if (docRef && typeof docRef.set === 'function') {
+            await docRef.set({
+                accountNumber: carnetConfig.accountNumber || '',
+                feeEmpadronado: carnetConfig.feeEmpadronado || '',
+                feeDescendiente: carnetConfig.feeDescendiente || '',
+                feeVisitante: carnetConfig.feeVisitante || '',
+                instructions: carnetConfig.instructions || '',
+                emailRecipient: carnetConfig.emailRecipient || DEFAULT_CARNET_CONFIG.emailRecipient,
+                updatedAt: new Date(),
+                updatedAtString: carnetConfig.updatedAt
+            }, { merge: true });
+        }
+    } catch (error) {
+        console.error('No se pudo guardar la configuración del carné en Firestore:', error);
+        throw error;
+    }
+
+    return carnetConfig;
+}
+
+function setCarnetConfigFeedback(message, status = 'info') {
+    const feedback = document.getElementById('carnetConfigFeedback');
+    if (!feedback) return;
+    feedback.textContent = message || '';
+    feedback.classList.remove('success', 'error');
+    if (status === 'success') {
+        feedback.classList.add('success');
+    } else if (status === 'error') {
+        feedback.classList.add('error');
+    }
+}
+
+async function handleCarnetConfigSave() {
+    const accountInput = document.getElementById('carnetConfigAccount');
+    const emailInput = document.getElementById('carnetConfigEmail');
+    const feeEmpInput = document.getElementById('carnetConfigFeeEmpadronado');
+    const feeDescInput = document.getElementById('carnetConfigFeeDescendiente');
+    const feeVisInput = document.getElementById('carnetConfigFeeVisitante');
+    const instructionsInput = document.getElementById('carnetConfigInstructions');
+
+    const updates = {
+        accountNumber: (accountInput?.value || '').trim(),
+        emailRecipient: (emailInput?.value || '').trim() || DEFAULT_CARNET_CONFIG.emailRecipient,
+        feeEmpadronado: (feeEmpInput?.value || '').trim(),
+        feeDescendiente: (feeDescInput?.value || '').trim(),
+        feeVisitante: (feeVisInput?.value || '').trim(),
+        instructions: (instructionsInput?.value || '').trim()
+    };
+
+    try {
+        await saveCarnetConfig(updates);
+        setCarnetConfigFeedback('Configuración guardada correctamente.', 'success');
+        showNotification('Configuración del carné actualizada', 'success');
+    } catch (error) {
+        setCarnetConfigFeedback('No se pudo guardar la configuración en la nube. Revisa la consola.', 'error');
+        showNotification('Ocurrió un problema al guardar la configuración.', 'error');
+    }
+}
+
+async function handleCarnetConfigReset() {
+    try {
+        await saveCarnetConfig({ ...DEFAULT_CARNET_CONFIG });
+        setCarnetConfigFeedback('Configuración restablecida a los valores por defecto.', 'success');
+        showNotification('Configuración restablecida', 'success');
+    } catch (error) {
+        setCarnetConfigFeedback('No se pudo restablecer la configuración. Revisa la consola.', 'error');
+        showNotification('Ocurrió un problema al restablecer la configuración.', 'error');
+    }
+}
+
+function setCarnetFormFeedback(message, status = 'info') {
+    const feedback = document.getElementById('carnetFormFeedback');
+    if (!feedback) return;
+    feedback.textContent = message || '';
+    feedback.classList.remove('success', 'error');
+    if (status === 'success') {
+        feedback.classList.add('success');
+    } else if (status === 'error') {
+        feedback.classList.add('error');
+    }
+}
+
+function resetCarnetForm(form) {
+    form.reset();
+    const radios = form.querySelectorAll('input[name="tipoSolicitante"]');
+    radios.forEach(radio => radio.checked = false);
+}
+
+function getCarnetFeeByType(type) {
+    if (type === 'empadronado') {
+        return carnetConfig.feeEmpadronado || '';
+    }
+    if (type === 'descendiente') {
+        return carnetConfig.feeDescendiente || '';
+    }
+    if (type === 'visitante') {
+        return carnetConfig.feeVisitante || '';
+    }
+    return '';
+}
+
+function getCarnetApplicantLabel(type) {
+    const labels = {
+        empadronado: 'Empadronado/a',
+        descendiente: 'Descendiente',
+        visitante: 'Visitante'
+    };
+    return labels[type] || type || 'Otro';
+}
+
+async function handleCarnetFormSubmit(event) {
+    event.preventDefault();
+    const form = event.target;
+    const submitBtn = form.querySelector('button[type="submit"]');
+    const loadingSpan = submitBtn?.querySelector('.btn-loading');
+    const btnTextSpan = submitBtn?.querySelector('.btn-text');
+
+    const nombre = (form.querySelector('#carnetNombre')?.value || '').trim();
+    const apellidos = (form.querySelector('#carnetApellidos')?.value || '').trim();
+    const documentoTipo = form.querySelector('#carnetDocumentoTipo')?.value || '';
+    const documentoNumero = (form.querySelector('#carnetDocumentoNumero')?.value || '').trim();
+    const direccion = (form.querySelector('#carnetDireccion')?.value || '').trim();
+    const email = (form.querySelector('#carnetEmail')?.value || '').trim();
+    const telefono = (form.querySelector('#carnetTelefono')?.value || '').trim();
+    const tipoSolicitanteInput = form.querySelector('input[name="tipoSolicitante"]:checked');
+    const tipoSolicitante = tipoSolicitanteInput ? tipoSolicitanteInput.value : '';
+    const consentimiento = form.querySelector('#carnetConsent')?.checked;
+
+    if (!nombre || !apellidos || !documentoTipo || !documentoNumero || !direccion) {
+        setCarnetFormFeedback('Por favor, completa todos los campos obligatorios.', 'error');
+        return;
+    }
+
+    if (!tipoSolicitante) {
+        setCarnetFormFeedback('Selecciona el tipo de solicitante.', 'error');
+        return;
+    }
+
+    if (!consentimiento) {
+        setCarnetFormFeedback('Debes aceptar el tratamiento de datos personales.', 'error');
+        return;
+    }
+
+    const fullName = `${nombre} ${apellidos}`.trim();
+    const nowIso = new Date().toISOString();
+    const fee = getCarnetFeeByType(tipoSolicitante);
+    const applicantLabel = getCarnetApplicantLabel(tipoSolicitante);
+
+    const localRecord = {
+        id: `carnet-${Date.now()}`,
+        nombre,
+        apellidos,
+        nombreCompleto: fullName,
+        documentoTipo,
+        documentoNumero,
+        direccion,
+        email,
+        telefono,
+        tipoSolicitante,
+        tipoSolicitanteLabel: applicantLabel,
+        cuota: fee,
+        dataConsent: true,
+        createdAt: nowIso
+    };
+
+    try {
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.classList.add('loading');
+        }
+        if (loadingSpan) {
+            loadingSpan.style.display = 'inline-flex';
+        }
+        if (btnTextSpan) {
+            btnTextSpan.style.display = 'none';
+        }
+
+        carnetRequests.unshift(localRecord);
+        persistCarnetRequestsLocal();
+
+        let remoteSaved = false;
+        const firebaseReady = await waitForFirebase(7000);
+        if (firebaseReady && window.firebase && window.firebase.firestore) {
+            try {
+                await window.firebase.firestore().collection('carnet_requests').add({
+                    nombre,
+                    apellidos,
+                    nombreCompleto: fullName,
+                    documentoTipo,
+                    documentoNumero,
+                    direccion,
+                    email,
+                    telefono,
+                    tipoSolicitante,
+                    tipoSolicitanteLabel: applicantLabel,
+                    cuota: fee,
+                    dataConsent: true,
+                    createdAt: new Date(),
+                    createdAtString: nowIso,
+                    source: 'web'
+                });
+                remoteSaved = true;
+            } catch (firestoreError) {
+                console.error('No se pudo registrar la solicitud en Firestore:', firestoreError);
+            }
+        }
+
+        let emailSent = false;
+        const recipient = (carnetConfig.emailRecipient || DEFAULT_CARNET_CONFIG.emailRecipient || '').trim();
+        if (recipient) {
+            const messageLines = [
+                `Nombre: ${fullName}`,
+                `Tipo de solicitante: ${applicantLabel}`,
+                `Documento (${documentoTipo.toUpperCase()}): ${documentoNumero}`,
+                `Dirección: ${direccion}`,
+                email ? `Correo electrónico: ${email}` : null,
+                telefono ? `Teléfono: ${telefono}` : null,
+                fee ? `Cuota aplicable: ${fee}` : null,
+                `Acepta tratamiento de datos: Sí`,
+                `Fecha de solicitud: ${formatDateTime(nowIso)}`
+            ].filter(Boolean);
+
+            try {
+                emailSent = await sendGeneralNoticeEmail(recipient, {
+                    title: 'Nueva solicitud de carné micológico',
+                    message: messageLines.join('\n'),
+                    attachmentName: null,
+                    attachmentUrl: null
+                });
+            } catch (emailError) {
+                console.error('No se pudo enviar el correo de solicitud de carné:', emailError);
+            }
+        }
+
+        setCarnetFormFeedback('Solicitud enviada correctamente. Recibirás la confirmación por correo electrónico.', 'success');
+        showNotification('Solicitud de carné enviada correctamente.', 'success');
+        resetCarnetForm(form);
+
+        if (window.Metrics && typeof window.Metrics.recordEvent === 'function') {
+            window.Metrics.recordEvent('carnet_request_submitted', {
+                applicantType: tipoSolicitante,
+                emailSent: emailSent
+            });
+        }
+
+        if (isAdmin) {
+            loadCarnetRequestsAdmin();
+        }
+
+        if (!remoteSaved) {
+            console.warn('La solicitud se guardó localmente, pero no se pudo registrar en Firestore.');
+        }
+    } catch (error) {
+        console.error('Error al procesar la solicitud de carné:', error);
+        setCarnetFormFeedback('Ocurrió un error al enviar la solicitud. Inténtalo de nuevo en unos minutos.', 'error');
+        showNotification('No se pudo enviar la solicitud en este momento.', 'error');
+    } finally {
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.classList.remove('loading');
+        }
+        if (loadingSpan) {
+            loadingSpan.style.display = 'none';
+        }
+        if (btnTextSpan) {
+            btnTextSpan.style.display = 'inline';
+        }
+    }
+}
+
+async function loadCarnetRequestsAdmin() {
+    const tbody = document.getElementById('carnetRequestsTableBody');
+    const summary = document.getElementById('carnetRequestsSummary');
+
+    renderCarnetRequestsAdmin();
+
+    const firebaseReady = await waitForFirebase(7000);
+    if (!firebaseReady || !window.firebase || !window.firebase.firestore) {
+        if (summary) {
+            summary.textContent = 'Mostrando solicitudes almacenadas localmente (sin conexión a la base de datos).';
+        }
+        return;
+    }
+
+    try {
+        const snapshot = await window.firebase.firestore().collection('carnet_requests').get();
+        const remoteRequests = [];
+        snapshot.forEach(doc => {
+            const data = typeof doc.data === 'function' ? doc.data() : null;
+            if (!data) return;
+
+            let createdAtIso = data.createdAtString || null;
+            if (!createdAtIso && data.createdAt && typeof data.createdAt.toDate === 'function') {
+                createdAtIso = data.createdAt.toDate().toISOString();
+            }
+
+            remoteRequests.push({
+                id: doc.id,
+                nombre: data.nombre || '',
+                apellidos: data.apellidos || '',
+                nombreCompleto: data.nombreCompleto || `${data.nombre || ''} ${data.apellidos || ''}`.trim(),
+                documentoTipo: data.documentoTipo || '',
+                documentoNumero: data.documentoNumero || '',
+                direccion: data.direccion || '',
+                email: data.email || '',
+                telefono: data.telefono || '',
+                tipoSolicitante: data.tipoSolicitante || '',
+                tipoSolicitanteLabel: data.tipoSolicitanteLabel || getCarnetApplicantLabel(data.tipoSolicitante),
+                cuota: data.cuota || '',
+                dataConsent: data.dataConsent === true,
+                createdAt: createdAtIso || new Date().toISOString()
+            });
+        });
+
+        remoteRequests.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+        carnetRequests = remoteRequests;
+        persistCarnetRequestsLocal();
+        renderCarnetRequestsAdmin();
+
+        if (summary) {
+            summary.textContent = `Solicitudes totales registradas: ${carnetRequests.length}`;
+        }
+    } catch (error) {
+        console.error('No se pudieron cargar las solicitudes de cartera desde Firestore:', error);
+        if (summary) {
+            summary.textContent = 'No se pudieron cargar las solicitudes desde la base de datos. Se muestran los datos guardados en este dispositivo.';
+        }
+    }
+}
+
+function renderCarnetRequestsAdmin() {
+    const tbody = document.getElementById('carnetRequestsTableBody');
+    const summary = document.getElementById('carnetRequestsSummary');
+    if (!tbody) return;
+
+    if (!carnetRequests.length) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="6" id="carnetRequestsEmpty">No hay solicitudes registradas.</td>
+            </tr>
+        `;
+        if (summary) {
+            summary.textContent = 'No se han registrado solicitudes todavía.';
+        }
+        return;
+    }
+
+    const rows = carnetRequests.map(request => {
+        const createdAtLabel = formatDateTime(request.createdAt);
+        const contactLines = [
+            request.email ? `Correo: ${request.email}` : null,
+            request.telefono ? `Teléfono: ${request.telefono}` : null
+        ].filter(Boolean).join('<br>');
+
+        return `
+            <tr>
+                <td>${escapeHtml(createdAtLabel)}</td>
+                <td>${escapeHtml(request.nombreCompleto || `${request.nombre} ${request.apellidos}`.trim())}</td>
+                <td>${escapeHtml(request.documentoTipo ? request.documentoTipo.toUpperCase() : '')}<br>${escapeHtml(request.documentoNumero || '')}</td>
+                <td>${escapeHtml(request.tipoSolicitanteLabel || getCarnetApplicantLabel(request.tipoSolicitante))}${request.cuota ? `<br><small>Cuota: ${escapeHtml(request.cuota)}</small>` : ''}</td>
+                <td>${contactLines ? contactLines : '—'}</td>
+                <td>${escapeHtml(request.direccion || '')}</td>
+            </tr>
+        `;
+    }).join('');
+
+    tbody.innerHTML = rows;
+
+    if (summary) {
+        summary.textContent = `Solicitudes listadas: ${carnetRequests.length}`;
+    }
+}
+
+function exportCarnetRequests() {
+    if (!carnetRequests.length) {
+        showNotification('No hay solicitudes para exportar.', 'warning');
+        return;
+    }
+
+    const headers = ['Fecha', 'Nombre', 'Tipo solicitante', 'Documento', 'Dirección', 'Correo', 'Teléfono', 'Cuota'];
+    const rows = carnetRequests.map(request => [
+        formatDateTime(request.createdAt),
+        `${request.nombreCompleto || `${request.nombre} ${request.apellidos}`.trim()}`.trim(),
+        request.tipoSolicitanteLabel || getCarnetApplicantLabel(request.tipoSolicitante),
+        `${(request.documentoTipo || '').toUpperCase()} ${request.documentoNumero || ''}`.trim(),
+        request.direccion || '',
+        request.email || '',
+        request.telefono || '',
+        request.cuota || ''
+    ]);
+
+    const csvContent = [headers, ...rows]
+        .map(columns => columns.map(value => `"${(value || '').replace(/"/g, '""')}"`).join(','))
+        .join('\n');
+
+    const blob = new Blob([`\uFEFF${csvContent}`], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `solicitudes-carnet-${new Date().toISOString().split('T')[0]}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+
+    showNotification('Exportación de solicitudes completada.', 'success');
+}
+
+// ===== FIN CARNÉ MICOLÓGICO =====
 
 // Cargar lista de eventos
 function loadEventsList() {
@@ -9107,6 +9733,8 @@ function openAdminPanel() {
     loadAppointmentSettings();
     loadAppointmentScheduleConfigUI(); // Cargar configuración de horarios
     loadPublicNotificationsList();
+    loadCarnetRequestsAdmin();
+    populateCarnetAdminForm();
     
     // Renderizar calendario del admin después de un breve delay para asegurar que el DOM esté listo
     setTimeout(() => {

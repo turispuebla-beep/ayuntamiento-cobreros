@@ -48,7 +48,7 @@
     <script type="module">
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
         import { getMessaging, getToken, onMessage } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging.js';
-        import { getFirestore, collection, addDoc, getDocs, doc, updateDoc, deleteDoc, query, where } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+        import { getFirestore, collection, addDoc, getDocs, doc, updateDoc, deleteDoc, query, where, getDoc, setDoc } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
         import { getStorage, ref as storageRef, uploadBytes, getDownloadURL, deleteObject } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js';
         
         // Configuración de Firebase
@@ -101,6 +101,8 @@
                         }
                     }),
                     doc: (docId) => ({
+                        get: () => getDoc(doc(db, collectionName, docId)),
+                        set: (data, options) => setDoc(doc(db, collectionName, docId), data, options),
                         update: (data) => {
                             return updateDoc(doc(db, collectionName, docId), data);
                         },
@@ -470,6 +472,77 @@
                         </ul>
                     </div>
                 </div>
+                <div class="carnet-card" id="carnetCard">
+                    <div class="carnet-info">
+                        <h3>Solicitud de Carné de Recolección Micológica</h3>
+                        <p id="carnetInstructions">Completa el formulario para solicitar tu carné de recolección de setas.</p>
+                        <ul class="carnet-fees">
+                            <li><strong>Empadronado/a:</strong> <span id="carnetFeeEmpadronado">—</span></li>
+                            <li><strong>Descendiente:</strong> <span id="carnetFeeDescendiente">—</span></li>
+                            <li><strong>Visitante:</strong> <span id="carnetFeeVisitante">—</span></li>
+                        </ul>
+                        <p class="carnet-account"><strong>Número de cuenta:</strong> <span id="carnetAccountNumber">—</span></p>
+                    </div>
+                    <form id="carnetForm" class="carnet-form">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="carnetNombre">Nombre</label>
+                                <input type="text" id="carnetNombre" name="nombre" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="carnetApellidos">Apellidos</label>
+                                <input type="text" id="carnetApellidos" name="apellidos" required>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="carnetDocumentoTipo">Tipo de documento</label>
+                                <select id="carnetDocumentoTipo" name="documentoTipo" required>
+                                    <option value="">Selecciona una opción</option>
+                                    <option value="dni">DNI</option>
+                                    <option value="nie">NIE</option>
+                                    <option value="pasaporte">Pasaporte</option>
+                                    <option value="otro">Otro</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="carnetDocumentoNumero">Número de documento</label>
+                                <input type="text" id="carnetDocumentoNumero" name="documentoNumero" required>
+                            </div>
+                        </div>
+                        <div class="form-group full-width">
+                            <label for="carnetDireccion">Dirección completa</label>
+                            <textarea id="carnetDireccion" name="direccion" rows="2" required></textarea>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="carnetEmail">Correo electrónico (opcional)</label>
+                                <input type="email" id="carnetEmail" name="email" placeholder="nombre@correo.com">
+                            </div>
+                            <div class="form-group">
+                                <label for="carnetTelefono">Teléfono de contacto (opcional)</label>
+                                <input type="tel" id="carnetTelefono" name="telefono" placeholder="Ej: 600 000 000">
+                            </div>
+                        </div>
+                        <fieldset class="form-group applicant-type">
+                            <legend>Tipo de solicitante</legend>
+                            <label><input type="radio" name="tipoSolicitante" value="empadronado" required> Empadronado/a</label>
+                            <label><input type="radio" name="tipoSolicitante" value="descendiente"> Descendiente</label>
+                            <label><input type="radio" name="tipoSolicitante" value="visitante"> Visitante</label>
+                        </fieldset>
+                        <div class="form-group consent-group">
+                            <input type="checkbox" id="carnetConsent" required>
+                            <label for="carnetConsent">Declaro que los datos aportados son veraces y acepto el tratamiento de mis datos personales según la normativa vigente.</label>
+                        </div>
+                        <div class="form-actions">
+                            <button type="submit" class="btn btn-primary">
+                                <span class="btn-text">Enviar solicitud</span>
+                                <span class="btn-loading" style="display: none;"><i class="fas fa-spinner fa-spin"></i> Enviando...</span>
+                            </button>
+                            <p class="form-feedback" id="carnetFormFeedback" aria-live="polite"></p>
+                        </div>
+                    </form>
+                </div>
             </div>
         </section>
 
@@ -596,7 +669,7 @@
                 </div>
             </div>
             <div class="footer-bottom">
-                <p>&copy; 2024 Ayuntamiento de Cobreros. Todos los derechos reservados.</p>
+                <p>&copy; 2025 Ayuntamiento de Cobreros. Proyecto protegido por Turisteam Platform System. Todos los derechos reservados.</p>
                 <div class="footer-links">
                     <a href="#">Aviso Legal</a>
                     <a href="#">Política de Privacidad</a>
@@ -850,6 +923,7 @@
                 <button class="tab-btn" data-tab="users">Usuarios</button>
                 <button class="tab-btn" data-tab="admins">Administradores</button>
                 <button class="tab-btn" data-tab="documents">Documentos</button>
+                <button class="tab-btn" data-tab="carnets">CARNETs</button>
                 <button class="tab-btn" data-tab="notifications">Avisos</button>
                 <button class="tab-btn" data-tab="statistics">📊 Estadísticas</button>
                 <button class="tab-btn" data-tab="database">Base de Datos</button>
@@ -1398,6 +1472,84 @@
                     <div class="admin-section">
                         <h4>Documentos Existentes</h4>
                         <div class="documents-list" id="documentsList"></div>
+                    </div>
+                </div>
+                
+                <!-- Carnets Tab -->
+                <div id="carnets-tab" class="tab-content">
+                    <h3>Gestión de Carnés Micológicos</h3>
+                    <div class="admin-section">
+                        <h4>Configuración del Carné</h4>
+                        <p class="admin-help-text">Actualiza las cuotas y el número de cuenta que se mostrarán en la web pública.</p>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="carnetConfigAccount">Número de cuenta</label>
+                                <input type="text" id="carnetConfigAccount" placeholder="ES00 0000 0000 0000 0000 0000">
+                            </div>
+                            <div class="form-group">
+                                <label for="carnetConfigEmail">Correo de destino</label>
+                                <input type="email" id="carnetConfigEmail" placeholder="aytocobreros@gmail.com">
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="carnetConfigFeeEmpadronado">Cuota empadronado/a</label>
+                                <input type="text" id="carnetConfigFeeEmpadronado" placeholder="Ej: 5 €">
+                            </div>
+                            <div class="form-group">
+                                <label for="carnetConfigFeeDescendiente">Cuota descendiente</label>
+                                <input type="text" id="carnetConfigFeeDescendiente" placeholder="Ej: 8 €">
+                            </div>
+                            <div class="form-group">
+                                <label for="carnetConfigFeeVisitante">Cuota visitante</label>
+                                <input type="text" id="carnetConfigFeeVisitante" placeholder="Ej: 12 €">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="carnetConfigInstructions">Instrucciones adicionales</label>
+                            <textarea id="carnetConfigInstructions" rows="3" placeholder="Información que se mostrará junto al formulario público."></textarea>
+                        </div>
+                        <div class="form-actions">
+                            <button type="button" class="btn btn-primary" id="carnetConfigSaveBtn">
+                                <i class="fas fa-save"></i> Guardar configuración
+                            </button>
+                            <button type="button" class="btn btn-outline btn-sm" id="carnetConfigResetBtn">
+                                <i class="fas fa-undo"></i> Restablecer valores
+                            </button>
+                            <span class="form-feedback" id="carnetConfigFeedback" aria-live="polite"></span>
+                        </div>
+                    </div>
+                    <div class="admin-section">
+                        <h4>Solicitudes recibidas</h4>
+                        <div class="carnet-admin-actions">
+                            <button class="btn btn-outline" id="carnetRefreshBtn">
+                                <i class="fas fa-sync-alt"></i> Actualizar
+                            </button>
+                            <button class="btn btn-secondary" id="carnetExportBtn">
+                                <i class="fas fa-file-export"></i> Exportar CSV
+                            </button>
+                            <span class="admin-help-text">Solo el personal autorizado del ayuntamiento puede ver estas solicitudes.</span>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="admin-table" id="carnetRequestsTable" aria-describedby="carnetRequestsSummary">
+                                <thead>
+                                    <tr>
+                                        <th>Fecha</th>
+                                        <th>Nombre</th>
+                                        <th>Documento</th>
+                                        <th>Tipo solicitante</th>
+                                        <th>Contacto</th>
+                                        <th>Dirección</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="carnetRequestsTableBody">
+                                    <tr>
+                                        <td colspan="6" id="carnetRequestsEmpty">No hay solicitudes registradas.</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <p id="carnetRequestsSummary" class="admin-help-text"></p>
                     </div>
                 </div>
                 
