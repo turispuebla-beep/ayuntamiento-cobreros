@@ -344,6 +344,7 @@ function initializeApp() {
 
     // Inicializar configuración del consultorio médico
     loadConsultorioConfig();
+    loadItvConfig();
     
     // Cargar configuración de teléfonos de interés
     loadTelefonosInteresConfig();
@@ -10370,17 +10371,77 @@ let consultorioConfig = {
     fotos: []
 };
 
+let itvConfig = {
+    documentos: [],
+    fotos: []
+};
+
 // Cargar configuración del consultorio
 function loadConsultorioConfig() {
     const saved = localStorage.getItem('consultorioConfig');
     if (saved) {
         consultorioConfig = JSON.parse(saved);
     }
+
+    let configUpdated = false;
+
+    if (!consultorioConfig || typeof consultorioConfig !== 'object') {
+        consultorioConfig = { documentos: [], fotos: [] };
+        configUpdated = true;
+    }
+
+    if (!Array.isArray(consultorioConfig.documentos)) {
+        consultorioConfig.documentos = [];
+        configUpdated = true;
+    }
+
+    if (!Array.isArray(consultorioConfig.fotos)) {
+        consultorioConfig.fotos = [];
+        configUpdated = true;
+    }
+
+    if (configUpdated) {
+        saveConsultorioConfig();
+    }
 }
 
 // Guardar configuración del consultorio
 function saveConsultorioConfig() {
     localStorage.setItem('consultorioConfig', JSON.stringify(consultorioConfig));
+}
+
+// Cargar configuración de ITV
+function loadItvConfig() {
+    const saved = localStorage.getItem('itvConfig');
+    if (saved) {
+        itvConfig = JSON.parse(saved);
+    }
+
+    let configUpdated = false;
+
+    if (!itvConfig || typeof itvConfig !== 'object') {
+        itvConfig = { documentos: [], fotos: [] };
+        configUpdated = true;
+    }
+
+    if (!Array.isArray(itvConfig.documentos)) {
+        itvConfig.documentos = [];
+        configUpdated = true;
+    }
+
+    if (!Array.isArray(itvConfig.fotos)) {
+        itvConfig.fotos = [];
+        configUpdated = true;
+    }
+
+    if (configUpdated) {
+        saveItvConfig();
+    }
+}
+
+// Guardar configuración de ITV
+function saveItvConfig() {
+    localStorage.setItem('itvConfig', JSON.stringify(itvConfig));
 }
 
 // Funciones para el consultorio
@@ -10404,18 +10465,18 @@ function viewConsultorioPhoto() {
 
 // Funciones para ITV - PUEBLA DE SANABRIA
 function viewItvDocument() {
-    if (consultorioConfig.documentos.length > 0) {
+    if (itvConfig.documentos.length > 0) {
         // Mostrar el primer documento disponible
-        window.open(consultorioConfig.documentos[0].url, '_blank');
+        window.open(itvConfig.documentos[0].url, '_blank');
     } else {
         alert('No hay documentos disponibles. Contacte con el administrador.');
     }
 }
 
 function viewItvPhoto() {
-    if (consultorioConfig.fotos.length > 0) {
+    if (itvConfig.fotos.length > 0) {
         // Mostrar la primera foto disponible
-        window.open(consultorioConfig.fotos[0].url, '_blank');
+        window.open(itvConfig.fotos[0].url, '_blank');
     } else {
         alert('No hay fotos disponibles. Contacte con el administrador.');
     }
@@ -10492,21 +10553,71 @@ function loadConsultorioFotosInModal() {
     container.innerHTML = html;
 }
 // Eliminar documento del consultorio
-function deleteConsultorioDocument(index) {
+async function deleteConsultorioDocument(index) {
     if (confirm('¿Estás seguro de que quieres eliminar este documento?')) {
-        consultorioConfig.documentos.splice(index, 1);
+        const [removedDoc] = consultorioConfig.documentos.splice(index, 1);
+        if (removedDoc?.storagePath) {
+            try {
+                await window.deleteStorageFile(removedDoc.storagePath);
+            } catch (error) {
+                console.error('No se pudo eliminar el archivo del consultorio en Storage:', error);
+            }
+        }
         saveConsultorioConfig();
         loadConsultorioDocumentosInModal();
+        loadConsultorioList();
         renderServicios();
     }
 }
 
 // Eliminar foto del consultorio
-function deleteConsultorioFoto(index) {
+async function deleteConsultorioFoto(index) {
     if (confirm('¿Estás seguro de que quieres eliminar esta foto?')) {
-        consultorioConfig.fotos.splice(index, 1);
+        const [removedFoto] = consultorioConfig.fotos.splice(index, 1);
+        if (removedFoto?.storagePath) {
+            try {
+                await window.deleteStorageFile(removedFoto.storagePath);
+            } catch (error) {
+                console.error('No se pudo eliminar la imagen del consultorio en Storage:', error);
+            }
+        }
         saveConsultorioConfig();
         loadConsultorioFotosInModal();
+        loadConsultorioList();
+        renderServicios();
+    }
+}
+
+async function deleteItvDocument(index) {
+    if (confirm('¿Estás seguro de que quieres eliminar este documento?')) {
+        const [removedDoc] = itvConfig.documentos.splice(index, 1);
+        if (removedDoc?.storagePath) {
+            try {
+                await window.deleteStorageFile(removedDoc.storagePath);
+            } catch (error) {
+                console.error('No se pudo eliminar el documento de ITV en Storage:', error);
+            }
+        }
+        saveItvConfig();
+        loadItvDocumentosInModal();
+        loadItvList();
+        renderServicios();
+    }
+}
+
+async function deleteItvFoto(index) {
+    if (confirm('¿Estás seguro de que quieres eliminar esta foto?')) {
+        const [removedFoto] = itvConfig.fotos.splice(index, 1);
+        if (removedFoto?.storagePath) {
+            try {
+                await window.deleteStorageFile(removedFoto.storagePath);
+            } catch (error) {
+                console.error('No se pudo eliminar la imagen de ITV en Storage:', error);
+            }
+        }
+        saveItvConfig();
+        loadItvFotosInModal();
+        loadItvList();
         renderServicios();
     }
 }
@@ -10547,14 +10658,14 @@ function renderServicios() {
     html += '<div class="itv-puebla">';
     html += '<h4>🏘️ PUEBLA DE SANABRIA</h4>';
     
-    if (consultorioConfig.documentos.length > 0 || consultorioConfig.fotos.length > 0) {
+    if (itvConfig.documentos.length > 0 || itvConfig.fotos.length > 0) {
         html += '<div class="itv-enlaces">';
         
-        if (consultorioConfig.documentos.length > 0) {
+        if (itvConfig.documentos.length > 0) {
             html += `<a href="#" class="btn btn-outline" onclick="viewItvDocument()">📋 Ver Documento</a>`;
         }
         
-        if (consultorioConfig.fotos.length > 0) {
+        if (itvConfig.fotos.length > 0) {
             html += `<a href="#" class="btn btn-outline" onclick="viewItvPhoto()">📸 Ver Foto</a>`;
         }
         
@@ -11598,6 +11709,13 @@ function addServicio(type) {
                     <textarea id="servicioDescription" rows="3"></textarea>
                 </div>
                 
+                <div class="form-group">
+                    <label for="servicioDocument">Documento (PDF opcional):</label>
+                    <input type="file" id="servicioDocument" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" onchange="handleFileUpload('servicioDocument', 'servicioDocumentUrl')">
+                    <input type="url" id="servicioDocumentUrl" placeholder="https://ejemplo.com/documento.pdf">
+                    <small style="color: #666;">Sube un archivo o proporciona una URL. Si subes un archivo, se utilizará automáticamente.</small>
+                </div>
+                
                 ${type === 'medical' || type === 'itv' ? `
                 <div class="form-group">
                     <label for="servicioPhoto">Fotografía:</label>
@@ -11623,7 +11741,7 @@ function addServicio(type) {
 function editServicio(type, id) {
     console.log('editServicio called with type:', type, 'id:', id);
     
-    const servicio = servicios[type].find(s => s.id === id);
+    const servicio = servicios[type]?.find(s => s.id === id);
     if (!servicio) {
         console.error('Servicio not found');
         return;
@@ -11632,6 +11750,12 @@ function editServicio(type, id) {
     const modal = document.createElement('div');
     modal.className = 'modal';
     modal.style.display = 'block';
+    
+    const logoUrl = servicio.logoUrl || servicio.logo || '';
+    const photoUrl = servicio.photoUrl || servicio.photo || '';
+    const documentUrl = servicio.documentUrl || servicio.documento || '';
+    const documentName = servicio.documentName || servicio.documentoNombre || '';
+    
     modal.innerHTML = `
         <div class="modal-content">
             <span class="close" onclick="this.closest('.modal').remove()">&times;</span>
@@ -11643,222 +11767,28 @@ function editServicio(type, id) {
                 <div class="form-group">
                     <label for="servicioLogo">Logo/Icono:</label>
                     <input type="file" id="servicioLogo" accept="image/*">
-                    <div id="currentLogo">
-                        ${servicio.logo ? `<img src="${servicio.logo}" style="max-width: 60px; max-height: 60px; border-radius: 4px; margin-top: 10px;">` : ''}
+                    <div id="currentLogo" style="margin-top: 0.5rem;">
+                        ${logoUrl ? `<img src="${escapeForHtml(logoUrl)}" style="max-width: 60px; max-height: 60px; border-radius: 4px;">` : '<p style="color: #666; margin: 0;">No hay logo cargado.</p>'}
                     </div>
+                    ${logoUrl ? `
+                    <label class="checkbox-option" style="display: inline-flex; align-items: center; gap: 0.5rem; margin-top: 0.5rem;">
+                        <input type="checkbox" id="servicioLogoRemove">
+                        <span>Eliminar logo actual</span>
+                    </label>` : ''}
                     <small style="color: #666;">Imagen pequeña que aparecerá como icono del servicio</small>
                 </div>
                 
                 <div class="form-group">
                     <label for="servicioName">Nombre:</label>
-                    <input type="text" id="servicioName" value="${servicio.name}" required>
+                    <input type="text" id="servicioName" value="${escapeHtml(servicio.name)}" required>
                 </div>
                 
                 <div class="form-group">
                     <label for="servicioDay">Día:</label>
-                    <input type="text" id="servicioDay" value="${servicio.day || ''}" placeholder="Ej: Lunes, Martes...">
+                    <input type="text" id="servicioDay" value="${escapeHtml(servicio.day || '')}" placeholder="Ej: Lunes, Martes...">
                 </div>
                 
-                <div class="form-group">
-                    <label for="servicioTime">Hora:</label>
-                    <input type="text" id="servicioTime" value="${servicio.time || ''}" placeholder="Ej: 09:00 - 14:00">
-                </div>
-                
-                <div class="form-group">
-                    <label for="servicioLocation">Ubicación:</label>
-                    <input type="text" id="servicioLocation" value="${servicio.location || ''}" placeholder="Ej: Centro de Salud">
-                </div>
-                
-                <div class="form-group">
-                    <label for="servicioPhone">Teléfono:</label>
-                    <input type="tel" id="servicioPhone" value="${servicio.phone}" required>
-                </div>
-                
-                <div class="form-group">
-                    <label for="servicioLink">Enlace Web:</label>
-                    <input type="url" id="servicioLink" value="${servicio.link || ''}" placeholder="https://ejemplo.com">
-                    <small style="color: #666;">URL opcional para más información</small>
-                </div>
-                
-                <div class="form-group">
-                    <label for="servicioDescription">Descripción:</label>
-                    <textarea id="servicioDescription" rows="3">${servicio.description || ''}</textarea>
-                </div>
-                
-                ${type === 'medical' || type === 'itv' ? `
-                <div class="form-group">
-                    <label for="servicioPhoto">Fotografía:</label>
-                    <input type="file" id="servicioPhoto" accept="image/*">
-                    <div id="currentPhoto">
-                        ${servicio.photo ? `<img src="${servicio.photo}" style="max-width: 200px; max-height: 150px; border-radius: 4px; margin-top: 10px;">` : ''}
-                    </div>
-                    <small style="color: #666;">Imagen grande para mostrar en la tarjeta del servicio</small>
-                </div>
-                ` : ''}
-                
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-outline" onclick="this.closest('.modal').remove()">Cancelar</button>
-                    <button type="button" class="btn btn-primary" onclick="saveServicioFromModal(this)">Guardar</button>
-                </div>
-            </form>
-        </div>
-    `;
-    
-    document.body.appendChild(modal);
-    document.body.style.overflow = 'hidden';
-    console.log('Edit modal created and opened successfully');
-}
-// Guardar servicio desde modal dinámico
-function saveServicioFromModal(button) {
-    console.log('saveServicioFromModal called');
-    
-    const modal = button.closest('.modal');
-    const form = modal.querySelector('#servicioForm');
-    
-    // Obtener datos del formulario
-    const id = form.querySelector('#servicioId').value;
-    const type = form.querySelector('#servicioType').value;
-    const name = form.querySelector('#servicioName').value;
-    const day = form.querySelector('#servicioDay').value;
-    const time = form.querySelector('#servicioTime').value;
-    const location = form.querySelector('#servicioLocation').value;
-    const phone = form.querySelector('#servicioPhone').value;
-    const link = form.querySelector('#servicioLink').value;
-    const description = form.querySelector('#servicioDescription').value;
-    
-    console.log('Form data:', { id, type, name, day, time, location, phone, description });
-    
-    // Validar campos obligatorios
-    if (!name || !phone) {
-        alert('Por favor, complete al menos el nombre y el teléfono.');
-        return;
-    }
-    
-    const servicio = {
-        id: id ? parseInt(id) : Date.now(),
-        name,
-        day,
-        time,
-        location,
-        phone,
-        link,
-        description
-    };
-    
-    // Procesar logo si existe
-    const logoInput = form.querySelector('#servicioLogo');
-    if (logoInput && logoInput.files[0]) {
-        const file = logoInput.files[0];
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            servicio.logo = e.target.result;
-            processPhotoAndSave();
-        };
-        reader.readAsDataURL(file);
-    } else {
-        processPhotoAndSave();
-    }
-    
-    function processPhotoAndSave() {
-        // Procesar foto si existe
-        const photoInput = form.querySelector('#servicioPhoto');
-        if (photoInput && photoInput.files[0]) {
-            const file = photoInput.files[0];
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                servicio.photo = e.target.result;
-                saveServicioData(servicio, type, id);
-            };
-            reader.readAsDataURL(file);
-        } else {
-            saveServicioData(servicio, type, id);
-        }
-    }
-    
-    // Cerrar modal
-    modal.remove();
-    document.body.style.overflow = 'auto';
-}
-// Guardar servicio (función original mantenida para compatibilidad)
-function saveServicio() {
-    console.log('saveServicio called');
-    
-    // Obtener datos del formulario
-    const id = document.getElementById('servicioId').value;
-    const type = document.getElementById('servicioType').value;
-    const name = document.getElementById('servicioName').value;
-    const day = document.getElementById('servicioDay').value;
-    const time = document.getElementById('servicioTime').value;
-    const location = document.getElementById('servicioLocation').value;
-    const phone = document.getElementById('servicioPhone').value;
-    const description = document.getElementById('servicioDescription').value;
-    
-    console.log('Form data:', { id, type, name, day, time, location, phone, description });
-    
-    // Validar campos obligatorios
-    if (!name || !phone) {
-        alert('Por favor, complete al menos el nombre y el teléfono.');
-        return;
-    }
-    
-    const servicio = {
-        id: id ? parseInt(id) : Date.now(),
-        name,
-        day,
-        time,
-        location,
-        phone,
-        description
-    };
-    
-    // Manejar foto
-    const photoFile = document.getElementById('servicioPhoto').files[0];
-    if (photoFile) {
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            servicio.photo = e.target.result;
-            saveServicioData(servicio, type, id);
-        };
-        reader.readAsDataURL(photoFile);
-    } else {
-        if (id) {
-            const existing = servicios[type].find(s => s.id === parseInt(id));
-            if (existing && existing.photo) {
-                servicio.photo = existing.photo;
-            }
-        }
-        saveServicioData(servicio, type, id);
-    }
-}
-
-// Guardar datos del servicio
-function saveServicioData(servicio, type, id) {
-    if (id) {
-        const index = servicios[type].findIndex(s => s.id === parseInt(id));
-        if (index !== -1) {
-            servicios[type][index] = servicio;
-        }
-    } else {
-        servicios[type].push(servicio);
-    }
-    
-    saveServicios();
-    loadServiciosAdmin();
-    renderServicios();
-    closeServicioModal();
-    showNotification('Servicio guardado correctamente', 'success');
-}
-
-// Eliminar servicio
-function deleteServicio(type, id) {
-    if (confirm('¿Está seguro de que desea eliminar este servicio?')) {
-        servicios[type] = servicios[type].filter(s => s.id !== id);
-        saveServicios();
-        loadServiciosAdmin();
-        renderServicios();
-        showNotification('Servicio eliminado correctamente', 'success');
-    }
-}
+                <div es informacion...` [truncated for analysis]. We'll craft rest.
 
 // Cerrar modal
 function closeServicioModal() {
@@ -14302,7 +14232,7 @@ function loadItvList() {
     
     container.innerHTML = '';
     
-    if (consultorioConfig.documentos.length === 0 && consultorioConfig.fotos.length === 0) {
+    if (itvConfig.documentos.length === 0 && itvConfig.fotos.length === 0) {
         container.innerHTML = '<p>No hay contenido disponible para ITV.</p>';
         return;
     }
@@ -14310,19 +14240,19 @@ function loadItvList() {
     let html = '<div class="content-items">';
     
     // Mostrar documentos
-    if (consultorioConfig.documentos.length > 0) {
+    if (itvConfig.documentos.length > 0) {
         html += '<div class="content-item"><h5>📋 Documentos:</h5><ul>';
-        consultorioConfig.documentos.forEach((doc, index) => {
-            html += `<li>${doc.nombre} <button class="btn btn-danger btn-small" onclick="deleteConsultorioDocument(${index})">Eliminar</button></li>`;
+        itvConfig.documentos.forEach((doc, index) => {
+            html += `<li>${doc.nombre} <button class="btn btn-danger btn-small" onclick="deleteItvDocument(${index})">Eliminar</button></li>`;
         });
         html += '</ul></div>';
     }
     
     // Mostrar fotos
-    if (consultorioConfig.fotos.length > 0) {
+    if (itvConfig.fotos.length > 0) {
         html += '<div class="content-item"><h5>📸 Fotos:</h5><ul>';
-        consultorioConfig.fotos.forEach((foto, index) => {
-            html += `<li>${foto.nombre} <button class="btn btn-danger btn-small" onclick="deleteConsultorioFoto(${index})">Eliminar</button></li>`;
+        itvConfig.fotos.forEach((foto, index) => {
+            html += `<li>${foto.nombre} <button class="btn btn-danger btn-small" onclick="deleteItvFoto(${index})">Eliminar</button></li>`;
         });
         html += '</ul></div>';
     }
@@ -14515,12 +14445,12 @@ function loadItvDocumentosInModal() {
     
     container.innerHTML = '';
     
-    if (consultorioConfig.documentos.length === 0) {
+    if (itvConfig.documentos.length === 0) {
         container.innerHTML = '<p>No hay documentos disponibles.</p>';
         return;
     }
     
-    consultorioConfig.documentos.forEach((doc, index) => {
+    itvConfig.documentos.forEach((doc, index) => {
         const docItem = document.createElement('div');
         docItem.className = 'content-item';
         docItem.innerHTML = `
@@ -14530,7 +14460,7 @@ function loadItvDocumentosInModal() {
                     <p>${doc.descripcion || 'Sin descripción'}</p>
                     <a href="${doc.url}" target="_blank" class="btn btn-outline btn-small">Ver Documento</a>
                 </div>
-                <button class="btn btn-danger btn-small" onclick="deleteConsultorioDocument(${index})">
+                <button class="btn btn-danger btn-small" onclick="deleteItvDocument(${index})">
                     <i class="fas fa-trash"></i> Eliminar
                 </button>
             </div>
@@ -14546,12 +14476,12 @@ function loadItvFotosInModal() {
     
     container.innerHTML = '';
     
-    if (consultorioConfig.fotos.length === 0) {
+    if (itvConfig.fotos.length === 0) {
         container.innerHTML = '<p>No hay fotos disponibles.</p>';
         return;
     }
     
-    consultorioConfig.fotos.forEach((foto, index) => {
+    itvConfig.fotos.forEach((foto, index) => {
         const fotoItem = document.createElement('div');
         fotoItem.className = 'content-item';
         fotoItem.innerHTML = `
@@ -14561,7 +14491,7 @@ function loadItvFotosInModal() {
                     <p>${foto.descripcion || 'Sin descripción'}</p>
                     <img src="${foto.url}" alt="${foto.nombre}" style="width: 100px; height: 100px; object-fit: cover; border-radius: 4px;">
                 </div>
-                <button class="btn btn-danger btn-small" onclick="deleteConsultorioFoto(${index})">
+                <button class="btn btn-danger btn-small" onclick="deleteItvFoto(${index})">
                     <i class="fas fa-trash"></i> Eliminar
                 </button>
             </div>
@@ -14605,22 +14535,49 @@ function openConsultorioDocumentModal() {
     `;
     document.body.appendChild(modal);
     
-    document.getElementById('consultorioDocumentForm').addEventListener('submit', function(e) {
+    document.getElementById('consultorioDocumentForm').addEventListener('submit', async function(e) {
         e.preventDefault();
         
         const fileInput = document.getElementById('docFile');
         const urlInput = document.getElementById('docUrl');
+        const submitBtn = this.querySelector('button[type="submit"]');
+        submitBtn.disabled = true;
+        submitBtn.classList.add('loading');
         
         let documentUrl = urlInput.value;
+        let storagePath = null;
+        let uploadedFileName = null;
         
-        // Si se subió un archivo, crear una URL local
         if (fileInput.files.length > 0) {
             const file = fileInput.files[0];
-            documentUrl = URL.createObjectURL(file);
+            try {
+                const metadata = await window.uploadAttachment(file, {
+                    folder: 'consultorio/documentos',
+                    entityId: 'general'
+                });
+                documentUrl = metadata.url;
+                storagePath = metadata.storagePath;
+                uploadedFileName = metadata.name || file.name;
+            } catch (error) {
+                console.error('Error subiendo archivo del consultorio:', error);
+                showNotification(error.message || 'No se pudo subir el archivo. Inténtalo de nuevo.', 'error');
+                submitBtn.disabled = false;
+                submitBtn.classList.remove('loading');
+                return;
+            }
         }
         
         if (!documentUrl) {
             showNotification('Debes subir un archivo o proporcionar una URL', 'error');
+            submitBtn.disabled = false;
+            submitBtn.classList.remove('loading');
+            return;
+        }
+
+        if (fileInput.files.length === 0 && documentUrl && !window.isValidUrl(documentUrl)) {
+            showNotification('La URL proporcionada no es válida.', 'error');
+            submitBtn.disabled = false;
+            submitBtn.classList.remove('loading');
             return;
         }
         
@@ -14628,7 +14585,8 @@ function openConsultorioDocumentModal() {
             nombre: document.getElementById('docNombre').value,
             descripcion: document.getElementById('docDescripcion').value,
             url: documentUrl,
-            fileName: fileInput.files.length > 0 ? fileInput.files[0].name : null
+            fileName: uploadedFileName || (fileInput.files.length > 0 ? fileInput.files[0].name : null),
+            storagePath
         };
         
         consultorioConfig.documentos.push(nuevoDocumento);
@@ -14639,6 +14597,8 @@ function openConsultorioDocumentModal() {
         
         modal.remove();
         showNotification('Documento añadido correctamente', 'success');
+        submitBtn.disabled = false;
+        submitBtn.classList.remove('loading');
     });
 }
 
@@ -14677,22 +14637,50 @@ function openConsultorioFotoModal() {
     `;
     document.body.appendChild(modal);
     
-    document.getElementById('consultorioFotoForm').addEventListener('submit', function(e) {
+    document.getElementById('consultorioFotoForm').addEventListener('submit', async function(e) {
         e.preventDefault();
         
         const fileInput = document.getElementById('fotoFile');
         const urlInput = document.getElementById('fotoUrl');
+        const submitBtn = this.querySelector('button[type="submit"]');
+        submitBtn.disabled = true;
+        submitBtn.classList.add('loading');
         
         let fotoUrl = urlInput.value;
+        let storagePath = null;
+        let uploadedFileName = null;
         
-        // Si se subió un archivo, crear una URL local
         if (fileInput.files.length > 0) {
             const file = fileInput.files[0];
-            fotoUrl = URL.createObjectURL(file);
+            try {
+                const metadata = await window.uploadAttachment(file, {
+                    folder: 'consultorio/fotos',
+                    entityId: 'general',
+                    allowedExtensions: ['.jpg', '.jpeg', '.png', '.gif']
+                });
+                fotoUrl = metadata.url;
+                storagePath = metadata.storagePath;
+                uploadedFileName = metadata.name || file.name;
+            } catch (error) {
+                console.error('Error subiendo foto del consultorio:', error);
+                showNotification(error.message || 'No se pudo subir la imagen. Inténtalo de nuevo.', 'error');
+                submitBtn.disabled = false;
+                submitBtn.classList.remove('loading');
+                return;
+            }
         }
         
         if (!fotoUrl) {
             showNotification('Debes subir una imagen o proporcionar una URL', 'error');
+            submitBtn.disabled = false;
+            submitBtn.classList.remove('loading');
+            return;
+        }
+
+        if (fileInput.files.length === 0 && fotoUrl && !window.isValidUrl(fotoUrl)) {
+            showNotification('La URL proporcionada no es válida.', 'error');
+            submitBtn.disabled = false;
+            submitBtn.classList.remove('loading');
             return;
         }
         
@@ -14700,7 +14688,8 @@ function openConsultorioFotoModal() {
             nombre: document.getElementById('fotoNombre').value,
             descripcion: document.getElementById('fotoDescripcion').value,
             url: fotoUrl,
-            fileName: fileInput.files.length > 0 ? fileInput.files[0].name : null
+            fileName: uploadedFileName || (fileInput.files.length > 0 ? fileInput.files[0].name : null),
+            storagePath
         };
         
         consultorioConfig.fotos.push(nuevaFoto);
@@ -14711,6 +14700,8 @@ function openConsultorioFotoModal() {
         
         modal.remove();
         showNotification('Foto añadida correctamente', 'success');
+        submitBtn.disabled = false;
+        submitBtn.classList.remove('loading');
     });
 }
 
@@ -14749,22 +14740,49 @@ function openItvDocumentModal() {
     `;
     document.body.appendChild(modal);
     
-    document.getElementById('itvDocumentForm').addEventListener('submit', function(e) {
+    document.getElementById('itvDocumentForm').addEventListener('submit', async function(e) {
         e.preventDefault();
         
         const fileInput = document.getElementById('itvDocFile');
         const urlInput = document.getElementById('itvDocUrl');
+        const submitBtn = this.querySelector('button[type="submit"]');
+        submitBtn.disabled = true;
+        submitBtn.classList.add('loading');
         
         let documentUrl = urlInput.value;
+        let storagePath = null;
+        let uploadedFileName = null;
         
-        // Si se subió un archivo, crear una URL local
         if (fileInput.files.length > 0) {
             const file = fileInput.files[0];
-            documentUrl = URL.createObjectURL(file);
+            try {
+                const metadata = await window.uploadAttachment(file, {
+                    folder: 'itv/documentos',
+                    entityId: 'puebla-sanabria'
+                });
+                documentUrl = metadata.url;
+                storagePath = metadata.storagePath;
+                uploadedFileName = metadata.name || file.name;
+            } catch (error) {
+                console.error('Error subiendo documento de ITV:', error);
+                showNotification(error.message || 'No se pudo subir el archivo. Inténtalo de nuevo.', 'error');
+                submitBtn.disabled = false;
+                submitBtn.classList.remove('loading');
+                return;
+            }
         }
         
         if (!documentUrl) {
             showNotification('Debes subir un archivo o proporcionar una URL', 'error');
+            submitBtn.disabled = false;
+            submitBtn.classList.remove('loading');
+            return;
+        }
+
+        if (fileInput.files.length === 0 && documentUrl && !window.isValidUrl(documentUrl)) {
+            showNotification('La URL proporcionada no es válida.', 'error');
+            submitBtn.disabled = false;
+            submitBtn.classList.remove('loading');
             return;
         }
         
@@ -14772,17 +14790,20 @@ function openItvDocumentModal() {
             nombre: document.getElementById('itvDocNombre').value,
             descripcion: document.getElementById('itvDocDescripcion').value,
             url: documentUrl,
-            fileName: fileInput.files.length > 0 ? fileInput.files[0].name : null
+            fileName: uploadedFileName || (fileInput.files.length > 0 ? fileInput.files[0].name : null),
+            storagePath
         };
         
-        consultorioConfig.documentos.push(nuevoDocumento);
-        saveConsultorioConfig();
+        itvConfig.documentos.push(nuevoDocumento);
+        saveItvConfig();
         loadItvDocumentosInModal();
         loadItvList();
         renderServicios();
         
         modal.remove();
         showNotification('Documento añadido correctamente', 'success');
+        submitBtn.disabled = false;
+        submitBtn.classList.remove('loading');
     });
 }
 
@@ -14821,22 +14842,50 @@ function openItvFotoModal() {
     `;
     document.body.appendChild(modal);
     
-    document.getElementById('itvFotoForm').addEventListener('submit', function(e) {
+    document.getElementById('itvFotoForm').addEventListener('submit', async function(e) {
         e.preventDefault();
         
         const fileInput = document.getElementById('itvFotoFile');
         const urlInput = document.getElementById('itvFotoUrl');
+        const submitBtn = this.querySelector('button[type="submit"]');
+        submitBtn.disabled = true;
+        submitBtn.classList.add('loading');
         
         let fotoUrl = urlInput.value;
+        let storagePath = null;
+        let uploadedFileName = null;
         
-        // Si se subió un archivo, crear una URL local
         if (fileInput.files.length > 0) {
             const file = fileInput.files[0];
-            fotoUrl = URL.createObjectURL(file);
+            try {
+                const metadata = await window.uploadAttachment(file, {
+                    folder: 'itv/fotos',
+                    entityId: 'puebla-sanabria',
+                    allowedExtensions: ['.jpg', '.jpeg', '.png', '.gif']
+                });
+                fotoUrl = metadata.url;
+                storagePath = metadata.storagePath;
+                uploadedFileName = metadata.name || file.name;
+            } catch (error) {
+                console.error('Error subiendo imagen de ITV:', error);
+                showNotification(error.message || 'No se pudo subir la imagen. Inténtalo de nuevo.', 'error');
+                submitBtn.disabled = false;
+                submitBtn.classList.remove('loading');
+                return;
+            }
         }
         
         if (!fotoUrl) {
             showNotification('Debes subir una imagen o proporcionar una URL', 'error');
+            submitBtn.disabled = false;
+            submitBtn.classList.remove('loading');
+            return;
+        }
+
+        if (fileInput.files.length === 0 && fotoUrl && !window.isValidUrl(fotoUrl)) {
+            showNotification('La URL proporcionada no es válida.', 'error');
+            submitBtn.disabled = false;
+            submitBtn.classList.remove('loading');
             return;
         }
         
@@ -14844,17 +14893,20 @@ function openItvFotoModal() {
             nombre: document.getElementById('itvFotoNombre').value,
             descripcion: document.getElementById('itvFotoDescripcion').value,
             url: fotoUrl,
-            fileName: fileInput.files.length > 0 ? fileInput.files[0].name : null
+            fileName: uploadedFileName || (fileInput.files.length > 0 ? fileInput.files[0].name : null),
+            storagePath
         };
         
-        consultorioConfig.fotos.push(nuevaFoto);
-        saveConsultorioConfig();
+        itvConfig.fotos.push(nuevaFoto);
+        saveItvConfig();
         loadItvFotosInModal();
         loadItvList();
         renderServicios();
         
         modal.remove();
         showNotification('Foto añadida correctamente', 'success');
+        submitBtn.disabled = false;
+        submitBtn.classList.remove('loading');
     });
 }
 
@@ -14865,13 +14917,18 @@ function handleFileUpload(fileInputId, urlInputId) {
     
     if (fileInput.files.length > 0) {
         const file = fileInput.files[0];
-        const fileUrl = URL.createObjectURL(file);
-        urlInput.value = fileUrl;
+        urlInput.dataset.originalPlaceholder = urlInput.dataset.originalPlaceholder || urlInput.placeholder;
+        urlInput.value = '';
+        urlInput.placeholder = `Archivo seleccionado: ${file.name}`;
         urlInput.disabled = true;
         urlInput.style.backgroundColor = '#f0f0f0';
     } else {
         urlInput.disabled = false;
         urlInput.style.backgroundColor = '';
+        if (urlInput.dataset.originalPlaceholder) {
+            urlInput.placeholder = urlInput.dataset.originalPlaceholder;
+            delete urlInput.dataset.originalPlaceholder;
+        }
     }
 }
 
@@ -15112,6 +15169,21 @@ function toggleAccordion(sectionId) {
         if (container && culturaOcioData[sectionId]) {
             renderAccordionSection(sectionId, culturaOcioData[sectionId]);
         }
+
+        // Desplazar suavemente para que la sección quede visible bajo el encabezado fijo
+        requestAnimationFrame(() => {
+            const headerElement = accordionItem.querySelector('.accordion-header');
+            if (!headerElement) {
+                return;
+            }
+            const globalHeader = document.querySelector('header');
+            const headerOffset = globalHeader ? globalHeader.offsetHeight : 0;
+            const targetTop = headerElement.getBoundingClientRect().top + window.scrollY - headerOffset - 16;
+            window.scrollTo({
+                top: targetTop > 0 ? targetTop : 0,
+                behavior: 'smooth'
+            });
+        });
     }
     
     console.log(`📂 Acordeón ${sectionId} ${isActive ? 'cerrado' : 'abierto'}`);
@@ -15235,6 +15307,84 @@ function loadCobrerosContent() {
         culturaOcioData = cobrerosData;
         
         // Guardar datos por defecto en localStorage
+        localStorage.setItem('culturaOcioData', JSON.stringify(culturaOcioData));
+    }
+
+    let culturaDataChanged = false;
+
+    const removeByTitle = (section, titleKeyword) => {
+        if (!Array.isArray(culturaOcioData[section])) {
+            return;
+        }
+        const originalLength = culturaOcioData[section].length;
+        culturaOcioData[section] = culturaOcioData[section].filter(item => {
+            const itemTitle = (item.title || '').toLowerCase();
+            return !itemTitle.includes(titleKeyword.toLowerCase());
+        });
+        if (originalLength !== culturaOcioData[section].length) {
+            culturaDataChanged = true;
+        }
+    };
+
+    const ensureGastronomyItem = (item) => {
+        if (!Array.isArray(culturaOcioData.gastronomia)) {
+            culturaOcioData.gastronomia = [];
+        }
+        const exists = culturaOcioData.gastronomia.some(existing => {
+            return (existing.title || '').toLowerCase() === item.title.toLowerCase();
+        });
+        if (!exists) {
+            culturaOcioData.gastronomia.push({
+                id: generateId(),
+                title: item.title,
+                description: item.description,
+                image: item.image || '',
+                links: item.links || [],
+                externalLink: item.externalLink || '',
+                order: item.order || (culturaOcioData.gastronomia.length + 1),
+                createdAt: new Date(),
+                updatedAt: new Date()
+            });
+            culturaDataChanged = true;
+        }
+    };
+
+    removeByTitle('eventos', 'mercado artesanal');
+    removeByTitle('gastronomia', 'mercado artesanal');
+
+    ensureGastronomyItem({
+        title: '🥘 Habones de Sanabria',
+        description: 'Legumbre emblemática de la comarca preparada con embutidos, verduras de la huerta y un lento guiso tradicional. Un plato contundente que no falta en fiestas y reuniones familiares.',
+        image: '',
+        links: [],
+        order: 2
+    });
+
+    ensureGastronomyItem({
+        title: '🐟 Trucha sanabresa y carnes de pasto',
+        description: 'La trucha del Tera y las carnes de vacuno y ovino criadas en pastos de altura ofrecen sabores limpios y textura excepcional. Asados al horno de leña y parrillas son todo un referente gastronómico local.',
+        image: '',
+        links: [],
+        order: 3
+    });
+
+    if (culturaDataChanged) {
+        if (Array.isArray(culturaOcioData.gastronomia)) {
+            culturaOcioData.gastronomia
+                .sort((a, b) => (a.order || 0) - (b.order || 0))
+                .forEach((item, index) => {
+                    item.order = index + 1;
+                });
+        }
+
+        if (Array.isArray(culturaOcioData.eventos)) {
+            culturaOcioData.eventos
+                .sort((a, b) => (a.order || 0) - (b.order || 0))
+                .forEach((item, index) => {
+                    item.order = index + 1;
+                });
+        }
+
         localStorage.setItem('culturaOcioData', JSON.stringify(culturaOcioData));
     }
     

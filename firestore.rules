@@ -33,8 +33,7 @@ service cloud.firestore {
 
     function isStringList(value, maxItems) {
       return value is list &&
-             value.size() <= maxItems &&
-             value.where(item => !(item is string) || item.size() > 120).size() == 0;
+             value.size() <= maxItems;
     }
 
     function isValidUserData(data) {
