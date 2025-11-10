@@ -32,6 +32,10 @@
     --calendar-fully-booked-border: #ef4444;
 }
 
+.is-hidden {
+    display: none !important;
+}
+
 body {
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     line-height: 1.6;
@@ -1528,6 +1532,12 @@ a.btn {
 .carnet-info h3 {
     color: var(--primary-color);
     margin-bottom: 1rem;
+}
+
+.carnet-subtitle {
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 0.5rem;
 }
 
 .carnet-info p {

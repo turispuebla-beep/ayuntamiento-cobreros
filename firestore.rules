@@ -100,6 +100,31 @@ service cloud.firestore {
       optionalStringField(data, 'source', 40);
     }
 
+    function isValidCotoRequestData(data) {
+      return data.keys().hasOnly([
+        'nombre', 'apellidos', 'nombreCompleto',
+        'documentoTipo', 'documentoNumero',
+        'direccion', 'email', 'telefono',
+        'licenciaNumero', 'cuota',
+        'dataConsent', 'createdAt',
+        'createdAtString', 'source'
+      ]) &&
+      data.nombre is string && data.nombre.size() > 0 && data.nombre.size() <= 120 &&
+      optionalStringField(data, 'apellidos', 160) &&
+      optionalStringField(data, 'nombreCompleto', 200) &&
+      data.documentoTipo is string && data.documentoTipo.size() > 0 && data.documentoTipo.size() <= 20 &&
+      data.documentoNumero is string && data.documentoNumero.size() > 0 && data.documentoNumero.size() <= 50 &&
+      data.direccion is string && data.direccion.size() > 0 && data.direccion.size() <= 240 &&
+      optionalStringField(data, 'email', 320) &&
+      optionalStringField(data, 'telefono', 40) &&
+      data.licenciaNumero is string && data.licenciaNumero.size() > 0 && data.licenciaNumero.size() <= 60 &&
+      optionalStringField(data, 'cuota', 40) &&
+      (!( 'dataConsent' in data) || data.dataConsent == true) &&
+      data.createdAt is timestamp &&
+      optionalStringField(data, 'createdAtString', 40) &&
+      optionalStringField(data, 'source', 40);
+    }
+
     match /users/{userId} {
       allow get: if isSameUser(userId) || isAdmin();
       allow list: if isAdmin();
@@ -168,6 +193,12 @@ service cloud.firestore {
     match /carnet_requests/{requestId} {
       allow get, list: if isAdmin();
       allow create: if isValidCarnetRequestData(request.resource.data);
+      allow update, delete: if isAdmin();
+    }
+
+    match /coto_requests/{requestId} {
+      allow get, list: if isAdmin();
+      allow create: if isValidCotoRequestData(request.resource.data);
       allow update, delete: if isAdmin();
     }
 

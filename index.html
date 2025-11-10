@@ -472,7 +472,7 @@
                         </ul>
                     </div>
                 </div>
-                <div class="carnet-card" id="carnetCard">
+                <div class="carnet-card is-hidden" id="carnetCardMicologico" aria-hidden="true">
                     <div class="carnet-info">
                         <h3>Solicitud de Carné de Recolección Micológica</h3>
                         <p id="carnetInstructions">Completa el formulario para solicitar tu carné de recolección de setas.</p>
@@ -483,7 +483,7 @@
                         </ul>
                         <p class="carnet-account"><strong>Número de cuenta:</strong> <span id="carnetAccountNumber">—</span></p>
                     </div>
-                    <form id="carnetForm" class="carnet-form">
+                    <form id="carnetForm" class="carnet-form" novalidate>
                         <div class="form-row">
                             <div class="form-group">
                                 <label for="carnetNombre">Nombre</label>
@@ -540,6 +540,74 @@
                                 <span class="btn-loading" style="display: none;"><i class="fas fa-spinner fa-spin"></i> Enviando...</span>
                             </button>
                             <p class="form-feedback" id="carnetFormFeedback" aria-live="polite"></p>
+                        </div>
+                    </form>
+                </div>
+                <div class="carnet-card is-hidden" id="carnetCardCoto" aria-hidden="true">
+                    <div class="carnet-info">
+                        <h3>Permiso COTO DE CAZA Ayuntamiento de Cobreros</h3>
+                        <p class="carnet-subtitle">Solo disponible para personas empadronadas en el municipio.</p>
+                        <p id="cotoInstructions">Solicita tu permiso municipal de caza completando el formulario.</p>
+                        <ul class="carnet-fees">
+                            <li><strong>Empadronado/a:</strong> <span id="cotoFeeEmpadronado">—</span></li>
+                        </ul>
+                        <p class="carnet-account"><strong>Número de cuenta:</strong> <span id="cotoAccountNumber">—</span></p>
+                    </div>
+                    <form id="cotoForm" class="carnet-form" novalidate>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="cotoNombre">Nombre</label>
+                                <input type="text" id="cotoNombre" name="nombre" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="cotoApellidos">Apellidos</label>
+                                <input type="text" id="cotoApellidos" name="apellidos" required>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="cotoDocumentoTipo">Tipo de documento</label>
+                                <select id="cotoDocumentoTipo" name="documentoTipo" required>
+                                    <option value="">Selecciona una opción</option>
+                                    <option value="dni">DNI</option>
+                                    <option value="nie">NIE</option>
+                                    <option value="pasaporte">Pasaporte</option>
+                                    <option value="otro">Otro</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="cotoDocumentoNumero">Número de documento</label>
+                                <input type="text" id="cotoDocumentoNumero" name="documentoNumero" required>
+                            </div>
+                        </div>
+                        <div class="form-group full-width">
+                            <label for="cotoDireccion">Dirección completa</label>
+                            <textarea id="cotoDireccion" name="direccion" rows="2" required></textarea>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="cotoEmail">Correo electrónico (opcional)</label>
+                                <input type="email" id="cotoEmail" name="email" placeholder="nombre@correo.com">
+                            </div>
+                            <div class="form-group">
+                                <label for="cotoTelefono">Teléfono de contacto (opcional)</label>
+                                <input type="tel" id="cotoTelefono" name="telefono" placeholder="Ej: 600 000 000">
+                            </div>
+                        </div>
+                        <div class="form-group full-width">
+                            <label for="cotoLicencia">Número de licencia de caza</label>
+                            <input type="text" id="cotoLicencia" name="licencia" required>
+                        </div>
+                        <div class="form-group consent-group">
+                            <input type="checkbox" id="cotoConsent" required>
+                            <label for="cotoConsent">Declaro que los datos aportados son veraces, soy empadronado/a en el municipio y acepto el tratamiento de mis datos personales según la normativa vigente.</label>
+                        </div>
+                        <div class="form-actions">
+                            <button type="submit" class="btn btn-primary">
+                                <span class="btn-text">Solicitar permiso</span>
+                                <span class="btn-loading" style="display: none;"><i class="fas fa-spinner fa-spin"></i> Enviando...</span>
+                            </button>
+                            <p class="form-feedback" id="cotoFormFeedback" aria-live="polite"></p>
                         </div>
                     </form>
                 </div>
@@ -1481,6 +1549,19 @@
                     <div class="admin-section">
                         <h4>Configuración del Carné</h4>
                         <p class="admin-help-text">Actualiza las cuotas y el número de cuenta que se mostrarán en la web pública.</p>
+                        <div class="form-group checkbox-group">
+                            <label class="checkbox-option">
+                                <input type="checkbox" id="carnetConfigShowMicologico">
+                                <span>Mostrar formulario "Carné de Recolección Micológica" en la web pública</span>
+                            </label>
+                        </div>
+                        <div class="form-group checkbox-group">
+                            <label class="checkbox-option">
+                                <input type="checkbox" id="carnetConfigShowCoto">
+                                <span>Mostrar formulario "Permiso Coto de Caza" en la web pública</span>
+                            </label>
+                        </div>
+                        <h5 style="margin-top: 1.5rem;">Formulario Carné de Recolección Micológica</h5>
                         <div class="form-row">
                             <div class="form-group">
                                 <label for="carnetConfigAccount">Número de cuenta</label>
@@ -1508,6 +1589,27 @@
                         <div class="form-group">
                             <label for="carnetConfigInstructions">Instrucciones adicionales</label>
                             <textarea id="carnetConfigInstructions" rows="3" placeholder="Información que se mostrará junto al formulario público."></textarea>
+                        </div>
+                        <h5 style="margin-top: 1.5rem;">Permiso Coto de Caza (solo empadronados)</h5>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="carnetConfigCotoAccount">Número de cuenta</label>
+                                <input type="text" id="carnetConfigCotoAccount" placeholder="ES00 0000 0000 0000 0000 0000">
+                            </div>
+                            <div class="form-group">
+                                <label for="carnetConfigCotoEmail">Correo de destino</label>
+                                <input type="email" id="carnetConfigCotoEmail" placeholder="aytocobreros@gmail.com">
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="carnetConfigCotoFee">Cuota empadronado/a</label>
+                                <input type="text" id="carnetConfigCotoFee" placeholder="Ej: 10 €">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="carnetConfigCotoInstructions">Instrucciones adicionales</label>
+                            <textarea id="carnetConfigCotoInstructions" rows="3" placeholder="Información que se mostrará junto al formulario de caza."></textarea>
                         </div>
                         <div class="form-actions">
                             <button type="button" class="btn btn-primary" id="carnetConfigSaveBtn">
@@ -1550,6 +1652,38 @@
                             </table>
                         </div>
                         <p id="carnetRequestsSummary" class="admin-help-text"></p>
+                    </div>
+                    <div class="admin-section">
+                        <h4>Permiso Coto de Caza - Solicitudes recibidas</h4>
+                        <div class="carnet-admin-actions">
+                            <button class="btn btn-outline" id="cotoRefreshBtn">
+                                <i class="fas fa-sync-alt"></i> Actualizar
+                            </button>
+                            <button class="btn btn-secondary" id="cotoExportBtn">
+                                <i class="fas fa-file-export"></i> Exportar CSV
+                            </button>
+                            <span class="admin-help-text">Solo el personal autorizado del ayuntamiento puede ver estas solicitudes.</span>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="admin-table" id="cotoRequestsTable" aria-describedby="cotoRequestsSummary">
+                                <thead>
+                                    <tr>
+                                        <th>Fecha</th>
+                                        <th>Nombre</th>
+                                        <th>Documento</th>
+                                        <th>Licencia</th>
+                                        <th>Contacto</th>
+                                        <th>Dirección</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="cotoRequestsTableBody">
+                                    <tr>
+                                        <td colspan="6" id="cotoRequestsEmpty">No hay solicitudes registradas.</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <p id="cotoRequestsSummary" class="admin-help-text"></p>
                     </div>
                 </div>
                 

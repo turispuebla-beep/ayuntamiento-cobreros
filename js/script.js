@@ -127,11 +127,19 @@ const DEFAULT_CARNET_CONFIG = {
     feeVisitante: '',
     instructions: 'Una vez enviada la solicitud, realiza el ingreso de la cuota correspondiente indicando tu nombre y apellidos en el concepto.',
     emailRecipient: 'aytocobreros@gmail.com',
+    micologicoVisible: false,
+    cotoVisible: false,
+    cotoAccountNumber: '',
+    cotoFeeEmpadronado: '',
+    cotoInstructions: 'El permiso cinegético municipal solo está disponible para personas empadronadas en el Ayuntamiento de Cobreros.',
+    cotoEmailRecipient: 'aytocobreros@gmail.com',
     updatedAt: null
 };
 let carnetConfig = { ...DEFAULT_CARNET_CONFIG };
 let carnetRequests = [];
+let cotoRequests = [];
 const CARNET_REQUESTS_LOCAL_KEY = 'carnetRequests';
+const COTO_REQUESTS_LOCAL_KEY = 'cotoRequests';
 
 function applyCalendarStylesFromConfig() {
     if (typeof CONFIG === 'undefined' || !CONFIG?.appointments?.calendarStyles) {
@@ -828,6 +836,11 @@ function setupEventListeners() {
         carnetForm.addEventListener('submit', handleCarnetFormSubmit);
     }
 
+    const cotoForm = document.getElementById('cotoForm');
+    if (cotoForm) {
+        cotoForm.addEventListener('submit', handleCotoFormSubmit);
+    }
+
     const carnetConfigSaveBtn = document.getElementById('carnetConfigSaveBtn');
     if (carnetConfigSaveBtn) {
         carnetConfigSaveBtn.addEventListener('click', handleCarnetConfigSave);
@@ -846,6 +859,16 @@ function setupEventListeners() {
     const carnetExportBtn = document.getElementById('carnetExportBtn');
     if (carnetExportBtn) {
         carnetExportBtn.addEventListener('click', exportCarnetRequests);
+    }
+
+    const cotoRefreshBtn = document.getElementById('cotoRefreshBtn');
+    if (cotoRefreshBtn) {
+        cotoRefreshBtn.addEventListener('click', loadCotoRequestsAdmin);
+    }
+
+    const cotoExportBtn = document.getElementById('cotoExportBtn');
+    if (cotoExportBtn) {
+        cotoExportBtn.addEventListener('click', exportCotoRequests);
     }
 
     // Tabs del admin
@@ -2389,6 +2412,7 @@ function switchTab(tabName) {
     } else if (tabName === 'carnets') {
         populateCarnetAdminForm();
         loadCarnetRequestsAdmin();
+        loadCotoRequestsAdmin();
     } else if (tabName === 'appointments') {
         loadAppointmentScheduleConfigUI(); // Cargar configuración de horarios
         // Renderizar calendario después de un breve delay para asegurar que el DOM esté listo
@@ -3088,6 +3112,7 @@ function loadDocumentsList() {
 
 function initializeCarnetModule() {
     loadCarnetRequestsFromLocal();
+    loadCotoRequestsFromLocal();
     renderCarnetPublicInfo();
     loadCarnetConfig();
 }
@@ -3102,11 +3127,29 @@ function loadCarnetRequestsFromLocal() {
     }
 }
 
+function loadCotoRequestsFromLocal() {
+    try {
+        const saved = localStorage.getItem(COTO_REQUESTS_LOCAL_KEY);
+        cotoRequests = saved ? JSON.parse(saved) : [];
+    } catch (error) {
+        console.warn('No se pudo cargar el historial local del permiso de caza:', error);
+        cotoRequests = [];
+    }
+}
+
 function persistCarnetRequestsLocal() {
     try {
         localStorage.setItem(CARNET_REQUESTS_LOCAL_KEY, JSON.stringify(carnetRequests.slice(0, 500)));
     } catch (error) {
         console.warn('No se pudo guardar el historial local de carnés:', error);
+    }
+}
+
+function persistCotoRequestsLocal() {
+    try {
+        localStorage.setItem(COTO_REQUESTS_LOCAL_KEY, JSON.stringify(cotoRequests.slice(0, 500)));
+    } catch (error) {
+        console.warn('No se pudo guardar el historial local del permiso de caza:', error);
     }
 }
 
@@ -3156,7 +3199,21 @@ async function loadCarnetConfig() {
     }
 }
 
+function toggleElementVisibility(element, shouldShow) {
+    if (!element) return;
+    element.classList.toggle('is-hidden', !shouldShow);
+    element.setAttribute('aria-hidden', shouldShow ? 'false' : 'true');
+}
+
 function renderCarnetPublicInfo() {
+    const micologicoEnabled = carnetConfig.micologicoVisible === true;
+    const cotoEnabled = carnetConfig.cotoVisible === true;
+
+    const micologicoCard = document.getElementById('carnetCardMicologico');
+    const cotoCard = document.getElementById('carnetCardCoto');
+    toggleElementVisibility(micologicoCard, micologicoEnabled);
+    toggleElementVisibility(cotoCard, cotoEnabled);
+
     const instructionsEl = document.getElementById('carnetInstructions');
     const accountEl = document.getElementById('carnetAccountNumber');
     const feeEmpEl = document.getElementById('carnetFeeEmpadronado');
@@ -3182,6 +3239,26 @@ function renderCarnetPublicInfo() {
     }
     if (feeVisEl) {
         feeVisEl.textContent = (carnetConfig.feeVisitante || 'Consultar');
+    }
+
+    const cotoInstructionsEl = document.getElementById('cotoInstructions');
+    const cotoAccountEl = document.getElementById('cotoAccountNumber');
+    const cotoFeeEl = document.getElementById('cotoFeeEmpadronado');
+
+    if (cotoInstructionsEl) {
+        const cotoInstructions = (carnetConfig.cotoInstructions || DEFAULT_CARNET_CONFIG.cotoInstructions || '').trim();
+        const safeCotoInstructions = escapeHtml(cotoInstructions).replace(/\n/g, '<br>');
+        cotoInstructionsEl.innerHTML = safeCotoInstructions || 'Completa el formulario y sigue las instrucciones para solicitar el permiso municipal de caza.';
+    }
+
+    if (cotoAccountEl) {
+        const cotoAccount = (carnetConfig.cotoAccountNumber || carnetConfig.accountNumber || '').trim();
+        cotoAccountEl.textContent = cotoAccount || 'Consultar en el ayuntamiento';
+    }
+
+    if (cotoFeeEl) {
+        const cotoFee = (carnetConfig.cotoFeeEmpadronado || '').trim();
+        cotoFeeEl.textContent = cotoFee || 'Consultar';
     }
 }
 
@@ -3216,6 +3293,36 @@ function populateCarnetAdminForm() {
     const instructionsInput = document.getElementById('carnetConfigInstructions');
     if (instructionsInput) {
         instructionsInput.value = carnetConfig.instructions || '';
+    }
+
+    const showMicologicoCheckbox = document.getElementById('carnetConfigShowMicologico');
+    if (showMicologicoCheckbox) {
+        showMicologicoCheckbox.checked = carnetConfig.micologicoVisible === true;
+    }
+
+    const showCotoCheckbox = document.getElementById('carnetConfigShowCoto');
+    if (showCotoCheckbox) {
+        showCotoCheckbox.checked = carnetConfig.cotoVisible === true;
+    }
+
+    const cotoAccountInput = document.getElementById('carnetConfigCotoAccount');
+    if (cotoAccountInput) {
+        cotoAccountInput.value = carnetConfig.cotoAccountNumber || carnetConfig.accountNumber || '';
+    }
+
+    const cotoEmailInput = document.getElementById('carnetConfigCotoEmail');
+    if (cotoEmailInput) {
+        cotoEmailInput.value = carnetConfig.cotoEmailRecipient || carnetConfig.emailRecipient || DEFAULT_CARNET_CONFIG.emailRecipient;
+    }
+
+    const cotoFeeInput = document.getElementById('carnetConfigCotoFee');
+    if (cotoFeeInput) {
+        cotoFeeInput.value = carnetConfig.cotoFeeEmpadronado || '';
+    }
+
+    const cotoInstructionsInput = document.getElementById('carnetConfigCotoInstructions');
+    if (cotoInstructionsInput) {
+        cotoInstructionsInput.value = carnetConfig.cotoInstructions || DEFAULT_CARNET_CONFIG.cotoInstructions || '';
     }
 
     const feedback = document.getElementById('carnetConfigFeedback');
@@ -3265,6 +3372,12 @@ async function saveCarnetConfig(updates = {}, options = {}) {
                 feeVisitante: carnetConfig.feeVisitante || '',
                 instructions: carnetConfig.instructions || '',
                 emailRecipient: carnetConfig.emailRecipient || DEFAULT_CARNET_CONFIG.emailRecipient,
+                micologicoVisible: carnetConfig.micologicoVisible === true,
+                cotoVisible: carnetConfig.cotoVisible === true,
+                cotoAccountNumber: carnetConfig.cotoAccountNumber || '',
+                cotoFeeEmpadronado: carnetConfig.cotoFeeEmpadronado || '',
+                cotoInstructions: carnetConfig.cotoInstructions || DEFAULT_CARNET_CONFIG.cotoInstructions,
+                cotoEmailRecipient: carnetConfig.cotoEmailRecipient || carnetConfig.emailRecipient || DEFAULT_CARNET_CONFIG.cotoEmailRecipient,
                 updatedAt: new Date(),
                 updatedAtString: carnetConfig.updatedAt
             }, { merge: true });
@@ -3296,6 +3409,12 @@ async function handleCarnetConfigSave() {
     const feeDescInput = document.getElementById('carnetConfigFeeDescendiente');
     const feeVisInput = document.getElementById('carnetConfigFeeVisitante');
     const instructionsInput = document.getElementById('carnetConfigInstructions');
+    const showMicologicoCheckbox = document.getElementById('carnetConfigShowMicologico');
+    const showCotoCheckbox = document.getElementById('carnetConfigShowCoto');
+    const cotoAccountInput = document.getElementById('carnetConfigCotoAccount');
+    const cotoEmailInput = document.getElementById('carnetConfigCotoEmail');
+    const cotoFeeInput = document.getElementById('carnetConfigCotoFee');
+    const cotoInstructionsInput = document.getElementById('carnetConfigCotoInstructions');
 
     const updates = {
         accountNumber: (accountInput?.value || '').trim(),
@@ -3303,7 +3422,13 @@ async function handleCarnetConfigSave() {
         feeEmpadronado: (feeEmpInput?.value || '').trim(),
         feeDescendiente: (feeDescInput?.value || '').trim(),
         feeVisitante: (feeVisInput?.value || '').trim(),
-        instructions: (instructionsInput?.value || '').trim()
+        instructions: (instructionsInput?.value || '').trim(),
+        micologicoVisible: showMicologicoCheckbox ? showMicologicoCheckbox.checked : carnetConfig.micologicoVisible,
+        cotoVisible: showCotoCheckbox ? showCotoCheckbox.checked : carnetConfig.cotoVisible,
+        cotoAccountNumber: (cotoAccountInput?.value || '').trim(),
+        cotoEmailRecipient: (cotoEmailInput?.value || '').trim() || (emailInput?.value || '').trim() || DEFAULT_CARNET_CONFIG.emailRecipient,
+        cotoFeeEmpadronado: (cotoFeeInput?.value || '').trim(),
+        cotoInstructions: (cotoInstructionsInput?.value || '').trim()
     };
 
     try {
@@ -3527,6 +3652,177 @@ async function handleCarnetFormSubmit(event) {
     }
 }
 
+function setCotoFormFeedback(message, status = 'info') {
+    const feedback = document.getElementById('cotoFormFeedback');
+    if (!feedback) return;
+    feedback.textContent = message || '';
+    feedback.classList.remove('success', 'error');
+    if (status === 'success') {
+        feedback.classList.add('success');
+    } else if (status === 'error') {
+        feedback.classList.add('error');
+    }
+}
+
+function resetCotoForm(form) {
+    form.reset();
+}
+
+async function handleCotoFormSubmit(event) {
+    event.preventDefault();
+    const form = event.target;
+    const submitBtn = form.querySelector('button[type="submit"]');
+    const loadingSpan = submitBtn?.querySelector('.btn-loading');
+    const btnTextSpan = submitBtn?.querySelector('.btn-text');
+
+    const nombre = (form.querySelector('#cotoNombre')?.value || '').trim();
+    const apellidos = (form.querySelector('#cotoApellidos')?.value || '').trim();
+    const documentoTipo = form.querySelector('#cotoDocumentoTipo')?.value || '';
+    const documentoNumero = (form.querySelector('#cotoDocumentoNumero')?.value || '').trim();
+    const direccion = (form.querySelector('#cotoDireccion')?.value || '').trim();
+    const email = (form.querySelector('#cotoEmail')?.value || '').trim();
+    const telefono = (form.querySelector('#cotoTelefono')?.value || '').trim();
+    const licencia = (form.querySelector('#cotoLicencia')?.value || '').trim();
+    const consentimiento = form.querySelector('#cotoConsent')?.checked;
+
+    if (!nombre || !apellidos || !documentoTipo || !documentoNumero || !direccion || !licencia) {
+        setCotoFormFeedback('Por favor, completa todos los campos obligatorios.', 'error');
+        return;
+    }
+
+    if (!consentimiento) {
+        setCotoFormFeedback('Debes aceptar el tratamiento de datos personales.', 'error');
+        return;
+    }
+
+    const fullName = `${nombre} ${apellidos}`.trim();
+    const nowIso = new Date().toISOString();
+    const cuota = (carnetConfig.cotoFeeEmpadronado || '').trim();
+
+    const localRecord = {
+        id: `coto-${Date.now()}`,
+        nombre,
+        apellidos,
+        nombreCompleto: fullName,
+        documentoTipo,
+        documentoNumero,
+        direccion,
+        email,
+        telefono,
+        licenciaNumero: licencia,
+        tipoSolicitante: 'empadronado',
+        tipoSolicitanteLabel: getCarnetApplicantLabel('empadronado'),
+        cuota,
+        dataConsent: true,
+        createdAt: nowIso
+    };
+
+    try {
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.classList.add('loading');
+        }
+        if (loadingSpan) {
+            loadingSpan.style.display = 'inline-flex';
+        }
+        if (btnTextSpan) {
+            btnTextSpan.style.display = 'none';
+        }
+
+        cotoRequests.unshift(localRecord);
+        persistCotoRequestsLocal();
+
+        let remoteSaved = false;
+        const firebaseReady = await waitForFirebase(7000);
+        if (firebaseReady && window.firebase && window.firebase.firestore) {
+            try {
+                await window.firebase.firestore().collection('coto_requests').add({
+                    nombre,
+                    apellidos,
+                    nombreCompleto: fullName,
+                    documentoTipo,
+                    documentoNumero,
+                    direccion,
+                    email,
+                    telefono,
+                    licenciaNumero: licencia,
+                    tipoSolicitante: 'empadronado',
+                    tipoSolicitanteLabel: getCarnetApplicantLabel('empadronado'),
+                    cuota,
+                    dataConsent: true,
+                    createdAt: new Date(),
+                    createdAtString: nowIso,
+                    source: 'web'
+                });
+                remoteSaved = true;
+            } catch (firestoreError) {
+                console.error('No se pudo registrar la solicitud de caza en Firestore:', firestoreError);
+            }
+        }
+
+        let emailSent = false;
+        const recipient = (carnetConfig.cotoEmailRecipient || carnetConfig.emailRecipient || DEFAULT_CARNET_CONFIG.cotoEmailRecipient || DEFAULT_CARNET_CONFIG.emailRecipient || '').trim();
+        if (recipient) {
+            const messageLines = [
+                `Nombre: ${fullName}`,
+                `Tipo de solicitante: Empadronado/a`,
+                `Documento (${documentoTipo.toUpperCase()}): ${documentoNumero}`,
+                `Dirección: ${direccion}`,
+                email ? `Correo electrónico: ${email}` : null,
+                telefono ? `Teléfono: ${telefono}` : null,
+                `Número de licencia de caza: ${licencia}`,
+                cuota ? `Cuota aplicable: ${cuota}` : null,
+                `Acepta tratamiento de datos: Sí`,
+                `Fecha de solicitud: ${formatDateTime(nowIso)}`
+            ].filter(Boolean);
+
+            try {
+                emailSent = await sendGeneralNoticeEmail(recipient, {
+                    title: 'Nueva solicitud permiso Coto de Caza',
+                    message: messageLines.join('\n'),
+                    attachmentName: null,
+                    attachmentUrl: null
+                });
+            } catch (emailError) {
+                console.error('No se pudo enviar el correo de solicitud de permiso de caza:', emailError);
+            }
+        }
+
+        setCotoFormFeedback('Solicitud de permiso enviada correctamente.', 'success');
+        showNotification('Solicitud de permiso de caza enviada correctamente.', 'success');
+        resetCotoForm(form);
+
+        if (window.Metrics && typeof window.Metrics.recordEvent === 'function') {
+            window.Metrics.recordEvent('coto_request_submitted', {
+                emailSent: emailSent
+            });
+        }
+
+        if (isAdmin) {
+            loadCotoRequestsAdmin();
+        }
+
+        if (!remoteSaved) {
+            console.warn('La solicitud de caza se guardó localmente, pero no se pudo registrar en Firestore.');
+        }
+    } catch (error) {
+        console.error('Error al procesar la solicitud del permiso de caza:', error);
+        setCotoFormFeedback('Ocurrió un error al enviar la solicitud. Inténtalo de nuevo en unos minutos.', 'error');
+        showNotification('No se pudo enviar la solicitud de permiso de caza en este momento.', 'error');
+    } finally {
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.classList.remove('loading');
+        }
+        if (loadingSpan) {
+            loadingSpan.style.display = 'none';
+        }
+        if (btnTextSpan) {
+            btnTextSpan.style.display = 'inline';
+        }
+    }
+}
+
 async function loadCarnetRequestsAdmin() {
     const tbody = document.getElementById('carnetRequestsTableBody');
     const summary = document.getElementById('carnetRequestsSummary');
@@ -3666,6 +3962,142 @@ function exportCarnetRequests() {
 }
 
 // ===== FIN CARNÉ MICOLÓGICO =====
+
+async function loadCotoRequestsAdmin() {
+    const summary = document.getElementById('cotoRequestsSummary');
+
+    renderCotoRequestsAdmin();
+
+    const firebaseReady = await waitForFirebase(7000);
+    if (!firebaseReady || !window.firebase || !window.firebase.firestore) {
+        if (summary) {
+            summary.textContent = 'Mostrando solicitudes almacenadas localmente (sin conexión a la base de datos).';
+        }
+        return;
+    }
+
+    try {
+        const snapshot = await window.firebase.firestore().collection('coto_requests').get();
+        const remoteRequests = [];
+        snapshot.forEach(doc => {
+            const data = typeof doc.data === 'function' ? doc.data() : null;
+            if (!data) return;
+
+            let createdAtIso = data.createdAtString || null;
+            if (!createdAtIso && data.createdAt && typeof data.createdAt.toDate === 'function') {
+                createdAtIso = data.createdAt.toDate().toISOString();
+            }
+
+            remoteRequests.push({
+                id: doc.id,
+                nombre: data.nombre || '',
+                apellidos: data.apellidos || '',
+                nombreCompleto: data.nombreCompleto || `${data.nombre || ''} ${data.apellidos || ''}`.trim(),
+                documentoTipo: data.documentoTipo || '',
+                documentoNumero: data.documentoNumero || '',
+                direccion: data.direccion || '',
+                email: data.email || '',
+                telefono: data.telefono || '',
+                licenciaNumero: data.licenciaNumero || '',
+                cuota: data.cuota || '',
+                dataConsent: data.dataConsent === true,
+                createdAt: createdAtIso || new Date().toISOString()
+            });
+        });
+
+        remoteRequests.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+        cotoRequests = remoteRequests;
+        persistCotoRequestsLocal();
+        renderCotoRequestsAdmin();
+
+        if (summary) {
+            summary.textContent = `Solicitudes totales registradas: ${cotoRequests.length}`;
+        }
+    } catch (error) {
+        console.error('No se pudieron cargar las solicitudes de caza desde Firestore:', error);
+        if (summary) {
+            summary.textContent = 'No se pudieron cargar las solicitudes desde la base de datos. Se muestran los datos guardados en este dispositivo.';
+        }
+    }
+}
+
+function renderCotoRequestsAdmin() {
+    const tbody = document.getElementById('cotoRequestsTableBody');
+    const summary = document.getElementById('cotoRequestsSummary');
+    if (!tbody) return;
+
+    if (!cotoRequests.length) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="6" id="cotoRequestsEmpty">No hay solicitudes registradas.</td>
+            </tr>
+        `;
+        if (summary) {
+            summary.textContent = 'No se han registrado solicitudes todavía.';
+        }
+        return;
+    }
+
+    const rows = cotoRequests.map(request => {
+        const createdAtLabel = formatDateTime(request.createdAt);
+        const contactLines = [
+            request.email ? `Correo: ${request.email}` : null,
+            request.telefono ? `Teléfono: ${request.telefono}` : null
+        ].filter(Boolean).join('<br>');
+
+        return `
+            <tr>
+                <td>${escapeHtml(createdAtLabel)}</td>
+                <td>${escapeHtml(request.nombreCompleto || `${request.nombre} ${request.apellidos}`.trim())}</td>
+                <td>${escapeHtml(request.documentoTipo ? request.documentoTipo.toUpperCase() : '')}<br>${escapeHtml(request.documentoNumero || '')}</td>
+                <td>${escapeHtml(request.licenciaNumero || '')}</td>
+                <td>${contactLines ? contactLines : '—'}</td>
+                <td>${escapeHtml(request.direccion || '')}</td>
+            </tr>
+        `;
+    }).join('');
+
+    tbody.innerHTML = rows;
+
+    if (summary) {
+        summary.textContent = `Solicitudes listadas: ${cotoRequests.length}`;
+    }
+}
+
+function exportCotoRequests() {
+    if (!cotoRequests.length) {
+        showNotification('No hay solicitudes para exportar.', 'warning');
+        return;
+    }
+
+    const headers = ['Fecha', 'Nombre', 'Documento', 'Licencia de caza', 'Dirección', 'Correo', 'Teléfono', 'Cuota'];
+    const rows = cotoRequests.map(request => [
+        formatDateTime(request.createdAt),
+        `${request.nombreCompleto || `${request.nombre} ${request.apellidos}`.trim()}`.trim(),
+        `${(request.documentoTipo || '').toUpperCase()} ${request.documentoNumero || ''}`.trim(),
+        request.licenciaNumero || '',
+        request.direccion || '',
+        request.email || '',
+        request.telefono || '',
+        request.cuota || ''
+    ]);
+
+    const csvContent = [headers, ...rows]
+        .map(columns => columns.map(value => `"${(value || '').replace(/"/g, '""')}"`).join(','))
+        .join('\n');
+
+    const blob = new Blob([`\uFEFF${csvContent}`], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `solicitudes-coto-${new Date().toISOString().split('T')[0]}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+
+    showNotification('Exportación de solicitudes completada.', 'success');
+}
 
 // Cargar lista de eventos
 function loadEventsList() {
@@ -9734,6 +10166,7 @@ function openAdminPanel() {
     loadAppointmentScheduleConfigUI(); // Cargar configuración de horarios
     loadPublicNotificationsList();
     loadCarnetRequestsAdmin();
+    loadCotoRequestsAdmin();
     populateCarnetAdminForm();
     
     // Renderizar calendario del admin después de un breve delay para asegurar que el DOM esté listo
