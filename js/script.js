@@ -10187,8 +10187,8 @@ let servicios = {
     medical: [],
     itv: []
 };
-// Configuración de teléfonos de interés
-let telefonosInteresConfig = {
+
+const DEFAULT_TELEFONOS_INTERES_CONFIG = {
     titulo: 'TELÉFONOS DE INTERÉS',
     icono: '📞',
     descripcion: 'Servicios importantes de la zona',
@@ -10248,8 +10248,9 @@ let telefonosInteresConfig = {
     }
 };
 
-// Configuración de las secciones (títulos e iconos editables)
-let seccionesConfig = {
+let telefonosInteresConfig = JSON.parse(JSON.stringify(DEFAULT_TELEFONOS_INTERES_CONFIG));
+
+const DEFAULT_SECCIONES_CONFIG = {
     medical: {
         title: 'CONSULTORIO MÉDICO',
         icon: '🏥',
@@ -10274,54 +10275,307 @@ let seccionesConfig = {
     }
 };
 
-// Configuración de líneas de transporte
-let transporteConfig = {
-    titulo: 'LÍNEAS DE AUTOBÚS Y TREN',
-    icono: '🚌',
-    descripcion: 'Horarios y rutas de transporte público',
+let seccionesConfig = JSON.parse(JSON.stringify(DEFAULT_SECCIONES_CONFIG));
+
+const DEFAULT_TRANSPORTE_CONFIG = {
     lineas: []
 };
 
+let transporteConfig = JSON.parse(JSON.stringify(DEFAULT_TRANSPORTE_CONFIG));
+
 // Cargar configuración de secciones
 function loadSeccionesConfig() {
-    const saved = localStorage.getItem('seccionesConfig');
-    if (saved) {
-        seccionesConfig = JSON.parse(saved);
+    try {
+        const saved = localStorage.getItem('seccionesConfig');
+        if (saved) {
+            seccionesConfig = normalizeSeccionesConfig(JSON.parse(saved));
+        } else {
+            seccionesConfig = normalizeSeccionesConfig(seccionesConfig);
+        }
+    } catch (error) {
+        console.error('Error cargando seccionesConfig desde localStorage:', error);
+        seccionesConfig = JSON.parse(JSON.stringify(DEFAULT_SECCIONES_CONFIG));
     }
+
+    saveSeccionesConfig({ syncRemote: false });
+    syncSeccionesConfigFromFirestore();
+}
+
+function normalizeSeccionesConfig(rawConfig) {
+    const base = JSON.parse(JSON.stringify(DEFAULT_SECCIONES_CONFIG));
+    if (!rawConfig || typeof rawConfig !== 'object') {
+        return base;
+    }
+
+    Object.keys(base).forEach(sectionKey => {
+        const defaultSection = base[sectionKey];
+        const rawSection = rawConfig[sectionKey];
+        if (rawSection && typeof rawSection === 'object') {
+            const normalizedSection = { ...defaultSection };
+
+            if ('title' in defaultSection || 'title' in rawSection) {
+                normalizedSection.title = toSafeString(rawSection.title, defaultSection.title);
+            }
+
+            if ('icon' in defaultSection || 'icon' in rawSection) {
+                normalizedSection.icon = toSafeString(rawSection.icon, defaultSection.icon);
+            }
+
+            if ('description' in defaultSection || 'description' in rawSection) {
+                normalizedSection.description = toSafeString(rawSection.description, defaultSection.description);
+            }
+
+            if ('isActive' in defaultSection || 'isActive' in rawSection) {
+                normalizedSection.isActive = rawSection.isActive !== false;
+            }
+
+            base[sectionKey] = normalizedSection;
+        }
+    });
+
+    return base;
 }
 
 // Cargar configuración de teléfonos de interés
 function loadTelefonosInteresConfig() {
-    const saved = localStorage.getItem('telefonosInteresConfig');
-    if (saved) {
-        telefonosInteresConfig = JSON.parse(saved);
+    try {
+        const saved = localStorage.getItem('telefonosInteresConfig');
+        if (saved) {
+            telefonosInteresConfig = normalizeTelefonosInteresConfig(JSON.parse(saved));
+        } else {
+            telefonosInteresConfig = normalizeTelefonosInteresConfig(telefonosInteresConfig);
+        }
+    } catch (error) {
+        console.error('Error cargando telefonosInteresConfig desde localStorage:', error);
+        telefonosInteresConfig = JSON.parse(JSON.stringify(DEFAULT_TELEFONOS_INTERES_CONFIG));
+    }
+
+    saveTelefonosInteresConfig({ syncRemote: false });
+    syncTelefonosInteresFromFirestore();
+}
+
+function normalizeTelefonosInteresConfig(rawConfig) {
+    const base = JSON.parse(JSON.stringify(DEFAULT_TELEFONOS_INTERES_CONFIG));
+    if (!rawConfig || typeof rawConfig !== 'object') {
+        base.tarjeta.elementos = base.tarjeta.elementos.map((elemento, index) => normalizeTelefonoElemento(elemento, index));
+        return base;
+    }
+
+    base.titulo = toSafeString(rawConfig.titulo, base.titulo);
+    base.icono = toSafeString(rawConfig.icono, base.icono);
+    base.descripcion = toSafeString(rawConfig.descripcion, base.descripcion);
+
+    const tarjetaRaw = rawConfig.tarjeta && typeof rawConfig.tarjeta === 'object' ? rawConfig.tarjeta : {};
+    base.tarjeta.nombre = toSafeString(tarjetaRaw.nombre, base.tarjeta.nombre);
+    base.tarjeta.emoji = toSafeString(tarjetaRaw.emoji, base.tarjeta.emoji);
+    base.tarjeta.descripcion = toSafeString(tarjetaRaw.descripcion, base.tarjeta.descripcion);
+    const elementosRaw = Array.isArray(tarjetaRaw.elementos) ? tarjetaRaw.elementos : [];
+    base.tarjeta.elementos = elementosRaw.map((elemento, index) => normalizeTelefonoElemento(elemento, index));
+
+    return base;
+}
+
+function normalizeTelefonoElemento(elemento = {}, index = 0) {
+    const safeNombre = toSafeString(elemento.nombre, `Elemento ${index + 1}`) || `Elemento ${index + 1}`;
+    const rawId = elemento.id;
+    const id = Number.isFinite(rawId)
+        ? rawId
+        : (typeof rawId === 'string' && rawId.trim() !== '' ? rawId.trim() : index + 1);
+
+    const datos = Array.isArray(elemento.datos) ? elemento.datos
+        .map(normalizeTelefonoDato)
+        .filter(dato => dato.nombre || dato.telefono || dato.valor) : [];
+
+    return {
+        id,
+        nombre: safeNombre,
+        emoji: toSafeString(elemento.emoji, '📞') || '📞',
+        descripcion: toSafeString(elemento.descripcion),
+        tipo: toSafeString(elemento.tipo, 'telefonos') || 'telefonos',
+        datos,
+        documento: toOptionalString(elemento.documento),
+        foto: toOptionalString(elemento.foto),
+        orden: Number.isFinite(elemento.orden) ? elemento.orden : index + 1,
+        isActive: elemento.isActive !== false
+    };
+}
+
+function normalizeTelefonoDato(dato = {}) {
+    const nombre = toSafeString(dato.nombre);
+    const telefono = toOptionalString(dato.telefono);
+    const valor = toOptionalString(dato.valor);
+    const extension = toOptionalString(dato.extension);
+
+    const result = {};
+    if (nombre) result.nombre = nombre;
+    if (telefono) result.telefono = telefono;
+    if (valor) result.valor = valor;
+    if (extension) result.extension = extension;
+    return result;
+}
+
+// Guardar configuración de teléfonos de interés
+function saveTelefonosInteresConfig(options = {}) {
+    const { syncRemote = true } = options;
+    telefonosInteresConfig = normalizeTelefonosInteresConfig(telefonosInteresConfig);
+    localStorage.setItem('telefonosInteresConfig', JSON.stringify(telefonosInteresConfig));
+
+    if (syncRemote) {
+        const payload = JSON.parse(JSON.stringify(telefonosInteresConfig));
+        persistConfigDocument(FIRESTORE_CONFIG_DOC_IDS.telefonos, payload)
+            .catch(error => console.error('Error al sincronizar telefonosInteresConfig con Firestore:', error));
+    }
+}
+
+async function syncTelefonosInteresFromFirestore() {
+    const remoteData = await fetchConfigDocument(FIRESTORE_CONFIG_DOC_IDS.telefonos);
+    if (remoteData) {
+        telefonosInteresConfig = normalizeTelefonosInteresConfig(remoteData);
+        saveTelefonosInteresConfig({ syncRemote: false });
+        renderServicios();
+        loadTelefonosElementosList();
+        return;
+    }
+
+    const hasElementos = telefonosInteresConfig?.tarjeta?.elementos?.length > 0;
+    if (hasElementos) {
+        saveTelefonosInteresConfig({ syncRemote: true });
     }
 }
 
 // Cargar configuración de transporte
 function loadTransporteConfig() {
-    const saved = localStorage.getItem('transporteConfig');
-    if (saved) {
-        transporteConfig = JSON.parse(saved);
+    try {
+        const saved = localStorage.getItem('transporteConfig');
+        if (saved) {
+            transporteConfig = normalizeTransporteConfig(JSON.parse(saved));
+        } else {
+            transporteConfig = normalizeTransporteConfig(transporteConfig);
+        }
+    } catch (error) {
+        console.error('Error cargando configuración de transporte:', error);
+        transporteConfig = { lineas: [] };
     }
-}
 
-// Guardar configuración de teléfonos de interés
-function saveTelefonosInteresConfig() {
-    localStorage.setItem('telefonosInteresConfig', JSON.stringify(telefonosInteresConfig));
+    if (!transporteConfig || typeof transporteConfig !== 'object') {
+        transporteConfig = { lineas: [] };
+    }
+
+    if (!Array.isArray(transporteConfig.lineas)) {
+        transporteConfig.lineas = [];
+    }
+
+    saveTransporteConfig({ syncRemote: false });
+    syncTransporteConfigFromFirestore();
 }
 
 // Guardar configuración de transporte
-function saveTransporteConfig() {
+function saveTransporteConfig(options = {}) {
+    const { syncRemote = true } = options;
+    transporteConfig = normalizeTransporteConfig(transporteConfig);
     localStorage.setItem('transporteConfig', JSON.stringify(transporteConfig));
+
+    if (syncRemote) {
+        const payload = JSON.parse(JSON.stringify(transporteConfig));
+        persistConfigDocument(FIRESTORE_CONFIG_DOC_IDS.transporte, payload)
+            .catch(error => console.error('Error al sincronizar transporteConfig con Firestore:', error));
+    }
+}
+
+async function syncTransporteConfigFromFirestore() {
+    const remoteData = await fetchConfigDocument(FIRESTORE_CONFIG_DOC_IDS.transporte);
+    if (remoteData) {
+        transporteConfig = normalizeTransporteConfig(remoteData);
+        saveTransporteConfig({ syncRemote: false });
+        renderServicios();
+        loadTransporteLinesList();
+        return;
+    }
+
+    const hasLineas = Array.isArray(transporteConfig?.lineas) && transporteConfig.lineas.length > 0;
+    if (hasLineas) {
+        saveTransporteConfig({ syncRemote: true });
+    }
+}
+
+function normalizeTransporteConfig(rawConfig) {
+    const baseConfig = rawConfig && typeof rawConfig === 'object' ? rawConfig : {};
+    const lineas = Array.isArray(baseConfig.lineas) ? baseConfig.lineas : [];
+
+    return {
+        lineas: lineas.map((linea, index) => normalizeTransporteLinea(linea, index))
+    };
+}
+
+function normalizeTransporteLinea(linea = {}, index = 0) {
+    const safeText = value => (typeof value === 'string' ? value.trim() : '');
+    const generatedId = Date.now() + index;
+    const id = Number.isFinite(linea.id) ? linea.id : (typeof linea.id === 'string' && linea.id.trim() !== '' ? linea.id.trim() : generatedId);
+
+    return {
+        id,
+        emoji: safeText(linea.emoji) || '🚌',
+        nombre: safeText(linea.nombre) || `Línea ${index + 1}`,
+        descripcion: safeText(linea.descripcion),
+        orden: Number.isFinite(linea.orden) ? linea.orden : index + 1,
+        isActive: linea.isActive !== false,
+        horarios: Array.isArray(linea.horarios) ? linea.horarios : [],
+        rutas: Array.isArray(linea.rutas) ? linea.rutas : [],
+        contacto: linea.contacto && typeof linea.contacto === 'object' ? linea.contacto : null,
+        documentos: Array.isArray(linea.documentos) ? linea.documentos.map((doc, idx) => normalizeTransporteDocumento(doc, `${id}-doc-${idx}`)) : [],
+        fotos: Array.isArray(linea.fotos) ? linea.fotos.map((foto, idx) => normalizeTransporteFoto(foto, `${id}-foto-${idx}`)) : []
+    };
+}
+
+function normalizeTransporteDocumento(doc = {}, fallbackId = '') {
+    const safeText = value => (typeof value === 'string' ? value.trim() : '');
+    const generatedId = `${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+    const id = Number.isFinite(doc.id)
+        ? doc.id
+        : (typeof doc.id === 'string' && doc.id.trim() !== '' ? doc.id.trim() : (fallbackId || generatedId));
+
+    return {
+        id,
+        nombre: safeText(doc.nombre) || 'Documento',
+        descripcion: safeText(doc.descripcion),
+        url: safeText(doc.url),
+        storagePath: safeText(doc.storagePath),
+        fileName: safeText(doc.fileName || doc.nombreArchivo || doc.nombre),
+        createdAt: doc.createdAt || Date.now()
+    };
+}
+
+function normalizeTransporteFoto(foto = {}, fallbackId = '') {
+    const safeText = value => (typeof value === 'string' ? value.trim() : '');
+    const generatedId = `${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+    const id = Number.isFinite(foto.id)
+        ? foto.id
+        : (typeof foto.id === 'string' && foto.id.trim() !== '' ? foto.id.trim() : (fallbackId || generatedId));
+
+    return {
+        id,
+        nombre: safeText(foto.nombre) || 'Imagen',
+        descripcion: safeText(foto.descripcion),
+        url: safeText(foto.url),
+        storagePath: safeText(foto.storagePath),
+        fileName: safeText(foto.fileName || foto.nombreArchivo || foto.nombre),
+        createdAt: foto.createdAt || Date.now()
+    };
 }
 
 // Cargar servicios
 function loadServicios() {
     const saved = localStorage.getItem('servicios');
     if (saved) {
-        servicios = JSON.parse(saved);
-    } else {
+        try {
+            servicios = normalizeServiciosData(JSON.parse(saved));
+        } catch (error) {
+            console.error('Error parsing servicios desde localStorage:', error);
+            servicios = {};
+        }
+    }
+
+    if (!saved || !servicios || Object.keys(servicios).length === 0) {
         // Datos de ejemplo
         servicios = {
             medical: [
@@ -10349,20 +10603,131 @@ function loadServicios() {
                 }
             ],
         };
-        saveServicios();
+        saveServicios({ syncRemote: false });
     }
     loadSeccionesConfig();
     renderServicios();
+    syncServiciosFromFirestore();
 }
 
 // Guardar configuración de secciones
-function saveSeccionesConfig() {
+function saveSeccionesConfig(options = {}) {
+    const { syncRemote = true } = options;
+    seccionesConfig = normalizeSeccionesConfig(seccionesConfig);
     localStorage.setItem('seccionesConfig', JSON.stringify(seccionesConfig));
+
+    if (syncRemote) {
+        const payload = JSON.parse(JSON.stringify(seccionesConfig));
+        persistConfigDocument(FIRESTORE_CONFIG_DOC_IDS.serviciosSecciones, payload)
+            .catch(error => console.error('Error al sincronizar seccionesConfig con Firestore:', error));
+    }
+}
+
+async function syncSeccionesConfigFromFirestore() {
+    const remoteData = await fetchConfigDocument(FIRESTORE_CONFIG_DOC_IDS.serviciosSecciones);
+    if (remoteData) {
+        seccionesConfig = normalizeSeccionesConfig(remoteData);
+        saveSeccionesConfig({ syncRemote: false });
+        updateSectionTitles();
+        renderServicios();
+        return;
+    }
+
+    try {
+        const serializedDefault = JSON.stringify(DEFAULT_SECCIONES_CONFIG);
+        const serializedCurrent = JSON.stringify(seccionesConfig);
+        if (serializedCurrent !== serializedDefault) {
+            saveSeccionesConfig({ syncRemote: true });
+        }
+    } catch (error) {
+        console.warn('No se pudo comparar seccionesConfig con el valor por defecto:', error);
+    }
 }
 
 // Guardar servicios
-function saveServicios() {
+function saveServicios(options = {}) {
+    const { syncRemote = true } = options;
+    servicios = normalizeServiciosData(servicios);
     localStorage.setItem('servicios', JSON.stringify(servicios));
+
+    if (syncRemote) {
+        const payload = JSON.parse(JSON.stringify(servicios));
+        persistConfigDocument(FIRESTORE_CONFIG_DOC_IDS.servicios, payload)
+            .catch(error => console.error('Error al sincronizar servicios con Firestore:', error));
+    }
+}
+
+async function syncServiciosFromFirestore() {
+    const remoteData = await fetchConfigDocument(FIRESTORE_CONFIG_DOC_IDS.servicios);
+    if (remoteData) {
+        servicios = normalizeServiciosData(remoteData);
+        saveServicios({ syncRemote: false });
+        renderServicios();
+        loadServiciosAdmin();
+        return;
+    }
+
+    const hasLocalData = Object.values(servicios || {}).some(list => Array.isArray(list) && list.length > 0);
+    if (hasLocalData) {
+        saveServicios({ syncRemote: true });
+    }
+}
+
+function normalizeServiciosData(rawServicios) {
+    const normalized = {};
+    const source = rawServicios && typeof rawServicios === 'object' ? rawServicios : {};
+
+    Object.keys(source).forEach(typeKey => {
+        const list = Array.isArray(source[typeKey]) ? source[typeKey] : [];
+        normalized[typeKey] = list.map((item, index) => normalizeServicioEntry(item, `${typeKey}-${index}`));
+    });
+
+    if (!normalized.medical) normalized.medical = [];
+    if (!normalized.itv) normalized.itv = [];
+
+    return normalized;
+}
+
+function normalizeServicioEntry(servicio = {}, fallbackIdSuffix = '') {
+    const generatedId = Date.now() + Math.floor(Math.random() * 1000);
+    const rawId = servicio.id ?? servicio.serviceId;
+    const id = Number.isFinite(rawId)
+        ? rawId
+        : (typeof rawId === 'string' && rawId.trim() !== ''
+            ? rawId.trim()
+            : `${generatedId}${fallbackIdSuffix ? `-${fallbackIdSuffix}` : ''}`);
+
+    const safeText = value => (typeof value === 'string' ? value.trim() : '');
+
+    const logoUrl = servicio.logoUrl || servicio.logo || null;
+    const photoUrl = servicio.photoUrl || servicio.photo || null;
+    const documentUrl = servicio.documentUrl || servicio.documento || null;
+
+    const normalizePath = value => {
+        if (typeof value !== 'string') return null;
+        const trimmed = value.trim();
+        return trimmed.length > 0 ? trimmed : null;
+    };
+
+    return {
+        id,
+        name: safeText(servicio.name || servicio.nombre),
+        day: safeText(servicio.day || servicio.dia),
+        time: safeText(servicio.time || servicio.hora || servicio.schedule),
+        location: safeText(servicio.location || servicio.ubicacion || servicio.place),
+        phone: safeText(servicio.phone || servicio.telefono || servicio.contacto),
+        link: safeText(servicio.link || servicio.url || servicio.web),
+        description: safeText(servicio.description || servicio.descripcion || servicio.detail),
+        logoUrl,
+        logoStoragePath: normalizePath(servicio.logoStoragePath || servicio.logoStorage || servicio.logoPath),
+        logoFileName: safeText(servicio.logoFileName || servicio.logoNombre || servicio.logoName),
+        photoUrl,
+        photoStoragePath: normalizePath(servicio.photoStoragePath || servicio.photoStorage || servicio.photoPath),
+        photoFileName: safeText(servicio.photoFileName || servicio.photoNombre || servicio.photoName),
+        documentUrl,
+        documentStoragePath: normalizePath(servicio.documentStoragePath || servicio.documentoStoragePath || servicio.documentPath),
+        documentName: safeText(servicio.documentName || servicio.documentoNombre || servicio.documentLabel || (documentUrl ? documentUrl.split('/').pop() : ''))
+    };
 }
 
 // Configuración del consultorio médico
@@ -10376,72 +10741,183 @@ let itvConfig = {
     fotos: []
 };
 
-// Cargar configuración del consultorio
+function normalizeMediaEntry(item = {}, fallbackLabel = 'Elemento') {
+    const baseName = toSafeString(item.nombre || item.titulo, fallbackLabel) || fallbackLabel;
+    const descripcion = toSafeString(item.descripcion);
+    const url = toOptionalString(item.url || item.link);
+    const storagePath = toOptionalString(item.storagePath || item.storage_path || item.path);
+    const derivedFileName = url ? url.split('/').pop() : baseName;
+    const fileName = toOptionalString(item.fileName || item.nombreArchivo || derivedFileName);
+    const createdAt = toSafeNumber(item.createdAt, Date.now());
+
+    return {
+        nombre: baseName,
+        titulo: baseName,
+        descripcion,
+        url,
+        storagePath,
+        fileName,
+        nombreArchivo: fileName,
+        createdAt
+    };
+}
+
+function normalizeConsultorioConfigData(rawConfig) {
+    const base = rawConfig && typeof rawConfig === 'object' ? rawConfig : {};
+    return {
+        documentos: Array.isArray(base.documentos) ? base.documentos.map(item => normalizeMediaEntry(item, 'Documento')) : [],
+        fotos: Array.isArray(base.fotos) ? base.fotos.map(item => normalizeMediaEntry(item, 'Imagen')) : []
+    };
+}
+
+function serializeConsultorioConfig(config) {
+    const normalized = normalizeConsultorioConfigData(config);
+    return {
+        documentos: normalized.documentos.map(item => ({
+            nombre: item.nombre,
+            descripcion: item.descripcion,
+            url: item.url,
+            storagePath: item.storagePath,
+            fileName: item.fileName,
+            createdAt: item.createdAt
+        })),
+        fotos: normalized.fotos.map(item => ({
+            nombre: item.nombre,
+            descripcion: item.descripcion,
+            url: item.url,
+            storagePath: item.storagePath,
+            fileName: item.fileName,
+            createdAt: item.createdAt
+        }))
+    };
+}
+
 function loadConsultorioConfig() {
-    const saved = localStorage.getItem('consultorioConfig');
-    if (saved) {
-        consultorioConfig = JSON.parse(saved);
-    }
-
-    let configUpdated = false;
-
-    if (!consultorioConfig || typeof consultorioConfig !== 'object') {
+    try {
+        const saved = localStorage.getItem('consultorioConfig');
+        if (saved) {
+            consultorioConfig = normalizeConsultorioConfigData(JSON.parse(saved));
+        } else {
+            consultorioConfig = normalizeConsultorioConfigData(consultorioConfig);
+        }
+    } catch (error) {
+        console.error('Error cargando consultorioConfig desde localStorage:', error);
         consultorioConfig = { documentos: [], fotos: [] };
-        configUpdated = true;
     }
 
-    if (!Array.isArray(consultorioConfig.documentos)) {
-        consultorioConfig.documentos = [];
-        configUpdated = true;
-    }
-
-    if (!Array.isArray(consultorioConfig.fotos)) {
-        consultorioConfig.fotos = [];
-        configUpdated = true;
-    }
-
-    if (configUpdated) {
-        saveConsultorioConfig();
-    }
+    saveConsultorioConfig({ syncRemote: false });
+    syncConsultorioConfigFromFirestore();
 }
 
-// Guardar configuración del consultorio
-function saveConsultorioConfig() {
+function saveConsultorioConfig(options = {}) {
+    const { syncRemote = true } = options;
+    consultorioConfig = normalizeConsultorioConfigData(consultorioConfig);
     localStorage.setItem('consultorioConfig', JSON.stringify(consultorioConfig));
+
+    if (syncRemote) {
+        persistConfigDocument(FIRESTORE_CONFIG_DOC_IDS.consultorio, serializeConsultorioConfig(consultorioConfig))
+            .catch(error => console.error('Error al sincronizar consultorioConfig con Firestore:', error));
+    }
 }
 
-// Cargar configuración de ITV
+async function syncConsultorioConfigFromFirestore() {
+    const remoteData = await fetchConfigDocument(FIRESTORE_CONFIG_DOC_IDS.consultorio);
+    if (remoteData) {
+        consultorioConfig = normalizeConsultorioConfigData(remoteData);
+        saveConsultorioConfig({ syncRemote: false });
+        renderServicios();
+        loadConsultorioList();
+        if (document.getElementById('consultorioDocumentosList')) {
+            loadConsultorioDocumentosInModal();
+        }
+        if (document.getElementById('consultorioFotosList')) {
+            loadConsultorioFotosInModal();
+        }
+        return;
+    }
+
+    if ((consultorioConfig.documentos.length > 0 || consultorioConfig.fotos.length > 0)) {
+        saveConsultorioConfig({ syncRemote: true });
+    }
+}
+
+function normalizeItvConfigData(rawConfig) {
+    const base = rawConfig && typeof rawConfig === 'object' ? rawConfig : {};
+    return {
+        documentos: Array.isArray(base.documentos) ? base.documentos.map(item => normalizeMediaEntry(item, 'Documento')) : [],
+        fotos: Array.isArray(base.fotos) ? base.fotos.map(item => normalizeMediaEntry(item, 'Imagen')) : []
+    };
+}
+
+function serializeItvConfig(config) {
+    const normalized = normalizeItvConfigData(config);
+    return {
+        documentos: normalized.documentos.map(item => ({
+            nombre: item.nombre,
+            descripcion: item.descripcion,
+            url: item.url,
+            storagePath: item.storagePath,
+            fileName: item.fileName,
+            createdAt: item.createdAt
+        })),
+        fotos: normalized.fotos.map(item => ({
+            nombre: item.nombre,
+            descripcion: item.descripcion,
+            url: item.url,
+            storagePath: item.storagePath,
+            fileName: item.fileName,
+            createdAt: item.createdAt
+        }))
+    };
+}
+
 function loadItvConfig() {
-    const saved = localStorage.getItem('itvConfig');
-    if (saved) {
-        itvConfig = JSON.parse(saved);
-    }
-
-    let configUpdated = false;
-
-    if (!itvConfig || typeof itvConfig !== 'object') {
+    try {
+        const saved = localStorage.getItem('itvConfig');
+        if (saved) {
+            itvConfig = normalizeItvConfigData(JSON.parse(saved));
+        } else {
+            itvConfig = normalizeItvConfigData(itvConfig);
+        }
+    } catch (error) {
+        console.error('Error cargando itvConfig desde localStorage:', error);
         itvConfig = { documentos: [], fotos: [] };
-        configUpdated = true;
     }
 
-    if (!Array.isArray(itvConfig.documentos)) {
-        itvConfig.documentos = [];
-        configUpdated = true;
-    }
+    saveItvConfig({ syncRemote: false });
+    syncItvConfigFromFirestore();
+}
 
-    if (!Array.isArray(itvConfig.fotos)) {
-        itvConfig.fotos = [];
-        configUpdated = true;
-    }
+function saveItvConfig(options = {}) {
+    const { syncRemote = true } = options;
+    itvConfig = normalizeItvConfigData(itvConfig);
+    localStorage.setItem('itvConfig', JSON.stringify(itvConfig));
 
-    if (configUpdated) {
-        saveItvConfig();
+    if (syncRemote) {
+        persistConfigDocument(FIRESTORE_CONFIG_DOC_IDS.itv, serializeItvConfig(itvConfig))
+            .catch(error => console.error('Error al sincronizar itvConfig con Firestore:', error));
     }
 }
 
-// Guardar configuración de ITV
-function saveItvConfig() {
-    localStorage.setItem('itvConfig', JSON.stringify(itvConfig));
+async function syncItvConfigFromFirestore() {
+    const remoteData = await fetchConfigDocument(FIRESTORE_CONFIG_DOC_IDS.itv);
+    if (remoteData) {
+        itvConfig = normalizeItvConfigData(remoteData);
+        saveItvConfig({ syncRemote: false });
+        renderServicios();
+        loadItvList();
+        if (document.getElementById('itvDocumentosList')) {
+            loadItvDocumentosInModal();
+        }
+        if (document.getElementById('itvFotosList')) {
+            loadItvFotosInModal();
+        }
+        return;
+    }
+
+    if ((itvConfig.documentos.length > 0 || itvConfig.fotos.length > 0)) {
+        saveItvConfig({ syncRemote: true });
+    }
 }
 
 // Funciones para el consultorio
@@ -10767,21 +11243,30 @@ function renderServicios() {
 
 // Crear tarjeta de servicio
 function createServicioCard(servicio, type) {
+    const logoUrl = servicio.logoUrl || servicio.logo || null;
+    const photoUrl = servicio.photoUrl || servicio.photo || null;
+    const documentUrl = servicio.documentUrl || servicio.documento || null;
+    const documentName = servicio.documentName || servicio.documentoNombre || (documentUrl ? 'Ver documento' : '');
+
+    const safeText = value => (typeof value === 'string' && value.trim().length > 0 ? value.trim() : null);
+    const displayDocumentName = safeText(documentName) || 'Ver documento';
+
     return `
         <div style="background: var(--bg-secondary); padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">
             <div style="display: flex; align-items: center; margin-bottom: 1rem;">
                 <div style="margin-right: 1rem;">
-                    ${servicio.logo ? `<img src="${servicio.logo}" alt="Logo" style="width: 50px; height: 50px; object-fit: cover; border-radius: 4px;">` : `<div style="width: 50px; height: 50px; background: var(--primary-color); border-radius: 4px; display: flex; align-items: center; justify-content: center; color: white; font-size: 24px;">${type === 'medical' ? '🏥' : type === 'itv' ? '🚗' : '📞'}</div>`}
+                    ${logoUrl ? `<img src="${logoUrl}" alt="Logo" style="width: 50px; height: 50px; object-fit: cover; border-radius: 4px;">` : `<div style="width: 50px; height: 50px; background: var(--primary-color); border-radius: 4px; display: flex; align-items: center; justify-content: center; color: white; font-size: 24px;">${type === 'medical' ? '🏥' : type === 'itv' ? '🚗' : '📞'}</div>`}
                 </div>
                 <h4 style="margin: 0;">${servicio.name}</h4>
             </div>
-            ${servicio.photo ? `<img src="${servicio.photo}" style="width: 100%; height: 150px; object-fit: cover; border-radius: 4px; margin-bottom: 1rem;" onclick="viewPhoto('${servicio.photo}')">` : ''}
+            ${photoUrl ? `<img src="${photoUrl}" style="width: 100%; height: 150px; object-fit: cover; border-radius: 4px; margin-bottom: 1rem;" onclick="viewPhoto('${photoUrl}')">` : ''}
             <p><strong>Día:</strong> ${servicio.day || 'No especificado'}</p>
             <p><strong>Horario:</strong> ${servicio.time || 'No especificado'}</p>
             <p><strong>Lugar:</strong> ${servicio.location || 'No especificado'}</p>
             <p><strong>Teléfono:</strong> <a href="tel:${servicio.phone}">${servicio.phone}</a></p>
             ${servicio.link ? `<p><strong>Web:</strong> <a href="${servicio.link}" target="_blank" style="color: var(--primary-color);">Ver más información</a></p>` : ''}
             ${servicio.description ? `<p><strong>Descripción:</strong> ${servicio.description}</p>` : ''}
+            ${documentUrl ? `<p><strong>Documento:</strong> <a href="${documentUrl}" target="_blank" rel="noopener" style="color: var(--primary-color);">${displayDocumentName}</a></p>` : ''}
         </div>
     `;
 }
@@ -11790,13 +12275,6 @@ function editServicio(type, id) {
                 
                 <div es informacion...` [truncated for analysis]. We'll craft rest.
 
-// Cerrar modal
-function closeServicioModal() {
-    const modal = document.getElementById('servicioModal');
-    modal.style.display = 'none';
-    document.body.style.overflow = 'auto';
-}
-
 // Ver foto
 function viewPhoto(photoSrc) {
     const modal = document.createElement('div');
@@ -11809,6 +12287,1256 @@ function viewPhoto(photoSrc) {
     `;
     document.body.appendChild(modal);
     modal.onclick = () => modal.remove();
+}
+
+// ==== Gestión de servicios con soporte de Firebase Storage ====
+
+const SERVICIO_STORAGE_FOLDERS = Object.freeze({
+    logo: 'servicios/logos',
+    photo: 'servicios/fotos',
+    document: 'servicios/documentos'
+});
+
+function ensureServiciosType(type) {
+    if (!servicios || typeof servicios !== 'object') {
+        servicios = { medical: [], itv: [] };
+    }
+    if (!Array.isArray(servicios[type])) {
+        servicios[type] = [];
+    }
+}
+
+function findServicioById(type, servicioId) {
+    ensureServiciosType(type);
+    return servicios[type].find(item => String(item.id) === String(servicioId));
+}
+
+function getServicioFolder(type, kind) {
+    const base = SERVICIO_STORAGE_FOLDERS[kind] || 'servicios/otros';
+    const safeType = typeof type === 'string' && type.trim() !== '' ? type.trim().toLowerCase() : 'general';
+    return `${base}/${safeType}`;
+}
+
+async function uploadServicioAsset(file, { type, kind, entityId }) {
+    if (!file) return null;
+    if (typeof window.uploadAttachment !== 'function') {
+        throw new Error('El sistema de subida de archivos no está disponible.');
+    }
+
+    const folder = getServicioFolder(type, kind);
+    const extensionWhitelist = kind === 'document'
+        ? ['.pdf', '.doc', '.docx', '.jpg', '.jpeg', '.png']
+        : ['.jpg', '.jpeg', '.png', '.webp'];
+
+    return window.uploadAttachment(file, {
+        folder,
+        entityId: entityId || String(Date.now()),
+        allowedExtensions: extensionWhitelist
+    });
+}
+
+function addServicio(type) {
+    openServicioModal({ type, servicio: null });
+}
+
+function editServicio(type, id) {
+    const existing = findServicioById(type, id);
+    if (!existing) {
+        console.warn('Servicio no encontrado para editar:', { type, id });
+        showNotification('No se ha encontrado el servicio que intentas editar.', 'error');
+        return;
+    }
+    openServicioModal({ type, servicio: existing });
+}
+
+function openServicioModal({ type, servicio }) {
+    ensureServiciosType(type);
+    const isEdit = Boolean(servicio);
+    const normalized = servicio ? normalizeServicioEntry(servicio) : normalizeServicioEntry({ id: Date.now() });
+
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.style.display = 'block';
+    modal.dataset.servicioType = type;
+    modal.dataset.servicioId = isEdit ? normalized.id : '';
+    modal.__servicioOriginal = servicio ? normalizeServicioEntry(servicio) : null;
+
+    const logoPreview = normalized.logoUrl
+        ? `<div class="current-asset"><img src="${escapeForHtml(normalized.logoUrl)}" alt="Logo actual" style="max-width: 60px; max-height: 60px; border-radius: 4px;"></div>
+           <label class="checkbox-option" style="margin-top: 0.5rem; display: inline-flex; align-items: center; gap: 0.5rem;">
+               <input type="checkbox" id="servicioLogoRemove">
+               <span>Eliminar logo actual</span>
+           </label>`
+        : '<p style="color: #666; margin: 0;">No hay logo cargado.</p>';
+
+    const photoPreview = normalized.photoUrl
+        ? `<div class="current-asset" style="margin-top: 0.5rem;">
+               <img src="${escapeForHtml(normalized.photoUrl)}" alt="Imagen actual" style="max-width: 140px; border-radius: 8px;">
+           </div>
+           <label class="checkbox-option" style="margin-top: 0.5rem; display: inline-flex; align-items: center; gap: 0.5rem;">
+               <input type="checkbox" id="servicioPhotoRemove">
+               <span>Eliminar imagen actual</span>
+           </label>`
+        : '<p style="color: #666; margin: 0;">No hay imagen cargada.</p>';
+
+    const documentPreview = normalized.documentUrl
+        ? `<div class="current-asset" style="margin-top: 0.5rem;">
+               <a href="${escapeForHtml(normalized.documentUrl)}" target="_blank" rel="noopener" style="color: var(--primary-color);">
+                   ${escapeHtml(normalized.documentName || 'Documento actual')}
+               </a>
+               ${normalized.documentStoragePath ? `<p style="margin: 0.25rem 0 0; color: #6b7280; font-size: 0.85rem;">Almacenado en la nube (${escapeHtml(normalized.documentName || '')})</p>` : ''}
+           </div>
+           <label class="checkbox-option" style="margin-top: 0.5rem; display: inline-flex; align-items: center; gap: 0.5rem;">
+               <input type="checkbox" id="servicioDocumentRemove">
+               <span>Eliminar documento actual</span>
+           </label>`
+        : '<p style="color: #666; margin: 0;">No hay documento cargado.</p>';
+
+    modal.innerHTML = `
+        <div class="modal-content">
+            <span class="close" onclick="closeServicioModal(this.closest('.modal'))">&times;</span>
+            <h2>${isEdit ? 'Editar servicio' : 'Nuevo servicio'}</h2>
+            <form id="servicioForm">
+                <div class="form-group">
+                    <label for="servicioName">Nombre del servicio</label>
+                    <input type="text" id="servicioName" name="servicioName" value="${escapeHtml(normalized.name || '')}" required>
+                </div>
+                <div class="form-group">
+                    <label for="servicioPhone">Teléfono de contacto</label>
+                    <input type="tel" id="servicioPhone" name="servicioPhone" value="${escapeHtml(normalized.phone || '')}" required>
+                    <small style="color: #6b7280;">Solo números, espacios o signos +. El teléfono se mostrará al público.</small>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="servicioDay">Día</label>
+                        <input type="text" id="servicioDay" name="servicioDay" value="${escapeHtml(normalized.day || '')}" placeholder="Ej: Lunes a Viernes">
+                    </div>
+                    <div class="form-group">
+                        <label for="servicioTime">Horario</label>
+                        <input type="text" id="servicioTime" name="servicioTime" value="${escapeHtml(normalized.time || '')}" placeholder="Ej: 09:00-14:00">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="servicioLocation">Ubicación</label>
+                    <input type="text" id="servicioLocation" name="servicioLocation" value="${escapeHtml(normalized.location || '')}" placeholder="Ej: Centro de Salud, Oficina municipal...">
+                </div>
+                <div class="form-group">
+                    <label for="servicioLink">Enlace web (opcional)</label>
+                    <input type="url" id="servicioLink" name="servicioLink" value="${escapeHtml(normalized.link || '')}" placeholder="https://...">
+                </div>
+                <div class="form-group">
+                    <label for="servicioDescription">Descripción</label>
+                    <textarea id="servicioDescription" name="servicioDescription" rows="3" placeholder="Información adicional del servicio">${escapeHtml(normalized.description || '')}</textarea>
+                </div>
+                <div class="form-group">
+                    <label for="servicioLogoFile">Logo / icono</label>
+                    <input type="file" id="servicioLogoFile" name="servicioLogoFile" accept=".jpg,.jpeg,.png,.webp">
+                    <small style="color: #6b7280;">Se mostrará como icono en la tarjeta del servicio.</small>
+                    <div id="servicioLogoActual" style="margin-top: 0.5rem;">${logoPreview}</div>
+                </div>
+                <div class="form-group">
+                    <label for="servicioPhotoFile">Imagen principal (opcional)</label>
+                    <input type="file" id="servicioPhotoFile" name="servicioPhotoFile" accept=".jpg,.jpeg,.png,.webp">
+                    <small style="color: #6b7280;">Se mostrará como imagen destacada en la tarjeta del servicio.</small>
+                    <div id="servicioPhotoActual">${photoPreview}</div>
+                </div>
+                <div class="form-group">
+                    <label for="servicioDocumentFile">Documento (PDF o imagen)</label>
+                    <input type="file" id="servicioDocumentFile" name="servicioDocumentFile" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png">
+                    <small style="color: #6b7280;">Sube archivos en PDF o imagen. También puedes indicar una URL pública.</small>
+                    <div id="servicioDocumentActual">${documentPreview}</div>
+                </div>
+                <div class="form-group">
+                    <label for="servicioDocumentName">Nombre a mostrar para el documento</label>
+                    <input type="text" id="servicioDocumentName" name="servicioDocumentName" value="${escapeHtml(normalized.documentName || '')}" placeholder="Ej: Tarifas 2025">
+                </div>
+                <div class="form-group">
+                    <label for="servicioDocumentUrl">O URL externa del documento</label>
+                    <input type="url" id="servicioDocumentUrl" name="servicioDocumentUrl" value="${escapeHtml(normalized.documentUrl || '')}" placeholder="https://...">
+                    <small style="color: #6b7280;">Si subes un archivo nuevo, se usará automáticamente. Las URLs solo aceptan enlaces públicos https://</small>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline" onclick="closeServicioModal(this.closest('.modal'))">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">${isEdit ? 'Guardar cambios' : 'Crear servicio'}</button>
+                </div>
+            </form>
+        </div>
+    `;
+
+    document.body.appendChild(modal);
+    document.body.style.overflow = 'hidden';
+
+    const form = modal.querySelector('#servicioForm');
+    form.addEventListener('submit', event => saveServicioFromModal(event, { type }));
+}
+
+async function saveServicioFromModal(event, { type }) {
+    event.preventDefault();
+    const form = event.target;
+    const modal = form.closest('.modal');
+    if (!modal) return;
+
+    const submitButton = form.querySelector('button[type=\"submit\"]');
+    if (submitButton) {
+        submitButton.disabled = true;
+        submitButton.classList.add('loading');
+    }
+
+    try {
+        ensureServiciosType(type);
+
+        const name = form.servicioName.value.trim();
+        const phone = form.servicioPhone.value.trim();
+        if (!name) {
+            showNotification('El nombre del servicio es obligatorio.', 'error');
+            return;
+        }
+        if (!phone) {
+            showNotification('El teléfono del servicio es obligatorio.', 'error');
+            return;
+        }
+
+        const existingId = modal.dataset.servicioId;
+        const isEdit = Boolean(existingId);
+        const existing = isEdit ? findServicioById(type, existingId) : null;
+        const existingNormalized = existing ? normalizeServicioEntry(existing) : null;
+
+        const logoFile = form.servicioLogoFile.files[0] || null;
+        const photoFile = form.servicioPhotoFile.files[0] || null;
+        const documentFile = form.servicioDocumentFile.files[0] || null;
+
+        const removeLogo = form.querySelector('#servicioLogoRemove')?.checked;
+        const removePhoto = form.querySelector('#servicioPhotoRemove')?.checked;
+        const removeDocument = form.querySelector('#servicioDocumentRemove')?.checked;
+
+        const documentUrlInput = form.servicioDocumentUrl.value.trim();
+        const documentNameInput = form.servicioDocumentName.value.trim();
+
+        if (documentUrlInput && typeof window.isValidUrl === 'function' && !window.isValidUrl(documentUrlInput)) {
+            showNotification('La URL del documento no es válida. Debe comenzar por https://', 'error');
+            return;
+        }
+
+        const servicioBaseId = isEdit ? existingNormalized.id : Date.now();
+        const entityId = `${type}-${servicioBaseId}`;
+
+        const resultData = {
+            logo: {
+                url: existingNormalized?.logoUrl || null,
+                storagePath: existingNormalized?.logoStoragePath || null,
+                fileName: existingNormalized?.logoFileName || null,
+                shouldDelete: false
+            },
+            photo: {
+                url: existingNormalized?.photoUrl || null,
+                storagePath: existingNormalized?.photoStoragePath || null,
+                fileName: existingNormalized?.photoFileName || null,
+                shouldDelete: false
+            },
+            document: {
+                url: existingNormalized?.documentUrl || null,
+                storagePath: existingNormalized?.documentStoragePath || null,
+                fileName: existingNormalized?.documentName || null,
+                shouldDelete: false
+            }
+        };
+
+        if (removeLogo) {
+            resultData.logo = { url: null, storagePath: null, fileName: null, shouldDelete: Boolean(existingNormalized?.logoStoragePath) };
+        }
+        if (removePhoto) {
+            resultData.photo = { url: null, storagePath: null, fileName: null, shouldDelete: Boolean(existingNormalized?.photoStoragePath) };
+        }
+        if (removeDocument) {
+            resultData.document = { url: null, storagePath: null, fileName: null, shouldDelete: Boolean(existingNormalized?.documentStoragePath) };
+        }
+
+        if (logoFile) {
+            const metadata = await uploadServicioAsset(logoFile, { type, kind: 'logo', entityId });
+            resultData.logo = {
+                url: metadata.url,
+                storagePath: metadata.storagePath || null,
+                fileName: metadata.name || logoFile.name,
+                shouldDelete: Boolean(existingNormalized?.logoStoragePath)
+            };
+        }
+
+        if (photoFile) {
+            const metadata = await uploadServicioAsset(photoFile, { type, kind: 'photo', entityId });
+            resultData.photo = {
+                url: metadata.url,
+                storagePath: metadata.storagePath || null,
+                fileName: metadata.name || photoFile.name,
+                shouldDelete: Boolean(existingNormalized?.photoStoragePath)
+            };
+        }
+
+        if (documentFile) {
+            const metadata = await uploadServicioAsset(documentFile, { type, kind: 'document', entityId });
+            resultData.document = {
+                url: metadata.url,
+                storagePath: metadata.storagePath || null,
+                fileName: metadata.name || documentFile.name,
+                shouldDelete: Boolean(existingNormalized?.documentStoragePath)
+            };
+        } else if (documentUrlInput && !removeDocument) {
+            resultData.document = {
+                url: documentUrlInput,
+                storagePath: null,
+                fileName: documentNameInput || documentUrlInput.split('/').pop(),
+                shouldDelete: Boolean(existingNormalized?.documentStoragePath)
+            };
+        } else if (removeDocument) {
+            // already handled above
+        } else if (!documentUrlInput && !documentFile) {
+            // keep existing without changes
+        }
+
+        const payload = normalizeServicioEntry({
+            id: servicioBaseId,
+            name,
+            phone,
+            day: form.servicioDay.value,
+            time: form.servicioTime.value,
+            location: form.servicioLocation.value,
+            link: form.servicioLink.value,
+            description: form.servicioDescription.value,
+            logoUrl: resultData.logo.url,
+            logoStoragePath: resultData.logo.storagePath,
+            logoFileName: resultData.logo.fileName,
+            photoUrl: resultData.photo.url,
+            photoStoragePath: resultData.photo.storagePath,
+            photoFileName: resultData.photo.fileName,
+            documentUrl: resultData.document.url,
+            documentStoragePath: resultData.document.storagePath,
+            documentName: documentNameInput || resultData.document.fileName || ''
+        });
+
+        if (isEdit) {
+            const index = servicios[type].findIndex(item => String(item.id) === String(existingNormalized.id));
+            if (index !== -1) {
+                servicios[type][index] = payload;
+            } else {
+                servicios[type].push(payload);
+            }
+        } else {
+            servicios[type].push(payload);
+        }
+
+        saveServicios();
+        loadServiciosList(type);
+        renderServicios();
+        showNotification(isEdit ? 'Servicio actualizado correctamente.' : 'Servicio creado correctamente.', 'success');
+
+        // Borrar archivos antiguos después de guardar
+        if (typeof window.deleteStorageFile === 'function') {
+            const deletions = [];
+            if (resultData.logo.shouldDelete && existingNormalized?.logoStoragePath && existingNormalized.logoStoragePath !== resultData.logo.storagePath) {
+                deletions.push(window.deleteStorageFile(existingNormalized.logoStoragePath).catch(err => console.warn('No se pudo eliminar logo anterior:', err)));
+            }
+            if (resultData.photo.shouldDelete && existingNormalized?.photoStoragePath && existingNormalized.photoStoragePath !== resultData.photo.storagePath) {
+                deletions.push(window.deleteStorageFile(existingNormalized.photoStoragePath).catch(err => console.warn('No se pudo eliminar foto anterior:', err)));
+            }
+            if (resultData.document.shouldDelete && existingNormalized?.documentStoragePath && existingNormalized.documentStoragePath !== resultData.document.storagePath) {
+                deletions.push(window.deleteStorageFile(existingNormalized.documentStoragePath).catch(err => console.warn('No se pudo eliminar documento anterior:', err)));
+            }
+            if (deletions.length > 0) {
+                Promise.allSettled(deletions);
+            }
+        }
+
+        closeServicioModal(modal);
+    } catch (error) {
+        console.error('Error guardando servicio:', error);
+        showNotification(error.message || 'No se pudo guardar el servicio. Inténtalo de nuevo.', 'error');
+    } finally {
+        if (submitButton) {
+            submitButton.disabled = false;
+            submitButton.classList.remove('loading');
+        }
+    }
+}
+
+function closeServicioModal(modal) {
+    if (!modal) return;
+    modal.remove();
+    document.body.style.overflow = 'auto';
+}
+
+function deleteServicio(type, id) {
+    ensureServiciosType(type);
+    const servicio = findServicioById(type, id);
+    if (!servicio) {
+        showNotification('El servicio indicado no existe.', 'error');
+        return;
+    }
+
+    if (!confirm('¿Seguro que deseas eliminar este servicio? Esta acción no se puede deshacer.')) {
+        return;
+    }
+
+    servicios[type] = servicios[type].filter(item => String(item.id) !== String(servicio.id));
+    saveServicios();
+    loadServiciosList(type);
+    renderServicios();
+    showNotification('Servicio eliminado correctamente.', 'success');
+
+    if (typeof window.deleteStorageFile === 'function') {
+        const paths = [
+            servicio.logoStoragePath,
+            servicio.photoStoragePath,
+            servicio.documentStoragePath
+        ].filter(Boolean);
+
+        paths.forEach(path => {
+            window.deleteStorageFile(path).catch(error => console.warn('No se pudo eliminar archivo asociado al servicio:', error));
+        });
+    }
+}
+
+// ==== Gestión avanzada de transporte con Firebase Storage ====
+
+const TRANSPORTE_STORAGE_FOLDERS = Object.freeze({
+    document: 'transporte/documentos',
+    photo: 'transporte/fotos'
+});
+
+function ensureTransporteConfigIntegrity() {
+    if (!transporteConfig || typeof transporteConfig !== 'object') {
+        transporteConfig = { lineas: [] };
+    }
+    if (!Array.isArray(transporteConfig.lineas)) {
+        transporteConfig.lineas = [];
+    }
+}
+
+function findTransporteLinea(lineaId) {
+    ensureTransporteConfigIntegrity();
+    return transporteConfig.lineas.find(linea => String(linea.id) === String(lineaId));
+}
+
+function closeModalElement(modal) {
+    if (!modal) return;
+    modal.remove();
+    document.body.style.overflow = 'auto';
+}
+
+async function uploadTransporteAsset(file, { kind, lineaId }) {
+    if (!file) return null;
+    if (typeof window.uploadAttachment !== 'function') {
+        throw new Error('La subida de archivos no está disponible en este momento.');
+    }
+
+    const folder = TRANSPORTE_STORAGE_FOLDERS[kind] || TRANSPORTE_STORAGE_FOLDERS.document;
+    const allowedExtensions = kind === 'document'
+        ? ['.pdf', '.doc', '.docx', '.jpg', '.jpeg', '.png']
+        : ['.jpg', '.jpeg', '.png', '.webp'];
+
+    return window.uploadAttachment(file, {
+        folder,
+        entityId: `linea-${lineaId}`,
+        allowedExtensions
+    });
+}
+
+function addTransporteLinea() {
+    ensureTransporteConfigIntegrity();
+
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.style.display = 'block';
+    modal.innerHTML = `
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>🚌 Añadir nueva línea de transporte</h3>
+                <span class="close" onclick="closeModalElement(this.closest('.modal'))">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form id="addTransporteLineaForm">
+                    <div class="form-group">
+                        <label for="lineaEmoji">Emoji</label>
+                        <input type="text" id="lineaEmoji" name="lineaEmoji" value="🚌" maxlength="2" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="lineaNombre">Nombre de la línea</label>
+                        <input type="text" id="lineaNombre" name="lineaNombre" placeholder="Ej: Línea 1 - Cobreros a Puebla" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="lineaDescripcion">Descripción</label>
+                        <textarea id="lineaDescripcion" name="lineaDescripcion" rows="3" placeholder="Descripción breve del servicio de transporte"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="lineaOrden">Orden de visualización</label>
+                        <input type="number" id="lineaOrden" name="lineaOrden" value="1" min="1" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="checkbox-option">
+                            <input type="checkbox" id="lineaActiva" name="lineaActiva" checked>
+                            Línea activa
+                        </label>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-outline" onclick="closeModalElement(this.closest('.modal'))">Cancelar</button>
+                        <button type="submit" class="btn btn-primary">Guardar línea</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    `;
+
+    document.body.appendChild(modal);
+    document.body.style.overflow = 'hidden';
+
+    const form = modal.querySelector('#addTransporteLineaForm');
+    form.addEventListener('submit', event => handleNewTransporteLineaSubmit(event, modal));
+}
+
+function handleNewTransporteLineaSubmit(event, modal) {
+    event.preventDefault();
+
+    ensureTransporteConfigIntegrity();
+
+    const form = event.target;
+    const nuevaLinea = normalizeTransporteLinea({
+        id: Date.now(),
+        emoji: form.lineaEmoji.value,
+        nombre: form.lineaNombre.value,
+        descripcion: form.lineaDescripcion.value,
+        orden: parseInt(form.lineaOrden.value, 10) || transporteConfig.lineas.length + 1,
+        isActive: form.lineaActiva.checked,
+        documentos: [],
+        fotos: []
+    }, transporteConfig.lineas.length);
+
+    transporteConfig.lineas.push(nuevaLinea);
+    saveTransporteConfig();
+    loadTransporteLinesList();
+    renderServicios();
+    showNotification('Línea de transporte añadida correctamente.', 'success');
+    closeModalElement(modal);
+}
+
+function editTransporteLinea(lineaId) {
+    ensureTransporteConfigIntegrity();
+    const linea = findTransporteLinea(lineaId);
+    if (!linea) {
+        showNotification('La línea seleccionada no existe.', 'error');
+        return;
+    }
+
+    const normalized = normalizeTransporteLinea(linea);
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.style.display = 'block';
+    modal.dataset.lineaId = normalized.id;
+    modal.innerHTML = `
+        <div class="modal-content" style="max-width: 900px; max-height: 90vh; overflow-y: auto;">
+            <div class="modal-header">
+                <h3>✏️ Editar línea de transporte</h3>
+                <span class="close" onclick="closeModalElement(this.closest('.modal'))">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form id="editTransporteLineaForm">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="editLineaEmoji">Emoji</label>
+                            <input type="text" id="editLineaEmoji" name="editLineaEmoji" value="${escapeHtml(normalized.emoji || '🚌')}" maxlength="2" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="editLineaNombre">Nombre de la línea</label>
+                            <input type="text" id="editLineaNombre" name="editLineaNombre" value="${escapeHtml(normalized.nombre || '')}" required>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="editLineaDescripcion">Descripción</label>
+                        <textarea id="editLineaDescripcion" name="editLineaDescripcion" rows="3">${escapeHtml(normalized.descripcion || '')}</textarea>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="editLineaOrden">Orden de visualización</label>
+                            <input type="number" id="editLineaOrden" name="editLineaOrden" value="${normalized.orden}" min="1" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="checkbox-option" style="margin-top: 2rem;">
+                                <input type="checkbox" id="editLineaActiva" name="editLineaActiva" ${normalized.isActive ? 'checked' : ''}>
+                                Línea activa
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <h4>📄 Documentos</h4>
+                        <div data-role="linea-documentos">
+                            ${renderLineaDocumentosAdmin(normalized)}
+                        </div>
+                        <button type="button" class="btn btn-outline btn-small" onclick="openTransporteDocumentoModal('${normalized.id}')">
+                            <i class="fas fa-plus"></i> Añadir documento
+                        </button>
+                    </div>
+
+                    <div class="form-group">
+                        <h4>📸 Imágenes</h4>
+                        <div data-role="linea-fotos">
+                            ${renderLineaFotosAdmin(normalized)}
+                        </div>
+                        <button type="button" class="btn btn-outline btn-small" onclick="openTransporteFotoModal('${normalized.id}')">
+                            <i class="fas fa-plus"></i> Añadir imagen
+                        </button>
+                    </div>
+
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-outline" onclick="closeModalElement(this.closest('.modal'))">Cancelar</button>
+                        <button type="submit" class="btn btn-primary">Guardar cambios</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    `;
+
+    document.body.appendChild(modal);
+    document.body.style.overflow = 'hidden';
+
+    const form = modal.querySelector('#editTransporteLineaForm');
+    form.addEventListener('submit', event => updateTransporteLinea(event, normalized.id, modal));
+}
+
+function renderLineaDocumentosAdmin(linea) {
+    if (!linea.documentos || linea.documentos.length === 0) {
+        return '<p class="no-content">No hay documentos</p>';
+    }
+
+    return linea.documentos.map(doc => {
+        const safeName = escapeHtml(doc.nombre || 'Documento');
+        const safeDescription = doc.descripcion ? `<p style="margin: 0.25rem 0 0; color: #6b7280;">${escapeHtml(doc.descripcion)}</p>` : '';
+        const hasUrl = doc.url && typeof doc.url === 'string' && doc.url.trim() !== '';
+        const safeUrl = hasUrl ? escapeForHtml(doc.url.trim()) : '';
+        const storageBadge = doc.storagePath ? `<span class="badge" style="margin-left: 0.5rem; background: #dcfce7; color: #166534; padding: 0.1rem 0.4rem; border-radius: 999px; font-size: 0.75rem;">En la nube</span>` : '';
+
+        return `
+            <div class="content-item transporte-doc-item">
+                <div>
+                    <strong>${safeName}</strong>${storageBadge}
+                    ${safeDescription}
+                    ${hasUrl ? `<p style="margin: 0.25rem 0 0;"><a href="${safeUrl}" target="_blank" rel="noopener" style="color: var(--primary-color); word-break: break-all;">${safeUrl}</a></p>` : '<p style="margin: 0.25rem 0 0; color: #9ca3af;">Sin enlace asociado</p>'}
+                </div>
+                <div class="transporte-inline-actions">
+                    ${hasUrl ? `<a class="btn btn-outline btn-small" href="${safeUrl}" target="_blank" rel="noopener">Ver</a>` : ''}
+                    <button type="button" class="btn btn-outline btn-small" onclick="openTransporteDocumentoModal('${linea.id}', '${doc.id}')">Editar</button>
+                    <button type="button" class="btn btn-danger btn-small" onclick="deleteDocumentoFromLinea('${linea.id}', '${doc.id}')">Eliminar</button>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+function renderLineaFotosAdmin(linea) {
+    if (!linea.fotos || linea.fotos.length === 0) {
+        return '<p class="no-content">No hay imágenes</p>';
+    }
+
+    return linea.fotos.map(foto => {
+        const safeName = escapeHtml(foto.nombre || 'Imagen');
+        const safeUrl = foto.url ? escapeForHtml(foto.url) : '';
+        const storageBadge = foto.storagePath ? `<span class="badge" style="margin-left: 0.5rem; background: #dcfce7; color: #166534; padding: 0.1rem 0.4rem; border-radius: 999px; font-size: 0.75rem;">En la nube</span>` : '';
+
+        return `
+            <div class="content-item transporte-foto-item">
+                <div style="display:flex; gap:1rem; align-items:center;">
+                    ${safeUrl ? `<img src="${safeUrl}" alt="${safeName}" style="width: 60px; height: 60px; object-fit: cover; border-radius: 6px;">` : '<div style="width:60px;height:60px;border-radius:6px;background:#e5e7eb;"></div>'}
+                    <div>
+                        <strong>${safeName}</strong>${storageBadge}
+                        ${foto.descripcion ? `<p style="margin: 0.25rem 0 0; color: #6b7280;">${escapeHtml(foto.descripcion)}</p>` : ''}
+                        ${safeUrl ? `<p style="margin:0.25rem 0 0;"><a href="${safeUrl}" target="_blank" rel="noopener" style="color: var(--primary-color); word-break: break-all;">${safeUrl}</a></p>` : '<p style="margin: 0.25rem 0 0; color: #9ca3af;">Sin imagen disponible</p>'}
+                    </div>
+                </div>
+                <div class="transporte-inline-actions">
+                    ${safeUrl ? `<a class="btn btn-outline btn-small" href="${safeUrl}" target="_blank" rel="noopener">Ver</a>` : ''}
+                    <button type="button" class="btn btn-outline btn-small" onclick="openTransporteFotoModal('${linea.id}', '${foto.id}')">Editar</button>
+                    <button type="button" class="btn btn-danger btn-small" onclick="deleteFotoFromLinea('${linea.id}', '${foto.id}')">Eliminar</button>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+function refreshTransporteLineaSections(lineaId) {
+    const linea = findTransporteLinea(lineaId);
+    if (!linea) return;
+
+    const modal = document.querySelector(`.modal[data-linea-id="${lineaId}"]`);
+    if (!modal) return;
+
+    const documentosContainer = modal.querySelector('[data-role=\"linea-documentos\"]');
+    if (documentosContainer) {
+        documentosContainer.innerHTML = renderLineaDocumentosAdmin(linea);
+    }
+
+    const fotosContainer = modal.querySelector('[data-role=\"linea-fotos\"]');
+    if (fotosContainer) {
+        fotosContainer.innerHTML = renderLineaFotosAdmin(linea);
+    }
+}
+
+function updateTransporteLinea(event, lineaId, modal) {
+    event.preventDefault();
+    ensureTransporteConfigIntegrity();
+
+    const linea = findTransporteLinea(lineaId);
+    if (!linea) {
+        showNotification('No se ha encontrado la línea seleccionada.', 'error');
+        return;
+    }
+
+    const form = event.target;
+    linea.emoji = form.editLineaEmoji.value.trim() || '🚌';
+    linea.nombre = form.editLineaNombre.value.trim();
+    linea.descripcion = form.editLineaDescripcion.value.trim();
+    linea.orden = parseInt(form.editLineaOrden.value, 10) || linea.orden || 1;
+    linea.isActive = form.editLineaActiva.checked;
+
+    transporteConfig.lineas = transporteConfig.lineas.map(l => String(l.id) === String(lineaId) ? linea : l);
+    saveTransporteConfig();
+    loadTransporteLinesList();
+    renderServicios();
+    showNotification('Línea de transporte actualizada correctamente.', 'success');
+    closeModalElement(modal);
+}
+
+function deleteTransporteLinea(lineaId) {
+    ensureTransporteConfigIntegrity();
+    const linea = findTransporteLinea(lineaId);
+    if (!linea) {
+        showNotification('La línea que intentas eliminar no existe.', 'error');
+        return;
+    }
+
+    if (!confirm('¿Seguro que deseas eliminar esta línea de transporte? Se eliminarán sus documentos e imágenes asociadas.')) {
+        return;
+    }
+
+    transporteConfig.lineas = transporteConfig.lineas.filter(l => String(l.id) !== String(lineaId));
+    saveTransporteConfig();
+    loadTransporteLinesList();
+    renderServicios();
+    showNotification('Línea de transporte eliminada correctamente.', 'success');
+
+    if (typeof window.deleteStorageFile === 'function') {
+        const paths = [
+            ...(linea.documentos || []).map(doc => doc.storagePath).filter(Boolean),
+            ...(linea.fotos || []).map(foto => foto.storagePath).filter(Boolean)
+        ];
+
+        paths.forEach(path => {
+            window.deleteStorageFile(path).catch(error => console.warn('No se pudo eliminar un archivo asociado a la línea:', error));
+        });
+    }
+
+    const openModal = document.querySelector(`.modal[data-linea-id="${lineaId}"]`);
+    if (openModal) {
+        closeModalElement(openModal);
+    }
+}
+
+function openTransporteDocumentoModal(lineaId, documentoId = null) {
+    ensureTransporteConfigIntegrity();
+    const linea = findTransporteLinea(lineaId);
+    if (!linea) {
+        showNotification('No se ha encontrado la línea seleccionada.', 'error');
+        return;
+    }
+
+    const documento = documentoId ? linea.documentos.find(doc => String(doc.id) === String(documentoId)) : null;
+    const normalizedDoc = documento ? normalizeTransporteDocumento(documento) : null;
+
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.style.display = 'block';
+    modal.dataset.modalType = 'transporte-documento';
+    modal.dataset.lineaId = lineaId;
+    if (documentoId) modal.dataset.documentoId = documentoId;
+    modal.innerHTML = `
+        <div class="modal-content" style="max-width: 600px;">
+            <div class="modal-header">
+                <h3>${documento ? '✏️ Editar documento' : '📄 Añadir documento'}</h3>
+                <span class="close" onclick="closeModalElement(this.closest('.modal'))">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form id="transporteDocumentoForm">
+                    <div class="form-group">
+                        <label for="documentoNombre">Nombre del documento</label>
+                        <input type="text" id="documentoNombre" name="documentoNombre" value="${escapeHtml(normalizedDoc?.nombre || '')}" placeholder="Ej: Horarios 2025" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="documentoDescripcion">Descripción (opcional)</label>
+                        <textarea id="documentoDescripcion" name="documentoDescripcion" rows="3" placeholder="Detalle adicional del documento">${escapeHtml(normalizedDoc?.descripcion || '')}</textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="documentoFile">Subir archivo (PDF o imagen)</label>
+                        <input type="file" id="documentoFile" name="documentoFile" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png">
+                        <small style="color: #6b7280;">Si subes un archivo nuevo se almacenará en Firebase Storage.</small>
+                        ${normalizedDoc?.storagePath ? `<p style="margin: 0.5rem 0 0; color: #166534; font-size: 0.85rem;">Archivo actual guardado en la nube (${escapeHtml(normalizedDoc.fileName || '')})</p>` : ''}
+                    </div>
+                    <div class="form-group">
+                        <label for="documentoUrl">O URL pública del documento</label>
+                        <input type="url" id="documentoUrl" name="documentoUrl" value="${escapeHtml(normalizedDoc?.url || '')}" placeholder="https://...">
+                        <small style="color: #6b7280;">Utiliza enlaces públicos accesibles desde cualquier dispositivo.</small>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-outline" onclick="closeModalElement(this.closest('.modal'))">Cancelar</button>
+                        <button type="submit" class="btn btn-primary">${documento ? 'Guardar cambios' : 'Añadir documento'}</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    `;
+
+    document.body.appendChild(modal);
+    document.body.style.overflow = 'hidden';
+
+    const form = modal.querySelector('#transporteDocumentoForm');
+    form.addEventListener('submit', event => handleTransporteDocumentoSubmit(event, modal));
+}
+
+async function handleTransporteDocumentoSubmit(event, modal) {
+    event.preventDefault();
+    const form = event.target;
+
+    const lineaId = modal.dataset.lineaId;
+    const documentoId = modal.dataset.documentoId || null;
+    const linea = findTransporteLinea(lineaId);
+    if (!linea) {
+        showNotification('No se ha encontrado la línea seleccionada.', 'error');
+        return;
+    }
+
+    const existingDocIndex = documentoId ? linea.documentos.findIndex(doc => String(doc.id) === String(documentoId)) : -1;
+    const existingDoc = existingDocIndex >= 0 ? linea.documentos[existingDocIndex] : null;
+    const existingNormalized = existingDoc ? normalizeTransporteDocumento(existingDoc) : null;
+
+    const nombre = form.documentoNombre.value.trim();
+    const descripcion = form.documentoDescripcion.value.trim();
+    const archivo = form.documentoFile.files[0] || null;
+    const urlInput = form.documentoUrl.value.trim();
+
+    if (!nombre) {
+        showNotification('El nombre del documento es obligatorio.', 'error');
+        return;
+    }
+
+    if (!archivo && !urlInput && !existingDoc) {
+        showNotification('Debes subir un archivo o indicar una URL pública.', 'error');
+        return;
+    }
+
+    if (urlInput && typeof window.isValidUrl === 'function' && !window.isValidUrl(urlInput)) {
+        showNotification('La URL del documento no es válida. Debe comenzar por https://', 'error');
+        return;
+    }
+
+    const submitButton = form.querySelector('button[type=\"submit\"]');
+    if (submitButton) {
+        submitButton.disabled = true;
+        submitButton.classList.add('loading');
+    }
+
+    try {
+        const lineaIdForEntity = linea.id || lineaId;
+        let metadata = null;
+        let shouldDeleteOldStorage = false;
+        let finalUrl = existingNormalized?.url || '';
+        let finalStoragePath = existingNormalized?.storagePath || null;
+        let finalFileName = existingNormalized?.fileName || '';
+
+        if (archivo) {
+            metadata = await uploadTransporteAsset(archivo, { kind: 'document', lineaId: lineaIdForEntity });
+            finalUrl = metadata.url;
+            finalStoragePath = metadata.storagePath || null;
+            finalFileName = metadata.name || archivo.name;
+            shouldDeleteOldStorage = Boolean(existingNormalized?.storagePath && existingNormalized.storagePath !== finalStoragePath);
+        } else if (urlInput) {
+            finalUrl = urlInput;
+            finalStoragePath = null;
+            finalFileName = nombre || urlInput.split('/').pop();
+            shouldDeleteOldStorage = Boolean(existingNormalized?.storagePath);
+        }
+
+        const documentoNormalizado = normalizeTransporteDocumento({
+            id: existingNormalized?.id || Date.now(),
+            nombre,
+            descripcion,
+            url: finalUrl,
+            storagePath: finalStoragePath,
+            fileName: finalFileName
+        });
+
+        if (existingDocIndex >= 0) {
+            linea.documentos[existingDocIndex] = documentoNormalizado;
+        } else {
+            linea.documentos.push(documentoNormalizado);
+        }
+
+        saveTransporteConfig();
+        loadTransporteLinesList();
+        renderServicios();
+        refreshTransporteLineaSections(lineaId);
+        showNotification(existingDoc ? 'Documento actualizado correctamente.' : 'Documento añadido correctamente.', 'success');
+
+        if (shouldDeleteOldStorage && existingNormalized?.storagePath && typeof window.deleteStorageFile === 'function') {
+            window.deleteStorageFile(existingNormalized.storagePath).catch(error => console.warn('No se pudo eliminar el documento anterior en Storage:', error));
+        }
+
+        closeModalElement(modal);
+    } catch (error) {
+        console.error('Error guardando documento de transporte:', error);
+        showNotification(error.message || 'No se pudo guardar el documento. Inténtalo de nuevo.', 'error');
+    } finally {
+        if (submitButton) {
+            submitButton.disabled = false;
+            submitButton.classList.remove('loading');
+        }
+    }
+}
+
+function deleteDocumentoFromLinea(lineaId, documentoId) {
+    ensureTransporteConfigIntegrity();
+    const linea = findTransporteLinea(lineaId);
+    if (!linea) {
+        showNotification('La línea seleccionada no existe.', 'error');
+        return;
+    }
+
+    const index = linea.documentos.findIndex(doc => String(doc.id) === String(documentoId));
+    if (index === -1) {
+        showNotification('El documento indicado no existe.', 'error');
+        return;
+    }
+
+    if (!confirm('¿Seguro que deseas eliminar este documento?')) {
+        return;
+    }
+
+    const [removedDoc] = linea.documentos.splice(index, 1);
+    saveTransporteConfig();
+    loadTransporteLinesList();
+    renderServicios();
+    refreshTransporteLineaSections(lineaId);
+    showNotification('Documento eliminado correctamente.', 'success');
+
+    if (removedDoc?.storagePath && typeof window.deleteStorageFile === 'function') {
+        window.deleteStorageFile(removedDoc.storagePath).catch(error => console.warn('No se pudo eliminar el archivo del documento en Storage:', error));
+    }
+}
+
+function openTransporteFotoModal(lineaId, fotoId = null) {
+    ensureTransporteConfigIntegrity();
+    const linea = findTransporteLinea(lineaId);
+    if (!linea) {
+        showNotification('No se ha encontrado la línea seleccionada.', 'error');
+        return;
+    }
+
+    const foto = fotoId ? linea.fotos.find(item => String(item.id) === String(fotoId)) : null;
+    const normalizedFoto = foto ? normalizeTransporteFoto(foto) : null;
+
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.style.display = 'block';
+    modal.dataset.modalType = 'transporte-foto';
+    modal.dataset.lineaId = lineaId;
+    if (fotoId) modal.dataset.fotoId = fotoId;
+    modal.innerHTML = `
+        <div class="modal-content" style="max-width: 600px;">
+            <div class="modal-header">
+                <h3>${foto ? '✏️ Editar imagen' : '📸 Añadir imagen'}</h3>
+                <span class="close" onclick="closeModalElement(this.closest('.modal'))">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form id="transporteFotoForm">
+                    <div class="form-group">
+                        <label for="fotoNombre">Nombre de la imagen</label>
+                        <input type="text" id="fotoNombre" name="fotoNombre" value="${escapeHtml(normalizedFoto?.nombre || '')}" placeholder="Ej: Autobús en ruta" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="fotoDescripcion">Descripción (opcional)</label>
+                        <textarea id="fotoDescripcion" name="fotoDescripcion" rows="2" placeholder="Descripción breve">${escapeHtml(normalizedFoto?.descripcion || '')}</textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="fotoFile">Subir imagen</label>
+                        <input type="file" id="fotoFile" name="fotoFile" accept=".jpg,.jpeg,.png,.webp">
+                        <small style="color: #6b7280;">La imagen se almacenará en Firebase Storage si la subes desde tu equipo.</small>
+                        ${normalizedFoto?.storagePath ? `<p style="margin: 0.5rem 0 0; color: #166534; font-size: 0.85rem;">Imagen actual en la nube (${escapeHtml(normalizedFoto.fileName || '')})</p>` : ''}
+                    </div>
+                    <div class="form-group">
+                        <label for="fotoUrl">O URL pública de la imagen</label>
+                        <input type="url" id="fotoUrl" name="fotoUrl" value="${escapeHtml(normalizedFoto?.url || '')}" placeholder="https://...">
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-outline" onclick="closeModalElement(this.closest('.modal'))">Cancelar</button>
+                        <button type="submit" class="btn btn-primary">${foto ? 'Guardar cambios' : 'Añadir imagen'}</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    `;
+
+    document.body.appendChild(modal);
+    document.body.style.overflow = 'hidden';
+
+    const form = modal.querySelector('#transporteFotoForm');
+    form.addEventListener('submit', event => handleTransporteFotoSubmit(event, modal));
+}
+
+async function handleTransporteFotoSubmit(event, modal) {
+    event.preventDefault();
+    const form = event.target;
+
+    const lineaId = modal.dataset.lineaId;
+    const fotoId = modal.dataset.fotoId || null;
+    const linea = findTransporteLinea(lineaId);
+    if (!linea) {
+        showNotification('No se ha encontrado la línea seleccionada.', 'error');
+        return;
+    }
+
+    const existingFotoIndex = fotoId ? linea.fotos.findIndex(foto => String(foto.id) === String(fotoId)) : -1;
+    const existingFoto = existingFotoIndex >= 0 ? linea.fotos[existingFotoIndex] : null;
+    const existingNormalized = existingFoto ? normalizeTransporteFoto(existingFoto) : null;
+
+    const nombre = form.fotoNombre.value.trim();
+    const descripcion = form.fotoDescripcion.value.trim();
+    const archivo = form.fotoFile.files[0] || null;
+    const urlInput = form.fotoUrl.value.trim();
+
+    if (!nombre) {
+        showNotification('El nombre de la imagen es obligatorio.', 'error');
+        return;
+    }
+
+    if (!archivo && !urlInput && !existingFoto) {
+        showNotification('Debes subir una imagen o indicar una URL pública.', 'error');
+        return;
+    }
+
+    if (urlInput && typeof window.isValidUrl === 'function' && !window.isValidUrl(urlInput)) {
+        showNotification('La URL de la imagen no es válida. Debe comenzar por https://', 'error');
+        return;
+    }
+
+    const submitButton = form.querySelector('button[type=\"submit\"]');
+    if (submitButton) {
+        submitButton.disabled = true;
+        submitButton.classList.add('loading');
+    }
+
+    try {
+        let metadata = null;
+        let shouldDeleteOldStorage = false;
+        let finalUrl = existingNormalized?.url || '';
+        let finalStoragePath = existingNormalized?.storagePath || null;
+        let finalFileName = existingNormalized?.fileName || '';
+
+        if (archivo) {
+            metadata = await uploadTransporteAsset(archivo, { kind: 'photo', lineaId });
+            finalUrl = metadata.url;
+            finalStoragePath = metadata.storagePath || null;
+            finalFileName = metadata.name || archivo.name;
+            shouldDeleteOldStorage = Boolean(existingNormalized?.storagePath && existingNormalized.storagePath !== finalStoragePath);
+        } else if (urlInput) {
+            finalUrl = urlInput;
+            finalStoragePath = null;
+            finalFileName = nombre || urlInput.split('/').pop();
+            shouldDeleteOldStorage = Boolean(existingNormalized?.storagePath);
+        }
+
+        const fotoNormalizada = normalizeTransporteFoto({
+            id: existingNormalized?.id || Date.now(),
+            nombre,
+            descripcion,
+            url: finalUrl,
+            storagePath: finalStoragePath,
+            fileName: finalFileName
+        });
+
+        if (existingFotoIndex >= 0) {
+            linea.fotos[existingFotoIndex] = fotoNormalizada;
+        } else {
+            linea.fotos.push(fotoNormalizada);
+        }
+
+        saveTransporteConfig();
+        loadTransporteLinesList();
+        renderServicios();
+        refreshTransporteLineaSections(lineaId);
+        showNotification(existingFoto ? 'Imagen actualizada correctamente.' : 'Imagen añadida correctamente.', 'success');
+
+        if (shouldDeleteOldStorage && existingNormalized?.storagePath && typeof window.deleteStorageFile === 'function') {
+            window.deleteStorageFile(existingNormalized.storagePath).catch(error => console.warn('No se pudo eliminar la imagen anterior en Storage:', error));
+        }
+
+        closeModalElement(modal);
+    } catch (error) {
+        console.error('Error guardando imagen de transporte:', error);
+        showNotification(error.message || 'No se pudo guardar la imagen. Inténtalo de nuevo.', 'error');
+    } finally {
+        if (submitButton) {
+            submitButton.disabled = false;
+            submitButton.classList.remove('loading');
+        }
+    }
+}
+
+function deleteFotoFromLinea(lineaId, fotoId) {
+    ensureTransporteConfigIntegrity();
+    const linea = findTransporteLinea(lineaId);
+    if (!linea) {
+        showNotification('La línea seleccionada no existe.', 'error');
+        return;
+    }
+
+    const index = linea.fotos.findIndex(foto => String(foto.id) === String(fotoId));
+    if (index === -1) {
+        showNotification('La imagen indicada no existe.', 'error');
+        return;
+    }
+
+    if (!confirm('¿Seguro que deseas eliminar esta imagen?')) {
+        return;
+    }
+
+    const [removedFoto] = linea.fotos.splice(index, 1);
+    saveTransporteConfig();
+    loadTransporteLinesList();
+    renderServicios();
+    refreshTransporteLineaSections(lineaId);
+    showNotification('Imagen eliminada correctamente.', 'success');
+
+    if (removedFoto?.storagePath && typeof window.deleteStorageFile === 'function') {
+        window.deleteStorageFile(removedFoto.storagePath).catch(error => console.warn('No se pudo eliminar la imagen en Storage:', error));
+    }
+}
+
+function loadTransporteLinesList() {
+    ensureTransporteConfigIntegrity();
+    const linesList = document.getElementById('transporteLinesList');
+    if (!linesList) return;
+
+    linesList.innerHTML = '';
+
+    if (transporteConfig.lineas.length === 0) {
+        linesList.innerHTML = '<p>No hay líneas de transporte configuradas.</p>';
+        return;
+    }
+
+    transporteConfig.lineas
+        .slice()
+        .sort((a, b) => a.orden - b.orden)
+        .forEach(linea => {
+            const normalized = normalizeTransporteLinea(linea);
+            const lineItem = document.createElement('div');
+            lineItem.className = 'content-item';
+            lineItem.style.cssText = 'border: 1px solid #e5e7eb; border-radius: 8px; padding: 1rem; margin-bottom: 1rem; background: #f9fafb;';
+            lineItem.innerHTML = `
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem;">
+                    <div style="flex: 1;">
+                        <h4 style="margin: 0 0 0.5rem 0;">${escapeHtml(normalized.emoji || '🚌')} ${escapeHtml(normalized.nombre || '')}</h4>
+                        <p style="margin: 0 0 0.5rem 0;">${escapeHtml(normalized.descripcion || 'Sin descripción')}</p>
+                        <p style="margin: 0; font-size: 0.85rem; color: #6b7280;">
+                            Orden: ${normalized.orden} · ${normalized.isActive ? 'Activa' : 'Inactiva'} ·
+                            ${normalized.documentos.length} doc · ${normalized.fotos.length} imágenes
+                        </p>
+                    </div>
+                    <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+                        <button class="btn btn-primary btn-small" onclick="editTransporteLinea('${normalized.id}')">
+                            <i class="fas fa-edit"></i> Editar
+                        </button>
+                        <button class="btn btn-danger btn-small" onclick="deleteTransporteLinea('${normalized.id}')">
+                            <i class="fas fa-trash"></i> Eliminar
+                        </button>
+                    </div>
+                </div>
+            `;
+            linesList.appendChild(lineItem);
+        });
+}
+
+function renderTransporteLineaContent(linea) {
+    const normalized = normalizeTransporteLinea(linea);
+    let html = '<div class="transporte-linea-info">';
+
+    if (normalized.horarios && normalized.horarios.length > 0) {
+        html += '<div class="transporte-section"><h5>🕐 Horarios</h5>';
+        normalized.horarios.forEach(horario => {
+            if (!horario) return;
+            const dia = horario.dia ? escapeHtml(horario.dia) : 'Día';
+            const hora = horario.hora ? escapeHtml(horario.hora) : '-';
+            html += `<p><strong>${dia}:</strong> ${hora}</p>`;
+        });
+        html += '</div>';
+    }
+
+    if (normalized.rutas && normalized.rutas.length > 0) {
+        html += '<div class="transporte-section"><h5>🗺️ Rutas</h5>';
+        normalized.rutas.forEach(ruta => {
+            if (!ruta) return;
+            const origen = ruta.origen ? escapeHtml(ruta.origen) : 'Origen';
+            const destino = ruta.destino ? escapeHtml(ruta.destino) : 'Destino';
+            html += `<p><strong>${origen}</strong> → <strong>${destino}</strong></p>`;
+        });
+        html += '</div>';
+    }
+
+    if (normalized.contacto && typeof normalized.contacto === 'object') {
+        const telefono = normalized.contacto.telefono ? escapeHtml(normalized.contacto.telefono) : '';
+        const web = normalized.contacto.web ? normalized.contacto.web.trim() : '';
+        if (telefono || web) {
+            html += '<div class="transporte-section"><h5>📞 Contacto</h5>';
+            if (telefono) {
+                html += `<p><strong>Teléfono:</strong> <a href="tel:${telefono}">${telefono}</a></p>`;
+            }
+            if (web && (!window.isValidUrl || window.isValidUrl(web))) {
+                html += `<p><strong>Web:</strong> <a href="${escapeForHtml(web)}" target="_blank" rel="noopener">${escapeHtml(web)}</a></p>`;
+            }
+            html += '</div>';
+        }
+    }
+
+    const documentosConUrl = (normalized.documentos || []).filter(doc => doc.url && doc.url.trim() !== '');
+    html += '<div class="transporte-section"><h5>📄 Documentos</h5>';
+    if (documentosConUrl.length > 0) {
+        html += '<ul class="transporte-documentos">';
+        documentosConUrl.forEach(doc => {
+            const safeUrl = escapeForHtml(doc.url);
+            const safeName = escapeHtml(doc.nombre || 'Documento');
+            html += `<li><a href="${safeUrl}" target="_blank" rel="noopener" style="color: var(--primary-color);">${safeName}</a></li>`;
+        });
+        html += '</ul>';
+    } else {
+        html += '<p class="no-content">No hay documentos disponibles</p>';
+    }
+    html += '</div>';
+
+    const fotosConUrl = (normalized.fotos || []).filter(foto => foto.url && foto.url.trim() !== '');
+    html += '<div class="transporte-section"><h5>📸 Imágenes</h5>';
+    if (fotosConUrl.length > 0) {
+        html += '<div class="transporte-fotos-grid">';
+        fotosConUrl.forEach(foto => {
+            const safeUrl = escapeForHtml(foto.url);
+            const safeName = escapeHtml(foto.nombre || 'Imagen');
+            html += `
+                <figure class="transporte-foto-item">
+                    <img src="${safeUrl}" alt="${safeName}" style="width: 100%; max-width: 320px; border-radius: 8px; cursor: pointer;" onclick="viewTransportePhoto('${safeUrl}', '${safeName}')">
+                    <figcaption style="margin-top: 0.5rem; color: #6b7280;">${safeName}</figcaption>
+                </figure>
+            `;
+        });
+        html += '</div>';
+    } else {
+        html += '<p class="no-content">No hay imágenes disponibles</p>';
+    }
+    html += '</div>';
+
+    html += '</div>';
+    return html;
 }
 
 // ===== MODAL GENÉRICO EN BLANCO =====
@@ -12825,6 +14553,87 @@ async function waitForFirebase(maxWait = 5000) {
             resolve(true);
         }, { once: true });
     });
+}
+
+const FIRESTORE_CONFIG_DOC_IDS = {
+    servicios: 'servicios',
+    serviciosSecciones: 'serviciosSecciones',
+    consultorio: 'consultorio',
+    itv: 'itv',
+    telefonos: 'telefonosInteres',
+    transporte: 'transporte'
+};
+
+function toSafeString(value, fallback = '') {
+    if (typeof value === 'string') {
+        return value.trim();
+    }
+    if (value == null) {
+        return fallback ?? '';
+    }
+    if (typeof value === 'number' || typeof value === 'boolean') {
+        return String(value).trim();
+    }
+    return fallback ?? '';
+}
+
+function toOptionalString(value) {
+    const result = toSafeString(value);
+    return result.length > 0 ? result : null;
+}
+
+function toSafeNumber(value, fallback = Date.now()) {
+    if (typeof value === 'number' && Number.isFinite(value)) {
+        return value;
+    }
+    if (value instanceof Date) {
+        return value.getTime();
+    }
+    if (value && typeof value.toMillis === 'function') {
+        return value.toMillis();
+    }
+    return fallback;
+}
+
+async function fetchConfigDocument(docId) {
+    const firebaseReady = await waitForFirebase(7000);
+    if (!firebaseReady || !window.firebase || !window.firebase.firestore) {
+        return null;
+    }
+
+    try {
+        const snapshot = await window.firebase.firestore().collection('config').doc(docId).get();
+        if (snapshot.exists) {
+            return snapshot.data();
+        }
+        return null;
+    } catch (error) {
+        console.error(`Error obteniendo configuración ${docId} de Firestore:`, error);
+        return null;
+    }
+}
+
+async function persistConfigDocument(docId, data) {
+    const firebaseReady = await waitForFirebase(7000);
+    if (!firebaseReady || !window.firebase || !window.firebase.firestore) {
+        return false;
+    }
+
+    try {
+        const payload = { ...data };
+        const serverTimestamp = window.firebase?.firestore?.FieldValue?.serverTimestamp;
+        if (typeof serverTimestamp === 'function') {
+            payload.updatedAt = serverTimestamp();
+        } else {
+            payload.updatedAt = new Date();
+        }
+
+        await window.firebase.firestore().collection('config').doc(docId).set(payload, { merge: true });
+        return true;
+    } catch (error) {
+        console.error(`Error guardando configuración ${docId} en Firestore:`, error);
+        return false;
+    }
 }
 
 // Cargar usuarios desde Firestore
