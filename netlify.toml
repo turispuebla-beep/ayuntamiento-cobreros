@@ -1,3 +1,15 @@
+[build]
+command = "npm run build"
+publish = "."
+
+[build.environment]
+NODE_VERSION = "18"
+
+[[plugins]]
+package = "@netlify/plugin-lighthouse"
+
+  [plugins.inputs.settings]
+  preset = "desktop"
 # Configuración de Netlify para Ayuntamiento de Cobreros
 # Proyecto: turisteam-80f1b
 
