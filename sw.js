@@ -1,5 +1,5 @@
 // Service Worker para PWA del Ayuntamiento de Cobreros
-const CACHE_VERSION = '2025-11-13-01';
+const CACHE_VERSION = '2025-11-14-01';
 const CACHE_NAME = `ayuntamiento-cobreros-${CACHE_VERSION}`;
 const STATIC_CACHE = `ayuntamiento-static-${CACHE_VERSION}`;
 const DYNAMIC_CACHE = `ayuntamiento-dynamic-${CACHE_VERSION}`;

@@ -407,45 +407,6 @@ a:focus {
     font-size: 0.98rem;
 }
 
-.pwa-instructions-body p {
-    margin: 0.75rem 0;
-    line-height: 1.6;
-}
-
-.pwa-instructions-body p strong {
-    color: #1e3a8a;
-    font-weight: 600;
-}
-
-.pwa-instructions-note {
-    margin-top: 1rem !important;
-    padding: 0.75rem 1rem;
-    background: #f0f9ff;
-    border-left: 3px solid #3b82f6;
-    border-radius: 4px;
-    font-size: 0.9rem;
-    line-height: 1.5;
-}
-
-.pwa-instructions-note strong {
-    color: #1e40af !important;
-    font-weight: 600;
-}
-
-.pwa-instructions-android,
-.pwa-instructions-huawei,
-.pwa-instructions-ios {
-    color: #1f2937;
-}
-
-.pwa-instructions-android p:first-child,
-.pwa-instructions-huawei p:first-child,
-.pwa-instructions-ios p:first-child {
-    margin-top: 0;
-    margin-bottom: 1rem;
-    font-size: 1.05rem;
-}
-
 .pwa-instructions-footer {
     padding: 0.75rem 1.5rem 1.5rem;
     display: flex;
@@ -1541,29 +1502,6 @@ a.btn {
     margin-bottom: 0.75rem;
 }
 
-.document-list-item {
-    list-style: none;
-}
-
-.document-link-description {
-    color: var(--text-secondary);
-    font-size: 0.95rem;
-    line-height: 1.4;
-}
-
-.document-link-description p {
-    margin: 0 0 0.35rem 0;
-}
-
-.document-link-description p:last-child {
-    margin-bottom: 0;
-}
-
-.document-link-meta {
-    color: var(--text-muted);
-    font-size: 0.85rem;
-}
-
 .document-link {
     display: flex;
     align-items: center;
@@ -1582,42 +1520,6 @@ a.btn {
 
 .document-link i {
     color: var(--primary-color);
-}
-
-.documents-empty {
-    margin-top: 1.5rem;
-    padding: 1rem 1.25rem;
-    border-radius: var(--border-radius);
-    background: var(--bg-secondary);
-    color: var(--text-secondary);
-    text-align: center;
-    font-style: italic;
-}
-
-.document-link-content {
-    display: flex;
-    flex-direction: column;
-    gap: 0.2rem;
-}
-
-.document-link-title {
-    font-weight: 600;
-    color: var(--text-primary);
-}
-
-.document-rich-text {
-    margin: 0.5rem 0 0 2rem;
-    color: var(--text-secondary);
-    font-size: 0.95rem;
-}
-
-.document-rich-text p {
-    margin: 0 0 0.35rem 0;
-}
-
-.document-rich-text a {
-    color: var(--primary-color);
-    font-weight: 600;
 }
 
 .carnet-card {
@@ -2360,12 +2262,6 @@ a.btn {
     padding: 1.5rem;
     background: var(--bg-secondary);
     border-radius: var(--border-radius);
-}
-
-.admin-help-text {
-    margin-top: 0.5rem;
-    font-size: 0.9rem;
-    color: var(--text-secondary);
 }
 
 .admin-section h4 {

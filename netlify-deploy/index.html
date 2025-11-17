@@ -466,42 +466,12 @@
         <section id="documentos" class="content-section">
             <div class="container">
                 <h2>Documentos y Formularios</h2>
-                <div class="documents-grid">
-                    <div class="document-category">
-                        <h3>Formularios destacados</h3>
-                        <ul class="document-list">
-                            <li><a href="https://cobreros.sedeelectronica.es/catalog/t/1c74bc66-8b69-4f3c-8183-d3591f0504ed" class="document-link" target="_blank" rel="noopener">
-                                <i class="fas fa-download"></i> Solicitud de certificado o volante de empadronamiento
-                            </a></li>
-                            <li><a href="https://cobreros.sedelectronica.es/catalog/t/d120f65c-c936-4a95-bd50-e7ae970ca149" class="document-link" target="_blank" rel="noopener">
-                                <i class="fas fa-download"></i> Solicitud de alta o renovación en el padrón
-                            </a></li>
-                            <li><a href="https://cobreros.sedelectronica.es/catalog/t/5d383e20-32a5-4fcf-8725-e51c51e83e6a" class="document-link" target="_blank" rel="noopener">
-                                <i class="fas fa-download"></i> Declaración responsable en materia urbanística
-                            </a></li>
-                            <li><a href="https://cobreros.sedelectronica.es/catalog/t/15fabacb-83b1-47d1-b435-508245672051" class="document-link" target="_blank" rel="noopener">
-                                <i class="fas fa-download"></i> Solicitud de Licencia o Autorización Urbanística
-                            </a></li>
-                            <li><a href="https://cobreros.sedelectronica.es/catalog/t/5161fa8d-970e-4b48-a506-b2ac34ceafe5" class="document-link" target="_blank" rel="noopener">
-                                <i class="fas fa-download"></i> Instancia General
-                            </a></li>
-                            <li><a href="https://cobreros.sedelectronica.es/catalog/t/e8f22e0c-b09a-4c0e-8cb1-555f661bb086" class="document-link" target="_blank" rel="noopener">
-                                <i class="fas fa-download"></i> Solicitud para la Quema de Rastrojos
-                            </a></li>
-                        </ul>
-                    </div>
-                    <div class="document-category">
-                        <h3>Normativas y ordenanzas</h3>
-                        <ul class="document-list">
-                            <li>
-                                <i class="fas fa-download"></i> Ordenanzas municipales vigentes
-                            </li>
-                            <li>
-                                <i class="fas fa-download"></i> Reglamentos municipales
-                            </li>
-                        </ul>
-                    </div>
+                <div class="documents-grid" id="documentsGridDynamic" aria-live="polite">
+                    <!-- Se rellenará dinámicamente con los documentos publicados -->
                 </div>
+                <p class="documents-empty" id="documentsEmptyMessage" style="display: none;" aria-live="polite">
+                    Actualmente no hay documentos publicados. Añádelos desde el panel de administración.
+                </p>
                 <div class="carnet-card is-hidden" id="carnetCardMicologico" aria-hidden="true">
                     <div class="carnet-info">
                         <h3>Solicitud de Carné de Recolección Micológica</h3>
@@ -1573,35 +1543,54 @@
                 <div id="documents-tab" class="tab-content">
                     <h3>Gestión de Documentos</h3>
                     <div class="admin-section">
-                        <h4>Subir Nuevo Documento</h4>
+                        <h4>Gestión de Documentos Públicos</h4>
                         <form id="documentUploadForm" enctype="multipart/form-data">
                             <div class="form-group">
                                 <label for="documentName">Nombre del documento:</label>
                                 <input type="text" id="documentName" name="name" required>
                             </div>
                             <div class="form-group">
-                                <label for="documentDescription">Descripción:</label>
+                                <label for="documentDescription">Descripción y estilo del enlace:</label>
                                 <div id="documentDescriptionEditor" style="min-height: 200px;"></div>
                                 <textarea id="documentDescription" name="description" style="display: none;"></textarea>
+                                <p class="admin-help-text">Utiliza el editor para personalizar tipografía, tamaños, negritas y enlaces que se mostrarán en la web.</p>
                             </div>
                             <div class="form-group">
-                                <label for="documentCategory">Categoría:</label>
-                                <select id="documentCategory" name="category" required>
-                                    <option value="">Seleccionar categoría</option>
-                                    <option value="normativas">Normativas</option>
-                                    <option value="formularios">Formularios</option>
-                                    <option value="certificados">Certificados</option>
-                                    <option value="informes">Informes</option>
-                                    <option value="otros">Otros</option>
+                                <label for="documentCategory">Categoría visible:</label>
+                                <input type="text" id="documentCategory" name="category" list="documentCategoryOptions" placeholder="Ej: Formularios destacados" required>
+                                <small>Este nombre se mostrará como título en la sección pública.</small>
+                            </div>
+                            <div class="form-group">
+                                <label for="documentOrder">Orden de aparición:</label>
+                                <input type="number" id="documentOrder" name="order" min="1" step="1" placeholder="1">
+                                <small>Los números más bajos aparecerán primero.</small>
+                            </div>
+                            <div class="form-group">
+                                <label for="documentLinkType">Tipo de enlace:</label>
+                                <select id="documentLinkType" name="linkType">
+                                    <option value="external" selected>Enlace a trámite o documento existente</option>
+                                    <option value="upload">Subir archivo a Firebase Storage</option>
                                 </select>
                             </div>
-                            <div class="form-group">
-                                <label for="documentFile">Archivo:</label>
-                                <input type="file" id="documentFile" name="file" required accept="*/*">
-                                <small>Se aceptan todos los formatos de archivo</small>
+                            <div class="form-group" id="documentExternalUrlGroup">
+                                <label for="documentExternalUrl">URL del documento:</label>
+                                <input type="url" id="documentExternalUrl" name="externalUrl" placeholder="https://cobreros.sedelectronica.es/catalog/...">
+                                <small>Pega aquí la dirección oficial del trámite o documento.</small>
                             </div>
-                            <button type="submit" class="btn btn-primary">Subir Documento</button>
+                            <div class="form-group" id="documentFileGroup" style="display: none;">
+                                <label for="documentFile">Archivo:</label>
+                                <input type="file" id="documentFile" name="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.odt,.ods,.txt,.jpg,.jpeg,.png,.gif,.webp,.zip">
+                                <small>Formatos permitidos: PDF, Word, Excel, imágenes, ZIP...</small>
+                            </div>
+                            <button type="submit" class="btn btn-primary">Guardar documento</button>
                         </form>
+                        <datalist id="documentCategoryOptions">
+                            <option value="Formularios destacados"></option>
+                            <option value="Normativas y ordenanzas"></option>
+                            <option value="Certificados"></option>
+                            <option value="Informes y comunicados"></option>
+                            <option value="Otros documentos"></option>
+                        </datalist>
                     </div>
                     <div class="admin-section">
                         <h4>Documentos Existentes</h4>

@@ -47,7 +47,6 @@
     <!-- Firebase SDK -->
     <script type="module">
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
-        import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, createUserWithEmailAndPassword } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
         import { getMessaging, getToken, onMessage } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging.js';
         import { getFirestore, collection, addDoc, getDocs, doc, updateDoc, deleteDoc, query, where, getDoc, setDoc } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
         import { getStorage, ref as storageRef, uploadBytes, getDownloadURL, deleteObject } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js';
@@ -64,7 +63,6 @@
         
         // Inicializar Firebase
         const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
         const messaging = getMessaging(app);
         const db = getFirestore(app);
         const storage = getStorage(app);
@@ -123,21 +121,10 @@
         };
 
         window.firebaseStorage = storage;
-        window.firebaseAuth = auth;
-        
-        // Exponer funciones de autenticación globalmente
-        window.firebase = {
-            ...window.firebase,
-            auth: () => auth,
-            signInWithEmailAndPassword: signInWithEmailAndPassword,
-            signOut: signOut,
-            onAuthStateChanged: onAuthStateChanged,
-            createUserWithEmailAndPassword: createUserWithEmailAndPassword
-        };
         
         // Marcar Firebase como inicializado
         window.firebaseInitialized = true;
-        console.log('✅ Firebase inicializado correctamente (Auth incluido)');
+        console.log('✅ Firebase inicializado correctamente');
         
         // Disparar evento personalizado para notificar que Firebase está listo
         window.dispatchEvent(new CustomEvent('firebaseReady'));
@@ -466,12 +453,25 @@
         <section id="documentos" class="content-section">
             <div class="container">
                 <h2>Documentos y Formularios</h2>
-                <div class="documents-grid" id="documentsGridDynamic" aria-live="polite">
-                    <!-- Se rellenará dinámicamente con los documentos publicados -->
+                <div class="documents-grid">
+                    <div class="document-category">
+                        <h3>Formularios</h3>
+                        <ul class="document-list">
+                            <li><a href="#" class="document-link"><i class="fas fa-download"></i> Solicitud de empadronamiento</a></li>
+                            <li><a href="#" class="document-link"><i class="fas fa-download"></i> Licencia de obras</a></li>
+                            <li><a href="#" class="document-link"><i class="fas fa-download"></i> Certificado de empadronamiento</a></li>
+                            <li><a href="#" class="document-link"><i class="fas fa-download"></i> Solicitud de subvenciones</a></li>
+                        </ul>
+                    </div>
+                    <div class="document-category">
+                        <h3>Normativas</h3>
+                        <ul class="document-list">
+                            <li><a href="#" class="document-link"><i class="fas fa-download"></i> Ordenanzas municipales</a></li>
+                            <li><a href="#" class="document-link"><i class="fas fa-download"></i> Reglamento de funcionamiento</a></li>
+                            <li><a href="#" class="document-link"><i class="fas fa-download"></i> Normativa de ruidos</a></li>
+                        </ul>
+                    </div>
                 </div>
-                <p class="documents-empty" id="documentsEmptyMessage" style="display: none;" aria-live="polite">
-                    Actualmente no hay documentos publicados. Añádelos desde el panel de administración.
-                </p>
                 <div class="carnet-card is-hidden" id="carnetCardMicologico" aria-hidden="true">
                     <div class="carnet-info">
                         <h3>Solicitud de Carné de Recolección Micológica</h3>
@@ -480,7 +480,6 @@
                             <li><strong>Empadronado/a:</strong> <span id="carnetFeeEmpadronado">—</span></li>
                             <li><strong>Descendiente:</strong> <span id="carnetFeeDescendiente">—</span></li>
                             <li><strong>Visitante:</strong> <span id="carnetFeeVisitante">—</span></li>
-                            <li><strong>Profesional:</strong> <span id="carnetFeeProfesional">—</span></li>
                         </ul>
                         <p class="carnet-account"><strong>Número de cuenta:</strong> <span id="carnetAccountNumber">—</span></p>
                     </div>
@@ -527,34 +526,10 @@
                         </div>
                         <fieldset class="form-group applicant-type">
                             <legend>Tipo de solicitante</legend>
-                            <div class="carnet-type-options">
-                                <label class="carnet-type-option">
-                                    <input type="radio" name="tipoSolicitante" value="empadronado" required>
-                                    <span>Empadronado/a</span>
-                                </label>
-                                <label class="carnet-type-option">
-                                    <input type="radio" name="tipoSolicitante" value="descendiente">
-                                    <span>Descendiente</span>
-                                </label>
-                                <label class="carnet-type-option">
-                                    <input type="radio" name="tipoSolicitante" value="visitante">
-                                    <span>Visitante</span>
-                                </label>
-                                <label class="carnet-type-option">
-                                    <input type="radio" name="tipoSolicitante" value="profesional">
-                                    <span>Profesional</span>
-                                </label>
-                            </div>
+                            <label><input type="radio" name="tipoSolicitante" value="empadronado" required> Empadronado/a</label>
+                            <label><input type="radio" name="tipoSolicitante" value="descendiente"> Descendiente</label>
+                            <label><input type="radio" name="tipoSolicitante" value="visitante"> Visitante</label>
                         </fieldset>
-                        <div class="carnet-type-summary" id="carnetTipoResumen" aria-live="polite">
-                            <p class="summary-title">Resumen para tu carné:</p>
-                            <div class="summary-list">
-                                <span class="summary-pill" data-type="empadronado"><span class="checkbox-icon">☐</span> Empadronado/a</span>
-                                <span class="summary-pill" data-type="descendiente"><span class="checkbox-icon">☐</span> Descendiente</span>
-                                <span class="summary-pill" data-type="visitante"><span class="checkbox-icon">☐</span> Visitante</span>
-                                <span class="summary-pill" data-type="profesional"><span class="checkbox-icon">☐</span> Profesional</span>
-                            </div>
-                        </div>
                         <div class="form-group consent-group">
                             <input type="checkbox" id="carnetConsent" required>
                             <label for="carnetConsent">Declaro que los datos aportados son veraces y acepto el tratamiento de mis datos personales según la normativa vigente.</label>
@@ -723,17 +698,6 @@
                 <div id="serviciosContent">
                     <!-- Se llenará dinámicamente -->
                 </div>
-            </div>
-        </section>
-
-        <!-- Eventos destacados -->
-        <section id="eventosDestacados" class="content-section eventos-destacados is-hidden" aria-hidden="true">
-            <div class="container">
-                <div class="section-header">
-                    <h2>Próximos eventos</h2>
-                    <p>Consulta las actividades destacadas del Ayuntamiento de Cobreros.</p>
-                </div>
-                <div class="eventos-grid" id="eventosDestacadosGrid"></div>
             </div>
         </section>
 
@@ -1543,54 +1507,35 @@
                 <div id="documents-tab" class="tab-content">
                     <h3>Gestión de Documentos</h3>
                     <div class="admin-section">
-                        <h4>Gestión de Documentos Públicos</h4>
+                        <h4>Subir Nuevo Documento</h4>
                         <form id="documentUploadForm" enctype="multipart/form-data">
                             <div class="form-group">
                                 <label for="documentName">Nombre del documento:</label>
                                 <input type="text" id="documentName" name="name" required>
                             </div>
                             <div class="form-group">
-                                <label for="documentDescription">Descripción y estilo del enlace:</label>
+                                <label for="documentDescription">Descripción:</label>
                                 <div id="documentDescriptionEditor" style="min-height: 200px;"></div>
                                 <textarea id="documentDescription" name="description" style="display: none;"></textarea>
-                                <p class="admin-help-text">Utiliza el editor para personalizar tipografía, tamaños, negritas y enlaces que se mostrarán en la web.</p>
                             </div>
                             <div class="form-group">
-                                <label for="documentCategory">Categoría visible:</label>
-                                <input type="text" id="documentCategory" name="category" list="documentCategoryOptions" placeholder="Ej: Formularios destacados" required>
-                                <small>Este nombre se mostrará como título en la sección pública.</small>
-                            </div>
-                            <div class="form-group">
-                                <label for="documentOrder">Orden de aparición:</label>
-                                <input type="number" id="documentOrder" name="order" min="1" step="1" placeholder="1">
-                                <small>Los números más bajos aparecerán primero.</small>
-                            </div>
-                            <div class="form-group">
-                                <label for="documentLinkType">Tipo de enlace:</label>
-                                <select id="documentLinkType" name="linkType">
-                                    <option value="external" selected>Enlace a trámite o documento existente</option>
-                                    <option value="upload">Subir archivo a Firebase Storage</option>
+                                <label for="documentCategory">Categoría:</label>
+                                <select id="documentCategory" name="category" required>
+                                    <option value="">Seleccionar categoría</option>
+                                    <option value="normativas">Normativas</option>
+                                    <option value="formularios">Formularios</option>
+                                    <option value="certificados">Certificados</option>
+                                    <option value="informes">Informes</option>
+                                    <option value="otros">Otros</option>
                                 </select>
                             </div>
-                            <div class="form-group" id="documentExternalUrlGroup">
-                                <label for="documentExternalUrl">URL del documento:</label>
-                                <input type="url" id="documentExternalUrl" name="externalUrl" placeholder="https://cobreros.sedelectronica.es/catalog/...">
-                                <small>Pega aquí la dirección oficial del trámite o documento.</small>
-                            </div>
-                            <div class="form-group" id="documentFileGroup" style="display: none;">
+                            <div class="form-group">
                                 <label for="documentFile">Archivo:</label>
-                                <input type="file" id="documentFile" name="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.odt,.ods,.txt,.jpg,.jpeg,.png,.gif,.webp,.zip">
-                                <small>Formatos permitidos: PDF, Word, Excel, imágenes, ZIP...</small>
+                                <input type="file" id="documentFile" name="file" required accept="*/*">
+                                <small>Se aceptan todos los formatos de archivo</small>
                             </div>
-                            <button type="submit" class="btn btn-primary">Guardar documento</button>
+                            <button type="submit" class="btn btn-primary">Subir Documento</button>
                         </form>
-                        <datalist id="documentCategoryOptions">
-                            <option value="Formularios destacados"></option>
-                            <option value="Normativas y ordenanzas"></option>
-                            <option value="Certificados"></option>
-                            <option value="Informes y comunicados"></option>
-                            <option value="Otros documentos"></option>
-                        </datalist>
                     </div>
                     <div class="admin-section">
                         <h4>Documentos Existentes</h4>
@@ -1639,10 +1584,6 @@
                             <div class="form-group">
                                 <label for="carnetConfigFeeVisitante">Cuota visitante</label>
                                 <input type="text" id="carnetConfigFeeVisitante" placeholder="Ej: 12 €">
-                            </div>
-                            <div class="form-group">
-                                <label for="carnetConfigFeeProfesional">Cuota profesional</label>
-                                <input type="text" id="carnetConfigFeeProfesional" placeholder="Ej: 20 €">
                             </div>
                         </div>
                         <div class="form-group">
@@ -2125,109 +2066,103 @@
                 <!-- Datos y Enlaces Tab -->
                 <div id="servicios-tab" class="tab-content">
                     <h3>Gestión de Datos y Enlaces</h3>
-                    <p class="admin-help-text">
-                        Desde este panel administras toda la información pública del consultorio, ITV, teléfonos útiles y transporte.
-                        Cada cambio se sincroniza automáticamente con la web principal.
-                    </p>
-
-                    <div class="datos-enlaces-grid">
-                        <!-- Consultorio -->
-                        <div class="admin-section datos-card">
-                            <div class="datos-card-header">
-                                <div>
-                                    <h4>🏥 Consultorio Médico</h4>
-                                    <p class="datos-card-subtitle">Documentos, fotos e información del centro médico.</p>
-                                </div>
-                                <span class="badge badge-info">Sync</span>
-                            </div>
-                            <div class="datos-card-actions">
-                                <button class="btn btn-primary" onclick="openConsultorioModal()">
-                                    <i class="fas fa-edit"></i> Editar consultorio
-                                </button>
-                                <button class="btn btn-secondary" onclick="editConsultorioDocumentos()">
-                                    📄 Documentos
-                                </button>
-                                <button class="btn btn-secondary" onclick="editConsultorioFotos()">
-                                    📸 Fotos
-                                </button>
-                                <button class="btn btn-outline" onclick="openSeccionConfig('medical')">
-                                    ⚙️ Configuración visual
-                                </button>
-                            </div>
-                            <div class="content-list" id="consultorioList"></div>
+                    
+                    <!-- Consultorio Médico -->
+                    <div class="admin-section">
+                        <h4>🏥 Consultorio Médico</h4>
+                        <div class="content-actions">
+                            <button class="btn btn-primary" onclick="openConsultorioModal()">
+                                <i class="fas fa-edit"></i> Editar Consultorio
+                            </button>
                         </div>
-
-                        <!-- ITV -->
-                        <div class="admin-section datos-card">
-                            <div class="datos-card-header">
-                                <div>
-                                    <h4>🚗 ITV - Puebla de Sanabria</h4>
-                                    <p class="datos-card-subtitle">Horarios, documentación y avisos para la ITV local.</p>
-                                </div>
-                                <span class="badge badge-info">Sync</span>
-                            </div>
-                            <div class="datos-card-actions">
-                                <button class="btn btn-primary" onclick="openItvModal()">
-                                    <i class="fas fa-edit"></i> Editar ITV
-                                </button>
-                                <button class="btn btn-secondary" onclick="openItvDocumentModal()">
-                                    📄 Añadir documento
-                                </button>
-                                <button class="btn btn-secondary" onclick="openItvFotoModal()">
-                                    📸 Añadir foto
-                                </button>
-                                <button class="btn btn-outline" onclick="openSeccionConfig('itv')">
-                                    ⚙️ Configuración visual
-                                </button>
-                            </div>
-                            <div class="content-list" id="itvList"></div>
+                        <div class="content-list" id="consultorioList"></div>
+                    </div>
+                    
+                    <!-- ITV Puebla de Sanabria -->
+                    <div class="admin-section">
+                        <h4>🚗 ITV - Puebla de Sanabria</h4>
+                        <div class="content-actions">
+                            <button class="btn btn-primary" onclick="openItvModal()">
+                                <i class="fas fa-edit"></i> Editar ITV
+                            </button>
                         </div>
-
-                        <!-- Teléfonos -->
-                        <div class="admin-section datos-card">
-                            <div class="datos-card-header">
-                                <div>
-                                    <h4>📞 Teléfonos de Interés</h4>
-                                    <p class="datos-card-subtitle">Listado de teléfonos y servicios de referencia.</p>
-                                </div>
-                                <span class="badge badge-info">Sync</span>
-                            </div>
-                            <div class="datos-card-actions">
-                                <button class="btn btn-primary" onclick="openTelefonosInteresModal()">
-                                    <i class="fas fa-edit"></i> Configuración
-                                </button>
-                                <button class="btn btn-secondary" onclick="openTelefonoElementoModal()">
-                                    ➕ Nuevo elemento
-                                </button>
-                                <button class="btn btn-outline" onclick="openTelefonosInteresManager()">
-                                    📋 Gestionar todo
-                                </button>
-                            </div>
-                            <div class="content-list" id="telefonosElementosList"></div>
+                        <div class="content-list" id="itvList"></div>
+                    </div>
+                    
+                    <!-- Teléfonos de Interés -->
+                    <div class="admin-section">
+                        <h4>📞 Teléfonos de Interés</h4>
+                        <div class="content-actions">
+                            <button class="btn btn-primary" onclick="openTelefonosInteresModal()">
+                                <i class="fas fa-edit"></i> Editar Configuración
+                            </button>
+                            <button class="btn btn-secondary" onclick="openTelefonoElementoModal()">
+                                <i class="fas fa-plus"></i> Nuevo Elemento
+                            </button>
                         </div>
-
-                        <!-- Transporte -->
-                        <div class="admin-section datos-card">
-                            <div class="datos-card-header">
-                                <div>
-                                    <h4>🚌 Líneas de Transporte</h4>
-                                    <p class="datos-card-subtitle">Rutas, documentos y horarios de transporte.</p>
-                                </div>
-                                <span class="badge badge-info">Sync</span>
-                            </div>
-                            <div class="datos-card-actions">
-                                <button class="btn btn-primary" onclick="openTransporteModal()">
-                                    <i class="fas fa-edit"></i> Configuración general
-                                </button>
-                                <button class="btn btn-secondary" onclick="openTransporteLineaModal()">
-                                    ➕ Nueva línea
-                                </button>
-                                <button class="btn btn-outline" onclick="openTransporteManager()">
-                                    🚍 Gestionar líneas
-                                </button>
-                            </div>
-                            <div class="content-list" id="transporteLinesList"></div>
+                        <div class="content-list" id="telefonosElementosList"></div>
+                    </div>
+                    
+                    <!-- Líneas de Transporte -->
+                    <div class="admin-section">
+                        <h4>🚌 Líneas de Transporte</h4>
+                        <div class="content-actions">
+                            <button class="btn btn-primary" onclick="openTransporteModal()">
+                                <i class="fas fa-edit"></i> Editar Configuración
+                            </button>
+                            <button class="btn btn-secondary" onclick="openTransporteLineaModal()">
+                                <i class="fas fa-plus"></i> Nueva Línea
+                            </button>
                         </div>
+                        <div class="content-list" id="transporteLinesList"></div>
+                    </div>
+                    
+                    <!-- Configuración de Secciones -->
+                    <div class="admin-section">
+                        <h4>⚙️ Configuración de Secciones</h4>
+                        <div class="form-group">
+                            <button class="btn btn-secondary" onclick="openSeccionConfig('medical')">
+                                <i class="fas fa-edit"></i> Configurar Consultas Médicas
+                            </button>
+                            <button class="btn btn-secondary" onclick="openSeccionConfig('itv')">
+                                <i class="fas fa-edit"></i> Configurar ITV
+                            </button>
+                            <button class="btn btn-primary" onclick="openTelefonosInteresManager()">
+                                <i class="fas fa-phone"></i> Gestionar Teléfonos de Interés
+                            </button>
+                            <button class="btn btn-primary" onclick="openTransporteManager()">
+                                <i class="fas fa-bus"></i> Gestionar Líneas de Transporte
+                            </button>
+                        </div>
+                        <p style="margin-top: 10px; color: #666; font-size: 0.9em;">
+                            Personaliza los títulos e iconos de cada sección
+                        </p>
+                    </div>
+                    
+                    
+                    <div class="admin-section">
+                        <h4 id="medicalSectionTitle">🏥 CONSULTORIO MÉDICO</h4>
+                        <div class="form-group">
+                            <button class="btn btn-primary" onclick="editConsultorioDocumentos()">📄 Gestionar Documentos</button>
+                            <button class="btn btn-secondary" onclick="editConsultorioFotos()">📸 Gestionar Fotos</button>
+                        </div>
+                        <div id="medicalList"></div>
+                    </div>
+                    
+                    <div class="admin-section">
+                        <h4 id="itvSectionTitle">🚗 ITV</h4>
+                        <div class="form-group">
+                            <button class="btn btn-primary" onclick="addServicio('itv')">➕ Añadir ITV</button>
+                        </div>
+                        <div id="itvList"></div>
+                    </div>
+                    
+                    <div class="admin-section">
+                        <h4 id="phoneSectionTitle">📞 Teléfonos de Interés</h4>
+                        <div class="form-group">
+                            <button class="btn btn-primary" onclick="addServicio('phone')">➕ Añadir Teléfono</button>
+                        </div>
+                        <div id="phoneList"></div>
                     </div>
                 </div>
 
@@ -2471,173 +2406,6 @@
         
         .admin-access-btn:active {
             transform: scale(0.95);
-        }
-        .datos-enlaces-grid {
-            display: grid;
-            gap: 1.5rem;
-        }
-        @media (min-width: 900px) {
-            .datos-enlaces-grid {
-                grid-template-columns: repeat(2, 1fr);
-            }
-        }
-        .datos-card-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            gap: 1rem;
-        }
-        .datos-card-subtitle {
-            margin: 0.25rem 0 0;
-            color: #6b7280;
-            font-size: 0.9rem;
-        }
-        .datos-card-actions {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 0.5rem;
-            margin: 1rem 0;
-        }
-        .eventos-destacados {
-            background: var(--bg-secondary);
-        }
-        .eventos-destacados .section-header {
-            text-align: center;
-            margin-bottom: 2rem;
-        }
-        .eventos-destacados .eventos-grid {
-            display: grid;
-            gap: 1.25rem;
-        }
-        @media (min-width: 900px) {
-            .eventos-destacados .eventos-grid {
-                grid-template-columns: repeat(3, minmax(0, 1fr));
-            }
-        }
-        .evento-card {
-            background: white;
-            border-radius: 16px;
-            padding: 1.25rem;
-            display: flex;
-            gap: 1rem;
-            box-shadow: var(--shadow-md);
-            border: 1px solid rgba(15, 23, 42, 0.05);
-        }
-        .evento-card-date {
-            min-width: 70px;
-            text-align: center;
-            background: #1d4ed8;
-            color: white;
-            border-radius: 12px;
-            padding: 0.5rem;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-        }
-        .evento-card-date .day {
-            font-size: 1.8rem;
-            font-weight: 700;
-            line-height: 1;
-        }
-        .evento-card-date .month {
-            font-size: 0.85rem;
-            letter-spacing: 0.1em;
-            margin-top: 0.25rem;
-        }
-        .evento-card-content h3 {
-            margin: 0;
-            font-size: 1.15rem;
-            color: var(--text-primary);
-        }
-        .evento-card-content .evento-description {
-            margin: 0.5rem 0 0.75rem;
-            color: var(--text-secondary);
-        }
-        .evento-meta {
-            list-style: none;
-            padding: 0;
-            margin: 0;
-            display: flex;
-            flex-wrap: wrap;
-            gap: 0.75rem;
-            color: var(--text-secondary);
-            font-size: 0.95rem;
-        }
-        .evento-meta li i {
-            margin-right: 0.35rem;
-            color: #1d4ed8;
-        }
-        .evento-chip {
-            display: inline-flex;
-            align-items: center;
-            padding: 0.2rem 0.8rem;
-            border-radius: 999px;
-            font-size: 0.75rem;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            background: rgba(29, 78, 216, 0.12);
-            color: #1d4ed8;
-        }
-        .evento-chip.chip-photo {
-            background: rgba(250, 204, 21, 0.18);
-            color: #92400e;
-        }
-        .carnet-type-options {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 0.5rem;
-        }
-        .carnet-type-option {
-            border: 1px solid #d1d5db;
-            border-radius: 999px;
-            padding: 0.4rem 0.9rem;
-            display: inline-flex;
-            align-items: center;
-            gap: 0.35rem;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            background: #fff;
-        }
-        .carnet-type-option input {
-            accent-color: #2563eb;
-        }
-        .carnet-type-option:hover {
-            border-color: #2563eb;
-            box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15);
-        }
-        .carnet-type-summary {
-            border: 1px dashed #cbd5f5;
-            border-radius: 12px;
-            padding: 1rem;
-            background: #f1f5ff;
-            margin-bottom: 1rem;
-        }
-        .summary-title {
-            margin: 0 0 0.5rem;
-            font-weight: 600;
-            color: #1d4ed8;
-        }
-        .summary-list {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 0.5rem;
-        }
-        .summary-pill {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.35rem;
-            padding: 0.35rem 0.75rem;
-            border-radius: 999px;
-            background: #e0e7ff;
-            color: #1e3a8a;
-            font-size: 0.9rem;
-            transition: all 0.2s ease;
-        }
-        .summary-pill.active {
-            background: #1d4ed8;
-            color: white;
-            box-shadow: 0 4px 12px rgba(29, 78, 216, 0.25);
         }
         /* ===== ACORDEÓN DESPLEGABLE ===== */
         
@@ -3188,13 +2956,6 @@
                         <label for="eventImage">Imagen del evento (opcional):</label>
                         <input type="file" id="eventImage" name="image" accept=".jpg,.jpeg,.png,.gif">
                         <small>Formatos permitidos: JPG, PNG, GIF</small>
-                    </div>
-                    <div class="form-group checkbox-group">
-                        <label class="checkbox-option">
-                            <input type="checkbox" id="eventVisibleHome">
-                            <span>Mostrar este evento en la página principal</span>
-                        </label>
-                        <small>Activa esta opción para destacar el evento en el nuevo apartado público.</small>
                     </div>
                 </form>
             </div>

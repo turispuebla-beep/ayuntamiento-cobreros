@@ -36,7 +36,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.createBackup = exports.createDailyBackup = exports.sendPushNotification = exports.sendEmail = void 0;
+exports.createBackup = exports.backupAppointmentsTask = exports.sendPushNotification = exports.sendEmail = exports.uploadAppointmentAttachment = exports.deleteAppointment = exports.updateAppointmentStatus = exports.getAppointments = exports.createAppointment = void 0;
 const functions = __importStar(require("firebase-functions/v1"));
 const admin = __importStar(require("firebase-admin"));
 const nodemailer = __importStar(require("nodemailer"));
@@ -45,13 +45,56 @@ const cors_1 = __importDefault(require("cors"));
 admin.initializeApp();
 // Configurar CORS
 const corsHandler = (0, cors_1.default)({ origin: true });
-function escapeHtml(text = '') {
-    return text
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#39;');
+// Verificar si el usuario está autenticado y es admin
+async function verifyAdmin(req) {
+    try {
+        const authHeader = req.headers.authorization;
+        if (!authHeader || !authHeader.startsWith('Bearer ')) {
+            return { valid: false, error: 'No se proporcionó token de autenticación' };
+        }
+        const idToken = authHeader.split('Bearer ')[1];
+        const decodedToken = await admin.auth().verifyIdToken(idToken);
+        // Verificar si el usuario tiene rol de admin en Firestore
+        const userDoc = await admin.firestore().collection('users').doc(decodedToken.uid).get();
+        const userData = userDoc.data();
+        // Verificar rol de admin (puede estar en customClaims o en Firestore)
+        const isAdmin = decodedToken.admin === true ||
+            decodedToken.role === 'admin' ||
+            decodedToken.role === 'super_admin' ||
+            (userData && (userData.isAdmin === true || userData.role === 'admin' || userData.role === 'super_admin'));
+        if (!isAdmin) {
+            return { valid: false, error: 'No tiene permisos de administrador' };
+        }
+        return {
+            valid: true,
+            uid: decodedToken.uid,
+            email: decodedToken.email || undefined
+        };
+    }
+    catch (error) {
+        console.error('Error verificando admin:', error);
+        return { valid: false, error: 'Token inválido o expirado' };
+    }
+}
+// Verificar si el usuario está autenticado (no requiere admin)
+async function verifyAuth(req) {
+    try {
+        const authHeader = req.headers.authorization;
+        if (!authHeader || !authHeader.startsWith('Bearer ')) {
+            return { valid: false, error: 'No se proporcionó token de autenticación' };
+        }
+        const idToken = authHeader.split('Bearer ')[1];
+        const decodedToken = await admin.auth().verifyIdToken(idToken);
+        return {
+            valid: true,
+            uid: decodedToken.uid,
+            email: decodedToken.email || undefined
+        };
+    }
+    catch (error) {
+        console.error('Error verificando autenticación:', error);
+        return { valid: false, error: 'Token inválido o expirado' };
+    }
 }
 // Tamaño de lote para envío masivo (máximo recomendado de FCM)
 const BATCH_SIZE = 500;
@@ -77,6 +120,345 @@ function createTransporter() {
         }
     });
 }
+// ===== FUNCIONES PARA CITAS PREVIAS =====
+/**
+ * 📅 Crear nueva cita previa
+ * Endpoint: https://us-central1-turisteam-80f1b.cloudfunctions.net/createAppointment
+ * Método: POST
+ * Auth: Requiere autenticación (no admin)
+ */
+exports.createAppointment = functions.https.onRequest((req, res) => {
+    return corsHandler(req, res, async () => {
+        if (req.method !== 'POST') {
+            return res.status(405).json({ error: 'Método no permitido' });
+        }
+        try {
+            // Verificar autenticación
+            const authCheck = await verifyAuth(req);
+            if (!authCheck.valid) {
+                return res.status(401).json({ error: authCheck.error || 'No autenticado' });
+            }
+            const appointmentData = req.body;
+            // Validaciones básicas
+            if (!appointmentData.service || !appointmentData.name || !appointmentData.dni || !appointmentData.email || !appointmentData.date || !appointmentData.time) {
+                return res.status(400).json({ error: 'Faltan campos requeridos' });
+            }
+            // Validar DNI (formato: 8 números + 1 letra)
+            const dniRegex = /^[0-9]{8}[A-Za-z]$/;
+            if (!dniRegex.test(appointmentData.dni)) {
+                return res.status(400).json({ error: 'DNI inválido. Formato requerido: 8 números + 1 letra' });
+            }
+            // Crear documento en Firestore
+            const appointmentRef = await admin.firestore().collection('appointments').add(Object.assign(Object.assign({}, appointmentData), { status: 'pending', createdAt: admin.firestore.FieldValue.serverTimestamp(), updatedAt: admin.firestore.FieldValue.serverTimestamp(), createdBy: authCheck.uid, createdByEmail: authCheck.email }));
+            console.log(`✅ Cita creada: ${appointmentRef.id}`);
+            // Enviar email de confirmación
+            try {
+                const transporter = createTransporter();
+                await transporter.sendMail({
+                    from: `"Cita / Aviso Ayto Cobreros" <${APPOINTMENT_EMAIL}>`,
+                    to: appointmentData.email,
+                    subject: 'Confirmación de Cita Previa - Ayuntamiento de Cobreros',
+                    html: generateAppointmentConfirmationHTML(Object.assign(Object.assign({}, appointmentData), { appointmentId: appointmentRef.id })),
+                    text: generateAppointmentConfirmationText(Object.assign(Object.assign({}, appointmentData), { appointmentId: appointmentRef.id }))
+                });
+                console.log(`✅ Email de confirmación enviado a ${appointmentData.email}`);
+            }
+            catch (emailError) {
+                console.error('Error enviando email de confirmación:', emailError);
+                // No fallar la creación de la cita si el email falla
+            }
+            // Notificar a administradores
+            try {
+                const adminEmails = ['aytocobreros@gmail.com'];
+                const transporter = createTransporter();
+                await transporter.sendMail({
+                    from: `"Cita / Aviso Ayto Cobreros" <${APPOINTMENT_EMAIL}>`,
+                    to: adminEmails.join(','),
+                    subject: `Nueva Cita Previa - ${appointmentData.name}`,
+                    html: generateAdminNotificationHTML(Object.assign(Object.assign({}, appointmentData), { appointmentId: appointmentRef.id })),
+                    text: generateAdminNotificationText(Object.assign(Object.assign({}, appointmentData), { appointmentId: appointmentRef.id }))
+                });
+                console.log(`✅ Notificación a administradores enviada`);
+            }
+            catch (emailError) {
+                console.error('Error notificando a administradores:', emailError);
+            }
+            return res.status(200).json({
+                success: true,
+                appointmentId: appointmentRef.id,
+                message: 'Cita creada correctamente'
+            });
+        }
+        catch (error) {
+            console.error('❌ Error creando cita:', error);
+            return res.status(500).json({
+                success: false,
+                error: 'Error interno del servidor',
+                details: error.message
+            });
+        }
+    });
+});
+/**
+ * 📋 Obtener citas previas
+ * Endpoint: https://us-central1-turisteam-80f1b.cloudfunctions.net/getAppointments
+ * Método: GET
+ * Auth: Requiere autenticación (admin para ver todas, usuario normal solo las suyas)
+ */
+exports.getAppointments = functions.https.onRequest((req, res) => {
+    return corsHandler(req, res, async () => {
+        if (req.method !== 'GET') {
+            return res.status(405).json({ error: 'Método no permitido' });
+        }
+        try {
+            const authCheck = await verifyAuth(req);
+            if (!authCheck.valid) {
+                return res.status(401).json({ error: authCheck.error || 'No autenticado' });
+            }
+            // Verificar si es admin
+            const adminCheck = await verifyAdmin(req);
+            const isAdmin = adminCheck.valid;
+            let appointmentsQuery = admin.firestore().collection('appointments');
+            // Si no es admin, solo ver sus propias citas
+            if (!isAdmin) {
+                appointmentsQuery = appointmentsQuery.where('createdBy', '==', authCheck.uid);
+            }
+            // Ordenar por fecha de creación descendente
+            appointmentsQuery = appointmentsQuery.orderBy('createdAt', 'desc');
+            // Límite opcional
+            const limit = req.query.limit ? parseInt(req.query.limit) : 100;
+            appointmentsQuery = appointmentsQuery.limit(limit);
+            const snapshot = await appointmentsQuery.get();
+            const appointments = snapshot.docs.map(doc => (Object.assign({ id: doc.id }, doc.data())));
+            return res.status(200).json({
+                success: true,
+                appointments,
+                count: appointments.length
+            });
+        }
+        catch (error) {
+            console.error('❌ Error obteniendo citas:', error);
+            return res.status(500).json({
+                success: false,
+                error: 'Error interno del servidor',
+                details: error.message
+            });
+        }
+    });
+});
+/**
+ * ✏️ Actualizar estado de cita previa
+ * Endpoint: https://us-central1-turisteam-80f1b.cloudfunctions.net/updateAppointmentStatus
+ * Método: POST
+ * Auth: Requiere admin
+ */
+exports.updateAppointmentStatus = functions.https.onRequest((req, res) => {
+    return corsHandler(req, res, async () => {
+        if (req.method !== 'POST') {
+            return res.status(405).json({ error: 'Método no permitido' });
+        }
+        try {
+            const adminCheck = await verifyAdmin(req);
+            if (!adminCheck.valid) {
+                return res.status(403).json({ error: adminCheck.error || 'No autorizado' });
+            }
+            const { appointmentId, status, notes } = req.body;
+            if (!appointmentId || !status) {
+                return res.status(400).json({ error: 'Faltan campos requeridos: appointmentId, status' });
+            }
+            const validStatuses = ['pending', 'confirmed', 'cancelled', 'completed', 'no_show'];
+            if (!validStatuses.includes(status)) {
+                return res.status(400).json({ error: `Estado inválido. Estados válidos: ${validStatuses.join(', ')}` });
+            }
+            const appointmentRef = admin.firestore().collection('appointments').doc(appointmentId);
+            const appointmentDoc = await appointmentRef.get();
+            if (!appointmentDoc.exists) {
+                return res.status(404).json({ error: 'Cita no encontrada' });
+            }
+            const appointmentData = appointmentDoc.data();
+            await appointmentRef.update(Object.assign({ status, updatedAt: admin.firestore.FieldValue.serverTimestamp(), updatedBy: adminCheck.uid, updatedByEmail: adminCheck.email }, (notes && { notes })));
+            // Enviar email de notificación de cambio de estado si es necesario
+            if (status === 'confirmed' || status === 'cancelled') {
+                try {
+                    const transporter = createTransporter();
+                    await transporter.sendMail({
+                        from: `"Cita / Aviso Ayto Cobreros" <${APPOINTMENT_EMAIL}>`,
+                        to: appointmentData.email,
+                        subject: `Actualización de Cita Previa - ${status === 'confirmed' ? 'Confirmada' : 'Cancelada'}`,
+                        html: generateStatusChangeHTML(Object.assign(Object.assign({}, appointmentData), { status,
+                            appointmentId })),
+                        text: generateStatusChangeText(Object.assign(Object.assign({}, appointmentData), { status,
+                            appointmentId }))
+                    });
+                    console.log(`✅ Email de actualización enviado a ${appointmentData.email}`);
+                }
+                catch (emailError) {
+                    console.error('Error enviando email de actualización:', emailError);
+                }
+            }
+            console.log(`✅ Cita ${appointmentId} actualizada a estado: ${status}`);
+            return res.status(200).json({
+                success: true,
+                message: 'Estado de cita actualizado correctamente'
+            });
+        }
+        catch (error) {
+            console.error('❌ Error actualizando estado de cita:', error);
+            return res.status(500).json({
+                success: false,
+                error: 'Error interno del servidor',
+                details: error.message
+            });
+        }
+    });
+});
+/**
+ * 🗑️ Eliminar cita previa
+ * Endpoint: https://us-central1-turisteam-80f1b.cloudfunctions.net/deleteAppointment
+ * Método: POST
+ * Auth: Requiere admin
+ */
+exports.deleteAppointment = functions.https.onRequest((req, res) => {
+    return corsHandler(req, res, async () => {
+        if (req.method !== 'POST') {
+            return res.status(405).json({ error: 'Método no permitido' });
+        }
+        try {
+            const adminCheck = await verifyAdmin(req);
+            if (!adminCheck.valid) {
+                return res.status(403).json({ error: adminCheck.error || 'No autorizado' });
+            }
+            const { appointmentId } = req.body;
+            if (!appointmentId) {
+                return res.status(400).json({ error: 'Falta campo requerido: appointmentId' });
+            }
+            const appointmentRef = admin.firestore().collection('appointments').doc(appointmentId);
+            const appointmentDoc = await appointmentRef.get();
+            if (!appointmentDoc.exists) {
+                return res.status(404).json({ error: 'Cita no encontrada' });
+            }
+            const appointmentData = appointmentDoc.data();
+            // Eliminar adjuntos en Storage si existen
+            if (appointmentData.attachment && appointmentData.attachment.storagePath) {
+                try {
+                    const bucket = admin.storage().bucket();
+                    const file = bucket.file(appointmentData.attachment.storagePath);
+                    await file.delete();
+                    console.log(`✅ Adjunto eliminado: ${appointmentData.attachment.storagePath}`);
+                }
+                catch (storageError) {
+                    console.error('Error eliminando adjunto:', storageError);
+                    // Continuar aunque falle la eliminación del archivo
+                }
+            }
+            // Eliminar documento
+            await appointmentRef.delete();
+            console.log(`✅ Cita ${appointmentId} eliminada`);
+            return res.status(200).json({
+                success: true,
+                message: 'Cita eliminada correctamente'
+            });
+        }
+        catch (error) {
+            console.error('❌ Error eliminando cita:', error);
+            return res.status(500).json({
+                success: false,
+                error: 'Error interno del servidor',
+                details: error.message
+            });
+        }
+    });
+});
+/**
+ * 📎 Subir adjunto de cita previa
+ * Endpoint: https://us-central1-turisteam-80f1b.cloudfunctions.net/uploadAppointmentAttachment
+ * Método: POST (multipart/form-data)
+ * Auth: Requiere autenticación (no admin)
+ */
+exports.uploadAppointmentAttachment = functions.https.onRequest((req, res) => {
+    return corsHandler(req, res, async () => {
+        if (req.method !== 'POST') {
+            return res.status(405).json({ error: 'Método no permitido' });
+        }
+        try {
+            const authCheck = await verifyAuth(req);
+            if (!authCheck.valid) {
+                return res.status(401).json({ error: authCheck.error || 'No autenticado' });
+            }
+            const { appointmentId, file } = req.body;
+            if (!appointmentId || !file) {
+                return res.status(400).json({ error: 'Faltan campos requeridos: appointmentId, file' });
+            }
+            // Validar tamaño (máximo 10MB)
+            const maxSize = 10 * 1024 * 1024;
+            if (file.size > maxSize) {
+                return res.status(400).json({ error: 'El archivo excede el tamaño máximo de 10MB' });
+            }
+            // Validar tipo de archivo
+            const allowedTypes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'image/jpeg', 'image/png'];
+            if (!allowedTypes.includes(file.type)) {
+                return res.status(400).json({ error: 'Tipo de archivo no permitido' });
+            }
+            // Subir a Storage
+            const bucket = admin.storage().bucket();
+            const fileName = `appointments/${appointmentId}/${Date.now()}_${file.name}`;
+            const fileRef = bucket.file(fileName);
+            // Convertir base64 a buffer si es necesario
+            let fileBuffer;
+            if (typeof file.data === 'string') {
+                fileBuffer = Buffer.from(file.data, 'base64');
+            }
+            else {
+                fileBuffer = Buffer.from(file.data);
+            }
+            await fileRef.save(fileBuffer, {
+                contentType: file.type,
+                metadata: {
+                    metadata: {
+                        appointmentId,
+                        uploadedBy: authCheck.uid,
+                        uploadedAt: new Date().toISOString(),
+                        originalName: file.name
+                    }
+                }
+            });
+            // Hacer el archivo público o generar URL firmada
+            await fileRef.makePublic();
+            const publicUrl = `https://storage.googleapis.com/${bucket.name}/${fileName}`;
+            // Actualizar referencia en Firestore
+            const appointmentRef = admin.firestore().collection('appointments').doc(appointmentId);
+            await appointmentRef.update({
+                attachment: {
+                    name: file.name,
+                    url: publicUrl,
+                    storagePath: fileName,
+                    size: file.size,
+                    contentType: file.type,
+                    uploadedAt: admin.firestore.FieldValue.serverTimestamp()
+                }
+            });
+            console.log(`✅ Adjunto subido para cita ${appointmentId}: ${fileName}`);
+            return res.status(200).json({
+                success: true,
+                attachment: {
+                    name: file.name,
+                    url: publicUrl,
+                    storagePath: fileName,
+                    size: file.size,
+                    contentType: file.type
+                }
+            });
+        }
+        catch (error) {
+            console.error('❌ Error subiendo adjunto:', error);
+            return res.status(500).json({
+                success: false,
+                error: 'Error interno del servidor',
+                details: error.message
+            });
+        }
+    });
+});
 // Función para enviar emails
 // ✅ Usa Firebase Secrets (GMAIL_PASSWORD se expone automáticamente como process.env)
 exports.sendEmail = functions
@@ -128,7 +510,7 @@ exports.sendEmail = functions
                     textContent = 'Email del Ayuntamiento de Cobreros';
             }
             // Configurar el email
-            const defaultFrom = `"Ayto Cobreros Cita/Avisos" <${APPOINTMENT_EMAIL}>`;
+            const defaultFrom = `"Cita / Aviso Ayto Cobreros" <${APPOINTMENT_EMAIL}>`;
             const mailOptions = {
                 from: from || defaultFrom,
                 to: to,
@@ -390,32 +772,27 @@ function generateAppointmentConfirmationHTML(data) {
                 
                 <p><strong>Importante:</strong> Nos pondremos en contacto con usted para confirmar la disponibilidad de la fecha y hora solicitada.</p>
                 
-                <p>Si necesita modificar o cancelar su cita, póngase en contacto con nosotros en <strong>${APPOINTMENT_EMAIL}</strong> o llamando al <strong>980 62 26 18</strong>.</p>
+                <p>Atentamente,<br>Ayuntamiento de Cobreros</p>
             </div>
             
             <div class="footer">
-                <p>Atentamente,<br>
-                <strong>Ayuntamiento de Cobreros</strong><br>
-                📧 ${APPOINTMENT_EMAIL}<br>
-                📞 Teléfono: 980 62 26 18</p>
-                
-                <p><em>Este es un email automático, por favor no responda a este mensaje.</em></p>
+                <p>Este es un email automático. Por favor, no responda a este mensaje.</p>
             </div>
         </div>
     </body>
     </html>
   `;
 }
-// Función para generar texto plano de confirmación de cita
 function generateAppointmentConfirmationText(data) {
     return `
-AYUNTAMIENTO DE COBREROS - CONFIRMACIÓN DE CITA PREVIA
+🏛️ Ayuntamiento de Cobreros
+Confirmación de Cita Previa
 
 Estimado/a ${data.name},
 
 Le confirmamos que su solicitud de cita previa ha sido recibida correctamente.
 
-DETALLES DE SU CITA:
+📅 Detalles de su cita:
 - Servicio: ${data.service}
 - Fecha: ${data.date || data.dateFormatted || 'No especificada'}
 - Hora: ${data.time || 'No especificada'}
@@ -423,144 +800,106 @@ DETALLES DE SU CITA:
 - ID de Cita: ${data.appointmentId || data.id || 'N/A'}
 ${data.comments ? `- Comentarios: ${data.comments}` : ''}
 
-IMPORTANTE: Nos pondremos en contacto con usted para confirmar la disponibilidad de la fecha y hora solicitada.
-
-Si necesita modificar o cancelar su cita, póngase en contacto con nosotros en ${APPOINTMENT_EMAIL} o llamando al 980 62 26 18.
+Importante: Nos pondremos en contacto con usted para confirmar la disponibilidad de la fecha y hora solicitada.
 
 Atentamente,
 Ayuntamiento de Cobreros
-${APPOINTMENT_EMAIL}
-Teléfono: 980 62 26 18
 
-Este es un email automático, por favor no responda a este mensaje.
+---
+Este es un email automático. Por favor, no responda a este mensaje.
   `;
 }
-// Función para generar HTML de notificación al administrador
 function generateAdminNotificationHTML(data) {
     return `
     <!DOCTYPE html>
     <html>
     <head>
         <meta charset="UTF-8">
-        <title>Nueva Solicitud de Cita Previa</title>
+        <title>Nueva Cita Previa</title>
         <style>
             body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
             .container { max-width: 600px; margin: 0 auto; padding: 20px; }
             .header { background-color: #e74c3c; color: white; padding: 20px; text-align: center; }
             .content { padding: 20px; background-color: #f9f9f9; }
             .appointment-details { background-color: white; padding: 15px; margin: 15px 0; border-left: 4px solid #e74c3c; }
-            .contact-info { background-color: #ecf0f1; padding: 15px; margin: 15px 0; border-radius: 5px; }
             .footer { text-align: center; padding: 20px; color: #666; font-size: 12px; }
-            .highlight { color: #e74c3c; font-weight: bold; }
-            .urgent { background-color: #fff3cd; border: 1px solid #ffeaa7; padding: 10px; border-radius: 5px; margin: 10px 0; }
         </style>
     </head>
     <body>
         <div class="container">
             <div class="header">
-                <h1>🚨 NUEVA SOLICITUD DE CITA PREVIA</h1>
-                <h2>Ayuntamiento de Cobreros</h2>
+                <h1>🔔 Nueva Cita Previa</h1>
+                <h2>Notificación para Administradores</h2>
             </div>
             
             <div class="content">
-                <div class="urgent">
-                    <strong>⚠️ ACCIÓN REQUERIDA:</strong> Se ha recibido una nueva solicitud de cita previa que requiere confirmación.
-                </div>
-                
-                <div class="contact-info">
-                    <h3>👤 Datos del Solicitante:</h3>
-                    <ul>
-                        <li><strong>Nombre:</strong> ${data.name}</li>
-                        <li><strong>DNI:</strong> ${data.dni}</li>
-                        <li><strong>Email:</strong> ${data.email}</li>
-                        <li><strong>Teléfono:</strong> ${data.phone}</li>
-                    </ul>
-                </div>
+                <p>Se ha recibido una nueva solicitud de cita previa.</p>
                 
                 <div class="appointment-details">
-                    <h3>📅 Detalles de la Cita Solicitada:</h3>
+                    <h3>📋 Detalles de la solicitud:</h3>
                     <ul>
-                        <li><strong>Servicio:</strong> <span class="highlight">${data.service}</span></li>
-                        <li><strong>Fecha:</strong> <span class="highlight">${data.date}</span></li>
-                        <li><strong>Hora:</strong> <span class="highlight">${data.time}</span></li>
+                        <li><strong>Nombre:</strong> ${data.name}</li>
+                        <li><strong>Email:</strong> ${data.email}</li>
+                        <li><strong>Teléfono:</strong> ${data.phone || 'No proporcionado'}</li>
+                        <li><strong>DNI:</strong> ${data.dni}</li>
+                        <li><strong>Servicio:</strong> ${data.service}</li>
+                        <li><strong>Fecha:</strong> ${data.date || data.dateFormatted || 'No especificada'}</li>
+                        <li><strong>Hora:</strong> ${data.time || 'No especificada'}</li>
                         <li><strong>ID de Cita:</strong> ${data.appointmentId || data.id}</li>
                         ${data.comments ? `<li><strong>Comentarios:</strong> ${data.comments}</li>` : ''}
-                        <li><strong>Fecha de Solicitud:</strong> ${data.createdAt || new Date().toLocaleString('es-ES')}</li>
                     </ul>
                 </div>
                 
-                <div class="urgent">
-                    <h3>📋 Próximos Pasos:</h3>
-                    <ol>
-                        <li>Verificar disponibilidad en el calendario</li>
-                        <li>Contactar al solicitante para confirmar</li>
-                        <li>Actualizar el estado de la cita en el sistema</li>
-                    </ol>
-                </div>
+                <p>Por favor, revise la solicitud en el panel de administración.</p>
             </div>
             
             <div class="footer">
-                <p><strong>Sistema de Gestión de Citas</strong><br>
-                Ayuntamiento de Cobreros<br>
-                📧 ${APPOINTMENT_EMAIL}<br>
-                📞 980 62 26 18</p>
-                
-                <p><em>Este es un email automático del sistema de citas previas.</em></p>
+                <p>Este es un email automático del sistema de gestión de citas.</p>
             </div>
         </div>
     </body>
     </html>
   `;
 }
-// Función para generar texto plano de notificación al administrador
 function generateAdminNotificationText(data) {
     return `
-NUEVA SOLICITUD DE CITA PREVIA - AYUNTAMIENTO DE COBREROS
+🔔 Nueva Cita Previa
+Notificación para Administradores
 
-⚠️ ACCIÓN REQUERIDA: Se ha recibido una nueva solicitud de cita previa que requiere confirmación.
+Se ha recibido una nueva solicitud de cita previa.
 
-DATOS DEL SOLICITANTE:
+📋 Detalles de la solicitud:
 - Nombre: ${data.name}
-- DNI: ${data.dni}
 - Email: ${data.email}
-- Teléfono: ${data.phone}
-
-DETALLES DE LA CITA SOLICITADA:
+- Teléfono: ${data.phone || 'No proporcionado'}
+- DNI: ${data.dni}
 - Servicio: ${data.service}
-- Fecha: ${data.date}
-- Hora: ${data.time}
+- Fecha: ${data.date || data.dateFormatted || 'No especificada'}
+- Hora: ${data.time || 'No especificada'}
 - ID de Cita: ${data.appointmentId || data.id}
 ${data.comments ? `- Comentarios: ${data.comments}` : ''}
-- Fecha de Solicitud: ${data.createdAt || new Date().toLocaleString('es-ES')}
 
-PRÓXIMOS PASOS:
-1. Verificar disponibilidad en el calendario
-2. Contactar al solicitante para confirmar
-3. Actualizar el estado de la cita en el sistema
+Por favor, revise la solicitud en el panel de administración.
 
-Sistema de Gestión de Citas - Ayuntamiento de Cobreros
-${APPOINTMENT_EMAIL}
-Teléfono: 980 62 26 18
-
-Este es un email automático del sistema de citas previas.
+---
+Este es un email automático del sistema de gestión de citas.
   `;
 }
-// Función para generar HTML de cambio de estado
 function generateStatusChangeHTML(data) {
-    const statusTexts = {
+    const statusText = {
         'pending': 'Pendiente',
         'confirmed': 'Confirmada',
         'cancelled': 'Cancelada',
-        'completed': 'Completada'
+        'completed': 'Completada',
+        'no_show': 'No se presentó'
     };
-    const statusColors = {
+    const statusColor = {
         'pending': '#f39c12',
         'confirmed': '#27ae60',
         'cancelled': '#e74c3c',
-        'completed': '#3498db'
+        'completed': '#3498db',
+        'no_show': '#95a5a6'
     };
-    const statusText = statusTexts[data.newStatus] || data.newStatus;
-    const statusColor = statusColors[data.newStatus] || '#333';
     return `
     <!DOCTYPE html>
     <html>
@@ -570,18 +909,17 @@ function generateStatusChangeHTML(data) {
         <style>
             body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
             .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-            .header { background-color: ${statusColor}; color: white; padding: 20px; text-align: center; }
+            .header { background-color: ${statusColor[data.status] || '#2c3e50'}; color: white; padding: 20px; text-align: center; }
             .content { padding: 20px; background-color: #f9f9f9; }
-            .status-box { background-color: white; padding: 15px; margin: 15px 0; border-left: 4px solid ${statusColor}; }
+            .appointment-details { background-color: white; padding: 15px; margin: 15px 0; border-left: 4px solid ${statusColor[data.status] || '#2c3e50'}; }
             .footer { text-align: center; padding: 20px; color: #666; font-size: 12px; }
-            .highlight { color: ${statusColor}; font-weight: bold; }
         </style>
     </head>
     <body>
         <div class="container">
             <div class="header">
-                <h1>📅 Actualización de su Cita Previa</h1>
-                <h2>Ayuntamiento de Cobreros</h2>
+                <h1>📅 Actualización de Cita Previa</h1>
+                <h2>Estado: ${statusText[data.status] || data.status}</h2>
             </div>
             
             <div class="content">
@@ -589,237 +927,163 @@ function generateStatusChangeHTML(data) {
                 
                 <p>Le informamos que el estado de su cita previa ha sido actualizado.</p>
                 
-                <div class="status-box">
-                    <h3>Estado de su cita:</h3>
-                    <p style="font-size: 18px; color: ${statusColor}; font-weight: bold;">${statusText}</p>
+                <div class="appointment-details">
+                    <h3>📋 Detalles de la cita:</h3>
                     <ul>
                         <li><strong>Servicio:</strong> ${data.service}</li>
-                        <li><strong>Fecha:</strong> ${data.date}</li>
-                        <li><strong>Hora:</strong> ${data.time}</li>
+                        <li><strong>Fecha:</strong> ${data.date || data.dateFormatted || 'No especificada'}</li>
+                        <li><strong>Hora:</strong> ${data.time || 'No especificada'}</li>
+                        <li><strong>Estado:</strong> <strong style="color: ${statusColor[data.status] || '#2c3e50'};">${statusText[data.status] || data.status}</strong></li>
                         <li><strong>ID de Cita:</strong> ${data.appointmentId || data.id}</li>
                     </ul>
                 </div>
                 
-                ${data.message ? `<p style="white-space: pre-line;">${data.message}</p>` : ''}
+                <p>Si tiene alguna pregunta, no dude en contactarnos.</p>
                 
-                ${data.alternativeDate && data.alternativeTime ? `
-                <div class="status-box" style="background-color: #e8f5e9; border-left-color: #4caf50;">
-                    <h3 style="color: #2e7d32;">📅 Fecha Alternativa Propuesta</h3>
-                    <p style="font-size: 16px; color: #2e7d32; font-weight: bold;">
-                        Fecha: ${data.alternativeDate}<br>
-                        Hora: ${data.alternativeTime}
-                    </p>
-                    <p style="margin-top: 10px; color: #555;">
-                        Por favor, confirme si esta nueva fecha le resulta conveniente contactándonos.
-                    </p>
-                </div>
-                ` : ''}
-                
-                ${data.reason ? `<p><strong>Motivo:</strong> ${data.reason}</p>` : ''}
-                
-                <p>Si tiene alguna duda, puede contactarnos en <strong>${APPOINTMENT_EMAIL}</strong> o llamando al <strong>980 62 26 18</strong>.</p>
+                <p>Atentamente,<br>Ayuntamiento de Cobreros</p>
             </div>
             
             <div class="footer">
-                <p>Atentamente,<br>
-                <strong>Ayuntamiento de Cobreros</strong><br>
-                📧 ${APPOINTMENT_EMAIL}<br>
-                📞 Teléfono: 980 62 26 18</p>
-                
-                <p><em>Este es un email automático, por favor no responda a este mensaje.</em></p>
+                <p>Este es un email automático. Por favor, no responda a este mensaje.</p>
             </div>
         </div>
     </body>
     </html>
   `;
 }
-// Función para generar texto plano de cambio de estado
 function generateStatusChangeText(data) {
-    const statusTexts = {
+    const statusText = {
         'pending': 'Pendiente',
         'confirmed': 'Confirmada',
         'cancelled': 'Cancelada',
-        'completed': 'Completada'
+        'completed': 'Completada',
+        'no_show': 'No se presentó'
     };
-    const statusText = statusTexts[data.newStatus] || data.newStatus;
     return `
-ACTUALIZACIÓN DE CITA PREVIA - AYUNTAMIENTO DE COBREROS
+📅 Actualización de Cita Previa
+Estado: ${statusText[data.status] || data.status}
 
 Estimado/a ${data.name},
 
 Le informamos que el estado de su cita previa ha sido actualizado.
 
-ESTADO DE SU CITA: ${statusText}
-
-DETALLES:
+📋 Detalles de la cita:
 - Servicio: ${data.service}
-- Fecha: ${data.date}
-- Hora: ${data.time}
+- Fecha: ${data.date || data.dateFormatted || 'No especificada'}
+- Hora: ${data.time || 'No especificada'}
+- Estado: ${statusText[data.status] || data.status}
 - ID de Cita: ${data.appointmentId || data.id}
 
-${data.message ? `\n${data.message}\n` : ''}
-
-${data.alternativeDate && data.alternativeTime ? `
-FECHA ALTERNATIVA PROPUESTA:
-Fecha: ${data.alternativeDate}
-Hora: ${data.alternativeTime}
-
-Por favor, confirme si esta nueva fecha le resulta conveniente contactándonos.
-` : ''}
-
-${data.reason ? `\nMotivo: ${data.reason}\n` : ''}
-
-Si tiene alguna duda, puede contactarnos en ${APPOINTMENT_EMAIL} o llamando al 980 62 26 18.
+Si tiene alguna pregunta, no dude en contactarnos.
 
 Atentamente,
 Ayuntamiento de Cobreros
-${APPOINTMENT_EMAIL}
-Teléfono: 980 62 26 18
 
-Este es un email automático, por favor no responda a este mensaje.
+---
+Este es un email automático. Por favor, no responda a este mensaje.
   `;
 }
-// Función para generar HTML de no presentación
 function generateNoShowHTML(data) {
     return `
     <!DOCTYPE html>
     <html>
     <head>
         <meta charset="UTF-8">
-        <title>No se presentó a su cita previa</title>
+        <title>No se presentó a la cita</title>
         <style>
             body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
             .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-            .header { background-color: #ef4444; color: white; padding: 20px; text-align: center; }
+            .header { background-color: #e74c3c; color: white; padding: 20px; text-align: center; }
             .content { padding: 20px; background-color: #f9f9f9; }
-            .warning-box { background-color: #fef2f2; padding: 15px; margin: 15px 0; border-left: 4px solid #ef4444; border-radius: 4px; }
-            .info-box { background-color: white; padding: 15px; margin: 15px 0; border-left: 4px solid #3b82f6; }
+            .appointment-details { background-color: white; padding: 15px; margin: 15px 0; border-left: 4px solid #e74c3c; }
             .footer { text-align: center; padding: 20px; color: #666; font-size: 12px; }
         </style>
     </head>
     <body>
         <div class="container">
             <div class="header">
-                <h1>⚠️ No se presentó a su cita previa</h1>
-                <h2>Ayuntamiento de Cobreros</h2>
+                <h1>⚠️ No se presentó a la cita</h1>
             </div>
             
             <div class="content">
                 <p>Estimado/a <strong>${data.name}</strong>,</p>
                 
-                <div class="warning-box">
-                    <h3 style="color: #dc2626; margin-top: 0;">No se presentó a su cita</h3>
-                    <p>Le informamos que no se presentó a su cita previa programada.</p>
-                </div>
+                <p>Le informamos que ha sido registrado como ausente en su cita previa.</p>
                 
-                <div class="info-box">
-                    <h3>Detalles de la cita:</h3>
-                    <ul style="list-style: none; padding: 0;">
+                <div class="appointment-details">
+                    <h3>📋 Detalles de la cita:</h3>
+                    <ul>
                         <li><strong>Servicio:</strong> ${data.service}</li>
-                        <li><strong>Fecha:</strong> ${data.date}</li>
-                        <li><strong>Hora:</strong> ${data.time}</li>
+                        <li><strong>Fecha:</strong> ${data.date || data.dateFormatted || 'No especificada'}</li>
+                        <li><strong>Hora:</strong> ${data.time || 'No especificada'}</li>
                         <li><strong>ID de Cita:</strong> ${data.appointmentId || data.id}</li>
                     </ul>
                 </div>
                 
-                <p>Si desea reagendar su cita, por favor contacte con nosotros lo antes posible.</p>
+                <p>Si necesita una nueva cita, por favor, realice una nueva solicitud.</p>
                 
-                <p>Si tiene alguna duda, puede contactarnos en <strong>${APPOINTMENT_EMAIL}</strong> o llamando al <strong>980 62 26 18</strong>.</p>
+                <p>Atentamente,<br>Ayuntamiento de Cobreros</p>
             </div>
             
             <div class="footer">
-                <p>Atentamente,<br>
-                <strong>Ayuntamiento de Cobreros</strong><br>
-                📧 ${APPOINTMENT_EMAIL}<br>
-                📞 Teléfono: 980 62 26 18</p>
-                
-                <p><em>Este es un email automático, por favor no responda a este mensaje.</em></p>
+                <p>Este es un email automático. Por favor, no responda a este mensaje.</p>
             </div>
         </div>
     </body>
     </html>
   `;
 }
-// Función para generar texto plano de no presentación
 function generateNoShowText(data) {
     return `
-NO SE PRESENTÓ A SU CITA PREVIA - AYUNTAMIENTO DE COBREROS
+⚠️ No se presentó a la cita
 
 Estimado/a ${data.name},
 
-Le informamos que no se presentó a su cita previa programada.
+Le informamos que ha sido registrado como ausente en su cita previa.
 
-DETALLES DE LA CITA:
+📋 Detalles de la cita:
 - Servicio: ${data.service}
-- Fecha: ${data.date}
-- Hora: ${data.time}
+- Fecha: ${data.date || data.dateFormatted || 'No especificada'}
+- Hora: ${data.time || 'No especificada'}
 - ID de Cita: ${data.appointmentId || data.id}
 
-Si desea reagendar su cita, por favor contacte con nosotros lo antes posible.
-
-Si tiene alguna duda, puede contactarnos en ${APPOINTMENT_EMAIL} o llamando al 980 62 26 18.
+Si necesita una nueva cita, por favor, realice una nueva solicitud.
 
 Atentamente,
 Ayuntamiento de Cobreros
-${APPOINTMENT_EMAIL}
-Teléfono: 980 62 26 18
 
-Este es un email automático, por favor no responda a este mensaje.
+---
+Este es un email automático. Por favor, no responda a este mensaje.
   `;
 }
 function generateGeneralNoticeHTML(data) {
-    const title = escapeHtml((data === null || data === void 0 ? void 0 : data.title) || 'Aviso municipal');
-    const messageRaw = ((data === null || data === void 0 ? void 0 : data.message) || '').toString();
-    const messageHtml = messageRaw
-        ? messageRaw
-            .split(/\r?\n/)
-            .filter((line) => line.trim().length > 0)
-            .map((line) => `<p>${escapeHtml(line.trim())}</p>`)
-            .join('\n')
-        : '<p>Sin contenido adicional.</p>';
-    const attachmentUrl = typeof (data === null || data === void 0 ? void 0 : data.attachmentUrl) === 'string' && data.attachmentUrl
-        ? data.attachmentUrl
-        : '';
-    const attachmentName = escapeHtml((data === null || data === void 0 ? void 0 : data.attachmentName) || 'Documento adjunto');
-    const attachmentBlock = attachmentUrl
-        ? `<p style="margin-top: 16px;"><a href="${attachmentUrl}" target="_blank" rel="noopener noreferrer">📎 ${attachmentName}</a></p>`
-        : '';
-    const sentAtDate = (data === null || data === void 0 ? void 0 : data.sentAt) ? new Date(data.sentAt) : new Date();
-    const sentAt = escapeHtml(sentAtDate.toLocaleString('es-ES'));
     return `
     <!DOCTYPE html>
     <html>
     <head>
         <meta charset="UTF-8">
-        <title>${title}</title>
+        <title>${data.title || 'Aviso del Ayuntamiento'}</title>
         <style>
-            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; background-color: #f9f9f9; }
-            .container { max-width: 640px; margin: 0 auto; padding: 24px; background-color: #ffffff; border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.05); }
-            .header { background-color: #1d4ed8; color: #fff; padding: 24px; border-radius: 10px 10px 0 0; text-align: center; }
-            .header h1 { margin: 0; font-size: 24px; }
-            .title { font-size: 22px; margin: 24px 0 12px; color: #111827; }
-            .content { padding: 8px 0; }
-            .footer { margin-top: 32px; font-size: 13px; color: #6b7280; text-align: center; }
-            a.button { display: inline-block; margin-top: 16px; padding: 12px 20px; background-color: #2563eb; color: #fff; text-decoration: none; border-radius: 8px; font-weight: bold; }
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+            .header { background-color: #2c3e50; color: white; padding: 20px; text-align: center; }
+            .content { padding: 20px; background-color: #f9f9f9; }
+            .footer { text-align: center; padding: 20px; color: #666; font-size: 12px; }
         </style>
     </head>
     <body>
         <div class="container">
             <div class="header">
-                <h1>Ayuntamiento de Cobreros</h1>
-                <p>Comunicación oficial</p>
+                <h1>🏛️ Ayuntamiento de Cobreros</h1>
+                <h2>${data.title || 'Aviso'}</h2>
             </div>
-
-            <h2 class="title">${title}</h2>
-
+            
             <div class="content">
-                ${messageHtml}
-                ${attachmentBlock}
+                ${data.content || data.message || '<p>Aviso del Ayuntamiento de Cobreros</p>'}
             </div>
-
+            
             <div class="footer">
-                <p>Enviado el: ${sentAt}</p>
-                <p>Este es un mensaje automático del Ayuntamiento de Cobreros. Por favor, no responda a este correo.</p>
+                <p>Este es un email automático. Por favor, no responda a este mensaje.</p>
             </div>
         </div>
     </body>
@@ -827,46 +1091,27 @@ function generateGeneralNoticeHTML(data) {
   `;
 }
 function generateGeneralNoticeText(data) {
-    const title = ((data === null || data === void 0 ? void 0 : data.title) || 'Aviso municipal').toString();
-    const message = ((data === null || data === void 0 ? void 0 : data.message) || '').toString();
-    const sentAtDate = (data === null || data === void 0 ? void 0 : data.sentAt) ? new Date(data.sentAt) : new Date();
-    const sentAt = sentAtDate.toLocaleString('es-ES');
-    const attachmentUrl = typeof (data === null || data === void 0 ? void 0 : data.attachmentUrl) === 'string' && data.attachmentUrl
-        ? `\nAdjunto: ${data.attachmentUrl}`
-        : '';
     return `
-AVISO MUNICIPAL - AYUNTAMIENTO DE COBREROS
+🏛️ Ayuntamiento de Cobreros
+${data.title || 'Aviso'}
 
-${title.toUpperCase()}
+${data.content || data.message || 'Aviso del Ayuntamiento de Cobreros'}
 
-${message}
-
-${attachmentUrl}
-
-Enviado el: ${sentAt}
-
-Este es un mensaje automático del Ayuntamiento de Cobreros. No responda a este correo.
+---
+Este es un email automático. Por favor, no responda a este mensaje.
   `;
 }
-// ===== SISTEMA DE BACKUP AUTOMÁTICO =====
+// ===== FUNCIONES DE BACKUP =====
 /**
- * 🔄 Función programada para crear backups automáticos
- *
- * Se ejecuta diariamente a las 02:00 UTC
- * Guarda backups en Firebase Storage
- *
- * Backup incluye:
- * - Usuarios registrados
- * - Citas previas
- * - Notificaciones enviadas
- * - Configuración del sistema
+ * 🔄 Función programada para backup automático diario
+ * Se ejecuta todos los días a las 2:00 AM UTC
  */
-exports.createDailyBackup = functions.pubsub
-    .schedule('0 2 * * *') // Diariamente a las 02:00 UTC
-    .timeZone('Europe/Madrid')
+exports.backupAppointmentsTask = functions.pubsub
+    .schedule('every day 02:00')
+    .timeZone('UTC')
     .onRun(async (context) => {
     try {
-        console.log('🔄 Iniciando backup automático diario...');
+        console.log('🔄 Iniciando backup automático...');
         const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
         const backupDate = new Date().toISOString().split('T')[0];
         // Recolectar datos
@@ -879,11 +1124,10 @@ exports.createDailyBackup = functions.pubsub
         const usersSnapshot = await admin.firestore().collection('users').get();
         backupData.collections.users = usersSnapshot.docs.map(doc => (Object.assign({ id: doc.id }, doc.data())));
         console.log(`✅ Usuarios: ${usersSnapshot.size} documentos`);
-        // Backup de citas previas (desde localStorage, guardar en Firestore)
-        // Nota: Las citas están en localStorage del frontend, aquí guardamos la estructura
-        backupData.collections.appointments = {
-            note: 'Las citas previas se guardan en localStorage del frontend. Este backup guarda la estructura de datos.'
-        };
+        // Backup de citas previas desde Firestore
+        const appointmentsSnapshot = await admin.firestore().collection('appointments').get();
+        backupData.collections.appointments = appointmentsSnapshot.docs.map(doc => (Object.assign({ id: doc.id }, doc.data())));
+        console.log(`✅ Citas previas: ${appointmentsSnapshot.size} documentos`);
         // Backup de estadísticas de notificaciones
         const statsSnapshot = await admin.firestore()
             .collection('notification_stats')
@@ -904,6 +1148,7 @@ exports.createDailyBackup = functions.pubsub
         // Guardar backup en Firestore
         const backupRef = await admin.firestore().collection('backups').add(Object.assign(Object.assign({}, backupData), { createdAt: admin.firestore.FieldValue.serverTimestamp(), size: JSON.stringify(backupData).length, collectionsCount: {
                 users: backupData.collections.users.length,
+                appointments: backupData.collections.appointments.length,
                 notification_stats: backupData.collections.notification_stats.length,
                 admins: backupData.collections.admins.length
             } }));
@@ -983,6 +1228,9 @@ exports.createBackup = functions.https.onRequest((req, res) => {
             // Backup de usuarios
             const usersSnapshot = await admin.firestore().collection('users').get();
             backupData.collections.users = usersSnapshot.docs.map(doc => (Object.assign({ id: doc.id }, doc.data())));
+            // Backup de citas previas desde Firestore
+            const appointmentsSnapshot = await admin.firestore().collection('appointments').get();
+            backupData.collections.appointments = appointmentsSnapshot.docs.map(doc => (Object.assign({ id: doc.id }, doc.data())));
             // Backup de estadísticas
             const statsSnapshot = await admin.firestore()
                 .collection('notification_stats')
@@ -1015,6 +1263,7 @@ exports.createBackup = functions.https.onRequest((req, res) => {
                 timestamp: backupData.timestamp,
                 collectionsCount: {
                     users: backupData.collections.users.length,
+                    appointments: backupData.collections.appointments.length,
                     notification_stats: backupData.collections.notification_stats.length,
                     admins: backupData.collections.admins.length
                 }

@@ -17,6 +17,13 @@ service firebase.storage {
                    && request.resource.contentType.matches('^(image/.*|application/pdf|application/msword|application/vnd\\.openxmlformats-officedocument\\..+)$');
     }
 
+    match /appointments/{appointmentId}/{allPaths=**} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() 
+                   && request.resource.size < 10 * 1024 * 1024
+                   && request.resource.contentType.matches('^(image/.*|application/pdf|application/msword|application/vnd\\.openxmlformats-officedocument\\..+)$');
+    }
+
     match /{allPaths=**} {
       allow read, write: if false;
     }
