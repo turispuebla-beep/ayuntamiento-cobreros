@@ -1,0 +1,230 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function adminDocument(uid) {
+      return get(/databases/$(database)/documents/admins/$(uid));
+    }
+
+    function isAdmin() {
+      return isAuthenticated() &&
+             exists(/databases/$(database)/documents/admins/$(request.auth.uid)) &&
+             (adminDocument(request.auth.uid).data.isActive == true ||
+              !('isActive' in adminDocument(request.auth.uid).data));
+    }
+
+    function isSuperAdmin() {
+      return isAuthenticated() &&
+             exists(/databases/$(database)/documents/admins/$(request.auth.uid)) &&
+             adminDocument(request.auth.uid).data.isSuperAdmin == true;
+    }
+
+    function isSameUser(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function optionalStringField(data, field, maxLength) {
+      return !(field in data) || (data[field] is string && data[field].size() <= maxLength);
+    }
+
+    function isStringList(value, maxItems) {
+      return value is list &&
+             value.size() <= maxItems;
+    }
+
+    function isValidUserData(data) {
+      let allowedKeys = [
+        'nombre', 'apellidos', 'surname1', 'surname2', 'fullName',
+        'email', 'telefono', 'direccion', 'ciudad', 'codigoPostal',
+        'documentType', 'documentTypeName', 'documentNumber', 'dni',
+        'notificationConsent', 'localities', 'fcmToken', 'lastNotificationError',
+        'registeredFrom', 'registrationDate', 'lastNotificationCheck', 'lastNotificationAt'
+      ];
+
+      return data.keys().hasOnly(allowedKeys) &&
+             data.email is string &&
+             data.email.size() <= 320 &&
+             data.email.matches('^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$') &&
+             optionalStringField(data, 'nombre', 120) &&
+             optionalStringField(data, 'apellidos', 160) &&
+             optionalStringField(data, 'surname1', 120) &&
+             optionalStringField(data, 'surname2', 120) &&
+             optionalStringField(data, 'fullName', 200) &&
+             optionalStringField(data, 'telefono', 32) &&
+             optionalStringField(data, 'direccion', 200) &&
+             optionalStringField(data, 'ciudad', 120) &&
+             optionalStringField(data, 'codigoPostal', 10) &&
+             optionalStringField(data, 'documentType', 50) &&
+             optionalStringField(data, 'documentTypeName', 120) &&
+             optionalStringField(data, 'documentNumber', 50) &&
+             optionalStringField(data, 'dni', 50) &&
+             optionalStringField(data, 'fcmToken', 400) &&
+             optionalStringField(data, 'lastNotificationError', 400) &&
+             optionalStringField(data, 'registeredFrom', 40) &&
+             optionalStringField(data, 'lastNotificationCheck', 40) &&
+             optionalStringField(data, 'lastNotificationAt', 40) &&
+             (!( 'notificationConsent' in data) || data.notificationConsent is bool) &&
+             (!( 'localities' in data) || isStringList(data.localities, 20)) &&
+             (!( 'registrationDate' in data) || data.registrationDate is timestamp);
+    }
+
+    function isValidCarnetRequestData(data) {
+      return data.keys().hasOnly([
+        'nombre', 'apellidos', 'nombreCompleto',
+        'documentoTipo', 'documentoNumero',
+        'direccion', 'email', 'telefono',
+        'tipoSolicitante', 'tipoSolicitanteLabel',
+        'cuota', 'dataConsent',
+        'createdAt', 'createdAtString',
+        'source'
+      ]) &&
+      data.nombre is string && data.nombre.size() > 0 && data.nombre.size() <= 120 &&
+      optionalStringField(data, 'apellidos', 160) &&
+      optionalStringField(data, 'nombreCompleto', 200) &&
+      data.documentoTipo is string && data.documentoTipo.size() > 0 && data.documentoTipo.size() <= 20 &&
+      data.documentoNumero is string && data.documentoNumero.size() > 0 && data.documentoNumero.size() <= 50 &&
+      data.direccion is string && data.direccion.size() > 0 && data.direccion.size() <= 240 &&
+      optionalStringField(data, 'email', 320) &&
+      optionalStringField(data, 'telefono', 40) &&
+      data.tipoSolicitante is string && data.tipoSolicitante.size() > 0 && data.tipoSolicitante.size() <= 40 &&
+      optionalStringField(data, 'tipoSolicitanteLabel', 80) &&
+      optionalStringField(data, 'cuota', 40) &&
+      (!( 'dataConsent' in data) || data.dataConsent == true) &&
+      data.createdAt is timestamp &&
+      optionalStringField(data, 'createdAtString', 40) &&
+      optionalStringField(data, 'source', 40);
+    }
+
+    function isValidCotoRequestData(data) {
+      return data.keys().hasOnly([
+        'nombre', 'apellidos', 'nombreCompleto',
+        'documentoTipo', 'documentoNumero',
+        'direccion', 'email', 'telefono',
+        'licenciaNumero', 'cuota',
+        'dataConsent', 'createdAt',
+        'createdAtString', 'source'
+      ]) &&
+      data.nombre is string && data.nombre.size() > 0 && data.nombre.size() <= 120 &&
+      optionalStringField(data, 'apellidos', 160) &&
+      optionalStringField(data, 'nombreCompleto', 200) &&
+      data.documentoTipo is string && data.documentoTipo.size() > 0 && data.documentoTipo.size() <= 20 &&
+      data.documentoNumero is string && data.documentoNumero.size() > 0 && data.documentoNumero.size() <= 50 &&
+      data.direccion is string && data.direccion.size() > 0 && data.direccion.size() <= 240 &&
+      optionalStringField(data, 'email', 320) &&
+      optionalStringField(data, 'telefono', 40) &&
+      data.licenciaNumero is string && data.licenciaNumero.size() > 0 && data.licenciaNumero.size() <= 60 &&
+      optionalStringField(data, 'cuota', 40) &&
+      (!( 'dataConsent' in data) || data.dataConsent == true) &&
+      data.createdAt is timestamp &&
+      optionalStringField(data, 'createdAtString', 40) &&
+      optionalStringField(data, 'source', 40);
+    }
+
+    match /users/{userId} {
+      allow get: if isSameUser(userId) || isAdmin();
+      allow list: if isAdmin();
+      allow create: if isSameUser(userId) && isValidUserData(request.resource.data);
+      allow update: if (isSameUser(userId) && isValidUserData(request.resource.data))
+                    || (isAdmin() && isValidUserData(request.resource.data));
+      allow delete: if isSuperAdmin();
+    }
+
+    match /admins/{adminId} {
+      allow get: if isSuperAdmin() || request.auth.uid == adminId;
+      allow list: if isSuperAdmin();
+      allow create, update, delete: if isSuperAdmin();
+    }
+
+    match /notifications/{notificationId} {
+      allow get: if isAuthenticated();
+      allow list: if isAdmin() || (
+        isAuthenticated() && 
+        request.query.limit <= 100 &&
+        request.query.limit > 0
+      );
+      allow create: if isAuthenticated();
+      allow update, delete: if isAdmin();
+    }
+
+    match /notification_stats/{statId} {
+      allow get, list: if isAdmin();
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /config/{configId} {
+      allow get: if true;
+      allow list: if false;
+      allow create, update: if isAdmin();
+      allow delete: if isSuperAdmin();
+    }
+
+    match /news/{newsId} {
+      allow get, list: if true;
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /bandos/{bandoId} {
+      allow get, list: if true;
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /events/{eventId} {
+      allow get, list: if true;
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /documents/{documentId} {
+      allow get, list: if isAuthenticated();
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /appointments/{appointmentId} {
+      allow get: if isAuthenticated() && (
+        isSameUser(resource.data.createdBy) || 
+        isAdmin()
+      );
+      allow list: if isAdmin() || (
+        isAuthenticated() && 
+        request.query.limit <= 100 &&
+        request.query.limit > 0
+      );
+      allow create: if isAuthenticated() && 
+        request.resource.data.keys().hasAll(['service', 'name', 'dni', 'email', 'date', 'time', 'status']) &&
+        request.resource.data.status == 'pending' &&
+        request.resource.data.createdBy == request.auth.uid;
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    match /statistics/{statId} {
+      allow get, list: if isAdmin();
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /carnet_requests/{requestId} {
+      allow get, list: if isAdmin();
+      allow create: if isValidCarnetRequestData(request.resource.data);
+      allow update, delete: if isAdmin();
+    }
+
+    match /coto_requests/{requestId} {
+      allow get, list: if isAdmin();
+      allow create: if isValidCotoRequestData(request.resource.data);
+      allow update, delete: if isAdmin();
+    }
+
+    match /quickAccess/{quickId} {
+      allow get, list: if true;
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
+
