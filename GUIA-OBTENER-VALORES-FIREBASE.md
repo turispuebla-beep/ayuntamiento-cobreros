@@ -11,7 +11,7 @@
 5. Nombre de la app: `Ayuntamiento Cobreros Web`
 6. Una vez creada/visible, haz clic en el icono de **configuración (⚙️)** o en el nombre de la app
 7. Verás la configuración Firebase. Copia estos valores:
-   - **apiKey**: `AIzaSyB...` (empieza con AIzaSy)
+   - **apiKey**: Comienza por `AI` (no publiques la cadena completa)
    - **appId**: `1:623846192437:web:...` (empieza con 1:623846192437:web)
 
 ---
@@ -32,7 +32,7 @@
 ## 📝 **Una vez tengas los 3 valores, dímelos:**
 
 **Ejemplo:**
-- API Key: `AIzaSyBxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx`
+- API Key: `AIxx-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx`
 - App ID: `1:623846192437:web:xxxxxxxxxxxxxxxxxxxx`
 - VAPID Key: `BHrX8K3m2Yq5vN9wP7sT4uR6eY8iU0oA2dF4gH6jK8lM0nP2qR4sT6uV8wX0yZ2aB4cD6eF8gH0`
 

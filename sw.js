@@ -1,5 +1,5 @@
 // Service Worker para PWA del Ayuntamiento de Cobreros
-const CACHE_VERSION = '2025-11-14-01';
+const CACHE_VERSION = '2025-11-14-05';
 const CACHE_NAME = `ayuntamiento-cobreros-${CACHE_VERSION}`;
 const STATIC_CACHE = `ayuntamiento-static-${CACHE_VERSION}`;
 const DYNAMIC_CACHE = `ayuntamiento-dynamic-${CACHE_VERSION}`;
@@ -12,9 +12,10 @@ const CRITICAL_RESOURCES = [
 ];
 
 // Recursos estáticos (CSS, JS, imágenes)
+// NOTA: script.js NO se cachea en instalación porque tiene versión dinámica
 const STATIC_RESOURCES = [
   '/css/styles.css',
-  '/js/script.js',
+  // '/js/script.js', // NO cachear - siempre obtener de red (tiene versión)
   '/js/data-validators.js',
   '/js/error-handler.js',
   '/js/storage-manager.js',
@@ -103,6 +104,9 @@ self.addEventListener('fetch', event => {
   // Estrategia según tipo de recurso
   if (request.destination === 'document' || url.pathname === '/') {
     // HTML: Network First (siempre actualizado)
+    event.respondWith(networkFirstStrategy(request));
+  } else if (url.pathname.includes('script.js') || url.search.includes('v=')) {
+    // script.js con versión: Network First (siempre obtener la última versión)
     event.respondWith(networkFirstStrategy(request));
   } else if (request.destination === 'script' || 
              request.destination === 'style' ||

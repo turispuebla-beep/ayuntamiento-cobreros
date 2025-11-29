@@ -123,7 +123,8 @@ async function processEmailQueue() {
         },
         body: JSON.stringify({
           to: emailData.to,
-          from: emailData.from,
+          from: emailData.from || 'u2389387944@gmail.com',
+          fromName: emailData.fromName || 'Avisos Ayto Cobreros',
           subject: emailData.subject,
           template: emailData.template,
           data: emailData.data
@@ -175,12 +176,19 @@ async function processEmailQueue() {
  */
 async function sendEmailWithRetry(emailData) {
   try {
+    // Asegurar valores por defecto para remitente
+    const emailPayload = {
+      ...emailData,
+      from: emailData.from || 'u2389387944@gmail.com',
+      fromName: emailData.fromName || 'Avisos Ayto Cobreros'
+    };
+    
     const response = await fetch('https://us-central1-turisteam-80f1b.cloudfunctions.net/sendEmail', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify(emailData)
+      body: JSON.stringify(emailPayload)
     });
         
     const result = await response.json();
@@ -188,25 +196,25 @@ async function sendEmailWithRetry(emailData) {
     if (result.success) {
       // Registrar éxito en estadísticas
       if (typeof recordEmailAttempt === 'function') {
-        recordEmailAttempt(emailData, true);
+        recordEmailAttempt(emailPayload, true);
       }
       return { success: true, messageId: result.messageId };
     } else {
       // Registrar fallo en estadísticas
       if (typeof recordEmailAttempt === 'function') {
-        recordEmailAttempt(emailData, false, result.error);
+        recordEmailAttempt(emailPayload, false, result.error);
       }
       // Agregar a cola para reintento
-      queueEmail(emailData);
+      queueEmail(emailPayload);
       return { success: false, error: result.error, queued: true };
     }
   } catch (error) {
     // Registrar fallo en estadísticas
     if (typeof recordEmailAttempt === 'function') {
-      recordEmailAttempt(emailData, false, error.message);
+      recordEmailAttempt(emailPayload, false, error.message);
     }
     // Agregar a cola para reintento
-    queueEmail(emailData);
+    queueEmail(emailPayload);
     return { success: false, error: error.message, queued: true };
   }
 }

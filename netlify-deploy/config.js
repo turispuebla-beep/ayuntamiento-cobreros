@@ -72,7 +72,7 @@ const CONFIG = {
         enabled: true, // true = CITA PREVIA, false = SE ATIENDE SIN CITA PREVIA
         emailNotifications: {
             enabled: true,
-            fromEmail: 'aytocobreros@gmail.com',
+            fromEmail: 'u2389387944@gmail.com',
             adminEmail: 'aytocobreros@gmail.com',
             confirmationTemplate: 'confirmacion_cita',
             alertTemplate: 'alerta_nueva_cita'

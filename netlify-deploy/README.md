@@ -2,17 +2,32 @@
 
 Esta carpeta contiene todos los archivos necesarios para desplegar el sitio web del Ayuntamiento de Cobreros en Netlify.
 
+## ✅ Cambios Recientes (Noviembre 2025)
+
+### 🔧 Correcciones de CSP (Content Security Policy)
+- ✅ Actualizada la directiva `font-src` para permitir fuentes desde:
+  - `fonts.gstatic.com` (Google Fonts)
+  - `fonts.googleapis.com` (Google Fonts CSS)
+  - `cdnjs.cloudflare.com` (Font Awesome)
+  - `data:` (Fuentes inline)
+
+### 🐛 Correcciones de Modales
+- ✅ Función `openModal` disponible globalmente en `window`
+- ✅ Mejorado manejo de errores en apertura de modales
+- ✅ Fallbacks adicionales para botones de login y registro
+- ✅ Mejorada la visibilidad de modales con CSS adicional
+
 ## Archivos incluidos
 
 - `index.html` - Página principal
 - `config.js` - Configuración (sin credenciales embebidas)
 - `manifest.json` - Manifesto PWA
 - `sw.js` - Service Worker
-- `_headers` - Headers HTTP personalizados
+- `_headers` - Headers HTTP personalizados con CSP actualizada
 - `_redirects` - Reglas de redirección
-- `netlify.toml` - Configuración de Netlify
+- `netlify.toml` - Configuración de Netlify con CSP actualizada
 - `css/` - Estilos CSS
-- `js/` - Archivos JavaScript
+- `js/` - Archivos JavaScript (con mejoras en modales)
 - `images/` - Imágenes y recursos estáticos
 
 ## Cómo desplegar en Netlify

@@ -87,6 +87,18 @@ async function uploadAttachment(file, {
     throw new Error('No se proporcionó ningún archivo para subir.');
   }
 
+  // Verificar autenticación si es necesario (para rutas que requieren auth)
+  const requiresAuth = folder === 'consultorio' || folder === 'appointments' || folder === 'uploads';
+  if (requiresAuth) {
+    if (!window.firebase || !window.firebase.auth) {
+      throw new Error('Firebase Auth no está disponible. Por favor, recarga la página.');
+    }
+    const auth = window.firebase.auth();
+    if (!auth || !auth.currentUser) {
+      throw new Error('Debes estar autenticado para subir archivos. Por favor, inicia sesión como administrador.');
+    }
+  }
+
   const extension = getFileExtension(file.name);
   const sizeLimit = maxSize || DEFAULT_MAX_ATTACHMENT_SIZE;
 
@@ -103,7 +115,7 @@ async function uploadAttachment(file, {
     throw new Error('Firebase Storage no está disponible en este momento.');
   }
 
-  const storageService = window.firebase.storage && window.firebase.storage();
+  const storageService = window.firebase.storage();
   if (!storageService || (typeof storageService.ref !== 'function' && typeof storageService.uploadBytes !== 'function')) {
     throw new Error('Firebase Storage no está configurado correctamente.');
   }
@@ -125,20 +137,45 @@ async function uploadAttachment(file, {
   let downloadUrl = null;
   let finalStoragePath = storagePath;
 
-  if (typeof storageService.uploadBytes === 'function' && typeof storageService.getDownloadURL === 'function') {
-    await storageService.uploadBytes(storagePath, file, uploadMetadata);
-    downloadUrl = await storageService.getDownloadURL(storagePath);
-  } else if (typeof storageService.ref === 'function') {
-    const fileRef = storageService.ref(storagePath);
-    if (fileRef && typeof fileRef.put === 'function') {
-      await fileRef.put(file, uploadMetadata);
-      downloadUrl = await fileRef.getDownloadURL();
-      finalStoragePath = fileRef.fullPath || storagePath;
+  try {
+    // Usar la API wrapper de Firebase Storage configurada en index.html
+    // El wrapper ya maneja correctamente ref(), uploadBytes() y getDownloadURL()
+    if (typeof storageService.uploadBytes === 'function' && typeof storageService.getDownloadURL === 'function') {
+      // El wrapper ya crea el ref internamente, solo necesitamos pasar el path
+      await storageService.uploadBytes(storagePath, file, uploadMetadata);
+      downloadUrl = await storageService.getDownloadURL(storagePath);
+    } else if (typeof storageService.ref === 'function') {
+      // Fallback: usar ref() directamente
+      const fileRef = storageService.ref(storagePath);
+      if (fileRef) {
+        // Si el ref tiene métodos de la API moderna
+        if (window.firebaseStorage) {
+          // Usar directamente las funciones importadas desde el módulo
+          const { uploadBytes: uploadBytesFn, getDownloadURL: getDownloadURLFn, ref: refFn } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js');
+          const storageRef = refFn(window.firebaseStorage, storagePath);
+          await uploadBytesFn(storageRef, file, uploadMetadata);
+          downloadUrl = await getDownloadURLFn(storageRef);
+        } else {
+          throw new Error('Firebase Storage no está inicializado correctamente.');
+        }
+      } else {
+        throw new Error('No se pudo crear la referencia de Storage.');
+      }
     } else {
-      throw new Error('La referencia de Storage no soporta el método put().');
+      throw new Error('No se encontró un método compatible para subir archivos a Storage.');
     }
-  } else {
-    throw new Error('No se encontró un método compatible para subir archivos a Storage.');
+  } catch (error) {
+    storageLogError('❌ Error subiendo archivo a Firebase Storage:', error);
+    // Proporcionar un mensaje de error más descriptivo basado en el código de error
+    if (error.code === 'storage/unauthorized' || error.message?.includes('permission') || error.message?.includes('Permission denied')) {
+      throw new Error('No tienes permisos para subir archivos. Asegúrate de estar autenticado como administrador.');
+    } else if (error.code === 'storage/quota-exceeded') {
+      throw new Error('Se ha excedido la cuota de almacenamiento. Contacta con el administrador.');
+    } else if (error.code === 'storage/canceled') {
+      throw new Error('La subida del archivo fue cancelada.');
+    } else {
+      throw new Error(`Error al subir archivo: ${error.message || 'Error desconocido'}`);
+    }
   }
 
   return {

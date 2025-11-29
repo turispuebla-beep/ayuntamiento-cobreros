@@ -138,6 +138,19 @@ async function handleFormWithRecaptcha(formId, action, submitCallback) {
   submitBtn.classList.add('loading');
   submitBtn.disabled = true;
 
+  // Si reCAPTCHA no está disponible, continuar sin bloquear al usuario
+  const recaptchaAvailable = typeof window !== 'undefined' && window.grecaptcha;
+  if (!recaptchaAvailable) {
+    recaptchaLogWarn(`⚠️ reCAPTCHA no disponible para ${formId}. Continuando sin validación adicional.`);
+    try {
+      await submitCallback(null);
+    } finally {
+      submitBtn.classList.remove('loading');
+      submitBtn.disabled = false;
+    }
+    return;
+  }
+
   try {
     // Ejecutar reCAPTCHA
     const token = await executeRecaptcha(action);
@@ -198,22 +211,28 @@ function initializeRecaptcha() {
   if (loginForm) {
     loginForm.addEventListener('submit', async (e) => {
       e.preventDefault();
+      e.stopImmediatePropagation();
             
       await handleFormWithRecaptcha('loginForm', RECAPTCHA_CONFIG.actions.login, async (token) => {
-        // Aquí va la lógica original de login
-        const email = document.getElementById('loginEmail').value;
-        const password = document.getElementById('loginPassword').value;
+        const emailInput = document.getElementById('loginEmail');
+        const passwordInput = document.getElementById('loginPassword');
+        const rememberCheckbox = document.getElementById('loginRemember');
+        const email = emailInput ? emailInput.value : '';
+        const password = passwordInput ? passwordInput.value : '';
+        const rememberSession = rememberCheckbox ? rememberCheckbox.checked : false;
                 
         recaptchaLogInfo('🔐 Procesando login con reCAPTCHA válido');
                 
-        // Llamar a la función original de login
         if (typeof handleLogin === 'function') {
-          await handleLogin(email, password, token);
+          await handleLogin(email, password, {
+            rememberSession,
+            recaptchaToken: token
+          });
         } else {
           recaptchaLogError('❌ Función handleLogin no encontrada');
         }
       });
-    });
+    }, true);
   }
 
   // Register Form
@@ -250,6 +269,7 @@ function initializeRecaptcha() {
   if (adminLoginForm) {
     adminLoginForm.addEventListener('submit', async (e) => {
       e.preventDefault();
+      e.stopImmediatePropagation();
             
       await handleFormWithRecaptcha('adminLoginForm', RECAPTCHA_CONFIG.actions.admin_login, async (token) => {
         // Aquí va la lógica original de admin login
@@ -266,14 +286,38 @@ function initializeRecaptcha() {
                 
         recaptchaLogInfo('👨‍💼 Procesando admin login con reCAPTCHA válido');
                 
-        // Llamar a la función original de admin login
+        // Llamar a la función original de admin login - buscar en múltiples lugares
+        let adminLoginHandler = null;
+        
+        // Intentar encontrar la función en diferentes ubicaciones
         if (typeof handleAdminLogin === 'function') {
-          await handleAdminLogin(email, password, token);
+          adminLoginHandler = handleAdminLogin;
+        } else if (typeof window.handleAdminLogin === 'function') {
+          adminLoginHandler = window.handleAdminLogin;
         } else {
-          recaptchaLogError('❌ Función handleAdminLogin no encontrada');
+          // Esperar un poco y reintentar (puede que el script aún se esté cargando)
+          await new Promise(resolve => setTimeout(resolve, 100));
+          
+          if (typeof handleAdminLogin === 'function') {
+            adminLoginHandler = handleAdminLogin;
+          } else if (typeof window.handleAdminLogin === 'function') {
+            adminLoginHandler = window.handleAdminLogin;
+          }
+        }
+        
+        if (adminLoginHandler) {
+          await adminLoginHandler(email, password, token);
+        } else {
+          recaptchaLogError('❌ Función handleAdminLogin no encontrada. El script puede no haberse cargado completamente.');
+          // Intentar llamar directamente al formulario como fallback
+          const adminForm = document.getElementById('adminLoginForm');
+          if (adminForm) {
+            const formEvent = new Event('submit', { bubbles: true, cancelable: true });
+            adminForm.dispatchEvent(formEvent);
+          }
         }
       });
-    });
+    }, true);
   }
 
   recaptchaLogInfo('✅ reCAPTCHA inicializado en todos los formularios');

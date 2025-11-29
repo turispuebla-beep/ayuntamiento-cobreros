@@ -176,7 +176,42 @@ async function confirmCancelAppointment() {
     date: alternativeDate,
     time: alternativeTime
   } : null);
-    
+  
+  // Enviar notificación push al usuario (si tiene token FCM y consentimiento)
+  if (typeof enviarNotificacionPushAUsuario === 'function' && appointment.email) {
+    try {
+      const serviceName = typeof getServiceName === 'function' ? getServiceName(appointment.service) : appointment.service;
+      const dateFormatted = typeof formatDateForDisplay === 'function' 
+        ? formatDateForDisplay(appointment.date) 
+        : (typeof formatDate === 'function' ? formatDate(appointment.date) : appointment.date);
+      
+      let mensajePush = `Su cita para ${serviceName} del ${dateFormatted} ha sido cancelada.`;
+      
+      if (reason) {
+        mensajePush += ` Motivo: ${reason}`;
+      }
+      
+      if (offerAlternative && alternativeDate && alternativeTime && alternativeDate.date) {
+        const altDateFormatted = typeof formatDateForDisplay === 'function' 
+          ? formatDateForDisplay(alternativeDate.date) 
+          : (alternativeDate.date || alternativeDate);
+        mensajePush += ` Le proponemos una nueva fecha: ${altDateFormatted} a las ${alternativeTime}. Por favor, confirme si le resulta conveniente.`;
+      } else {
+        mensajePush += ' Si desea reagendar su cita, por favor contacte con nosotros.';
+      }
+      
+      await enviarNotificacionPushAUsuario(
+        appointment.email,
+        'Cita Cancelada - Ayuntamiento de Cobreros',
+        mensajePush,
+        'cita'
+      );
+    } catch (pushError) {
+      console.warn('No se pudo enviar notificación push al usuario:', pushError);
+      // No fallar si no se puede enviar push, el email ya se envió
+    }
+  }
+  
   // Registrar intento de email
   if (typeof recordEmailAttempt === 'function' && emailResult) {
     recordEmailAttempt({
@@ -239,36 +274,79 @@ async function sendCancellationEmail(appointment, reason, alternativeDate = null
       message += '\n\nSi desea reagendar su cita, por favor contacte con nosotros.';
     }
         
-    const response = await fetch('https://us-central1-turisteam-80f1b.cloudfunctions.net/sendEmail', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        to: appointment.email,
-        from: 'u2389387944@gmail.com',
-        subject: 'Cancelación de Cita Previa - Ayuntamiento de Cobreros',
-        template: 'appointment_status_change',
-        data: {
-          name: appointment.name,
-          oldStatus: typeof getStatusText === 'function' ? getStatusText(appointment.status === 'cancelled' ? 'confirmed' : appointment.status) : 'Confirmada',
-          newStatus: 'Cancelada',
-          service: typeof getServiceName === 'function' ? getServiceName(appointment.service) : appointment.service,
-          date: typeof formatDate === 'function' ? formatDate(appointment.date) : appointment.date,
-          time: appointment.time,
-          dni: appointment.dni,
-          email: appointment.email,
-          phone: appointment.phone,
-          message: message,
-          alternativeDate: alternativeDate && typeof formatDateForDisplay === 'function' 
-            ? formatDateForDisplay(alternativeDate.date) 
-            : (alternativeDate ? alternativeDate.date : null),
-          alternativeTime: alternativeDate ? alternativeDate.time : null
-        }
-      })
-    });
+    // Verificar que CLOUD_FUNCTIONS_BASE_URL esté definido (o usar URL hardcodeada como fallback)
+    const cloudFunctionsUrl = typeof CLOUD_FUNCTIONS_BASE_URL !== 'undefined' 
+      ? CLOUD_FUNCTIONS_BASE_URL 
+      : 'https://us-central1-turisteam-80f1b.cloudfunctions.net';
+    
+    if (!cloudFunctionsUrl) {
+      console.error('❌ URL de Cloud Functions no está definida');
+      return { success: false, error: 'URL de Cloud Functions no definida' };
+    }
 
-    const result = await response.json();
+    // Configurar timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 segundos
+
+    let response;
+    try {
+      response = await fetch(`${cloudFunctionsUrl}/sendEmail`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          to: appointment.email,
+          from: 'u2389387944@gmail.com',
+          fromName: 'Avisos Ayto Cobreros',
+          subject: 'Cancelación de Cita Previa - Ayuntamiento de Cobreros',
+          template: 'appointment_status_change',
+          data: {
+            name: appointment.name,
+            oldStatus: typeof getStatusText === 'function' ? getStatusText(appointment.status === 'cancelled' ? 'confirmed' : appointment.status) : 'Confirmada',
+            newStatus: 'Cancelada',
+            service: typeof getServiceName === 'function' ? getServiceName(appointment.service) : appointment.service,
+            date: typeof formatDateForDisplay === 'function' 
+              ? formatDateForDisplay(appointment.date) 
+              : (typeof formatDate === 'function' ? formatDate(appointment.date) : appointment.date),
+            time: appointment.time,
+            dni: appointment.dni,
+            email: appointment.email,
+            phone: appointment.phone,
+            message: message,
+            alternativeDate: (alternativeDate && alternativeDate.date && typeof formatDateForDisplay === 'function') 
+              ? formatDateForDisplay(alternativeDate.date) 
+              : (alternativeDate && alternativeDate.date ? alternativeDate.date : null),
+            alternativeTime: (alternativeDate && alternativeDate.time) ? alternativeDate.time : null
+          }
+        }),
+        signal: controller.signal
+      });
+      clearTimeout(timeoutId);
+    } catch (fetchError) {
+      clearTimeout(timeoutId);
+      if (fetchError.name === 'AbortError') {
+        console.error(`❌ Timeout enviando email de cancelación a ${appointment.email} (más de 10 segundos)`);
+      } else {
+        console.error(`❌ Error de red enviando email de cancelación a ${appointment.email}:`, fetchError);
+      }
+      return { success: false, error: fetchError.message || 'Error de red' };
+    }
+
+    // Validar respuesta HTTP
+    if (!response.ok) {
+      console.error(`❌ Error HTTP ${response.status} enviando email de cancelación a ${appointment.email}`);
+      return { success: false, error: `HTTP ${response.status}` };
+    }
+
+    // Parsear respuesta JSON con manejo de errores
+    let result;
+    try {
+      result = await response.json();
+    } catch (jsonError) {
+      console.error(`❌ Error parseando respuesta JSON para ${appointment.email}:`, jsonError);
+      return { success: false, error: 'Error parseando respuesta' };
+    }
     if (result.success) {
       if (window && window.Logger && typeof window.Logger.log === 'function') {
         window.Logger.log('✅ Email de cancelación enviado:', result.messageId);
@@ -283,6 +361,7 @@ async function sendCancellationEmail(appointment, reason, alternativeDate = null
         queueEmail({
           to: appointment.email,
           from: 'u2389387944@gmail.com',
+          fromName: 'Avisos Ayto Cobreros',
           subject: 'Cancelación de Cita Previa - Ayuntamiento de Cobreros',
           template: 'appointment_status_change',
           data: {

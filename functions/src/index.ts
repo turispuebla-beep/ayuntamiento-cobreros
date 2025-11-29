@@ -25,13 +25,39 @@ async function verifyAdmin(req: Request): Promise<{ valid: boolean; uid?: string
     const userDoc = await admin.firestore().collection('users').doc(decodedToken.uid).get();
     const userData = userDoc.data();
     
-    // Verificar rol de admin (puede estar en customClaims o en Firestore)
+    // Verificar también en colección admins
+    let adminData = null;
+    try {
+      const adminDoc = await admin.firestore().collection('admins').doc(decodedToken.uid).get();
+      if (adminDoc.exists) {
+        adminData = adminDoc.data();
+      }
+    } catch (error) {
+      console.warn('No se pudo verificar en colección admins:', error);
+    }
+    
+    // Verificar rol de admin (puede estar en customClaims, Firestore users, o colección admins)
     const isAdmin = decodedToken.admin === true || 
                     decodedToken.role === 'admin' || 
                     decodedToken.role === 'super_admin' ||
-                    (userData && (userData.isAdmin === true || userData.role === 'admin' || userData.role === 'super_admin'));
+                    (userData && (userData.isAdmin === true || userData.role === 'admin' || userData.role === 'super_admin')) ||
+                    (adminData && (adminData.isAdmin === true || adminData.isSuperAdmin === true));
     
     if (!isAdmin) {
+      // Registrar intento no autorizado
+      try {
+        await admin.firestore().collection('audit_logs').add({
+          type: 'UNAUTHORIZED_ACCESS_ATTEMPT',
+          userId: decodedToken.uid,
+          email: decodedToken.email,
+          timestamp: admin.firestore.FieldValue.serverTimestamp(),
+          ipAddress: req.ip || req.headers['x-forwarded-for'] || 'unknown',
+          userAgent: req.headers['user-agent'] || 'unknown'
+        });
+      } catch (error) {
+        console.error('Error registrando intento no autorizado:', error);
+      }
+      
       return { valid: false, error: 'No tiene permisos de administrador' };
     }
 
@@ -45,6 +71,79 @@ async function verifyAdmin(req: Request): Promise<{ valid: boolean; uid?: string
     return { valid: false, error: 'Token inválido o expirado' };
   }
 }
+
+// Verificar permisos para una acción específica
+export const verifyPermission = functions.https.onRequest((req: Request, res: Response) => {
+  return corsHandler(req, res, async () => {
+    if (req.method !== 'POST') {
+      res.status(405).json({ success: false, error: 'Método no permitido' });
+      return;
+    }
+
+    try {
+      const { action, userId } = req.body;
+      
+      if (!action || !userId) {
+        res.status(400).json({ success: false, error: 'Acción y userId son requeridos' });
+        return;
+      }
+
+      // Verificar autenticación
+      const authResult = await verifyAuth(req);
+      if (!authResult.valid) {
+        res.status(401).json({ success: false, allowed: false, reason: authResult.error });
+        return;
+      }
+
+      // Verificar que el userId coincida con el usuario autenticado
+      if (authResult.uid !== userId && authResult.email !== userId) {
+        // Solo super_admin puede verificar permisos de otros usuarios
+        const adminResult = await verifyAdmin(req);
+        if (!adminResult.valid || !adminResult.email) {
+          res.status(403).json({ success: false, allowed: false, reason: 'No puede verificar permisos de otros usuarios' });
+          return;
+        }
+      }
+
+      // Definir permisos por acción
+      const actionPermissions: { [key: string]: string[] } = {
+        CREATE_ADMIN: ['super_admin'],
+        DELETE_ADMIN: ['super_admin'],
+        UPDATE_ADMIN: ['super_admin'],
+        CREATE_USER: ['admin', 'super_admin'],
+        DELETE_USER: ['admin', 'super_admin'],
+        UPDATE_USER: ['admin', 'super_admin'],
+        VIEW_LOGS: ['admin', 'super_admin'],
+        EXPORT_DATA: ['admin', 'super_admin']
+      };
+
+      // Obtener rol del usuario
+      const userDoc = await admin.firestore().collection('users').doc(authResult.uid!).get();
+      const userData = userDoc.data();
+      
+      let userRole = 'user';
+      if (userData?.role === 'super_admin' || userData?.isSuperAdmin === true) {
+        userRole = 'super_admin';
+      } else if (userData?.role === 'admin' || userData?.isAdmin === true) {
+        userRole = 'admin';
+      }
+
+      // Verificar permisos
+      const allowedRoles = actionPermissions[action] || [];
+      const allowed = allowedRoles.includes(userRole);
+
+      res.status(200).json({
+        success: true,
+        allowed,
+        reason: !allowed ? `Rol '${userRole}' no tiene permisos para '${action}'. Roles permitidos: ${allowedRoles.join(', ')}` : undefined
+      });
+
+    } catch (error: any) {
+      console.error('Error verificando permisos:', error);
+      res.status(500).json({ success: false, error: 'Error interno del servidor' });
+    }
+  });
+});
 
 // Verificar si el usuario está autenticado (no requiere admin)
 async function verifyAuth(req: Request): Promise<{ valid: boolean; uid?: string; email?: string; error?: string }> {

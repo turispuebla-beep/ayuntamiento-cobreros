@@ -13,12 +13,27 @@ service firebase.storage {
 
     match /uploads/{allPaths=**} {
       allow read: if true;
-      allow write: if request.resource.size < 10 * 1024 * 1024
+      allow write: if isAuthenticated() 
+                   && request.resource.size < 10 * 1024 * 1024
                    && request.resource.contentType.matches('^(image/.*|application/pdf|application/msword|application/vnd\\.openxmlformats-officedocument\\..+)$');
     }
 
     match /appointments/{appointmentId}/{allPaths=**} {
       allow read: if isAuthenticated();
+      allow write: if isAuthenticated() 
+                   && request.resource.size < 10 * 1024 * 1024
+                   && request.resource.contentType.matches('^(image/.*|application/pdf|application/msword|application/vnd\\.openxmlformats-officedocument\\..+)$');
+    }
+
+    match /consultorio/{allPaths=**} {
+      allow read: if true;
+      allow write: if isAuthenticated() 
+                   && request.resource.size < 10 * 1024 * 1024
+                   && request.resource.contentType.matches('^(image/.*|application/pdf|application/msword|application/vnd\\.openxmlformats-officedocument\\..+)$');
+    }
+
+    match /servicios/{allPaths=**} {
+      allow read: if true;
       allow write: if isAuthenticated() 
                    && request.resource.size < 10 * 1024 * 1024
                    && request.resource.contentType.matches('^(image/.*|application/pdf|application/msword|application/vnd\\.openxmlformats-officedocument\\..+)$');

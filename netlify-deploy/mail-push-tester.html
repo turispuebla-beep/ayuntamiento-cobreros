@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tester Emails & Push · Ayuntamiento de Cobreros</title>
+  <style>
+    :root {
+      font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color-scheme: light;
+      --primary: #1e3a8a;
+      --secondary: #16a34a;
+      --danger: #dc2626;
+      --border: rgba(15, 23, 42, 0.12);
+      --bg: #f8fafc;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: 2.5rem;
+      background: var(--bg);
+      color: #0f172a;
+      min-height: 100vh;
+    }
+    h1, h2, h3 { margin: 0 0 0.75rem; color: var(--primary); }
+    h1 { font-size: 2rem; }
+    p { margin: 0 0 1rem; color: #334155; }
+    .page { max-width: 1200px; margin: 0 auto; }
+    .grid {
+      display: grid;
+      gap: 1.25rem;
+      grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+    }
+    .card {
+      background: #fff;
+      border-radius: 12px;
+      padding: 1.5rem;
+      border: 1px solid var(--border);
+      box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+    }
+    label {
+      display: block;
+      font-weight: 600;
+      margin-bottom: 0.35rem;
+    }
+    input, select, textarea {
+      width: 100%;
+      padding: 0.7rem 0.85rem;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      margin-bottom: 1rem;
+      font-size: 0.95rem;
+      font-family: inherit;
+    }
+    textarea { min-height: 110px; resize: vertical; }
+    button {
+      appearance: none;
+      border: none;
+      border-radius: 999px;
+      padding: 0.65rem 1.5rem;
+      font-weight: 600;
+      cursor: pointer;
+      color: #fff;
+      background: var(--primary);
+      display: inline-flex;
+      align-items: center;
+      gap: 0.45rem;
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+    button.secondary { background: var(--secondary); }
+    button.danger { background: var(--danger); }
+    button:disabled { opacity: 0.6; cursor: not-allowed; }
+    button:not(:disabled):hover { transform: translateY(-1px); }
+    .actions { display: flex; flex-wrap: wrap; gap: 0.75rem; }
+    .note {
+      background: rgba(14, 165, 233, 0.12);
+      border: 1px solid rgba(14, 165, 233, 0.25);
+      padding: 0.9rem 1rem;
+      border-radius: 10px;
+      margin-bottom: 1.5rem;
+      color: #0369a1;
+      font-size: 0.93rem;
+    }
+    .log {
+      margin-top: 2rem;
+      background: #0f172a;
+      color: #e2e8f0;
+      padding: 1rem;
+      border-radius: 12px;
+      border: 1px solid rgba(226, 232, 240, 0.15);
+      font-family: "Fira Code", Consolas, monospace;
+      font-size: 0.85rem;
+      max-height: 320px;
+      overflow-y: auto;
+    }
+    .log-entry {
+      padding: 0.45rem 0;
+      border-bottom: 1px solid rgba(226, 232, 240, 0.12);
+    }
+    .log-entry:last-child { border-bottom: none; }
+    .timestamp { color: #94a3b8; margin-right: 0.5rem; }
+    @media (max-width: 720px) {
+      body { padding: 1.5rem; }
+      .actions { flex-direction: column; }
+      button { width: 100%; justify-content: center; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header style="margin-bottom: 2rem;">
+      <h1>Tester Emails & Push</h1>
+      <p>Herramienta manual para disparar las Cloud Functions del Ayuntamiento de Cobreros sin tocar el proyecto principal.</p>
+      <div class="note">
+        <strong>Remitente fijo:</strong> Avisos Ayto Cobreros &lt;u2389387944@gmail.com&gt;<br>
+        <strong>Correo del ayuntamiento:</strong> aytocobreros@gmail.com<br>
+        <strong>Endpoint Functions:</strong> us-central1 turisteam-80f1b (mismos que la web)<br>
+        *El tester sólo vive en esta carpeta (`netlify-deploy`) pero no se despliega.
+      </div>
+    </header>
+
+    <div class="grid">
+      <section class="card">
+        <h2>Confirmación a persona usuaria</h2>
+        <form id="user-confirm-form">
+          <label for="userEmail">Email de la persona</label>
+          <input id="userEmail" name="email" type="email" placeholder="vecino@correo.com" required>
+
+          <label for="userService">Servicio</label>
+          <select id="userService" name="service">
+            <option value="Empadronamiento">Empadronamiento</option>
+            <option value="Licencias de obras">Licencias de obras</option>
+            <option value="Certificados">Certificados</option>
+            <option value="Consulta de multas">Consulta de multas</option>
+            <option value="Otros trámites">Otros trámites</option>
+          </select>
+
+          <label for="appointmentDate">Fecha y hora</label>
+          <input id="appointmentDate" name="date" type="datetime-local" required>
+
+          <label for="userNotes">Comentarios (opcional)</label>
+          <textarea id="userNotes" name="notes" placeholder="Adjunta alguna nota breve"></textarea>
+
+          <button type="submit">Enviar confirmación</button>
+        </form>
+      </section>
+
+      <section class="card">
+        <h2>Aviso al ayuntamiento</h2>
+        <form id="admin-alert-form">
+          <label for="adminSubject">Asunto</label>
+          <input id="adminSubject" name="subject" type="text" value="Nueva cita de prueba" required>
+
+          <label for="adminMessage">Mensaje</label>
+          <textarea id="adminMessage" name="message" required>Se ha registrado una cita de prueba desde la herramienta externa.</textarea>
+
+          <label for="adminUserEmail">Email del usuario (para "Aviso + copia al usuario")</label>
+          <input id="adminUserEmail" name="userEmail" type="email" placeholder="usuario@ejemplo.com">
+
+          <div class="actions">
+            <button type="submit" class="secondary">Enviar aviso</button>
+            <button type="button" class="danger" id="adminAlertAndUser">Aviso + copia al usuario</button>
+          </div>
+        </form>
+      </section>
+
+      <section class="card">
+        <h2>Push / Email combinados</h2>
+        <form id="combo-form">
+          <label for="comboTitle">Título</label>
+          <input id="comboTitle" name="title" type="text" value="Aviso de prueba" required>
+
+          <label for="comboBody">Mensaje</label>
+          <textarea id="comboBody" name="body" required>Este es un aviso de prueba enviado desde la herramienta externa.</textarea>
+
+          <label for="comboScope">Alcance</label>
+          <select id="comboScope" name="scope">
+            <option value="all">Todos los suscritos</option>
+            <option value="localities">Sólo localidades específicas</option>
+          </select>
+
+          <label for="comboLocalities">Localidades (coma separada)</label>
+          <input id="comboLocalities" name="localities" type="text" placeholder="Cobreros, Riego de Lomba">
+
+          <label for="comboTestEmail">Email de prueba (para "Sólo email")</label>
+          <input id="comboTestEmail" name="testEmail" type="email" placeholder="usuario@ejemplo.com">
+
+          <div class="actions">
+            <button type="submit">Push + Email</button>
+            <button type="button" class="secondary" id="comboPushOnly">Sólo push</button>
+            <button type="button" id="comboEmailOnly">Sólo email</button>
+          </div>
+        </form>
+      </section>
+    </div>
+
+    <section class="card" style="margin-top: 1.25rem;">
+      <div class="actions" style="justify-content: space-between; align-items: center; flex-wrap: wrap;">
+        <h3 style="margin: 0;">Actividad en vivo</h3>
+        <button type="button" class="danger" id="clearLog">Limpiar registro</button>
+      </div>
+      <div id="log" class="log" aria-live="polite"></div>
+    </section>
+  </div>
+
+  <script>
+    const CLOUD_FUNCTIONS_BASE_URL = 'https://us-central1-turisteam-80f1b.cloudfunctions.net';
+    const SEND_EMAIL_ENDPOINT = `${CLOUD_FUNCTIONS_BASE_URL}/sendEmail`;
+    const SEND_PUSH_ENDPOINT = `${CLOUD_FUNCTIONS_BASE_URL}/sendPushNotification`;
+
+    const DEFAULT_SENDER_EMAIL = 'u2389387944@gmail.com';
+    const DEFAULT_SENDER_NAME = 'Avisos Ayto Cobreros';
+    const ADMIN_EMAIL = 'aytocobreros@gmail.com';
+
+    const logBox = document.getElementById('log');
+    const addLog = (message, type = 'info', extra) => {
+      const entry = document.createElement('div');
+      entry.className = 'log-entry';
+      const now = new Date().toLocaleTimeString();
+      entry.innerHTML = `<span class="timestamp">[${now}][${type.toUpperCase()}]</span>${message}`;
+      if (extra) {
+        entry.innerHTML += `<pre style="margin:0.4rem 0 0; white-space:pre-wrap;">${JSON.stringify(extra, null, 2)}</pre>`;
+      }
+      logBox.prepend(entry);
+    };
+    document.getElementById('clearLog').addEventListener('click', () => logBox.innerHTML = '');
+
+    async function callSendEmail(payload) {
+      const response = await fetch(SEND_EMAIL_ENDPOINT, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const result = await response.json();
+      if (!result.success) throw new Error(result.error || 'Error enviando email');
+      return result;
+    }
+
+    async function callSendPush(payload) {
+      const response = await fetch(SEND_PUSH_ENDPOINT, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const result = await response.json();
+      if (!result.success) throw new Error(result.error || result.message || 'Error en push');
+      return result;
+    }
+
+    // Confirmación persona usuaria
+    document.getElementById('user-confirm-form').addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const formData = new FormData(event.target);
+      const toEmail = formData.get('email').trim();
+      const appointmentDate = new Date(formData.get('date'));
+
+      const payload = {
+        to: toEmail,
+        from: DEFAULT_SENDER_EMAIL,
+        fromName: DEFAULT_SENDER_NAME,
+        subject: 'Confirmación de cita · Ayuntamiento de Cobreros',
+        template: 'appointment_confirmation',
+        data: {
+          name: 'Ciudadano/a',
+          service: formData.get('service'),
+          date: appointmentDate.toLocaleDateString('es-ES'),
+          time: appointmentDate.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }),
+          dateFormatted: appointmentDate.toLocaleDateString('es-ES'),
+          dni: '99999999A',
+          email: toEmail,
+          phone: '600123123',
+          comments: formData.get('notes')?.trim() || 'Ninguno',
+          appointmentId: `test-${Date.now()}`,
+          attachmentUrl: null,
+          attachmentName: null
+        }
+      };
+
+      try {
+        addLog(`Enviando confirmación a ${toEmail}…`, 'info', payload);
+        const result = await callSendEmail(payload);
+        addLog(`Confirmación enviada a ${toEmail}`, 'success', result);
+      } catch (error) {
+        addLog(`Error en confirmación: ${error.message}`, 'error');
+      }
+    });
+
+    // Aviso ayuntamiento
+    document.getElementById('admin-alert-form').addEventListener('submit', (event) => {
+      event.preventDefault();
+      triggerAdminAlert(false);
+    });
+    document.getElementById('adminAlertAndUser').addEventListener('click', () => triggerAdminAlert(true));
+
+    async function triggerAdminAlert(copyUser) {
+      const form = document.getElementById('admin-alert-form');
+      const formData = new FormData(form);
+      const now = new Date();
+      const payload = {
+        to: ADMIN_EMAIL,
+        from: DEFAULT_SENDER_EMAIL,
+        fromName: DEFAULT_SENDER_NAME,
+        subject: formData.get('subject'),
+        template: 'appointment_notification_admin',
+        data: {
+          name: 'Tester',
+          dni: '99999999A',
+          email: 'tester@ayto.com',
+          phone: '600111222',
+          service: 'Prueba',
+          date: now.toLocaleDateString('es-ES'),
+          time: now.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }),
+          dateFormatted: now.toLocaleDateString('es-ES'),
+          comments: formData.get('message') || 'Ninguno',
+          createdAt: now.toLocaleString('es-ES'),
+          appointmentId: `admin-${Date.now()}`,
+          attachmentUrl: null,
+          attachmentName: null
+        }
+      };
+
+      try {
+        addLog('Enviando aviso al ayuntamiento…', 'info', payload);
+        const result = await callSendEmail(payload);
+        addLog('Ayuntamiento notificado', 'success', result);
+
+        if (copyUser) {
+          const userEmail = formData.get('userEmail')?.trim() || payload.data.email;
+          const userPayload = { 
+            ...payload, 
+            to: userEmail, 
+            subject: `${payload.subject} (copia)`,
+            template: 'appointment_confirmation',
+            data: {
+              ...payload.data,
+              name: 'Usuario de prueba',
+              service: 'Prueba desde tester'
+            }
+          };
+          addLog(`Enviando copia al usuario ${userEmail}…`, 'info');
+          await callSendEmail(userPayload);
+          addLog('Copia al usuario enviada', 'success');
+        }
+      } catch (error) {
+        addLog(`Error en aviso: ${error.message}`, 'error');
+      }
+    }
+
+    // Combinados
+    document.getElementById('combo-form').addEventListener('submit', (event) => {
+      event.preventDefault();
+      triggerCombo({ push: true, email: true });
+    });
+    document.getElementById('comboPushOnly').addEventListener('click', () => triggerCombo({ push: true, email: false }));
+    document.getElementById('comboEmailOnly').addEventListener('click', () => triggerCombo({ push: false, email: true }));
+
+    async function triggerCombo(options) {
+      const formData = new FormData(document.getElementById('combo-form'));
+      const title = formData.get('title');
+      const body = formData.get('body');
+      const scope = formData.get('scope');
+      const testEmail = formData.get('testEmail')?.trim();
+      const localities = formData.get('localities')
+        .split(',')
+        .map(l => l.trim())
+        .filter(Boolean);
+
+      if (options.email) {
+        // Si hay email de prueba, enviar ahí; si no, al admin
+        const toEmail = testEmail || ADMIN_EMAIL;
+        const emailPayload = {
+          to: toEmail,
+          from: DEFAULT_SENDER_EMAIL,
+          fromName: DEFAULT_SENDER_NAME,
+          subject: `${title} · Ayuntamiento de Cobreros`,
+          template: 'generalNotice',
+          data: {
+            title,
+            message: body,
+            content: body,
+            date: new Date().toLocaleDateString('es-ES'),
+            location: localities.length ? localities.join(', ') : 'General'
+          }
+        };
+
+        try {
+          addLog(`Enviando email de aviso a ${toEmail}…`, 'info', emailPayload);
+          const emailResult = await callSendEmail(emailPayload);
+          addLog(`Email enviado a ${toEmail}`, 'success', emailResult);
+        } catch (error) {
+          addLog(`Error en email: ${error.message}`, 'error');
+        }
+      }
+
+      if (options.push) {
+        const pushPayload = {
+          title,
+          message: body,
+          type: 'general',
+          scope: scope === 'localities' && localities.length ? 'localities' : 'all',
+          localities: scope === 'localities' ? localities : [],
+          adminEmail: ADMIN_EMAIL,
+          textFont: '',
+          textSize: '',
+          textColor: ''
+        };
+
+        try {
+          addLog('Enviando push…', 'info', pushPayload);
+          const pushResult = await callSendPush(pushPayload);
+          addLog('Push enviado', 'success', pushResult.stats || pushResult);
+        } catch (error) {
+          addLog(`Error en push: ${error.message}`, 'error');
+        }
+      }
+    }
+  </script>
+</body>
+</html>
+

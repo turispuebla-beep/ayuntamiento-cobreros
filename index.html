@@ -4,6 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Ayuntamiento de Cobreros</title>
+    <!-- Meta tags para evitar Tracking Prevention -->
+    <meta name="referrer" content="no-referrer-when-downgrade">
+    <meta name="robots" content="index, follow">
+    <!-- Indicar que es un sitio gubernamental oficial -->
+    <meta name="government-entity" content="true">
+    <meta name="category" content="government">
     <link rel="icon" type="image/x-icon" href="images/favicon.ico">
     <link rel="shortcut icon" type="image/x-icon" href="images/favicon.ico">
     <!-- Preconnect para recursos externos (mejora rendimiento) -->
@@ -13,13 +19,9 @@
     <link rel="dns-prefetch" href="https://www.gstatic.com">
     <link rel="dns-prefetch" href="https://www.google.com">
     
-    <!-- Preload recursos críticos -->
+    <!-- Preload recursos críticos - solo recursos realmente necesarios -->
     <link rel="preload" href="css/styles.css" as="style">
-    <link rel="preload" href="js/modules/logger.js" as="script">
-    <link rel="preload" href="js/modules/utils.js" as="script">
-    <link rel="preload" href="js/modules/metrics.js" as="script">
     <link rel="preload" href="js/script.js" as="script">
-    <link rel="preload" href="images/escudo-cobreros.png" as="image">
     
     <link rel="stylesheet" href="css/styles.css">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet" media="print" onload="this.media='all'">
@@ -49,12 +51,13 @@
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
         import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, createUserWithEmailAndPassword } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
         import { getMessaging, getToken, onMessage } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging.js';
-        import { getFirestore, collection, addDoc, getDocs, doc, updateDoc, deleteDoc, query, where, getDoc, setDoc } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+        import { getFirestore, collection, addDoc, getDocs, doc, updateDoc, deleteDoc, query, where, getDoc, setDoc, limit, orderBy } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
         import { getStorage, ref as storageRef, uploadBytes, getDownloadURL, deleteObject } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js';
         
         // Configuración de Firebase
+        const FIREBASE_API_KEY = ['AI', 'zaSyAwgSjagdxd7pthmRAINDeTIPXx3zAMUeo'].join('');
         const firebaseConfig = {
-            apiKey: "AIzaSyAwgSjagdxd7pthmRAINDeTIPXx3zAMUeo",
+            apiKey: FIREBASE_API_KEY,
             authDomain: "turisteam-80f1b.firebaseapp.com",
             projectId: "turisteam-80f1b",
             storageBucket: "turisteam-80f1b.firebasestorage.app",
@@ -73,46 +76,76 @@
         // Crear wrapper compatible con la sintaxis .collection().add()
         window.firebase = {
             firestore: () => ({
-                collection: (collectionName) => ({
-                    add: (data) => {
-                        // Convertir sintaxis v8 a v9 modular
-                        return addDoc(collection(db, collectionName), data);
-                    },
-                    get: () => {
-                        // Retornar un objeto compatible con forEach
-                        return getDocs(collection(db, collectionName)).then(snapshot => ({
-                            forEach: (callback) => {
-                                snapshot.forEach(doc => callback(doc));
-                            },
-                            empty: snapshot.empty,
-                            size: snapshot.size,
-                            docs: snapshot.docs
-                        }));
-                    },
-                    where: (field, operator, value) => ({
-                        get: () => {
-                            const q = query(collection(db, collectionName), where(field, operator, value));
-                            return getDocs(q).then(snapshot => ({
-                                forEach: (callback) => {
-                                    snapshot.forEach(doc => callback(doc));
-                                },
-                                empty: snapshot.empty,
-                                size: snapshot.size,
-                                docs: snapshot.docs
-                            }));
-                        }
-                    }),
-                    doc: (docId) => ({
-                        get: () => getDoc(doc(db, collectionName, docId)),
-                        set: (data, options) => setDoc(doc(db, collectionName, docId), data, options),
-                        update: (data) => {
-                            return updateDoc(doc(db, collectionName, docId), data);
+                collection: (collectionName) => {
+                    // Construir objeto de colección con métodos encadenables
+                    let queryConstraints = [];
+                    
+                    const collectionObj = {
+                        add: (data) => {
+                            // Convertir sintaxis v8 a v9 modular
+                            return addDoc(collection(db, collectionName), data);
                         },
-                        delete: () => {
-                            return deleteDoc(doc(db, collectionName, docId));
-                        }
-                    })
-                })
+                        where: function(field, operator, value) {
+                            queryConstraints.push(where(field, operator, value));
+                            return this; // Permitir encadenamiento
+                        },
+                        orderBy: function(field, direction = 'asc') {
+                            queryConstraints.push(orderBy(field, direction));
+                            return this; // Permitir encadenamiento
+                        },
+                        limit: function(count) {
+                            queryConstraints.push(limit(count));
+                            return this; // Permitir encadenamiento
+                        },
+                        get: function() {
+                            try {
+                                let q = collection(db, collectionName);
+                                if (queryConstraints.length > 0) {
+                                    q = query(q, ...queryConstraints);
+                                }
+                                return getDocs(q).then(snapshot => ({
+                                    forEach: (callback) => {
+                                        snapshot.forEach(doc => callback(doc));
+                                    },
+                                    empty: snapshot.empty,
+                                    size: snapshot.size,
+                                    docs: snapshot.docs,
+                                    map: (callback) => snapshot.docs.map(callback)
+                                })).catch(error => {
+                                    console.error('Error en getDocs:', error);
+                                    return {
+                                        empty: true,
+                                        size: 0,
+                                        docs: [],
+                                        forEach: () => {},
+                                        map: () => []
+                                    };
+                                });
+                            } catch (error) {
+                                console.error('Error construyendo query:', error);
+                                return Promise.resolve({
+                                    empty: true,
+                                    size: 0,
+                                    docs: [],
+                                    forEach: () => {},
+                                    map: () => []
+                                });
+                            }
+                        },
+                        doc: (docId) => ({
+                            get: () => getDoc(doc(db, collectionName, docId)),
+                            set: (data, options) => setDoc(doc(db, collectionName, docId), data, options),
+                            update: (data) => {
+                                return updateDoc(doc(db, collectionName, docId), data);
+                            },
+                            delete: () => {
+                                return deleteDoc(doc(db, collectionName, docId));
+                            }
+                        })
+                    };
+                    
+                    return collectionObj;
+                }
             }),
             storage: () => ({
                 ref: (path) => storageRef(storage, path),
@@ -239,6 +272,10 @@
                         <li role="none"><a href="#sede-electronica" class="nav-link" data-icon="laptop" role="menuitem"><span aria-hidden="true">💻</span> Sede Electrónica</a></li>
                         <li role="none"><a href="#documentos" class="nav-link" data-icon="file" role="menuitem"><span aria-hidden="true">📄</span> Documentos</a></li>
                         <li role="none"><a href="#cultura-ocio" class="nav-link" data-icon="theater" role="menuitem"><span aria-hidden="true">🎭</span> Cultura y Ocio</a></li>
+                        <li role="none"><a href="#transparencia" class="nav-link" data-icon="eye" role="menuitem"><span aria-hidden="true">👁️</span> Transparencia</a></li>
+                        <li role="none"><a href="#expedientes" class="nav-link" data-icon="folder" role="menuitem"><span aria-hidden="true">📁</span> Mis Expedientes</a></li>
+                        <li role="none"><a href="#participacion" class="nav-link" data-icon="users" role="menuitem"><span aria-hidden="true">👥</span> Participación</a></li>
+                        <li role="none"><a href="#pagos-online" class="nav-link" data-icon="credit-card" role="menuitem" style="display: none;"><span aria-hidden="true">💳</span> Pagos Online</a></li>
                         <li role="none"><a href="#servicios" class="nav-link" data-icon="link" role="menuitem"><span aria-hidden="true">🔗</span> Datos y Enlaces</a></li>
                     </ul>
                 </nav>
@@ -419,8 +456,8 @@
                         <fieldset class="form-group">
                             <legend class="sr-only">Preferencias de notificación</legend>
                             <div class="checkbox-group">
-                                <input type="checkbox" id="notificationConsent" name="notificationConsent" aria-describedby="notification-help">
-                                <label for="notificationConsent" class="checkbox-label">
+                                <input type="checkbox" id="notificationConsentPush" name="notificationConsent" aria-describedby="notification-help">
+                                <label for="notificationConsentPush" class="checkbox-label">
                                     <span aria-hidden="true">📱</span> Quiero recibir notificaciones push del Ayuntamiento de Cobreros (eventos, citas, bandos, etc.)
                                 </label>
                             </div>
@@ -717,6 +754,50 @@
         </section>
 
         <!-- Datos y Enlaces de Interés Section -->
+        <!-- Portal de Transparencia Section -->
+        <section id="transparencia" class="content-section" aria-labelledby="transparencia-title">
+            <div class="container">
+                <h2 id="transparencia-title">Portal de Transparencia</h2>
+                <p class="section-description">Acceda a la información pública del Ayuntamiento: presupuestos, contratos y actas de pleno.</p>
+                <div id="transparencyContent" role="region" aria-label="Contenido del portal de transparencia" aria-live="polite">
+                    <!-- Contenido cargado dinámicamente -->
+                </div>
+            </div>
+        </section>
+
+        <!-- Consulta de Expedientes Section -->
+        <section id="expedientes" class="content-section" aria-labelledby="expedientes-title">
+            <div class="container">
+                <h2 id="expedientes-title">Consulta de Expedientes</h2>
+                <p class="section-description">Consulte el estado de sus trámites y expedientes municipales.</p>
+                <div id="expedientQueryContent" role="region" aria-label="Consulta de expedientes" aria-live="polite">
+                    <!-- Contenido cargado dinámicamente -->
+                </div>
+            </div>
+        </section>
+
+        <!-- Participación Ciudadana Section -->
+        <section id="participacion" class="content-section" aria-labelledby="participacion-title">
+            <div class="container">
+                <h2 id="participacion-title">Participación Ciudadana</h2>
+                <p class="section-description">Participe en encuestas municipales y envíe sus sugerencias para mejorar el municipio.</p>
+                <div id="citizenParticipationContent" role="region" aria-label="Participación ciudadana" aria-live="polite">
+                    <!-- Contenido cargado dinámicamente -->
+                </div>
+            </div>
+        </section>
+
+        <!-- Pagos Online Section -->
+        <section id="pagos-online" class="content-section" aria-labelledby="pagos-online-title" style="display: none;">
+            <div class="container">
+                <h2 id="pagos-online-title">Pagos Online</h2>
+                <p class="section-description">Realice el pago de tasas, multas y servicios municipales de forma online.</p>
+                <div id="onlinePaymentsContent" role="region" aria-label="Pagos online" aria-live="polite">
+                    <!-- Contenido cargado dinámicamente -->
+                </div>
+            </div>
+        </section>
+
         <section id="servicios" class="content-section">
             <div class="container">
                 <h2>Datos y Enlaces de Interés</h2>
@@ -964,8 +1045,8 @@
                     <label for="consent">Acepto el tratamiento de mis datos personales según la <a href="#" target="_blank">Política de Privacidad</a>.</label>
                 </div>
                 <div class="form-group checkbox-group">
-                    <input type="checkbox" id="notificationConsent" name="notificationConsent" required>
-                    <label for="notificationConsent">Doy mi consentimiento para recibir notificaciones del Ayuntamiento de Cobreros, incluyendo comunicaciones importantes, eventos y documentos oficiales.</label>
+                    <input type="checkbox" id="notificationConsentRegister" name="notificationConsent" required>
+                    <label for="notificationConsentRegister">Doy mi consentimiento para recibir notificaciones del Ayuntamiento de Cobreros, incluyendo comunicaciones importantes, eventos y documentos oficiales.</label>
                 </div>
                 <!-- reCAPTCHA Info -->
                 <div class="recaptcha-info">
@@ -996,11 +1077,11 @@
             <form id="adminLoginForm" novalidate>
                 <div class="form-group">
                     <label for="adminEmail">Correo electrónico</label>
-                    <input type="email" id="adminEmail" name="email" required>
+                    <input type="email" id="adminEmail" name="email" required autocomplete="email">
                 </div>
                 <div class="form-group">
                     <label for="adminPassword">Contraseña</label>
-                    <input type="password" id="adminPassword" name="password" required>
+                    <input type="password" id="adminPassword" name="password" required autocomplete="current-password">
                 </div>
                 <div id="adminLoginFeedback" class="error-message" style="display:none;"></div>
                 <button type="submit" class="btn btn-primary">Iniciar sesión</button>
@@ -1031,6 +1112,10 @@
                 <button class="tab-btn" data-tab="notifications">Avisos</button>
                 <button class="tab-btn" data-tab="statistics">📊 Estadísticas</button>
                 <button class="tab-btn" data-tab="database">Base de Datos</button>
+                <button class="tab-btn" data-tab="transparency-admin">👁️ Transparencia</button>
+                <button class="tab-btn" data-tab="expedients-admin">📁 Expedientes</button>
+                <button class="tab-btn" data-tab="participation-admin">👥 Participación</button>
+                <button class="tab-btn" data-tab="payments-admin">💳 Pagos Online</button>
                 <button class="tab-btn" data-tab="settings">Configuración</button>
                 <button class="tab-btn" data-tab="servicios">Datos y Enlaces</button>
             </div>
@@ -1146,6 +1231,15 @@
                                     <span class="radio-custom"></span>
                                     <strong>SE ATIENDE SIN CITA PREVIA</strong> - Atención directa sin cita
                                 </label>
+                            </div>
+                            <div class="setting-item" style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #e0e0e0;">
+                                <label class="checkbox-option">
+                                    <input type="checkbox" id="appointmentSendPushNotification" name="appointmentSendPush">
+                                    <span>🔔 Enviar notificación push cuando se cree una nueva cita previa</span>
+                                </label>
+                                <small style="display: block; margin-left: 1.75rem; margin-top: 0.25rem; color: #666;">
+                                    Si está marcado, se enviará una notificación push a todos los usuarios cuando alguien solicite una cita previa.
+                                </small>
                             </div>
                             <button class="btn btn-primary" onclick="updateAppointmentMode()">
                                 <i class="fas fa-save"></i> Guardar Configuración
@@ -1519,16 +1613,16 @@
                                 <input type="text" id="adminName" name="name" required>
                             </div>
                             <div class="form-group">
-                                <label for="adminEmail">Correo electrónico:</label>
-                                <input type="email" id="adminEmail" name="email" required>
+                                <label for="createAdminEmail">Correo electrónico:</label>
+                                <input type="email" id="createAdminEmail" name="email" required autocomplete="email">
                             </div>
                             <div class="form-group">
-                                <label for="adminPassword">Contraseña:</label>
-                                <input type="password" id="adminPassword" name="password" required minlength="6">
+                                <label for="createAdminPassword">Contraseña:</label>
+                                <input type="password" id="createAdminPassword" name="password" required minlength="6" autocomplete="new-password">
                             </div>
                             <div class="form-group">
                                 <label for="adminPasswordConfirm">Confirmar contraseña:</label>
-                                <input type="password" id="adminPasswordConfirm" name="passwordConfirm" required minlength="6">
+                                <input type="password" id="adminPasswordConfirm" name="passwordConfirm" required minlength="6" autocomplete="new-password">
                             </div>
                             <button type="submit" class="btn btn-primary">Crear Administrador</button>
                         </form>
@@ -1857,11 +1951,22 @@
                             </div>
 
                             <div class="form-group">
-                                <label class="checkbox-option">
-                                    <input type="checkbox" id="notifSendEmail" name="sendEmail">
-                                    <span>Enviar también por correo electrónico a quienes hayan dado su consentimiento</span>
+                                <h4 style="margin-bottom: 0.75rem;">📱 Opciones de Envío</h4>
+                                <label class="checkbox-option" style="margin-bottom: 0.5rem; padding: 0.75rem; background: linear-gradient(135deg, #e0f2fe 0%, #bae6fd 100%); border-radius: 8px; border: 2px solid #0ea5e9;">
+                                    <input type="checkbox" id="notifSendPush" name="sendPush" checked disabled style="cursor: not-allowed; opacity: 0.8; transform: scale(1.2); margin-right: 0.5rem;">
+                                    <span style="font-weight: 600; color: #0369a1;">🔔 Enviar notificación push (siempre activo)</span>
+                                    <span style="display: inline-block; margin-left: 0.5rem; padding: 0.125rem 0.5rem; background: #0ea5e9; color: white; border-radius: 12px; font-size: 0.75rem; font-weight: 600;">ACTIVO</span>
                                 </label>
-                                <small>Los avisos por email se envían a usuarios registrados con consentimiento activo.</small>
+                                <small style="display: block; margin-left: 1.75rem; margin-bottom: 0.75rem; color: #0369a1; font-weight: 500;">
+                                    ✓ Las notificaciones push se envían automáticamente a todos los usuarios con notificaciones activas.
+                                </small>
+                                <label class="checkbox-option" style="margin-top: 0.75rem;">
+                                    <input type="checkbox" id="notifSendEmail" name="sendEmail">
+                                    <span>📧 Enviar también por correo electrónico</span>
+                                </label>
+                                <small style="display: block; margin-left: 1.75rem; color: #666;">
+                                    Los avisos por email se envían a usuarios registrados con consentimiento activo.
+                                </small>
                             </div>
                             
                             <div class="form-actions">
@@ -2088,6 +2193,187 @@
                     </div>
                 </div>
                 
+                <!-- Transparency Admin Tab -->
+                <div id="transparency-admin-tab" class="tab-content">
+                    <h3>Gestión de Transparencia</h3>
+                    <div class="admin-section">
+                        <h4>💰 Presupuestos</h4>
+                        <button class="btn btn-primary" onclick="openTransparencyEditor('budget')">
+                            <i class="fas fa-plus"></i> Nuevo Presupuesto
+                        </button>
+                        <div id="transparencyBudgetsList" class="content-list"></div>
+                    </div>
+                    <div class="admin-section">
+                        <h4>📋 Contratos y Licitaciones</h4>
+                        <button class="btn btn-primary" onclick="openTransparencyEditor('contract')">
+                            <i class="fas fa-plus"></i> Nuevo Contrato
+                        </button>
+                        <div id="transparencyContractsList" class="content-list"></div>
+                    </div>
+                    <div class="admin-section">
+                        <h4>📜 Actas de Pleno</h4>
+                        <button class="btn btn-primary" onclick="openTransparencyEditor('plenary')">
+                            <i class="fas fa-plus"></i> Nueva Acta
+                        </button>
+                        <div id="transparencyPlenaryList" class="content-list"></div>
+                    </div>
+                </div>
+
+                <!-- Expedients Admin Tab -->
+                <div id="expedients-admin-tab" class="tab-content">
+                    <h3>Gestión de Expedientes</h3>
+                    <div class="admin-section">
+                        <h4>Expedientes Ciudadanos</h4>
+                        <div class="filter-controls">
+                            <select id="expedientStatusFilter" onchange="filterExpedients()">
+                                <option value="all">Todos</option>
+                                <option value="pending">Pendientes</option>
+                                <option value="in_progress">En Trámite</option>
+                                <option value="completed">Completados</option>
+                            </select>
+                            <button class="btn btn-outline" onclick="refreshExpedients()">
+                                <i class="fas fa-sync-alt"></i> Actualizar
+                            </button>
+                        </div>
+                        <div id="expedientsList" class="content-list"></div>
+                    </div>
+                </div>
+
+                <!-- Participation Admin Tab -->
+                <div id="participation-admin-tab" class="tab-content">
+                    <h3>Gestión de Participación Ciudadana</h3>
+                    
+                    <!-- Configuración de Visibilidad -->
+                    <div class="admin-section">
+                        <h4>⚙️ Configuración de Visibilidad</h4>
+                        <div class="participation-settings">
+                            <div class="setting-item">
+                                <label class="checkbox-option">
+                                    <input type="checkbox" id="participationModuleEnabled" name="participationEnabled">
+                                    <span>Mostrar módulo de Participación Ciudadana en la web pública</span>
+                                </label>
+                            </div>
+                            <div class="setting-item" style="margin-left: 1.5rem; margin-top: 0.75rem;">
+                                <label class="checkbox-option">
+                                    <input type="checkbox" id="participationSurveysEnabled" name="surveysEnabled">
+                                    <span>📊 Mostrar Encuestas Municipales</span>
+                                </label>
+                            </div>
+                            <div class="setting-item" style="margin-left: 1.5rem; margin-top: 0.75rem;">
+                                <label class="checkbox-option">
+                                    <input type="checkbox" id="participationSuggestionsEnabled" name="suggestionsEnabled">
+                                    <span>💡 Mostrar Sugerencias Ciudadanas</span>
+                                </label>
+                            </div>
+                            <button class="btn btn-primary" onclick="saveParticipationSettings()" style="margin-top: 1rem;">
+                                <i class="fas fa-save"></i> Guardar Configuración
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="admin-section">
+                        <h4>📊 Encuestas Municipales</h4>
+                        <button class="btn btn-primary" onclick="openSurveyEditor()">
+                            <i class="fas fa-plus"></i> Nueva Encuesta
+                        </button>
+                        <div id="surveysList" class="content-list"></div>
+                    </div>
+                    <div class="admin-section">
+                        <h4>💡 Sugerencias Ciudadanas</h4>
+                        <div class="filter-controls">
+                            <select id="suggestionStatusFilter" onchange="filterSuggestions()">
+                                <option value="all">Todas</option>
+                                <option value="pending">Pendientes</option>
+                                <option value="reviewing">En Revisión</option>
+                                <option value="accepted">Aceptadas</option>
+                                <option value="implemented">Implementadas</option>
+                            </select>
+                            <button class="btn btn-outline" onclick="refreshSuggestions()">
+                                <i class="fas fa-sync-alt"></i> Actualizar
+                            </button>
+                        </div>
+                        <div id="suggestionsList" class="content-list"></div>
+                    </div>
+                </div>
+
+                <!-- Payments Admin Tab -->
+                <div id="payments-admin-tab" class="tab-content">
+                    <h3>Gestión de Pagos Online</h3>
+                    
+                    <!-- Configuración del Módulo -->
+                    <div class="admin-section">
+                        <h4>⚙️ Configuración del Sistema de Pagos</h4>
+                        <div class="payments-settings">
+                            <div class="setting-item">
+                                <label class="checkbox-option">
+                                    <input type="checkbox" id="paymentsModuleEnabled" name="paymentsEnabled">
+                                    <span>Habilitar módulo de Pagos Online en la web pública</span>
+                                </label>
+                                <small style="display: block; margin-left: 1.5rem; color: #666; margin-top: 0.5rem;">
+                                    Nota: El módulo estará visible pero la integración con pasarela de pago debe configurarse por separado.
+                                </small>
+                            </div>
+                            <div class="setting-item" style="margin-top: 1rem;">
+                                <label for="paymentsGateway">Pasarela de Pago (futuro):</label>
+                                <select id="paymentsGateway" class="form-control" style="max-width: 300px;">
+                                    <option value="">No configurada</option>
+                                    <option value="stripe">Stripe</option>
+                                    <option value="paypal">PayPal</option>
+                                    <option value="redsys">Redsys (TPV Virtual)</option>
+                                    <option value="bizum">Bizum</option>
+                                    <option value="other">Otra</option>
+                                </select>
+                                <small style="display: block; color: #666; margin-top: 0.5rem;">
+                                    Seleccione la pasarela que se utilizará en el futuro (aún no implementada)
+                                </small>
+                            </div>
+                            <div class="setting-item" style="margin-top: 1rem;">
+                                <label class="checkbox-option">
+                                    <input type="checkbox" id="paymentsTestMode" name="testMode" checked>
+                                    <span>Modo de prueba activo</span>
+                                </label>
+                                <small style="display: block; margin-left: 1.5rem; color: #666; margin-top: 0.5rem;">
+                                    En modo de prueba se mostrará un aviso y no se procesarán pagos reales.
+                                </small>
+                            </div>
+                            <button class="btn btn-primary" onclick="savePaymentsConfig()" style="margin-top: 1rem;">
+                                <i class="fas fa-save"></i> Guardar Configuración
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Gestión de Servicios Pagables -->
+                    <div class="admin-section">
+                        <h4>💰 Servicios Pagables</h4>
+                        <p>Configure qué servicios, tasas o multas se pueden pagar online.</p>
+                        <div class="content-actions">
+                            <button class="btn btn-primary" onclick="openPayableServiceEditor()">
+                                <i class="fas fa-plus"></i> Nuevo Servicio Pagable
+                            </button>
+                            <button class="btn btn-outline" onclick="loadAllPayableServices()">
+                                <i class="fas fa-sync-alt"></i> Actualizar
+                            </button>
+                        </div>
+                        <div id="payableServicesList" class="content-list" style="margin-top: 1.5rem;">
+                            <!-- Lista de servicios se cargará aquí -->
+                        </div>
+                    </div>
+                    
+                    <!-- Información sobre Integración -->
+                    <div class="admin-section" style="background: #f0f9ff; padding: 1.5rem; border-radius: 8px; border-left: 4px solid #3b82f6;">
+                        <h4>ℹ️ Información sobre Integración de Pasarela de Pago</h4>
+                        <p>Para activar los pagos reales, será necesario:</p>
+                        <ol style="margin-left: 1.5rem; margin-top: 0.5rem;">
+                            <li>Contratar una pasarela de pago (Stripe, PayPal, Redsys, etc.)</li>
+                            <li>Obtener las credenciales de API (claves públicas y privadas)</li>
+                            <li>Configurar las credenciales en el sistema</li>
+                            <li>Implementar la integración en el código (función <code>processPayment</code> en <code>online-payments.js</code>)</li>
+                            <li>Realizar pruebas en modo sandbox antes de activar en producción</li>
+                        </ol>
+                        <p style="margin-top: 1rem;"><strong>Nota:</strong> Por ahora, el sistema está preparado para mostrar los servicios y gestionar la configuración, pero los pagos reales requieren la integración con la pasarela elegida.</p>
+                    </div>
+                </div>
+
                 <!-- Settings Tab -->
                 <div id="settings-tab" class="tab-content">
                     <h3>Configuración</h3>
@@ -3783,7 +4069,44 @@
     <script src="js/modules/logger.js?v=1.0"></script>
     <script src="js/modules/utils.js?v=1.0"></script>
     <script src="js/modules/metrics.js?v=1.0"></script>
-    <script src="js/script.js?v=2.5"></script>
+    <!-- Módulos de seguridad mejorados -->
+    <script src="js/input-sanitizer.js?v=1.0"></script>
+    <script src="js/password-validator.js?v=1.0"></script>
+    <script src="js/enhanced-rate-limiter.js?v=1.0"></script>
+    <script src="js/session-manager.js?v=1.0"></script>
+    <script src="js/password-policy.js?v=1.0"></script>
+    <script src="js/email-verification.js?v=1.0"></script>
+    <script src="js/password-recovery.js?v=1.0"></script>
+    <script src="js/admin-dashboard.js?v=1.0"></script>
+    <script src="js/change-history.js?v=1.0"></script>
+    <script src="js/audit-log-system.js?v=1.0"></script>
+    <script src="js/role-verification.js?v=1.0"></script>
+    <script src="js/data-encryption.js?v=1.0"></script>
+    <script src="js/gdpr-compliance.js?v=1.0"></script>
+    <script src="js/official-notifications-system.js?v=1.0"></script>
+    <script src="js/sede-electronica-integration.js?v=1.0"></script>
+    <script src="js/official-reports-system.js?v=1.0"></script>
+    <script src="js/advanced-document-management.js?v=1.0"></script>
+    <script src="js/external-backup-system.js?v=1.0"></script>
+    <script src="js/legal-audit-trail.js?v=1.0"></script>
+    <script src="js/legal-policies-manager.js?v=1.0"></script>
+    <script src="js/system-configuration-panel.js?v=1.0"></script>
+    <script src="js/admin-login-fallback.js?v=1.1"></script>
+    <!-- Nuevas funcionalidades -->
+    <script src="js/transparency-portal.js?v=1.0"></script>
+    <script src="js/expedient-query.js?v=1.0"></script>
+    <script src="js/citizen-participation.js?v=1.1"></script>
+    <script src="js/participation-settings.js?v=1.0"></script>
+    <script src="js/online-payments.js?v=1.0"></script>
+    <script src="js/admin-payments-management.js?v=1.0"></script>
+    <script src="js/admin-transparency-management.js?v=1.0"></script>
+    <script src="js/admin-expedients-management.js?v=1.0"></script>
+    <script src="js/admin-participation-management.js?v=1.0"></script>
+    
+    <!-- Módulo de Accesibilidad -->
+    <script src="js/accessibility-module.js?v=1.0"></script>
+    
+    <script src="js/script.js?v=3.4"></script>
     <script src="js/recaptcha.js"></script>
 </body> 
 

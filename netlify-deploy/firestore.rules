@@ -222,6 +222,20 @@ service cloud.firestore {
       allow create, update, delete: if isAdmin();
     }
 
+    match /pwa_installations/{installationId} {
+      allow get: if isAuthenticated() && (
+        resource.data.userEmail == request.auth.token.email ||
+        isAdmin()
+      );
+      allow list: if isAdmin();
+      allow create: if isAuthenticated() &&
+        request.resource.data.keys().hasAll(['userEmail', 'platform', 'installedAt']) &&
+        request.resource.data.userEmail is string &&
+        request.resource.data.platform is string &&
+        request.resource.data.installedAt is string;
+      allow update, delete: if isAdmin();
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }

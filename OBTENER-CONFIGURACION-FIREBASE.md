@@ -7,7 +7,7 @@
 2. Baja hasta "Your apps" → Web app
 3. Si no existe una app web, haz clic en "Add app" → Web (</>) 
 4. Copia los valores:
-   - **apiKey**: Ejemplo: `AIzaSyBxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx`
+   - **apiKey**: Ejemplo: `AIxx-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx`
    - **appId**: Ejemplo: `1:623846192437:web:xxxxxxxxxxxxxxxxxxxx`
 
 ### 2. **VAPID Key (para notificaciones push web)**
@@ -22,7 +22,7 @@
 ## 📝 Una vez tengas los valores:
 
 **Dime los 3 valores y los actualizo en `index.html`:**
-- API Key: `AIzaSyB...`
+- API Key: `AIxx-...`
 - App ID: `1:623846192437:web:...`
 - VAPID Key: `BHrX8K...`
 

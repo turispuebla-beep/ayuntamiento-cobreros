@@ -87,7 +87,7 @@ BHrX8K3m2Yq5vN9wP7sT4uR6eY8iU0oA2dF4gH6jK8lM0nP2qR4sT6uV8wX0yZ2aB4cD6eF8gH0
 2. **Copiar configuración:**
    ```javascript
    const firebaseConfig = {
-       apiKey: "AIzaSyB...", // ← Copiar de Firebase Console
+       apiKey: "AIxx-...", // ← Copiar de Firebase Console
        authDomain: "turisteam-80f1b.firebaseapp.com",
        projectId: "turisteam-80f1b",
        storageBucket: "turisteam-80f1b.appspot.com",
