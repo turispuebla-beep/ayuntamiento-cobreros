@@ -18181,83 +18181,282 @@ function loadCobrerosContent() {
         }
     }
     
-    // Si no hay datos guardados, usar datos por defecto
+    // Si no hay datos guardados, usar datos por defecto de Cobreros y comarca de Sanabria
     if (!savedData || Object.values(culturaOcioData).every(section => section.length === 0)) {
         const cobrerosData = {
             naturaleza: [
                 {
                     id: generateId(),
-                    title: "🌊 Cascadas de Sotillo",
-                    description: "Una de las rutas más populares con cascadas de agua cristalina en un entorno boscoso. Dificultad media, duración 2-3 horas.",
-                    image: "images/cascadas-sotillo.jpg",
+                    title: "🏞️ Lago de Sanabria",
+                    description: "El lago glaciar más grande de la Península Ibérica, situado a solo 10 km de Cobreros. Con 368 hectáreas de superficie y hasta 53 metros de profundidad, ofrece playas naturales, rutas de senderismo, deportes acuáticos y el Centro de Interpretación del Parque Natural.",
+                    image: "images/lago-sanabria.jpg",
                     links: [
-                        { text: "📋 Guía de Ruta", url: "#", type: "pdf" },
-                        { text: "🗺️ Mapa Interactivo", url: "#", type: "external" }
+                        { text: "🏊 Playas y Zonas de Baño", url: "https://patrimonionatural.org/espacios-naturales/parques-naturales/parque-natural-lago-de-sanabria-y-sierras-segundera-y-de-porto", type: "external" },
+                        { text: "🚣 Actividades Acuáticas", url: "#", type: "external" },
+                        { text: "🗺️ Mapa del Parque Natural", url: "#", type: "pdf" }
                     ],
                     order: 1
                 },
                 {
                     id: generateId(),
-                    title: "🏞️ Lago de Sanabria",
-                    description: "El lago glaciar más grande de España. Superficie de 368 hectáreas y hasta 53 metros de profundidad. Ideal para baño y kayak.",
-                    image: "images/lago-sanabria.jpg",
+                    title: "🌊 Cascadas de Sotillo",
+                    description: "Espectacular ruta de senderismo que parte de Sotillo de Sanabria. Cascadas de agua cristalina en un bosque de robles y castaños. Dificultad media, duración aproximada 2-3 horas ida y vuelta. Especialmente recomendable en primavera.",
+                    image: "images/cascadas-sotillo.jpg",
                     links: [
-                        { text: "📋 Información Turística", url: "#", type: "pdf" },
-                        { text: "🏊 Actividades Acuáticas", url: "#", type: "external" }
+                        { text: "📋 Guía de la Ruta", url: "#", type: "pdf" },
+                        { text: "🗺️ Track GPS", url: "#", type: "external" }
                     ],
                     order: 2
+                },
+                {
+                    id: generateId(),
+                    title: "🥾 Ruta de los Pueblos del Lago",
+                    description: "Recorrido circular por los pueblos tradicionales que rodean el Lago de Sanabria: San Martín de Castañeda, Ribadelago, Vigo de Sanabria y Galende. Arquitectura popular sanabresa, hórreos y paisajes únicos.",
+                    image: "images/pueblos-lago.jpg",
+                    links: [
+                        { text: "📋 Descripción de la Ruta", url: "#", type: "pdf" },
+                        { text: "🗺️ Mapa de Pueblos", url: "#", type: "external" }
+                    ],
+                    order: 3
+                },
+                {
+                    id: generateId(),
+                    title: "⛰️ Sierra Segundera",
+                    description: "Montañas que superan los 2.000 metros con lagunas glaciares, circos y morrenas. Destaca la Laguna de los Peces (2.000 m) y Peña Trevinca (2.127 m), el techo de Zamora y Ourense.",
+                    image: "images/sierra-segundera.jpg",
+                    links: [
+                        { text: "🥾 Rutas de Alta Montaña", url: "#", type: "pdf" },
+                        { text: "⚠️ Consejos de Seguridad", url: "#", type: "pdf" }
+                    ],
+                    order: 4
+                },
+                {
+                    id: generateId(),
+                    title: "🦌 Fauna y Flora del Parque Natural",
+                    description: "El Parque Natural alberga una rica biodiversidad: ciervos, corzos, jabalíes, nutrias, truchas autóctonas. Flora con robledales, abedulares, acebos y especies endémicas. Centro de Interpretación en San Martín de Castañeda.",
+                    image: "images/fauna-sanabria.jpg",
+                    links: [
+                        { text: "📋 Guía de Fauna", url: "#", type: "pdf" },
+                        { text: "🌿 Guía de Flora", url: "#", type: "pdf" }
+                    ],
+                    order: 5
                 }
             ],
             patrimonio: [
                 {
                     id: generateId(),
-                    title: "⛪ Iglesia de San Martín",
-                    description: "Iglesia del siglo XVI con arquitectura tradicional sanabresa. Destaca su retablo barroco y campanario de piedra.",
-                    image: "images/iglesia-san-martin.jpg",
+                    title: "⛪ Iglesia Parroquial de Cobreros",
+                    description: "Templo de arquitectura tradicional sanabresa con elementos románicos y posteriores reformas. Destaca su campanario de piedra y el retablo mayor. Lugar de culto y centro de las fiestas patronales.",
+                    image: "images/iglesia-cobreros.jpg",
                     links: [
-                        { text: "📋 Historia Detallada", url: "#", type: "pdf" },
-                        { text: "🕒 Horarios de Visita", url: "#", type: "external" }
+                        { text: "📋 Historia y Arte", url: "#", type: "pdf" },
+                        { text: "🕒 Horarios de Misas", url: "#", type: "external" }
                     ],
                     order: 1
+                },
+                {
+                    id: generateId(),
+                    title: "🏛️ Monasterio de San Martín de Castañeda",
+                    description: "Antiguo monasterio cisterciense del siglo X situado junto al Lago. Declarado Bien de Interés Cultural. Alberga el Centro de Interpretación del Parque Natural con exposiciones sobre geología, flora y fauna.",
+                    image: "images/monasterio-san-martin.jpg",
+                    links: [
+                        { text: "📋 Historia del Monasterio", url: "#", type: "pdf" },
+                        { text: "🎫 Visitas y Horarios", url: "https://patrimonionatural.org/casas-del-parque/casa-del-parque-del-lago-de-sanabria", type: "external" }
+                    ],
+                    order: 2
+                },
+                {
+                    id: generateId(),
+                    title: "🏘️ Arquitectura Popular Sanabresa",
+                    description: "Los pueblos del municipio conservan la arquitectura tradicional: casas de piedra con tejados de pizarra, hórreos, fuentes y lavaderos. Pasea por Cobreros, Sotillo, San Román y descubre este patrimonio vivo.",
+                    image: "images/arquitectura-sanabresa.jpg",
+                    links: [
+                        { text: "📋 Guía de Arquitectura", url: "#", type: "pdf" },
+                        { text: "📸 Galería de Fotos", url: "#", type: "external" }
+                    ],
+                    order: 3
+                },
+                {
+                    id: generateId(),
+                    title: "🏰 Castillo de Puebla de Sanabria",
+                    description: "Fortaleza del siglo XV que domina la villa de Puebla. Torre del Homenaje, murallas y foso. Actualmente alberga exposiciones y el Centro de Fortificaciones. Imprescindible en tu visita a la comarca.",
+                    image: "images/castillo-puebla.jpg",
+                    links: [
+                        { text: "🎫 Información de Visitas", url: "https://www.puebladesanabria.es/turismo/castillo", type: "external" },
+                        { text: "📋 Historia del Castillo", url: "#", type: "pdf" }
+                    ],
+                    order: 4
                 }
             ],
             gastronomia: [
                 {
                     id: generateId(),
-                    title: "🍄 Recolección de Setas",
-                    description: "Cobreros es famoso por sus setas. Temporada de otoño con especies como boletus, cucurril y un sin fin de especies de gran valor culinario.",
-                    image: "images/setas-cobreros.jpg",
+                    title: "🍄 Setas de Sanabria",
+                    description: "La comarca es un paraíso micológico. En otoño abundan boletus (Boletus edulis), níscalos, rebozuelos, setas de cardo y muchas más. Se requiere carnet micológico para recolectar. Jornadas Micológicas en octubre-noviembre.",
+                    image: "images/setas-sanabria.jpg",
                     links: [
-                        { text: "📋 Guía de Setas", url: "#", type: "pdf" },
-                        { text: "🗓️ Calendario de Recolección", url: "#", type: "external" }
+                        { text: "🎫 Solicitar Carnet Micológico", url: "#cita-previa", type: "internal" },
+                        { text: "📋 Guía de Setas Comestibles", url: "#", type: "pdf" },
+                        { text: "🗓️ Jornadas Micológicas", url: "#", type: "external" }
                     ],
                     order: 1
+                },
+                {
+                    id: generateId(),
+                    title: "🥩 Ternera de Sanabria",
+                    description: "Carne de vacuno criado en los pastos de montaña con Indicación Geográfica Protegida. Sabor intenso y textura excepcional. Platos típicos: chuletón, estofado sanabrés, callos.",
+                    image: "images/ternera-sanabria.jpg",
+                    links: [
+                        { text: "🍽️ Dónde Degustarla", url: "#", type: "external" },
+                        { text: "📋 Recetas Tradicionales", url: "#", type: "pdf" }
+                    ],
+                    order: 2
+                },
+                {
+                    id: generateId(),
+                    title: "🫘 Habones de Sanabria",
+                    description: "Legumbre autóctona de gran tamaño cultivada tradicionalmente en la comarca. Base del cocido sanabrés y otros guisos de cuchara. Producto con denominación de calidad.",
+                    image: "images/habones-sanabria.jpg",
+                    links: [
+                        { text: "📋 Receta del Cocido Sanabrés", url: "#", type: "pdf" },
+                        { text: "🛒 Dónde Comprar", url: "#", type: "external" }
+                    ],
+                    order: 3
+                },
+                {
+                    id: generateId(),
+                    title: "🍯 Miel y Productos Artesanos",
+                    description: "Miel de brezo y castaño producida por apicultores locales. También mermeladas, licores de hierbas (orujo, licor de café), quesos artesanos y embutidos tradicionales.",
+                    image: "images/miel-sanabria.jpg",
+                    links: [
+                        { text: "🛒 Productores Locales", url: "#", type: "external" },
+                        { text: "📋 Mercados y Ferias", url: "#", type: "pdf" }
+                    ],
+                    order: 4
+                },
+                {
+                    id: generateId(),
+                    title: "🐟 Trucha del Lago",
+                    description: "Trucha autóctona del Lago de Sanabria, especie protegida. Se puede degustar en restaurantes locales procedente de piscifactorías. Preparaciones: a la plancha, escabechada, al horno con jamón.",
+                    image: "images/trucha-sanabria.jpg",
+                    links: [
+                        { text: "🍽️ Restaurantes Recomendados", url: "#", type: "external" }
+                    ],
+                    order: 5
                 }
             ],
             eventos: [
                 {
                     id: generateId(),
-                    title: "🎭 Fiestas Patronales",
-                    description: "Fiestas en honor a San Roque con procesiones, verbenas y actividades tradicionales a mediados de agosto.",
-                    image: "images/fiestas-patronales.jpg",
+                    title: "🎭 Fiestas Patronales de San Roque",
+                    description: "Fiestas principales de Cobreros en honor a San Roque, celebradas a mediados de agosto (en torno al 16 de agosto). Procesión, misa solemne, verbenas, juegos tradicionales, comidas populares y actividades para todas las edades.",
+                    image: "images/san-roque-cobreros.jpg",
                     links: [
                         { text: "📋 Programa de Fiestas", url: "#", type: "pdf" },
-                        { text: "📅 Calendario de Eventos", url: "#", type: "external" }
+                        { text: "📅 Calendario Festivo", url: "#", type: "external" }
                     ],
                     order: 1
+                },
+                {
+                    id: generateId(),
+                    title: "🎪 Feria de la Trucha - Puebla de Sanabria",
+                    description: "Celebración gastronómica en abril/mayo dedicada a la trucha. Degustaciones, concursos de pesca, mercado de productos locales. Una de las ferias más importantes de la comarca.",
+                    image: "images/feria-trucha.jpg",
+                    links: [
+                        { text: "📋 Programa del Evento", url: "#", type: "pdf" },
+                        { text: "📍 Cómo Llegar", url: "#", type: "external" }
+                    ],
+                    order: 2
+                },
+                {
+                    id: generateId(),
+                    title: "🍄 Jornadas Micológicas",
+                    description: "Evento anual en octubre-noviembre con salidas guiadas al monte, talleres de identificación, conferencias y menús especiales de setas en restaurantes de la zona.",
+                    image: "images/jornadas-micologicas.jpg",
+                    links: [
+                        { text: "📋 Inscripciones", url: "#", type: "external" },
+                        { text: "📅 Calendario de Actividades", url: "#", type: "pdf" }
+                    ],
+                    order: 3
+                },
+                {
+                    id: generateId(),
+                    title: "🎄 Navidad y Tradiciones de Invierno",
+                    description: "Belenes tradicionales, misa del Gallo, hogueras de San Antón, matanzas tradicionales. Vive la Navidad en un entorno rural auténtico con las costumbres sanabresas.",
+                    image: "images/navidad-sanabria.jpg",
+                    links: [
+                        { text: "📋 Tradiciones Navideñas", url: "#", type: "pdf" }
+                    ],
+                    order: 4
+                },
+                {
+                    id: generateId(),
+                    title: "🏃 Travesía a Nado del Lago",
+                    description: "Prueba deportiva que se celebra cada verano cruzando el Lago de Sanabria. Participan nadadores de toda España. Espectacular evento en un entorno natural único.",
+                    image: "images/travesia-lago.jpg",
+                    links: [
+                        { text: "📋 Inscripciones", url: "#", type: "external" },
+                        { text: "📅 Fecha y Horarios", url: "#", type: "external" }
+                    ],
+                    order: 5
                 }
             ],
             cercanos: [
                 {
                     id: generateId(),
                     title: "🏰 Puebla de Sanabria",
-                    description: "Villa medieval con castillo del siglo XV, iglesias históricas y monasterio. Conjunto histórico-artístico de gran belleza arquitectónica.",
+                    description: "Capital de la comarca a 12 km de Cobreros. Villa medieval declarada Conjunto Histórico-Artístico. Castillo del siglo XV, iglesia de Santa María del Azogue, calles empedradas, murallas y un ambiente medieval único. Servicios, comercios y restaurantes.",
                     image: "images/puebla-sanabria.jpg",
                     links: [
-                        { text: "📋 Guía Turística", url: "#", type: "pdf" },
-                        { text: "🏰 Historia del Castillo", url: "#", type: "external" }
+                        { text: "📋 Guía Turística Completa", url: "https://www.puebladesanabria.es/turismo", type: "external" },
+                        { text: "🏰 Visitar el Castillo", url: "#", type: "external" },
+                        { text: "🗺️ Mapa del Casco Histórico", url: "#", type: "pdf" }
                     ],
                     order: 1
+                },
+                {
+                    id: generateId(),
+                    title: "⛪ San Martín de Castañeda",
+                    description: "Pueblo junto al Lago con el histórico monasterio cisterciense del siglo X. Centro de Interpretación del Parque Natural. Miradores espectaculares sobre el Lago. Inicio de rutas de senderismo.",
+                    image: "images/san-martin-castaneda.jpg",
+                    links: [
+                        { text: "🎫 Centro de Interpretación", url: "https://patrimonionatural.org/casas-del-parque/casa-del-parque-del-lago-de-sanabria", type: "external" },
+                        { text: "📋 Historia del Monasterio", url: "#", type: "pdf" }
+                    ],
+                    order: 2
+                },
+                {
+                    id: generateId(),
+                    title: "🏖️ Ribadelago y Playas del Lago",
+                    description: "Pueblo reconstruido tras la tragedia de 1959. Playas naturales de arena y hierba en la orilla del Lago: Playa de los Enanos, Custa Llago, Playa de Viquiella. Área recreativa y merenderos.",
+                    image: "images/playas-lago.jpg",
+                    links: [
+                        { text: "🏖️ Guía de Playas", url: "#", type: "pdf" },
+                        { text: "📍 Cómo Llegar", url: "#", type: "external" }
+                    ],
+                    order: 3
+                },
+                {
+                    id: generateId(),
+                    title: "🇵🇹 Bragança (Portugal)",
+                    description: "Ciudad portuguesa a 50 km, fácilmente accesible. Ciudadela medieval amurallada, castillo, Domus Municipalis románica. Gastronomía portuguesa, compras y ambiente diferente.",
+                    image: "images/braganca.jpg",
+                    links: [
+                        { text: "📋 Guía de Bragança", url: "https://www.cm-braganca.pt/turismo", type: "external" },
+                        { text: "🗺️ Cómo Llegar desde Cobreros", url: "#", type: "external" }
+                    ],
+                    order: 4
+                },
+                {
+                    id: generateId(),
+                    title: "🏔️ Parque Natural de Montesinho (Portugal)",
+                    description: "Espacio natural protegido en la frontera portuguesa. Aldeas tradicionales, fauna salvaje (lobos, ciervos), paisajes de montaña. Complemento perfecto para una escapada transfronteriza.",
+                    image: "images/montesinho.jpg",
+                    links: [
+                        { text: "📋 Información del Parque", url: "#", type: "external" },
+                        { text: "🥾 Rutas de Senderismo", url: "#", type: "pdf" }
+                    ],
+                    order: 5
                 }
             ]
         };
