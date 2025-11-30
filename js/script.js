@@ -19211,15 +19211,8 @@ function renderCalendar() {
         monthYearElement.textContent = `${monthNames[currentCalendarMonth]} ${currentCalendarYear}`;
     }
     
-    // Crear encabezados de días
-    let calendarHTML = '<div class="calendar-weekdays">';
-    displayDayNames.forEach(day => {
-        calendarHTML += `<div class="calendar-weekday">${escapeHtml(day)}</div>`;
-    });
-    calendarHTML += '</div>';
-    
-    // Crear grid de días
-    calendarHTML += '<div class="calendar-days-grid">';
+    // Crear grid de días (sin encabezados de días de la semana)
+    let calendarHTML = '<div class="calendar-days-grid">';
     
     // Días vacíos al inicio
     for (let i = 0; i < startingDayOfWeek; i++) {
@@ -19530,15 +19523,8 @@ function renderAdminCalendar() {
         monthYearElement.textContent = `${monthNames[adminCalendarMonth]} ${adminCalendarYear}`;
     }
     
-    // Crear encabezados de días
-    let calendarHTML = '<div class="calendar-weekdays">';
-    displayDayNames.forEach(day => {
-        calendarHTML += `<div class="calendar-weekday">${escapeHtml(day)}</div>`;
-    });
-    calendarHTML += '</div>';
-    
-    // Crear grid de días
-    calendarHTML += '<div class="calendar-days-grid">';
+    // Crear grid de días (sin encabezados de días de la semana)
+    let calendarHTML = '<div class="calendar-days-grid">';
     
     // Días vacíos al inicio
     for (let i = 0; i < startingDayOfWeek; i++) {
