@@ -3259,12 +3259,13 @@ function renderPwaInstallBanner(force = false) {
         banner.innerHTML = `
             <div class="pwa-banner-content">
                 <div class="pwa-banner-text">
-                    <h3>📱 Instala la app desde tu móvil</h3>
-                    <p>Abre <strong>www.ayuntamientocobreros.com</strong> desde tu móvil Android (Chrome) o desde Safari en tu iPhone/iPad.</p>
-                    <p>Instala la app, regístrate y activa las notificaciones para recibir avisos del Ayuntamiento al instante.</p>
+                    <span class="pwa-banner-icon">📲</span>
+                    <h3>¡Lleva el Ayuntamiento en tu bolsillo!</h3>
+                    <p>Abre <strong>ayuntamientodecobreros.netlify.app</strong> desde tu <strong>móvil Android</strong> (Chrome) o <strong>iPhone/iPad</strong> (Safari) para instalar la app.</p>
+                    <p style="margin-top: 8px; font-size: 0.85rem; opacity: 0.9;">✨ Recibe notificaciones, consulta citas previas y accede a todos los servicios sin abrir el navegador.</p>
                 </div>
                 <button class="pwa-banner-close" onclick="closePWAInstallBanner()" aria-label="Cerrar aviso">
-                    Entendido
+                    ✓ Entendido
                 </button>
             </div>
         `;
@@ -3273,31 +3274,31 @@ function renderPwaInstallBanner(force = false) {
             <div class="pwa-banner-content">
                 <div class="pwa-banner-header">
                     <div>
-                        <h3>Instala la app del Ayuntamiento</h3>
-                        <p>Instálala, completa tu registro como usuario/a y acepta las notificaciones para recibir avisos directos en tu dispositivo móvil.</p>
+                        <h3>📲 Instala la App de Cobreros</h3>
+                        <p>Acceso rápido a servicios municipales, citas previas y notificaciones oficiales directamente en tu móvil.</p>
                     </div>
-                    <button class="pwa-banner-close" onclick="closePWAInstallBanner()" aria-label="Cerrar aviso">×</button>
+                    <button class="pwa-banner-close" onclick="closePWAInstallBanner()" aria-label="Cerrar aviso" style="padding: 8px 12px; font-size: 1.2rem; line-height: 1;">×</button>
                 </div>
                 <div class="pwa-install-options">
                     <button class="pwa-install-option" onclick="handlePwaInstallOption('android')">
                         <img src="${PLATFORM_ICONS.android}" alt="Android" loading="lazy">
                         <div>
                             <span>Android</span>
-                            <small>Instalar ahora</small>
+                            <small>📥 Instalar ahora</small>
                         </div>
                     </button>
                     <button class="pwa-install-option" onclick="handlePwaInstallOption('huawei')">
                         <img src="${PLATFORM_ICONS.huawei}" alt="Huawei" loading="lazy">
                         <div>
                             <span>Huawei</span>
-                            <small>Instalar en HMS</small>
+                            <small>📥 AppGallery</small>
                         </div>
                     </button>
                     <button class="pwa-install-option" onclick="handlePwaInstallOption('ios')">
                         <img src="${PLATFORM_ICONS.ios}" alt="iOS" loading="lazy">
                         <div>
-                            <span>iOS</span>
-                            <small>Ver instrucciones</small>
+                            <span>iPhone/iPad</span>
+                            <small>📋 Instrucciones</small>
                         </div>
                     </button>
                 </div>
