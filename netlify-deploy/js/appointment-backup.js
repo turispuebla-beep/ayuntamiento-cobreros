@@ -136,8 +136,8 @@ function importAppointments() {
       saveAppointments();
       loadAppointmentsList();
       loadAppointmentStats();
-      if (typeof renderAdminCalendar === 'function') {
-        renderAdminCalendar();
+      if (typeof syncCalendars === 'function') {
+        syncCalendars(); // Sincronizar ambos calendarios
       }
             
       showNotification(`✅ Importadas ${imported} citas. ${skipped} omitidas (duplicadas o inválidas).`, 'success');
@@ -182,8 +182,8 @@ async function clearAllAppointments() {
   saveAppointments();
   loadAppointmentsList();
   loadAppointmentStats();
-  if (typeof renderAdminCalendar === 'function') {
-    renderAdminCalendar();
+  if (typeof syncCalendars === 'function') {
+    syncCalendars(); // Sincronizar ambos calendarios
   }
     
   showNotification('✅ Todas las citas han sido eliminadas. Se ha creado un backup automático.', 'success');

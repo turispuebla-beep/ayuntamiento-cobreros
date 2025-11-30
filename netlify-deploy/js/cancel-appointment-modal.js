@@ -225,7 +225,9 @@ async function confirmCancelAppointment() {
   saveAppointments();
   loadAppointmentsList();
   loadAppointmentStats();
-  renderAdminCalendar();
+  if (typeof syncCalendars === 'function') {
+    syncCalendars(); // Sincronizar ambos calendarios
+  }
     
   // Cerrar modal
   closeCancelAppointmentModal();
@@ -258,21 +260,100 @@ function closeCancelAppointmentModal() {
  * Envía email de cancelación con fecha alternativa
  */
 async function sendCancellationEmail(appointment, reason, alternativeDate = null) {
-  let message = 'Lamentamos informarle que su cita previa ha sido cancelada.';
   try {
-    if (reason) {
-      message += `\n\nMotivo: ${reason}`;
-    }
+    // Formatear fechas de forma segura
+    const safeFormatDate = (date) => {
+      if (typeof formatDateForDisplay === 'function') {
+        return formatDateForDisplay(date);
+      }
+      if (typeof formatDate === 'function') {
+        return formatDate(date);
+      }
+      return date;
+    };
+    
+    const safeServiceName = (service) => {
+      if (typeof getServiceName === 'function') {
+        return getServiceName(service);
+      }
+      return service || 'Trámite municipal';
+    };
+    
+    const appointmentDate = safeFormatDate(appointment.date);
+    const altDateFormatted = alternativeDate?.date ? safeFormatDate(alternativeDate.date) : null;
+    
+    // Generar HTML profesional del email de cancelación
+    const emailHtml = `
+      <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #f8fafc;">
+        <!-- Cabecera -->
+        <div style="background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); color: white; padding: 30px; text-align: center;">
+          <div style="font-size: 48px; margin-bottom: 10px;">❌</div>
+          <h1 style="margin: 0; font-size: 22px;">Cita Cancelada</h1>
+          <p style="margin: 10px 0 0 0; opacity: 0.9; font-size: 14px;">Ayuntamiento de Cobreros</p>
+        </div>
         
-    if (alternativeDate) {
-      const altDateFormatted = typeof formatDateForDisplay === 'function' 
-        ? formatDateForDisplay(alternativeDate.date) 
-        : alternativeDate.date;
-      message += `\n\nLe proponemos una nueva fecha alternativa:\nFecha: ${altDateFormatted}\nHora: ${alternativeDate.time}`;
-      message += '\n\nPor favor, confirme si esta nueva fecha le resulta conveniente contactándonos.';
-    } else {
-      message += '\n\nSi desea reagendar su cita, por favor contacte con nosotros.';
-    }
+        <!-- Contenido principal -->
+        <div style="padding: 30px; background: white;">
+          <p style="font-size: 16px; color: #334155;">Hola <strong>${appointment.name}</strong>,</p>
+          <p style="color: #64748b;">Lamentamos informarle que su cita previa ha sido <strong style="color: #ef4444;">cancelada</strong>.</p>
+          
+          ${reason ? `
+          <div style="background: #fef3c7; padding: 15px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #f59e0b;">
+            <p style="margin: 0; color: #92400e;"><strong>📝 Motivo de la cancelación:</strong></p>
+            <p style="margin: 8px 0 0 0; color: #78350f;">${reason}</p>
+          </div>
+          ` : ''}
+          
+          <!-- Detalles de la cita cancelada -->
+          <div style="background: #fef2f2; padding: 20px; border-radius: 12px; margin: 20px 0; border-left: 4px solid #ef4444;">
+            <h3 style="margin: 0 0 15px 0; color: #991b1b;">📋 Cita que ha sido cancelada</h3>
+            <table style="width: 100%; border-collapse: collapse;">
+              <tr><td style="padding: 8px 0; color: #64748b;">Servicio:</td><td style="padding: 8px 0; font-weight: 600; color: #334155;">${safeServiceName(appointment.service)}</td></tr>
+              <tr><td style="padding: 8px 0; color: #64748b;">Fecha:</td><td style="padding: 8px 0; font-weight: 600; color: #334155; text-decoration: line-through;">📅 ${appointmentDate}</td></tr>
+              <tr><td style="padding: 8px 0; color: #64748b;">Hora:</td><td style="padding: 8px 0; font-weight: 600; color: #334155; text-decoration: line-through;">🕐 ${appointment.time}</td></tr>
+            </table>
+          </div>
+          
+          ${alternativeDate && altDateFormatted ? `
+          <!-- Fecha alternativa propuesta -->
+          <div style="background: #dbeafe; padding: 20px; border-radius: 12px; margin: 20px 0; border-left: 4px solid #3b82f6;">
+            <h3 style="margin: 0 0 15px 0; color: #1e40af;">✨ Le proponemos una nueva fecha</h3>
+            <table style="width: 100%; border-collapse: collapse;">
+              <tr><td style="padding: 8px 0; color: #64748b;">Nueva fecha:</td><td style="padding: 8px 0; font-weight: 700; color: #1e3a8a;">📅 ${altDateFormatted}</td></tr>
+              <tr><td style="padding: 8px 0; color: #64748b;">Nueva hora:</td><td style="padding: 8px 0; font-weight: 700; color: #1e3a8a;">🕐 ${alternativeDate.time}</td></tr>
+            </table>
+            <p style="margin: 15px 0 0 0; color: #3b82f6; font-size: 14px;">
+              📞 Por favor, confirme si esta nueva fecha le resulta conveniente contactándonos.
+            </p>
+          </div>
+          ` : `
+          <div style="background: #f1f5f9; padding: 20px; border-radius: 12px; margin: 20px 0;">
+            <p style="margin: 0; color: #64748b; text-align: center;">
+              Si desea solicitar una <strong>nueva cita</strong>, puede hacerlo a través de nuestra web<br>
+              o contactándonos directamente.
+            </p>
+          </div>
+          `}
+        </div>
+        
+        <!-- Contacto -->
+        <div style="padding: 20px 30px; background: #f1f5f9; text-align: center;">
+          <p style="margin: 0; color: #64748b; font-size: 14px;">
+            ¿Tiene alguna pregunta? Contáctenos:<br>
+            📞 980 62 26 18 | 📧 aytocobreros@gmail.com
+          </p>
+        </div>
+        
+        <!-- Pie de página -->
+        <div style="background: #1e293b; color: white; padding: 20px; text-align: center;">
+          <p style="margin: 0; font-size: 14px;"><strong>Ayuntamiento de Cobreros</strong></p>
+          <p style="margin: 8px 0 0 0; font-size: 12px; opacity: 0.7;">
+            Calle Principal, s/n · 49395 Cobreros (Zamora)<br>
+            Horario: Lunes a Viernes de 9:00 a 14:00
+          </p>
+        </div>
+      </div>
+    `;
         
     // Verificar que CLOUD_FUNCTIONS_BASE_URL esté definido (o usar URL hardcodeada como fallback)
     const cloudFunctionsUrl = typeof CLOUD_FUNCTIONS_BASE_URL !== 'undefined' 
@@ -298,26 +379,34 @@ async function sendCancellationEmail(appointment, reason, alternativeDate = null
         body: JSON.stringify({
           to: appointment.email,
           from: 'u2389387944@gmail.com',
-          fromName: 'Avisos Ayto Cobreros',
-          subject: 'Cancelación de Cita Previa - Ayuntamiento de Cobreros',
+          fromName: 'Ayuntamiento de Cobreros',
+          subject: `❌ Cita Cancelada - Ayuntamiento de Cobreros`,
+          html: emailHtml,
           template: 'appointment_status_change',
           data: {
             name: appointment.name,
             oldStatus: typeof getStatusText === 'function' ? getStatusText(appointment.status === 'cancelled' ? 'confirmed' : appointment.status) : 'Confirmada',
             newStatus: 'Cancelada',
-            service: typeof getServiceName === 'function' ? getServiceName(appointment.service) : appointment.service,
-            date: typeof formatDateForDisplay === 'function' 
-              ? formatDateForDisplay(appointment.date) 
-              : (typeof formatDate === 'function' ? formatDate(appointment.date) : appointment.date),
+            service: safeServiceName(appointment.service),
+            date: appointmentDate,
             time: appointment.time,
             dni: appointment.dni,
             email: appointment.email,
             phone: appointment.phone,
-            message: message,
-            alternativeDate: (alternativeDate && alternativeDate.date && typeof formatDateForDisplay === 'function') 
-              ? formatDateForDisplay(alternativeDate.date) 
-              : (alternativeDate && alternativeDate.date ? alternativeDate.date : null),
-            alternativeTime: (alternativeDate && alternativeDate.time) ? alternativeDate.time : null
+            reason: reason || null,
+            alternativeDate: altDateFormatted,
+            alternativeTime: alternativeDate?.time || null,
+            // Información del ayuntamiento
+            ayuntamiento: {
+              nombre: 'Ayuntamiento de Cobreros',
+              direccion: 'Calle Principal, s/n',
+              codigoPostal: '49395',
+              localidad: 'Cobreros',
+              provincia: 'Zamora',
+              telefono: '980 62 26 18',
+              email: 'aytocobreros@gmail.com',
+              horario: 'Lunes a Viernes de 9:00 a 14:00'
+            }
           }
         }),
         signal: controller.signal

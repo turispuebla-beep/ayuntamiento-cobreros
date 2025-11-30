@@ -2563,15 +2563,14 @@ async function handleAppointment(e) {
         
         saveAppointments();
         
-        // Actualizar calendario para mostrar la nueva cita en rojo
-        if (document.getElementById('calendarGrid')) {
-            renderCalendar();
-            // Si el formulario sigue abierto, actualizar los horarios
-            if (selectedAppointmentDate) {
-                setTimeout(() => {
-                    showTimeSlots(selectedAppointmentDate);
-                }, 100);
-            }
+        // Sincronizar ambos calendarios para mostrar la nueva cita
+        syncCalendars();
+        
+        // Si el formulario sigue abierto, actualizar los horarios
+        if (selectedAppointmentDate) {
+            setTimeout(() => {
+                showTimeSlots(selectedAppointmentDate);
+            }, 100);
         }
         
         // Crear notificación para el encargado municipal
@@ -9144,15 +9143,91 @@ function validateNIE(nie) {
 // Email dedicado: u2389387944@gmail.com
 async function sendConfirmationEmail(appointmentData) {
     try {
+        // Generar HTML del email con diseño profesional
+        const emailHtml = `
+            <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #f8fafc;">
+                <!-- Cabecera -->
+                <div style="background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%); color: white; padding: 30px; text-align: center;">
+                    <h1 style="margin: 0; font-size: 24px;">🏛️ Ayuntamiento de Cobreros</h1>
+                    <p style="margin: 10px 0 0 0; opacity: 0.9;">Confirmación de Cita Previa</p>
+                </div>
+                
+                <!-- Contenido principal -->
+                <div style="padding: 30px; background: white;">
+                    <p style="font-size: 16px; color: #334155;">Hola <strong>${appointmentData.name}</strong>,</p>
+                    <p style="color: #64748b;">Hemos recibido correctamente tu solicitud de cita previa. A continuación te mostramos los detalles:</p>
+                    
+                    <!-- Detalles de la cita -->
+                    <div style="background: #f1f5f9; padding: 20px; border-radius: 12px; margin: 20px 0; border-left: 4px solid #3b82f6;">
+                        <h3 style="margin: 0 0 15px 0; color: #1e3a8a;">📋 Detalles de tu cita</h3>
+                        <table style="width: 100%; border-collapse: collapse;">
+                            <tr><td style="padding: 8px 0; color: #64748b;">Servicio:</td><td style="padding: 8px 0; font-weight: 600; color: #334155;">${getServiceName(appointmentData.service)}</td></tr>
+                            <tr><td style="padding: 8px 0; color: #64748b;">Fecha:</td><td style="padding: 8px 0; font-weight: 600; color: #334155;">📅 ${formatDateForDisplay(appointmentData.date)}</td></tr>
+                            <tr><td style="padding: 8px 0; color: #64748b;">Hora:</td><td style="padding: 8px 0; font-weight: 600; color: #334155;">🕐 ${appointmentData.time}</td></tr>
+                            <tr><td style="padding: 8px 0; color: #64748b;">Nº Referencia:</td><td style="padding: 8px 0; font-weight: 600; color: #3b82f6;">#${appointmentData.id || Date.now().toString().slice(-8)}</td></tr>
+                        </table>
+                    </div>
+                    
+                    <!-- Ubicación -->
+                    <div style="background: #fef3c7; padding: 20px; border-radius: 12px; margin: 20px 0; border-left: 4px solid #f59e0b;">
+                        <h3 style="margin: 0 0 10px 0; color: #92400e;">📍 Lugar de la cita</h3>
+                        <p style="margin: 0; color: #78350f;">
+                            <strong>Ayuntamiento de Cobreros</strong><br>
+                            Calle Principal, s/n<br>
+                            49395 Cobreros (Zamora)
+                        </p>
+                        <a href="https://maps.google.com/?q=Ayuntamiento+de+Cobreros+Zamora" style="display: inline-block; margin-top: 10px; color: #92400e; text-decoration: underline;">Ver en Google Maps →</a>
+                    </div>
+                    
+                    <!-- Documentación necesaria -->
+                    <div style="background: #ecfdf5; padding: 20px; border-radius: 12px; margin: 20px 0; border-left: 4px solid #10b981;">
+                        <h3 style="margin: 0 0 10px 0; color: #065f46;">📝 Documentación necesaria</h3>
+                        <ul style="margin: 0; padding-left: 20px; color: #047857;">
+                            <li>DNI o NIE original en vigor</li>
+                            <li>Documentación relacionada con su trámite</li>
+                            <li>Este email como comprobante (opcional)</li>
+                        </ul>
+                    </div>
+                    
+                    <!-- Aviso importante -->
+                    <div style="background: #fef2f2; padding: 15px; border-radius: 8px; margin: 20px 0;">
+                        <p style="margin: 0; color: #991b1b; font-size: 14px;">
+                            ⚠️ <strong>Importante:</strong> Si no puede acudir a su cita, por favor cancélela con al menos 24 horas de antelación para que otra persona pueda usar ese horario.
+                        </p>
+                    </div>
+                    
+                    <p style="color: #64748b; font-size: 14px;">
+                        Nos pondremos en contacto con usted para <strong>confirmar definitivamente</strong> la cita. 
+                        Si tiene alguna duda, puede contactarnos por teléfono o email.
+                    </p>
+                </div>
+                
+                <!-- Pie de página -->
+                <div style="background: #1e293b; color: white; padding: 25px; text-align: center;">
+                    <p style="margin: 0 0 10px 0; font-size: 14px;">
+                        <strong>Ayuntamiento de Cobreros</strong>
+                    </p>
+                    <p style="margin: 0; font-size: 13px; opacity: 0.8;">
+                        📞 980 62 26 18 | 📧 aytocobreros@gmail.com
+                    </p>
+                    <p style="margin: 10px 0 0 0; font-size: 12px; opacity: 0.6;">
+                        Horario de atención: Lunes a Viernes de 9:00 a 14:00
+                    </p>
+                </div>
+            </div>
+        `;
+        
         const response = await fetch(`${CLOUD_FUNCTIONS_BASE_URL}/sendEmail`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-        to: appointmentData.email,
+                to: appointmentData.email,
                 from: 'u2389387944@gmail.com',
-        subject: 'Confirmación de Cita Previa - Ayuntamiento de Cobreros',
+                fromName: 'Ayuntamiento de Cobreros',
+                subject: '✅ Confirmación de Cita Previa - Ayuntamiento de Cobreros',
+                html: emailHtml,
                 template: 'appointment_confirmation',
                 data: {
                     name: appointmentData.name,
@@ -9166,7 +9241,19 @@ async function sendConfirmationEmail(appointmentData) {
                     comments: appointmentData.comments || 'Ninguno',
                     appointmentId: appointmentData.id || Date.now().toString(),
                     attachmentUrl: appointmentData.attachment?.url || null,
-                    attachmentName: appointmentData.attachment?.name || null
+                    attachmentName: appointmentData.attachment?.name || null,
+                    // Información adicional del ayuntamiento
+                    ayuntamiento: {
+                        nombre: 'Ayuntamiento de Cobreros',
+                        direccion: 'Calle Principal, s/n',
+                        codigoPostal: '49395',
+                        localidad: 'Cobreros',
+                        provincia: 'Zamora',
+                        telefono: '980 62 26 18',
+                        email: 'aytocobreros@gmail.com',
+                        horario: 'Lunes a Viernes de 9:00 a 14:00',
+                        mapsUrl: 'https://maps.google.com/?q=Ayuntamiento+de+Cobreros+Zamora'
+                    }
                 }
             })
         });
@@ -9174,7 +9261,7 @@ async function sendConfirmationEmail(appointmentData) {
         const result = await response.json();
         if (result.success) {
             console.log('✅ Email de confirmación enviado al usuario:', result.messageId);
-    return true;
+            return true;
         } else {
             console.error('❌ Error al enviar email:', result.error);
             return false;
@@ -9189,15 +9276,127 @@ async function sendConfirmationEmail(appointmentData) {
 // Email dedicado: u2389387944@gmail.com
 async function sendAdminAlert(appointmentData) {
     try {
+        const appointmentId = appointmentData.id || Date.now().toString();
+        const fechaSolicitud = new Date().toLocaleString('es-ES', {
+            weekday: 'long',
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+        
+        // Generar HTML del email para el admin
+        const adminEmailHtml = `
+            <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 650px; margin: 0 auto; background: #f8fafc;">
+                <!-- Cabecera urgente -->
+                <div style="background: linear-gradient(135deg, #dc2626 0%, #ef4444 100%); color: white; padding: 25px; text-align: center;">
+                    <h1 style="margin: 0; font-size: 22px;">🔔 NUEVA SOLICITUD DE CITA PREVIA</h1>
+                    <p style="margin: 8px 0 0 0; opacity: 0.95; font-size: 14px;">Recibida el ${fechaSolicitud}</p>
+                </div>
+                
+                <!-- Referencia -->
+                <div style="background: #1e3a8a; color: white; padding: 12px 25px; text-align: center;">
+                    <span style="font-size: 14px;">Nº Referencia: <strong>#${appointmentId.slice(-8)}</strong></span>
+                </div>
+                
+                <!-- Datos del solicitante -->
+                <div style="padding: 25px; background: white;">
+                    <h2 style="margin: 0 0 20px 0; color: #1e3a8a; font-size: 18px; border-bottom: 2px solid #e2e8f0; padding-bottom: 10px;">
+                        👤 Datos del Solicitante
+                    </h2>
+                    <table style="width: 100%; border-collapse: collapse;">
+                        <tr style="background: #f8fafc;">
+                            <td style="padding: 12px; border: 1px solid #e2e8f0; width: 35%; color: #64748b; font-weight: 500;">Nombre completo</td>
+                            <td style="padding: 12px; border: 1px solid #e2e8f0; font-weight: 600; color: #1e293b;">${appointmentData.name}</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 12px; border: 1px solid #e2e8f0; color: #64748b; font-weight: 500;">DNI/NIE</td>
+                            <td style="padding: 12px; border: 1px solid #e2e8f0; font-weight: 600; color: #1e293b;">${appointmentData.dni || 'No proporcionado'}</td>
+                        </tr>
+                        <tr style="background: #f8fafc;">
+                            <td style="padding: 12px; border: 1px solid #e2e8f0; color: #64748b; font-weight: 500;">📧 Email</td>
+                            <td style="padding: 12px; border: 1px solid #e2e8f0;"><a href="mailto:${appointmentData.email}" style="color: #2563eb; text-decoration: none; font-weight: 600;">${appointmentData.email}</a></td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 12px; border: 1px solid #e2e8f0; color: #64748b; font-weight: 500;">📞 Teléfono</td>
+                            <td style="padding: 12px; border: 1px solid #e2e8f0;"><a href="tel:${appointmentData.phone}" style="color: #2563eb; text-decoration: none; font-weight: 600;">${appointmentData.phone || 'No proporcionado'}</a></td>
+                        </tr>
+                    </table>
+                </div>
+                
+                <!-- Detalles de la cita -->
+                <div style="padding: 0 25px 25px 25px; background: white;">
+                    <h2 style="margin: 0 0 20px 0; color: #1e3a8a; font-size: 18px; border-bottom: 2px solid #e2e8f0; padding-bottom: 10px;">
+                        📅 Detalles de la Cita Solicitada
+                    </h2>
+                    <div style="display: flex; gap: 15px; flex-wrap: wrap;">
+                        <div style="flex: 1; min-width: 200px; background: #dbeafe; padding: 20px; border-radius: 10px; text-align: center;">
+                            <div style="font-size: 14px; color: #1e40af; margin-bottom: 5px;">SERVICIO</div>
+                            <div style="font-size: 16px; font-weight: 700; color: #1e3a8a;">${getServiceName(appointmentData.service)}</div>
+                        </div>
+                        <div style="flex: 1; min-width: 120px; background: #dcfce7; padding: 20px; border-radius: 10px; text-align: center;">
+                            <div style="font-size: 14px; color: #166534; margin-bottom: 5px;">FECHA</div>
+                            <div style="font-size: 16px; font-weight: 700; color: #15803d;">${formatDateForDisplay(appointmentData.date)}</div>
+                        </div>
+                        <div style="flex: 1; min-width: 100px; background: #fef3c7; padding: 20px; border-radius: 10px; text-align: center;">
+                            <div style="font-size: 14px; color: #92400e; margin-bottom: 5px;">HORA</div>
+                            <div style="font-size: 20px; font-weight: 700; color: #b45309;">${appointmentData.time}</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Comentarios -->
+                ${appointmentData.comments ? `
+                <div style="padding: 0 25px 25px 25px; background: white;">
+                    <h3 style="margin: 0 0 10px 0; color: #64748b; font-size: 14px;">💬 Comentarios del solicitante:</h3>
+                    <div style="background: #f1f5f9; padding: 15px; border-radius: 8px; color: #475569; font-style: italic;">
+                        "${appointmentData.comments}"
+                    </div>
+                </div>
+                ` : ''}
+                
+                <!-- Adjunto -->
+                ${appointmentData.attachment?.url ? `
+                <div style="padding: 0 25px 25px 25px; background: white;">
+                    <h3 style="margin: 0 0 10px 0; color: #64748b; font-size: 14px;">📎 Documento adjunto:</h3>
+                    <a href="${appointmentData.attachment.url}" style="display: inline-block; background: #3b82f6; color: white; padding: 10px 20px; border-radius: 6px; text-decoration: none;">
+                        📄 ${appointmentData.attachment.name || 'Ver documento'}
+                    </a>
+                </div>
+                ` : ''}
+                
+                <!-- Acciones -->
+                <div style="padding: 25px; background: #f1f5f9; text-align: center;">
+                    <p style="margin: 0 0 15px 0; color: #64748b; font-size: 14px;">
+                        Accede al panel de administración para gestionar esta solicitud:
+                    </p>
+                    <a href="https://ayuntamientodecobreros.netlify.app/#citas-previas" style="display: inline-block; background: #1e3a8a; color: white; padding: 14px 28px; border-radius: 8px; text-decoration: none; font-weight: 600;">
+                        🔧 Ir al Panel de Administración
+                    </a>
+                </div>
+                
+                <!-- Pie de página -->
+                <div style="background: #1e293b; color: white; padding: 20px; text-align: center; font-size: 12px;">
+                    <p style="margin: 0; opacity: 0.7;">
+                        Este es un mensaje automático del sistema de citas previas.<br>
+                        No responda directamente a este email.
+                    </p>
+                </div>
+            </div>
+        `;
+        
         const response = await fetch(`${CLOUD_FUNCTIONS_BASE_URL}/sendEmail`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-        to: 'aytocobreros@gmail.com',
+                to: 'aytocobreros@gmail.com',
                 from: 'u2389387944@gmail.com',
-        subject: 'NUEVA SOLICITUD DE CITA PREVIA',
+                fromName: 'Sistema de Citas - Ayto Cobreros',
+                subject: `🔔 NUEVA CITA: ${appointmentData.name} - ${formatDateForDisplay(appointmentData.date)} ${appointmentData.time}`,
+                html: adminEmailHtml,
                 template: 'appointment_notification_admin',
                 data: {
                     name: appointmentData.name,
@@ -9209,8 +9408,8 @@ async function sendAdminAlert(appointmentData) {
                     time: appointmentData.time,
                     dateFormatted: formatDateForDisplay(appointmentData.date),
                     comments: appointmentData.comments || 'Ninguno',
-                    createdAt: new Date().toLocaleString('es-ES'),
-                    appointmentId: appointmentData.id || Date.now().toString(),
+                    createdAt: fechaSolicitud,
+                    appointmentId: appointmentId,
                     attachmentUrl: appointmentData.attachment?.url || null,
                     attachmentName: appointmentData.attachment?.name || null
                 }
@@ -9690,7 +9889,7 @@ async function updateAppointmentStatus(appointmentId, newStatus, alternativeDate
         saveAppointments();
         loadAppointmentsList();
         loadAppointmentStats();
-        renderAdminCalendar(); // Actualizar calendario del admin
+        syncCalendars(); // Sincronizar ambos calendarios (admin y página principal)
         
         const statusText = getStatusText(newStatus);
         showNotification(`Cita ${statusText.toLowerCase()} correctamente. Se ha enviado un email de confirmación.`, 'success');
@@ -9749,7 +9948,7 @@ async function deleteAppointment(appointmentId) {
     saveAppointments();
     loadAppointmentsList();
     loadAppointmentStats();
-    renderAdminCalendar();
+    syncCalendars(); // Sincronizar ambos calendarios
     
     // Mostrar mensaje según resultado del email
     if (emailResult && emailResult.success) {
@@ -9826,7 +10025,7 @@ function refreshAppointments() {
     loadAppointments();
     loadAppointmentsList();
     loadAppointmentStats();
-    renderAdminCalendar(); // Actualizar calendario del admin
+    syncCalendars(); // Sincronizar ambos calendarios
     showNotification('Lista de citas actualizada', 'success');
 }
 
@@ -10015,20 +10214,153 @@ async function sendStatusChangeEmail(appointment, oldStatus, newStatus, alternat
         const statusText = getStatusText(newStatus);
         const oldStatusText = getStatusText(oldStatus);
         
-        // Construir mensaje personalizado
-        let message = '';
-        if (newStatus === 'cancelled') {
-            message = 'Lamentamos informarle que su cita previa ha sido cancelada.';
-            if (reason) {
-                message += `\n\nMotivo: ${reason}`;
+        // Configuración de colores y emojis según estado
+        const statusConfig = {
+            confirmed: {
+                emoji: '✅',
+                color: '#10b981',
+                bgColor: '#ecfdf5',
+                borderColor: '#10b981',
+                title: '¡Su cita ha sido CONFIRMADA!',
+                message: 'Nos complace informarle que su cita previa ha sido confirmada. Le esperamos en la fecha y hora indicadas.'
+            },
+            cancelled: {
+                emoji: '❌',
+                color: '#ef4444',
+                bgColor: '#fef2f2',
+                borderColor: '#ef4444',
+                title: 'Su cita ha sido CANCELADA',
+                message: 'Lamentamos informarle que su cita previa ha sido cancelada.'
+            },
+            completed: {
+                emoji: '🎉',
+                color: '#8b5cf6',
+                bgColor: '#f5f3ff',
+                borderColor: '#8b5cf6',
+                title: 'Cita COMPLETADA',
+                message: 'Su cita ha sido marcada como completada. Gracias por su visita.'
+            },
+            no_show: {
+                emoji: '⚠️',
+                color: '#f59e0b',
+                bgColor: '#fffbeb',
+                borderColor: '#f59e0b',
+                title: 'No se presentó a su cita',
+                message: 'Hemos registrado que no se presentó a su cita previa programada.'
+            },
+            pending: {
+                emoji: '🕐',
+                color: '#3b82f6',
+                bgColor: '#eff6ff',
+                borderColor: '#3b82f6',
+                title: 'Cita pendiente de confirmación',
+                message: 'Su cita está pendiente de confirmación por parte del ayuntamiento.'
             }
-            if (alternativeDate) {
-                message += `\n\nLe proponemos una nueva fecha alternativa:\nFecha: ${formatDateForDisplay(alternativeDate.date)}\nHora: ${alternativeDate.time}`;
-                message += '\n\nPor favor, confirme si esta nueva fecha le resulta conveniente contactándonos.';
-            } else {
-                message += '\n\nSi desea reagendar su cita, por favor contacte con nosotros.';
-            }
-        }
+        };
+        
+        const config = statusConfig[newStatus] || statusConfig.pending;
+        
+        // Generar HTML del email
+        const emailHtml = `
+            <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #f8fafc;">
+                <!-- Cabecera con color según estado -->
+                <div style="background: linear-gradient(135deg, ${config.color} 0%, ${config.color}dd 100%); color: white; padding: 30px; text-align: center;">
+                    <div style="font-size: 48px; margin-bottom: 10px;">${config.emoji}</div>
+                    <h1 style="margin: 0; font-size: 22px;">${config.title}</h1>
+                    <p style="margin: 10px 0 0 0; opacity: 0.9; font-size: 14px;">Ayuntamiento de Cobreros</p>
+                </div>
+                
+                <!-- Contenido principal -->
+                <div style="padding: 30px; background: white;">
+                    <p style="font-size: 16px; color: #334155;">Hola <strong>${appointment.name}</strong>,</p>
+                    <p style="color: #64748b;">${config.message}</p>
+                    
+                    ${reason ? `
+                    <div style="background: #fef3c7; padding: 15px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #f59e0b;">
+                        <p style="margin: 0; color: #92400e;"><strong>📝 Motivo:</strong> ${reason}</p>
+                    </div>
+                    ` : ''}
+                    
+                    <!-- Detalles de la cita -->
+                    <div style="background: ${config.bgColor}; padding: 20px; border-radius: 12px; margin: 20px 0; border-left: 4px solid ${config.borderColor};">
+                        <h3 style="margin: 0 0 15px 0; color: ${config.color};">📋 Detalles de su cita</h3>
+                        <table style="width: 100%; border-collapse: collapse;">
+                            <tr><td style="padding: 8px 0; color: #64748b;">Servicio:</td><td style="padding: 8px 0; font-weight: 600; color: #334155;">${getServiceName(appointment.service)}</td></tr>
+                            <tr><td style="padding: 8px 0; color: #64748b;">Fecha:</td><td style="padding: 8px 0; font-weight: 600; color: #334155;">📅 ${formatDateForDisplay(appointment.date)}</td></tr>
+                            <tr><td style="padding: 8px 0; color: #64748b;">Hora:</td><td style="padding: 8px 0; font-weight: 600; color: #334155;">🕐 ${appointment.time}</td></tr>
+                            <tr><td style="padding: 8px 0; color: #64748b;">Estado anterior:</td><td style="padding: 8px 0; color: #94a3b8;">${oldStatusText}</td></tr>
+                            <tr><td style="padding: 8px 0; color: #64748b;">Nuevo estado:</td><td style="padding: 8px 0; font-weight: 700; color: ${config.color};">${statusText}</td></tr>
+                        </table>
+                    </div>
+                    
+                    ${alternativeDate ? `
+                    <!-- Fecha alternativa propuesta -->
+                    <div style="background: #dbeafe; padding: 20px; border-radius: 12px; margin: 20px 0; border-left: 4px solid #3b82f6;">
+                        <h3 style="margin: 0 0 15px 0; color: #1e40af;">📅 Fecha alternativa propuesta</h3>
+                        <p style="margin: 0; color: #1e3a8a;">
+                            <strong>Nueva fecha:</strong> ${formatDateForDisplay(alternativeDate.date)}<br>
+                            <strong>Nueva hora:</strong> ${alternativeDate.time}
+                        </p>
+                        <p style="margin: 15px 0 0 0; color: #3b82f6; font-size: 14px;">
+                            Por favor, confirme si esta nueva fecha le resulta conveniente contactándonos.
+                        </p>
+                    </div>
+                    ` : ''}
+                    
+                    ${newStatus === 'confirmed' ? `
+                    <!-- Recordatorio para cita confirmada -->
+                    <div style="background: #ecfdf5; padding: 20px; border-radius: 12px; margin: 20px 0; border-left: 4px solid #10b981;">
+                        <h3 style="margin: 0 0 10px 0; color: #065f46;">📍 Lugar de la cita</h3>
+                        <p style="margin: 0; color: #047857;">
+                            <strong>Ayuntamiento de Cobreros</strong><br>
+                            Calle Principal, s/n<br>
+                            49395 Cobreros (Zamora)
+                        </p>
+                        <a href="https://maps.google.com/?q=Ayuntamiento+de+Cobreros+Zamora" style="display: inline-block; margin-top: 10px; color: #065f46; text-decoration: underline;">Ver en Google Maps →</a>
+                    </div>
+                    
+                    <div style="background: #fef3c7; padding: 15px; border-radius: 8px; margin: 20px 0;">
+                        <p style="margin: 0; color: #92400e; font-size: 14px;">
+                            <strong>📝 Recuerde traer:</strong> DNI/NIE original y documentación relacionada con su trámite.
+                        </p>
+                    </div>
+                    ` : ''}
+                    
+                    ${newStatus === 'cancelled' && !alternativeDate ? `
+                    <p style="color: #64748b; font-size: 14px;">
+                        Si desea solicitar una nueva cita, puede hacerlo a través de nuestra web o contactándonos directamente.
+                    </p>
+                    ` : ''}
+                </div>
+                
+                <!-- Contacto -->
+                <div style="padding: 20px 30px; background: #f1f5f9;">
+                    <p style="margin: 0; color: #64748b; font-size: 14px; text-align: center;">
+                        ¿Tiene alguna pregunta? Contáctenos:<br>
+                        📞 980 62 26 18 | 📧 aytocobreros@gmail.com
+                    </p>
+                </div>
+                
+                <!-- Pie de página -->
+                <div style="background: #1e293b; color: white; padding: 20px; text-align: center;">
+                    <p style="margin: 0; font-size: 14px;">
+                        <strong>Ayuntamiento de Cobreros</strong>
+                    </p>
+                    <p style="margin: 8px 0 0 0; font-size: 12px; opacity: 0.7;">
+                        Horario de atención: Lunes a Viernes de 9:00 a 14:00
+                    </p>
+                </div>
+            </div>
+        `;
+        
+        // Determinar emoji para el asunto según estado
+        const subjectEmoji = {
+            confirmed: '✅',
+            cancelled: '❌',
+            completed: '🎉',
+            no_show: '⚠️',
+            pending: '🕐'
+        };
         
         const response = await fetch(`${CLOUD_FUNCTIONS_BASE_URL}/sendEmail`, {
             method: 'POST',
@@ -10038,22 +10370,34 @@ async function sendStatusChangeEmail(appointment, oldStatus, newStatus, alternat
             body: JSON.stringify({
                 to: appointment.email,
                 from: 'u2389387944@gmail.com',
-                subject: `Actualización de Cita Previa - ${statusText}`,
+                fromName: 'Ayuntamiento de Cobreros',
+                subject: `${subjectEmoji[newStatus] || '📋'} Cita ${statusText} - Ayuntamiento de Cobreros`,
+                html: emailHtml,
                 template: 'appointment_status_change',
                 data: {
                     name: appointment.name,
                     oldStatus: oldStatusText,
                     newStatus: statusText,
                     service: getServiceName(appointment.service),
-                    date: formatDate(appointment.date),
+                    date: formatDateForDisplay(appointment.date),
                     time: appointment.time,
                     dni: appointment.dni,
                     email: appointment.email,
                     phone: appointment.phone,
-                    message: message,
                     alternativeDate: alternativeDate ? formatDateForDisplay(alternativeDate.date) : null,
                     alternativeTime: alternativeDate ? alternativeDate.time : null,
-                    reason: reason || null
+                    reason: reason || null,
+                    // Información del ayuntamiento
+                    ayuntamiento: {
+                        nombre: 'Ayuntamiento de Cobreros',
+                        direccion: 'Calle Principal, s/n',
+                        codigoPostal: '49395',
+                        localidad: 'Cobreros',
+                        provincia: 'Zamora',
+                        telefono: '980 62 26 18',
+                        email: 'aytocobreros@gmail.com',
+                        horario: 'Lunes a Viernes de 9:00 a 14:00'
+                    }
                 }
             })
         });
@@ -10066,7 +10410,7 @@ async function sendStatusChangeEmail(appointment, oldStatus, newStatus, alternat
             if (typeof recordEmailAttempt === 'function') {
                 recordEmailAttempt({
                     to: appointment.email,
-                    subject: `Actualización de Cita Previa - ${statusText}`,
+                    subject: `Cita ${statusText} - Ayuntamiento de Cobreros`,
                     template: 'appointment_status_change'
                 }, true);
             }
@@ -10079,7 +10423,7 @@ async function sendStatusChangeEmail(appointment, oldStatus, newStatus, alternat
             if (typeof recordEmailAttempt === 'function') {
                 recordEmailAttempt({
                     to: appointment.email,
-                    subject: `Actualización de Cita Previa - ${statusText}`,
+                    subject: `Cita ${statusText} - Ayuntamiento de Cobreros`,
                     template: 'appointment_status_change'
                 }, false, result.error);
             }
@@ -10093,7 +10437,7 @@ async function sendStatusChangeEmail(appointment, oldStatus, newStatus, alternat
         if (typeof recordEmailAttempt === 'function') {
             recordEmailAttempt({
                 to: appointment.email,
-                subject: `Actualización de Cita Previa - ${statusText}`,
+                subject: `Actualización de Cita Previa`,
                 template: 'appointment_status_change'
             }, false, error.message);
         }
@@ -10140,9 +10484,7 @@ async function markAppointmentCompleted(appointmentId) {
     saveAppointments();
     loadAppointmentsList();
     loadAppointmentStats();
-    if (typeof renderAdminCalendar === 'function') {
-        renderAdminCalendar();
-    }
+    syncCalendars(); // Sincronizar ambos calendarios
     
     showNotification('Cita marcada como completada correctamente', 'success');
 }
@@ -10213,9 +10555,7 @@ async function markAppointmentNoShow(appointmentId) {
     saveAppointments();
     loadAppointmentsList();
     loadAppointmentStats();
-    if (typeof renderAdminCalendar === 'function') {
-        renderAdminCalendar();
-    }
+    syncCalendars(); // Sincronizar ambos calendarios
     
     // Mostrar mensaje según resultado del email
     if (emailResult.success) {
@@ -19144,10 +19484,8 @@ function saveAppointmentScheduleConfig() {
         appointmentScheduleConfig.days = daysConfig;
         localStorage.setItem('appointmentScheduleConfig', JSON.stringify(appointmentScheduleConfig));
         
-        // Recargar calendario si está visible
-        if (document.getElementById('calendarGrid')) {
-            renderCalendar();
-        }
+        // Sincronizar ambos calendarios (página principal y admin)
+        syncCalendars();
         
         showNotification('Configuración de horarios guardada correctamente', 'success');
     } catch (error) {
@@ -19186,8 +19524,29 @@ function removeHourSlot(button) {
     button.closest('.hour-input-item').remove();
 }
 
+// ===== SINCRONIZACIÓN DE CALENDARIOS =====
+// Función para sincronizar ambos calendarios (página principal y admin)
+function syncCalendars() {
+    // Recargar configuración desde localStorage
+    loadAppointmentScheduleConfig();
+    
+    // Actualizar calendario de la página principal si existe
+    if (document.getElementById('calendarGrid')) {
+        renderCalendar();
+    }
+    
+    // Actualizar calendario del admin si existe
+    if (document.getElementById('adminCalendarGrid')) {
+        renderAdminCalendar();
+    }
+    
+    console.log('📅 Calendarios sincronizados');
+}
+
 // Renderizar calendario completo (mes completo, no solo semana)
 function renderCalendar() {
+    // Asegurar que la configuración esté cargada
+    loadAppointmentScheduleConfig();
     const calendarGrid = document.getElementById('calendarGrid');
     if (!calendarGrid) return;
     
@@ -19211,15 +19570,8 @@ function renderCalendar() {
         monthYearElement.textContent = `${monthNames[currentCalendarMonth]} ${currentCalendarYear}`;
     }
     
-    // Crear encabezados de días
-    let calendarHTML = '<div class="calendar-weekdays">';
-    displayDayNames.forEach(day => {
-        calendarHTML += `<div class="calendar-weekday">${escapeHtml(day)}</div>`;
-    });
-    calendarHTML += '</div>';
-    
-    // Crear grid de días
-    calendarHTML += '<div class="calendar-days-grid">';
+    // Crear grid de días (sin encabezados de días de la semana en página principal)
+    let calendarHTML = '<div class="calendar-days-grid">';
     
     // Días vacíos al inicio
     for (let i = 0; i < startingDayOfWeek; i++) {
@@ -19895,8 +20247,8 @@ function saveAdminDayConfig() {
     // Guardar en localStorage
     localStorage.setItem('appointmentScheduleConfig', JSON.stringify(appointmentScheduleConfig));
     
-    // Re-renderizar calendario
-    renderAdminCalendar();
+    // Sincronizar ambos calendarios
+    syncCalendars();
     
     showNotification('Configuración del día guardada correctamente', 'success');
 }
