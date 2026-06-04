@@ -55,13 +55,13 @@ android-app/
 ### 🔑 Configuración necesaria:
 
 #### **1. Firebase:**
-- Proyecto: TURISTEAM (turisteam-80f1b)
+- Proyecto: **ayuntamiento-de-cobreros**
 - Firestore Database habilitado
 - Cloud Messaging habilitado
 - Authentication habilitado
 
 #### **2. Archivos de configuración:**
-- `google-services.json` (descargar de Firebase Console)
+- `app/google-services.json`: en Firebase Console, añade la app Android con el paquete `com.turisteam.ayuntamientocobreros` y **descarga el JSON oficial**; sustituye el archivo del repositorio (el incluido sirve de plantilla con el `project_id` correcto, pero el `mobilesdk_app_id` debe coincidir con el de tu consola).
 - Configurar reglas de Firestore
 - Configurar VAPID keys para FCM
 

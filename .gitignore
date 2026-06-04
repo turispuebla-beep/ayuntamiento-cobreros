@@ -4,6 +4,7 @@
 # 🔑 Archivos sensibles (NO SUBIR)
 config-secrets.js
 firebase-config-private.js
+firebase-vapid-import.txt
 *.env
 .env.local
 .env.production

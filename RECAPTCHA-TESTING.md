@@ -96,7 +96,7 @@ firebase deploy --only functions
 ```bash
 # Test validateRecaptcha
 curl -X POST \
-  https://us-central1-turisteam-80f1b.cloudfunctions.net/validateRecaptcha \
+  https://us-central1-ayuntamiento-de-cobreros.cloudfunctions.net/validateRecaptcha \
   -H "Content-Type: application/json" \
   -d '{
     "token": "test_token_from_frontend",
@@ -209,14 +209,14 @@ const minScore = 0.3; // En lugar de 0.5
 firebase functions:log --only validateRecaptcha
 
 # Ver en Firebase Console
-https://console.firebase.google.com/project/turisteam-80f1b/functions/logs
+https://console.firebase.google.com/project/ayuntamiento-de-cobreros/functions/logs
 ```
 
 ### **Estadísticas de reCAPTCHA:**
 ```bash
 # Obtener estadísticas
 curl -X GET \
-  https://us-central1-turisteam-80f1b.cloudfunctions.net/getRecaptchaStats
+  https://us-central1-ayuntamiento-de-cobreros.cloudfunctions.net/getRecaptchaStats
 
 # Respuesta incluye:
 # - Total de verificaciones

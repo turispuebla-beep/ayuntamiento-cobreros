@@ -1,35 +1,72 @@
-// Service Worker para PWA del Ayuntamiento de Cobreros
-const CACHE_NAME = 'ayuntamiento-cobreros-v1';
+// Service Worker — PWA Ayuntamiento de Cobreros (cache + FCM en segundo plano)
+importScripts('https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js');
+importScripts('https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging-compat.js');
+
+const FIREBASE_CONFIG = {
+  apiKey: 'AIzaSyC7gfaHifIGVMN94mQAGnW6VcA4wVFMZsg',
+  authDomain: 'ayuntamiento-de-cobreros.firebaseapp.com',
+  projectId: 'ayuntamiento-de-cobreros',
+  storageBucket: 'ayuntamiento-de-cobreros.firebasestorage.app',
+  messagingSenderId: '527550932354',
+  appId: '1:527550932354:web:9bd8431defa7c293b1db9b'
+};
+
+if (!firebase.apps.length) {
+  firebase.initializeApp(FIREBASE_CONFIG);
+}
+
+const messaging = firebase.messaging();
+
+messaging.onBackgroundMessage(function (payload) {
+  const notification = payload.notification || {};
+  const data = payload.data || {};
+  const title = notification.title || '🏛️ Ayuntamiento de Cobreros';
+  const body = notification.body || 'Nueva notificación del Ayuntamiento de Cobreros';
+
+  return self.registration.showNotification(title, {
+    body: body,
+    icon: notification.icon || '/images/escudo-cobreros-192.png',
+    badge: '/images/escudo-cobreros-192.png',
+    tag: 'ayuntamiento-fcm-' + (data.type || 'general'),
+    vibrate: [200, 100, 200],
+    data: {
+      url: '/',
+      type: data.type || 'general',
+      sentFrom: data.source || data.sent_from || 'FCM'
+    }
+  });
+});
+
+const CACHE_NAME = 'ayuntamiento-cobreros-v5';
 const urlsToCache = [
   '/',
   '/index.html',
   '/css/styles.css',
   '/js/script.js',
+  '/js/push-config.js',
+  '/js/recaptcha.js',
+  '/images/escudo-cobreros.jpg',
   '/images/escudo-cobreros.png',
   '/images/escudo-cobreros-192.png',
   '/images/escudo-cobreros-512.png',
+  '/images/favicon.ico',
   '/manifest.json'
 ];
 
-// Instalación del Service Worker
-self.addEventListener('install', event => {
+self.addEventListener('install', function (event) {
   event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then(cache => {
-        console.log('Cache abierto');
-        return cache.addAll(urlsToCache);
-      })
+    caches.open(CACHE_NAME).then(function (cache) {
+      return cache.addAll(urlsToCache);
+    })
   );
 });
 
-// Activación del Service Worker
-self.addEventListener('activate', event => {
+self.addEventListener('activate', function (event) {
   event.waitUntil(
-    caches.keys().then(cacheNames => {
+    caches.keys().then(function (cacheNames) {
       return Promise.all(
-        cacheNames.map(cacheName => {
+        cacheNames.map(function (cacheName) {
           if (cacheName !== CACHE_NAME) {
-            console.log('Eliminando cache antiguo:', cacheName);
             return caches.delete(cacheName);
           }
         })
@@ -38,54 +75,67 @@ self.addEventListener('activate', event => {
   );
 });
 
-// Interceptar peticiones
-self.addEventListener('fetch', event => {
+function isFirebaseOrApiRequest(url) {
+  return (
+    url.includes('firestore.googleapis.com') ||
+    url.includes('googleapis.com') ||
+    url.includes('gstatic.com') ||
+    url.includes('firebaseio.com') ||
+    url.includes('google.com/recaptcha') ||
+    url.includes('cloudfunctions.net')
+  );
+}
+
+self.addEventListener('fetch', function (event) {
+  const reqUrl = event.request.url || '';
+  if (isFirebaseOrApiRequest(reqUrl)) {
+    event.respondWith(fetch(event.request));
+    return;
+  }
+
   event.respondWith(
-    caches.match(event.request)
-      .then(response => {
-        // Cache hit - devolver respuesta desde cache
-        if (response) {
-          return response;
+    caches.match(event.request).then(function (response) {
+      if (response) {
+        return response;
+      }
+
+      return fetch(event.request).then(function (networkResponse) {
+        if (!networkResponse || networkResponse.status !== 200 || networkResponse.type !== 'basic') {
+          return networkResponse;
         }
-        
-        // Clonar la petición
-        const fetchRequest = event.request.clone();
-        
-        return fetch(fetchRequest).then(response => {
-          // Verificar si recibimos una respuesta válida
-          if (!response || response.status !== 200 || response.type !== 'basic') {
-            return response;
-          }
-          
-          // Clonar la respuesta
-          const responseToCache = response.clone();
-          
-          caches.open(CACHE_NAME)
-            .then(cache => {
-              cache.put(event.request, responseToCache);
-            });
-          
-          return response;
+
+        const responseToCache = networkResponse.clone();
+        caches.open(CACHE_NAME).then(function (cache) {
+          cache.put(event.request, responseToCache);
         });
-      })
+
+        return networkResponse;
+      });
+    })
   );
 });
 
-// Manejar notificaciones push
-self.addEventListener('push', event => {
-  console.log('Push recibido en la web:', event);
-  
+// Push genérico (respaldo si FCM no entrega payload estándar)
+self.addEventListener('push', function (event) {
+  if (event.data) {
+    try {
+      const parsed = event.data.json();
+      if (parsed && parsed.notification) {
+        return;
+      }
+    } catch (e) {
+      /* usar handler manual */
+    }
+  }
+
   let notificationData = {
     title: '🏛️ Ayuntamiento de Cobreros',
     body: 'Nueva notificación del Ayuntamiento de Cobreros',
     icon: '/images/escudo-cobreros-192.png',
     badge: '/images/escudo-cobreros-192.png',
-    type: 'general',
-    localities: '',
-    sentFrom: 'WEB'
+    type: 'general'
   };
-  
-  // Procesar datos de la notificación
+
   if (event.data) {
     try {
       const data = event.data.json();
@@ -94,100 +144,41 @@ self.addEventListener('push', event => {
         body: data.body || data.message || notificationData.body,
         icon: data.icon || notificationData.icon,
         badge: data.badge || notificationData.badge,
-        type: data.type || 'general',
-        localities: data.localities || '',
-        sentFrom: data.sent_from || 'WEB',
-        hasAttachments: data.has_attachments || false,
-        attachmentUrl: data.attachment_url || null,
-        attachmentType: data.attachment_type || null
+        type: data.type || 'general'
       };
-    } catch (e) {
-      console.log('Error procesando datos de notificación:', e);
+    } catch (err) {
+      console.warn('Push sin JSON:', err);
     }
   }
-  
-  // Personalizar según el tipo
-  let color = '#1e3a8a'; // Azul por defecto
-  let priority = 'normal';
-  
-  switch (notificationData.type) {
-    case 'emergencia':
-      color = '#dc2626';
-      priority = 'high';
-      break;
-    case 'cita':
-      color = '#16a34a';
-      priority = 'high';
-      break;
-    case 'evento':
-      color = '#ea580c';
-      priority = 'high';
-      break;
-    case 'bando':
-      color = '#9333ea';
-      priority = 'high';
-      break;
-  }
-  
-  const options = {
-    body: notificationData.body,
-    icon: notificationData.icon,
-    badge: notificationData.badge,
-    vibrate: [200, 100, 200],
-    color: color,
-    priority: priority,
-    data: {
-      dateOfArrival: Date.now(),
-      primaryKey: Date.now(),
-      type: notificationData.type,
-      localities: notificationData.localities,
-      sentFrom: notificationData.sentFrom,
-      hasAttachments: notificationData.hasAttachments,
-      attachmentUrl: notificationData.attachmentUrl,
-      attachmentType: notificationData.attachmentType
-    },
-    actions: [
-      {
-        action: 'view',
-        title: 'Ver detalles',
-        icon: '/images/icon-view.png'
-      },
-      {
-        action: 'close',
-        title: 'Cerrar',
-        icon: '/images/icon-close.png'
-      }
-    ]
-  };
-  
+
   event.waitUntil(
-    self.registration.showNotification(notificationData.title, options)
+    self.registration.showNotification(notificationData.title, {
+      body: notificationData.body,
+      icon: notificationData.icon,
+      badge: notificationData.badge,
+      data: { url: '/', type: notificationData.type }
+    })
   );
 });
 
-// Manejar clics en notificaciones
-self.addEventListener('notificationclick', event => {
-  console.log('Notificación clickeada:', event);
-  
+self.addEventListener('notificationclick', function (event) {
   event.notification.close();
-  
-  if (event.action === 'view') {
-    // Abrir la app y mostrar detalles de la notificación
-    event.waitUntil(
-      clients.openWindow('/#notification-details')
-    );
-  } else if (event.action === 'close') {
-    // Solo cerrar la notificación
-    event.notification.close();
-  } else {
-    // Clic en la notificación (no en acción)
-    event.waitUntil(
-      clients.openWindow('/')
-    );
-  }
+  const targetUrl = (event.notification.data && event.notification.data.url) || '/';
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function (clientList) {
+      for (let i = 0; i < clientList.length; i++) {
+        const client = clientList[i];
+        if (client.url.includes(self.location.origin) && 'focus' in client) {
+          return client.focus();
+        }
+      }
+      if (clients.openWindow) {
+        return clients.openWindow(targetUrl);
+      }
+    })
+  );
 });
 
-// Manejar notificaciones cerradas
-self.addEventListener('notificationclose', event => {
+self.addEventListener('notificationclose', function (event) {
   console.log('Notificación cerrada:', event);
 });

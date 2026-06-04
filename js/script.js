@@ -14,6 +14,22 @@ let quickAccess = []; // Lista de tarjetas de acceso rápido
 let appointmentsEnabled = null; // Se inicializa en loadAppointmentSettings()
 let appointments = []; // Lista de citas previas solicitadas
 let publicNotifications = []; // Lista de notificaciones públicas
+let appointmentAvailability = {
+    enabledDays: [1, 2, 3, 4, 5],
+    timeSlots: ['09:00', '10:00', '11:00', '12:00', '16:00', '17:00', '18:00'],
+    slotCapacityDefault: 1,
+    capacityBySlot: {},
+    holidays: [],
+    exceptionsByDate: {},
+    updatedAt: null,
+    updatedBy: 'system'
+};
+
+/** Evita bucles al aplicar backup remoto de Firestore sobre localStorage */
+let _applyingRemoteFirestoreSync = false;
+let _lastRemoteFirestoreSyncMs = 0;
+let _lastForcedPublicRefreshMs = 0;
+let _forcedPublicRefreshInFlight = false;
 
 // Detección de dispositivo
 let deviceType = 'desktop'; // 'desktop', 'mobile', 'tablet'
@@ -24,7 +40,6 @@ let isDesktop = false;
 // Super administrador oculto - TURISTEAM
 const SUPER_ADMIN = {
     email: 'amco@gmx.es',
-    password: '533712',
     name: 'Super Admin',
     isHidden: true,
     isSuperAdmin: true,
@@ -37,7 +52,7 @@ document.addEventListener('DOMContentLoaded', function() {
     initializeApp();
     setupEventListeners();
     loadData();
-    loadAdministrators();
+    void loadAdministrators();
     loadDocuments();
     loadEvents();
     renderEventos();
@@ -124,6 +139,11 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Inicializar PWA
     initializePWA();
+
+    // Sincronización multi-dispositivo (web / pestañas) vía Firestore
+    setupFirestoreRealtimeSync();
+    setupAutoRefreshOnOpenAndFocus();
+    scheduleFirestoreBackupInterval();
 });
 
 // ===== DETECCIÓN DE DISPOSITIVO =====
@@ -135,7 +155,7 @@ function detectDevice() {
     const screenHeight = window.innerHeight;
     
     // Detectar móvil
-    const mobileRegex = /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i;
+    const mobileRegex = /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini|huawei|honor|harmonyos/i;
     const isMobileUA = mobileRegex.test(userAgent);
     
     // Detectar tablet
@@ -583,28 +603,36 @@ function getDeviceInfo() {
 
 // Inicializar la aplicación
 function initializeApp() {
-    // Verificar si hay un usuario logueado
     const savedUser = localStorage.getItem('currentUser');
     if (savedUser) {
-        currentUser = JSON.parse(savedUser);
-        updateUserInterface();
+        try {
+            currentUser = JSON.parse(savedUser);
+            updateUserInterface();
+        } catch (_) {
+            currentUser = null;
+        }
     }
 
-    // Verificar si es admin
     const savedAdmin = localStorage.getItem('isAdmin');
     const savedSuperAdmin = localStorage.getItem('isSuperAdmin');
-    if (savedAdmin === 'true') {
-        isAdmin = true;
-        document.getElementById('adminBtn').style.display = 'block';
-    }
-    if (savedSuperAdmin === 'true') {
-        isSuperAdmin = true;
-        isAdmin = true; // Super admin también es admin
-        document.getElementById('adminBtn').style.display = 'block';
+    const hasFirebaseAuth = window.firebase && firebase.auth;
+    if (!hasFirebaseAuth) {
+        if (savedAdmin === 'true') {
+            isAdmin = true;
+            const adminBtn = document.getElementById('adminBtn');
+            if (adminBtn) adminBtn.style.display = 'block';
+        }
+        if (savedSuperAdmin === 'true') {
+            isSuperAdmin = true;
+            isAdmin = true;
+            const adminBtn = document.getElementById('adminBtn');
+            if (adminBtn) adminBtn.style.display = 'block';
+        }
     }
 
-    // Inicializar configuración del consultorio médico
+    // Inicializar configuración del consultorio médico e ITV
     loadConsultorioConfig();
+    loadItvConfig();
     
     // Cargar configuración de teléfonos de interés
     loadTelefonosInteresConfig();
@@ -626,6 +654,9 @@ function initializeApp() {
     
     // Cargar configuración de citas previas
     loadAppointmentSettings();
+    loadAppointmentAvailabilitySettings();
+    setAppointmentDateConstraints();
+    refreshAppointmentTimeOptions();
     
     // Cargar citas previas
     loadAppointments();
@@ -717,6 +748,8 @@ function initializeApp() {
     // Ejecutar función de estado inicial
     setTimeout(forceInitialState, 200);
     
+    setupFirebaseAuthListener();
+
     // Crear botón de admin dinámicamente para asegurar que se vea
     createAdminButton();
 }
@@ -970,6 +1003,14 @@ function setupEventListeners() {
     document.getElementById('registerForm').addEventListener('submit', handleRegister);
     document.getElementById('adminLoginForm').addEventListener('submit', handleAdminLogin);
     document.getElementById('appointmentForm').addEventListener('submit', handleAppointment);
+    document.getElementById('date').addEventListener('change', function () {
+        refreshAppointmentTimeOptions();
+        if (this.value && !isDateAllowedByAvailability(this.value)) {
+            showNotification('Ese día no está habilitado para cita previa', 'warning');
+            this.value = '';
+            refreshAppointmentTimeOptions();
+        }
+    });
     document.getElementById('notificationForm').addEventListener('submit', handleNotification);
     document.getElementById('logoForm').addEventListener('submit', handleLogoUpload);
     document.getElementById('createAdminForm').addEventListener('submit', handleCreateAdmin);
@@ -1074,25 +1115,40 @@ function loadDocuments() {
     }
 }
 
-// Cargar administradores
-function loadAdministrators() {
+// Cargar lista de administradores (Firestore si hay sesión admin; si no, caché local sin credenciales ficticias)
+async function loadAdministrators() {
+    administrators = [];
+    try {
+        if (window.firebase && firebase.firestore && firebase.auth && firebase.auth().currentUser) {
+            const adm = await isFirebaseAdmin();
+            const superSnap = await firebase
+                .firestore()
+                .collection('admins')
+                .doc(firebase.auth().currentUser.uid)
+                .get();
+            const isSuper = superSnap.exists && superSnap.data().isSuperAdmin === true;
+            if (adm && isSuper) {
+                const snap = await firebase.firestore().collection('administrators').get();
+                snap.forEach((doc) => {
+                    administrators.push({ ...doc.data(), id: doc.id, authUid: doc.id });
+                });
+                localStorage.setItem('administrators', JSON.stringify(administrators));
+                return;
+            }
+        }
+    } catch (e) {
+        console.warn('loadAdministrators Firestore:', e);
+    }
     const savedAdmins = localStorage.getItem('administrators');
     if (savedAdmins) {
-        administrators = JSON.parse(savedAdmins);
-    } else {
-        // Administrador por defecto
-        administrators = [
-            {
-                id: 1,
-                name: 'Administrador',
-                email: 'admin@ayuntamientocobreros.es',
-                password: 'admin123',
-                createdBy: 'system',
-                createdAt: new Date().toISOString(),
-                isActive: true
-            }
-        ];
-        localStorage.setItem('administrators', JSON.stringify(administrators));
+        try {
+            administrators = JSON.parse(savedAdmins);
+        } catch (_) {
+            administrators = [];
+        }
+    }
+    if (!administrators.length) {
+        localStorage.setItem('administrators', JSON.stringify([]));
     }
 }
 
@@ -1141,6 +1197,106 @@ function loadData() {
     }
 
     updateContent();
+}
+
+function parseStoredConfig(rawValue) {
+    if (rawValue === undefined || rawValue === null) return null;
+    if (typeof rawValue === 'string') {
+        try {
+            return JSON.parse(rawValue);
+        } catch (e) {
+            return rawValue;
+        }
+    }
+    return rawValue;
+}
+
+async function refreshLatestPublicDataFromFirestore(reason = 'manual') {
+    try {
+        if (_forcedPublicRefreshInFlight) return;
+        if (!window.firebase || !window.firebase.firestore) return;
+        const now = Date.now();
+        if (now - _lastForcedPublicRefreshMs < 10000) return; // Evitar ráfagas al cambiar foco/pestaña
+        _forcedPublicRefreshInFlight = true;
+
+        const db = firebase.firestore();
+        const [bandosDoc, newsDoc, eventsDoc, configDoc] = await Promise.all([
+            db.collection('bandos').doc('data').get(),
+            db.collection('noticias').doc('data').get(),
+            db.collection('eventos').doc('data').get(),
+            db.collection('configuraciones').doc('data').get()
+        ]);
+
+        if (bandosDoc.exists && Array.isArray(bandosDoc.data()?.bandos)) {
+            bandos = bandosDoc.data().bandos;
+            localStorage.setItem('bandos', JSON.stringify(bandos));
+        }
+        if (newsDoc.exists && Array.isArray(newsDoc.data()?.news)) {
+            news = newsDoc.data().news;
+            localStorage.setItem('news', JSON.stringify(news));
+        }
+        if (eventsDoc.exists && Array.isArray(eventsDoc.data()?.events)) {
+            events = eventsDoc.data().events;
+            localStorage.setItem('events', JSON.stringify(events));
+        }
+
+        if (configDoc.exists) {
+            const cfg = configDoc.data() || {};
+            const keys = [
+                'culturaOcioConfig',
+                'appointmentSettings',
+                'appointmentAvailability',
+                'servicios',
+                'seccionesConfig',
+                'consultorioConfig',
+                'itvConfig',
+                'telefonosInteresConfig',
+                'transporteConfig'
+            ];
+            keys.forEach((key) => {
+                if (cfg[key] !== undefined && cfg[key] !== null) {
+                    const parsed = parseStoredConfig(cfg[key]);
+                    localStorage.setItem(key, JSON.stringify(parsed));
+                }
+            });
+        }
+
+        loadData();
+        loadConsultorioConfig();
+        loadItvConfig();
+        loadTelefonosInteresConfig();
+        loadTransporteConfig();
+        loadAppointmentSettings();
+        loadAppointmentAvailabilitySettings();
+        loadPublicNotifications();
+        loadServicios();
+        renderEventos();
+        updateCulturaOcioSection();
+        loadReceivedNotifications();
+        await loadAppointmentsFromFirestoreInBackground();
+
+        _lastForcedPublicRefreshMs = Date.now();
+        console.log(`✅ Refresco remoto aplicado (${reason})`);
+    } catch (error) {
+        console.warn('No se pudo refrescar datos remotos:', error);
+    } finally {
+        _forcedPublicRefreshInFlight = false;
+    }
+}
+
+function setupAutoRefreshOnOpenAndFocus() {
+    setTimeout(() => refreshLatestPublicDataFromFirestore('startup'), 300);
+    window.addEventListener('pageshow', () => {
+        refreshLatestPublicDataFromFirestore('pageshow');
+    });
+    window.addEventListener('focus', () => {
+        refreshLatestPublicDataFromFirestore('focus');
+    });
+    document.addEventListener('visibilitychange', () => {
+        if (!document.hidden) {
+            refreshLatestPublicDataFromFirestore('visibility');
+        }
+    });
 }
 
 // Actualizar contenido de la página
@@ -1254,126 +1410,138 @@ function closeAllModals() {
     document.body.style.overflow = 'auto';
 }
 
-// Manejar login de usuarios normales
-function handleLogin(e) {
+// Manejar login de usuarios normales (Firebase Auth + perfil en users/{uid})
+async function handleLogin(e) {
     e.preventDefault();
     const formData = new FormData(e.target);
-    const email = formData.get('email');
-    const password = formData.get('password');
+    const email = (formData.get('email') || '').toString().trim();
+    const password = (formData.get('password') || '').toString();
 
-    // Buscar usuario en la lista de usuarios registrados
-    const user = users.find(u => u.email === email && u.password === password);
-    
-    if (user) {
-        currentUser = { 
-            email: user.email, 
-            name: user.name,
-            id: user.id,
-            isRegularUser: true
-        };
-        localStorage.setItem('currentUser', JSON.stringify(currentUser));
-        updateUserInterface();
-        closeModal('loginModal');
-        showNotification(`Bienvenido, ${user.name}`, 'success');
-        
-        // Ocultar mensaje de app en desktop si el usuario se registra
-        hideDesktopAppMessage();
-        
-        // Verificar estado de app móvil después del registro
-        if (isMobile) {
-            setTimeout(() => {
-                checkMobileAppStatus();
-            }, 1000);
+    if (!window.firebase || !window.firebase.auth) {
+        showNotification('Firebase no está disponible', 'error');
+        return;
+    }
+
+    try {
+        const cred = await firebase.auth().signInWithEmailAndPassword(email, password);
+        const uid = cred.user.uid;
+        let displayName = email;
+        const snap = await firebase.firestore().collection('users').doc(uid).get();
+        let localities = [];
+        if (snap.exists) {
+            const d = snap.data();
+            displayName = d.name || d.nombre || displayName;
+            localities = Array.isArray(d.localities) ? d.localities : [];
         }
-    } else {
-        showNotification('Credenciales incorrectas', 'error');
+        currentUser = {
+            email: cred.user.email,
+            name: displayName,
+            id: uid,
+            isRegularUser: true,
+            localities: localities
+        };
+        localStorage.setItem('currentUser', JSON.stringify(currentUser));
+        await loadUsersFromFirestore();
+        updateUserInterface();
+        loadReceivedNotifications();
+        closeModal('loginModal');
+        showNotification(`Bienvenido, ${displayName}`, 'success');
+        hideDesktopAppMessage();
+        if (isMobile) {
+            setTimeout(() => checkMobileAppStatus(), 1000);
+        }
+    } catch (err) {
+        const code = err && err.code ? err.code : '';
+        if (code === 'auth/user-not-found' || code === 'auth/wrong-password' || code === 'auth/invalid-credential') {
+            showNotification('Credenciales incorrectas', 'error');
+        } else if (code === 'auth/invalid-email') {
+            showNotification('Correo no válido', 'error');
+        } else {
+            showNotification('No se pudo iniciar sesión: ' + (err.message || code), 'error');
+        }
     }
 }
 
-// Manejar login de administradores
-function handleAdminLogin(e) {
+// Manejar login de administradores (Firebase Auth + admins/{uid}; respaldos locales documentados)
+async function handleAdminLogin(e) {
     e.preventDefault();
     const formData = new FormData(e.target);
-    const email = formData.get('email');
-    const password = formData.get('password');
+    const email = (formData.get('email') || '').toString().trim();
+    const password = (formData.get('password') || '').toString();
 
-    // Verificar credenciales de super admin (TURISTEAM)
-    if (email === SUPER_ADMIN.email && password === SUPER_ADMIN.password) {
-        isSuperAdmin = true;
-        isAdmin = true;
-        localStorage.setItem('isSuperAdmin', 'true');
-        localStorage.setItem('isAdmin', 'true');
-        currentUser = { 
-            email, 
-            name: SUPER_ADMIN.name,
-            isSuperAdmin: true,
-            team: SUPER_ADMIN.team
-        };
-        localStorage.setItem('currentUser', JSON.stringify(currentUser));
-        updateUserInterface();
-        closeModal('adminLoginModal');
-        showNotification('Sesión de administrador iniciada correctamente', 'success');
-        
-        // Ocultar mensaje de app en desktop
-        hideDesktopAppMessage();
-        return;
+    if (window.firebase && window.firebase.auth && window.firebase.firestore) {
+        try {
+            await firebase.auth().signInWithEmailAndPassword(email, password);
+            await ensureAllowlistedAdminFirestoreDoc();
+            const uid = firebase.auth().currentUser.uid;
+            const adminSnap = await firebase.firestore().collection('admins').doc(uid).get();
+            if (!adminSnap.exists || adminSnap.data().isAdmin !== true) {
+                await firebase.auth().signOut();
+                showNotification(
+                    'Sin permisos de administrador en Firestore (documento admins/{uid} con isAdmin: true).',
+                    'error'
+                );
+                return;
+            }
+            isAdmin = true;
+            localStorage.setItem('isAdmin', 'true');
+            const d = adminSnap.data() || {};
+            currentUser = {
+                email: firebase.auth().currentUser.email,
+                name: d.displayName || d.name || email,
+                isAdmin: true,
+                adminUid: uid
+            };
+            if (d.isSuperAdmin) {
+                isSuperAdmin = true;
+                localStorage.setItem('isSuperAdmin', 'true');
+            }
+            localStorage.setItem('currentUser', JSON.stringify(currentUser));
+            updateUserInterface();
+            closeModal('adminLoginModal');
+            showNotification('Sesión de administrador (Firebase) iniciada', 'success');
+            hideDesktopAppMessage();
+            await loadUsersFromFirestore();
+            return;
+        } catch (err) {
+            const code = err && err.code ? err.code : '';
+            if (
+                code === 'auth/user-not-found' ||
+                code === 'auth/wrong-password' ||
+                code === 'auth/invalid-credential'
+            ) {
+                showNotification('Credenciales incorrectas', 'error');
+            } else if (code) {
+                showNotification('Firebase: ' + code, 'error');
+            } else {
+                showNotification('No se pudo iniciar sesión de administrador', 'error');
+            }
+            return;
+        }
     }
 
-    // Verificar credenciales del administrador del ayuntamiento
-    if (email === 'aytocobreros@gmail.com' && password === 'admin123') {
-        isAdmin = true;
-        localStorage.setItem('isAdmin', 'true');
-        currentUser = { 
-            email: 'aytocobreros@gmail.com', 
-            name: 'Ayuntamiento de Cobreros',
-            isAdmin: true,
-            isDefault: true
-        };
-        localStorage.setItem('currentUser', JSON.stringify(currentUser));
-        updateUserInterface();
-        closeModal('adminLoginModal');
-        showNotification('Sesión de administrador iniciada - Ayuntamiento de Cobreros', 'success');
-        
-        // Ocultar mensaje de app en desktop
-        hideDesktopAppMessage();
-        return;
-    }
-
-    // Verificar credenciales de administradores creados
-    const admin = administrators.find(admin => admin.email === email && admin.password === password && admin.isActive);
-    
-    if (admin) {
-        currentUser = { 
-            email: admin.email, 
-            name: admin.name,
-            isAdmin: true,
-            adminId: admin.id
-        };
-        isAdmin = true;
-        localStorage.setItem('currentUser', JSON.stringify(currentUser));
-        localStorage.setItem('isAdmin', 'true');
-        updateUserInterface();
-        closeModal('adminLoginModal');
-        showNotification(`Sesión de administrador iniciada - ${admin.name}`, 'success');
-        
-        // Ocultar mensaje de app en desktop
-        hideDesktopAppMessage();
-    } else {
-        showNotification('Credenciales de administrador incorrectas', 'error');
-    }
+    showNotification(
+        'No se pudo iniciar sesión de administrador. Use una cuenta de Firebase Authentication con admins/{uid}.isAdmin=true',
+        'error'
+    );
 }
 
-// Manejar registro
+// Manejar registro (Firebase Auth + Firestore users/{uid}; sin guardar contraseña en Firestore)
 async function handleRegister(e) {
     e.preventDefault();
     const formData = new FormData(e.target);
-    const name = formData.get('name');
-    const email = formData.get('email');
-    const phone = formData.get('phone');
-    const password = formData.get('password');
-    const passwordConfirm = formData.get('passwordConfirm');
+    const name = (formData.get('name') || '').toString().trim();
+    const email = (formData.get('email') || '').toString().trim();
+    const phone = (formData.get('phone') || '').toString().trim();
+    const password = (formData.get('password') || '').toString();
+    const passwordConfirm = (formData.get('passwordConfirm') || '').toString();
     const consent = formData.get('consent');
     const notificationConsent = formData.get('notificationConsent');
+
+    const selectedLocalities = [];
+    e.target.querySelectorAll('input[name="localities"]:checked').forEach((cb) => {
+        selectedLocalities.push(cb.value);
+    });
 
     if (password !== passwordConfirm) {
         showNotification('Las contraseñas no coinciden', 'error');
@@ -1390,121 +1558,216 @@ async function handleRegister(e) {
         return;
     }
 
-    // Verificar si el email ya existe
-    if (users.some(user => user.email === email)) {
-        showNotification('Este correo electrónico ya está registrado', 'error');
+    if (!window.firebase || !window.firebase.auth || !window.firebase.firestore) {
+        showNotification('Firebase no está disponible', 'error');
         return;
     }
 
-    // Crear nuevo usuario
-    const newUser = {
-        id: Date.now(),
-        name,
-        email,
-        phone,
-        password, // En una aplicación real, esto debería estar hasheado
-        consent: true,
-        notificationConsent: true, // Consentimiento específico para notificaciones
-        consentDate: new Date().toISOString(),
-        registeredAt: new Date().toISOString()
-    };
+    if (users.some((user) => user.email === email)) {
+        showNotification('Este correo electrónico ya está en la lista local', 'error');
+        return;
+    }
 
-    users.push(newUser);
-    
-    // Guardar con múltiple seguridad
-    console.log('💾 Guardando usuario registrado:', newUser.email);
-    localStorage.setItem('users', JSON.stringify(users));
-    
-    // Verificar que se guardó correctamente
-    setTimeout(() => {
-        const verification = JSON.parse(localStorage.getItem('users') || '[]');
-        const userExists = verification.find(u => u.email === newUser.email);
-        if (!userExists) {
-            console.error('❌ Error: usuario no se guardó correctamente, reintentando...');
-            localStorage.setItem('users', JSON.stringify(users));
-        } else {
-            console.log('✅ Usuario guardado y verificado correctamente');
+    try {
+        const cred = await firebase.auth().createUserWithEmailAndPassword(email, password);
+        const uid = cred.user.uid;
+        let fcmToken = '';
+        if (notificationConsent && typeof Notification !== 'undefined') {
+            try {
+                const permission = await Notification.requestPermission();
+                if (permission === 'granted' && typeof window.getFCMToken === 'function') {
+                    fcmToken = (await window.getFCMToken()) || '';
+                }
+            } catch (fcme) {
+                console.warn('FCM registro:', fcme);
+            }
         }
-    }, 100);
-    
-    // Sincronizar con Firestore
-    await syncUserToFirestore(newUser);
+        await firebase
+            .firestore()
+            .collection('users')
+            .doc(uid)
+            .set(
+                {
+                    name: name,
+                    nombre: name,
+                    email: email,
+                    phone: phone,
+                    telefono: phone,
+                    consent: true,
+                    notificationConsent: true,
+                    localities: selectedLocalities,
+                    fcmToken: fcmToken || '',
+                    consentDate: new Date().toISOString(),
+                    registeredFrom: 'WEB',
+                    registrationDate: firebase.firestore.FieldValue.serverTimestamp()
+                },
+                { merge: true }
+            );
 
-    showNotification('Registro completado correctamente. Ahora recibirá notificaciones.', 'success');
-    closeModal('registerModal');
-    e.target.reset();
+        const newUser = {
+            id: uid,
+            name: name,
+            email: email,
+            phone: phone,
+            consent: true,
+            notificationConsent: true,
+            localities: selectedLocalities,
+            fcmToken: fcmToken || '',
+            consentDate: new Date().toISOString(),
+            registeredAt: new Date().toISOString()
+        };
+        users.push(newUser);
+        localStorage.setItem('users', JSON.stringify(users));
+
+        showNotification('Registro completado. Sesión iniciada con Firebase.', 'success');
+        if (fcmToken) {
+            showNotification('Notificaciones push activadas', 'success');
+        }
+        closeModal('registerModal');
+        e.target.reset();
+
+        currentUser = {
+            email: email,
+            name: name,
+            id: uid,
+            isRegularUser: true,
+            localities: selectedLocalities
+        };
+        localStorage.setItem('currentUser', JSON.stringify(currentUser));
+        updateUserInterface();
+        loadReceivedNotifications();
+    } catch (err) {
+        const code = err && err.code ? err.code : '';
+        if (code === 'auth/email-already-in-use') {
+            showNotification('Este correo ya está registrado en Authentication', 'error');
+        } else if (code === 'auth/weak-password') {
+            showNotification('Contraseña demasiado débil (mínimo 6 caracteres)', 'error');
+        } else {
+            showNotification('No se pudo registrar: ' + (err.message || code), 'error');
+        }
+    }
 }
 
-// Manejar creación de administradores
-function handleCreateAdmin(e) {
+// Manejar creación de administradores (Firebase Auth + Firestore vía Cloud Function)
+async function handleCreateAdmin(e) {
     e.preventDefault();
-    
-    // Verificar que solo el super admin puede crear administradores
-    if (!isSuperAdmin) {
-        showNotification('Solo los administradores pueden crear otros administradores', 'error');
+
+    const authUser = firebase.auth && firebase.auth().currentUser;
+    if (!authUser) {
+        showNotification('Inicie sesión como superadministrador (Firebase) antes de crear cuentas.', 'error');
         return;
     }
-    
-    const formData = new FormData(e.target);
-    const name = formData.get('name');
-    const email = formData.get('email');
-    const password = formData.get('password');
-    const passwordConfirm = formData.get('passwordConfirm');
+    let superOk = false;
+    try {
+        const s = await firebase.firestore().collection('admins').doc(authUser.uid).get();
+        superOk = s.exists && s.data().isSuperAdmin === true;
+    } catch (err) {
+        console.warn(err);
+    }
+    if (!superOk) {
+        showNotification('Solo el superadministrador puede crear otras cuentas de administrador.', 'error');
+        return;
+    }
 
-    // Validaciones
+    const formData = new FormData(e.target);
+    const name = String(formData.get('name') || '').trim();
+    const email = String(formData.get('email') || '').trim();
+    const password = String(formData.get('password') || '');
+    const passwordConfirm = String(formData.get('passwordConfirm') || '');
+
     if (password !== passwordConfirm) {
         showNotification('Las contraseñas no coinciden', 'error');
         return;
     }
-
     if (password.length < 6) {
         showNotification('La contraseña debe tener al menos 6 caracteres', 'error');
         return;
     }
-
-    // Verificar si el email ya existe en administradores
-    if (administrators.some(admin => admin.email === email)) {
-        showNotification('Ya existe un administrador con este correo electrónico', 'error');
+    if (String(email).toLowerCase() === String(SUPER_ADMIN.email).toLowerCase()) {
+        showNotification('No use el correo del superadministrador para una cuenta nueva.', 'error');
+        return;
+    }
+    if (administrators.some((a) => String(a.email).toLowerCase() === email.toLowerCase())) {
+        showNotification('Ya existe un administrador con este correo en el sistema.', 'error');
+        return;
+    }
+    if (users.some((u) => String(u.email).toLowerCase() === email.toLowerCase())) {
+        showNotification('Este correo está registrado como usuario ciudadano. Use otro email para el panel.', 'error');
         return;
     }
 
-    // Verificar si el email ya existe en usuarios normales
-    if (users.some(user => user.email === email)) {
-        showNotification('Este correo electrónico ya está registrado como usuario normal', 'error');
+    if (!window.firebase || typeof firebase.functions !== 'function') {
+        showNotification(
+            'Firebase Functions no está disponible. Despliega las funciones createStaffAdmin / removeStaffAdmin y recarga.',
+            'error'
+        );
         return;
     }
 
-    // Verificar que no sea el super admin
-    if (email === SUPER_ADMIN.email) {
-        showNotification('No se puede crear un administrador con el email del Super Admin', 'error');
-        return;
+    try {
+        const createStaffAdmin = firebase.functions().httpsCallable('createStaffAdmin');
+        await createStaffAdmin({ name, email, password });
+        await loadAdministrators();
+        showNotification(`Administrador "${name}" creado en Firebase (cuenta y permisos listos).`, 'success');
+        e.target.reset();
+        const adminsTab = document.getElementById('admins-tab');
+        if (adminsTab && adminsTab.classList.contains('active')) {
+            loadAdminsList();
+        }
+    } catch (err) {
+        const msg =
+            (err && err.message) ||
+            (err && err.details) ||
+            'No se pudo crear el administrador. ¿Están desplegadas las Cloud Functions?';
+        console.error('createStaffAdmin:', err);
+        showNotification(String(msg), 'error');
     }
+}
 
-    // Crear nuevo administrador
-    const newAdmin = {
-        id: Date.now(),
-        name,
-        email,
-        password, // En una aplicación real, esto debería estar hasheado
-        createdBy: currentUser.email,
-        createdAt: new Date().toISOString(),
-        isActive: true
+function getFirebaseStorageService() {
+    if (!window.firebase || typeof firebase.storage !== 'function') {
+        return null;
+    }
+    try {
+        return firebase.storage();
+    } catch (error) {
+        console.warn('Firebase Storage no disponible:', error);
+        return null;
+    }
+}
+
+async function uploadDocumentToStorage(file) {
+    const storage = getFirebaseStorageService();
+    if (!storage) return null;
+
+    const safeName = String(file.name || 'documento')
+        .replace(/[^\w.\-]+/g, '_')
+        .slice(0, 120);
+    const filePath = `documents/${Date.now()}_${safeName}`;
+    const storageRef = storage.ref(filePath);
+    const snapshot = await storageRef.put(file);
+    const downloadURL = await snapshot.ref.getDownloadURL();
+    return {
+        fileUrl: downloadURL,
+        storagePath: filePath
     };
+}
 
-    administrators.push(newAdmin);
-    localStorage.setItem('administrators', JSON.stringify(administrators));
-
-    showNotification(`Administrador "${name}" creado correctamente`, 'success');
-    e.target.reset();
-    
-    // Actualizar la lista de administradores si está visible
-    if (document.getElementById('admins-tab').classList.contains('active')) {
-        loadAdminsList();
+async function deleteDocumentFromStorage(storagePath) {
+    if (!storagePath) return true;
+    const storage = getFirebaseStorageService();
+    if (!storage) return false;
+    try {
+        await storage.ref(storagePath).delete();
+        return true;
+    } catch (error) {
+        console.warn('No se pudo eliminar archivo de Storage:', error);
+        return false;
     }
 }
 
 // Manejar subida de documentos
-function handleDocumentUpload(e) {
+async function handleDocumentUpload(e) {
     e.preventDefault();
     
     if (!isAdmin) {
@@ -1523,8 +1786,22 @@ function handleDocumentUpload(e) {
         return;
     }
 
-    // Crear objeto URL para el archivo (simulado)
-    const fileUrl = URL.createObjectURL(file);
+    let fileUrl = null;
+    let storagePath = null;
+    try {
+        const uploaded = await uploadDocumentToStorage(file);
+        if (uploaded) {
+            fileUrl = uploaded.fileUrl;
+            storagePath = uploaded.storagePath;
+        } else {
+            fileUrl = URL.createObjectURL(file);
+            showNotification('Storage no disponible: se guarda enlace local temporal', 'warning');
+        }
+    } catch (error) {
+        console.error('Error subiendo documento a Storage:', error);
+        fileUrl = URL.createObjectURL(file);
+        showNotification('No se pudo subir a Storage, se guarda enlace local temporal', 'warning');
+    }
     
     const newDocument = {
         id: Date.now(),
@@ -1534,7 +1811,8 @@ function handleDocumentUpload(e) {
         fileName: file.name,
         fileSize: file.size,
         fileType: file.type,
-        fileUrl: fileUrl, // En producción sería la URL real del servidor
+        fileUrl: fileUrl,
+        storagePath: storagePath,
         uploadedBy: currentUser.email,
         uploadedAt: new Date().toISOString(),
         isActive: true
@@ -1553,7 +1831,7 @@ function handleDocumentUpload(e) {
 }
 
 // Manejar cita previa
-function handleAppointment(e) {
+async function handleAppointment(e) {
     e.preventDefault();
     
     // Verificar si las citas previas están habilitadas
@@ -1586,6 +1864,20 @@ function handleAppointment(e) {
         showNotification('La fecha seleccionada no puede ser en el pasado', 'error');
         return;
     }
+    if (!isDateAllowedByAvailability(appointmentData.date)) {
+        showNotification('La fecha seleccionada no está habilitada para cita previa', 'error');
+        return;
+    }
+    const effectiveSlots = getEffectiveTimeSlotsForDate(appointmentData.date);
+    if (!effectiveSlots.includes(appointmentData.time)) {
+        showNotification('La hora seleccionada no está disponible', 'error');
+        return;
+    }
+    const slotAvailable = await isAppointmentSlotAvailable(appointmentData.date, appointmentData.time);
+    if (!slotAvailable) {
+        showNotification('Ese horario ya está ocupado. Elige otra hora.', 'error');
+        return;
+    }
 
     // Enviar email de confirmación al usuario
     const confirmationSent = sendConfirmationEmail(appointmentData);
@@ -1594,20 +1886,40 @@ function handleAppointment(e) {
     const alertSent = sendAdminAlert(appointmentData);
     
     if (confirmationSent && alertSent) {
+        if (!window.firebase || !window.firebase.auth || !window.firebase.firestore) {
+            showNotification('Firebase no disponible para guardar la cita', 'error');
+            return;
+        }
+        const authUser = firebase.auth().currentUser;
+        if (!authUser) {
+            showNotification('Debe iniciar sesión para solicitar cita previa', 'warning');
+            return;
+        }
+
         // Guardar la cita previa
         const appointment = {
             id: Date.now().toString(),
+            userId: authUser.uid,
             ...appointmentData,
             status: 'pending',
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString()
         };
-        
-        appointments.push(appointment);
+
+        const created = await createAppointmentAtomic(appointment);
+        if (!created) {
+            showNotification('No se pudo guardar la cita en el servidor', 'error');
+            return;
+        }
+        appointments.push(created);
         saveAppointments();
         
         // Crear notificación para el encargado municipal
-        createMunicipalAlert(appointment);
+        createMunicipalAlert(created);
+
+        invokeAppointmentNotificationEvent('created', created).catch((err) =>
+            console.warn('Aviso cita (created):', err)
+        );
         
         showNotification('Su solicitud de cita ha sido enviada. Recibirá un email de confirmación y le contactaremos pronto.', 'success');
         
@@ -1749,35 +2061,51 @@ function handleLogoUpload(e) {
 
 // Cambiar tab en admin
 function switchTab(tabName) {
+    // El botón "cultura-ocio" en tabs superiores usa la misma vista de contenido.
+    const effectiveTab = tabName === 'cultura-ocio' ? 'content' : tabName;
+    const adminModal = document.getElementById('adminModal');
+    if (!adminModal) return;
+
     // Actualizar botones
-    document.querySelectorAll('.tab-btn').forEach(btn => {
+    adminModal.querySelectorAll('.admin-tabs .tab-btn').forEach(btn => {
         btn.classList.remove('active');
     });
-    document.querySelector(`[data-tab="${tabName}"]`).classList.add('active');
+    const activeBtn = adminModal.querySelector(`.admin-tabs [data-tab="${tabName}"]`);
+    if (activeBtn) {
+        activeBtn.classList.add('active');
+    }
 
     // Actualizar contenido
-    document.querySelectorAll('.tab-content').forEach(content => {
+    adminModal.querySelectorAll(':scope > .modal-content > .tab-content').forEach(content => {
         content.classList.remove('active');
     });
-    document.getElementById(`${tabName}-tab`).classList.add('active');
+    const targetTab = adminModal.querySelector(`#${effectiveTab}-tab`);
+    if (!targetTab) {
+        console.warn(`Tab no encontrada: ${effectiveTab}-tab`);
+        return;
+    }
+    targetTab.classList.add('active');
 
     // Cargar contenido específico del tab
-    if (tabName === 'content') {
+    if (effectiveTab === 'content') {
         loadNewsList();
         loadBandoList();
         loadEventsList();
         loadQuickAccessList();
-    } else if (tabName === 'users') {
+        if (tabName === 'cultura-ocio' && typeof openCulturaOcioManager === 'function') {
+            openCulturaOcioManager();
+        }
+    } else if (effectiveTab === 'users') {
         loadUsersList();
-    } else if (tabName === 'admins') {
+    } else if (effectiveTab === 'admins') {
         loadAdminsList();
-    } else if (tabName === 'documents') {
+    } else if (effectiveTab === 'documents') {
         loadDocumentsList();
-    } else if (tabName === 'notifications') {
+    } else if (effectiveTab === 'notifications') {
         loadNotificationsHistory();
-    } else if (tabName === 'database') {
+    } else if (effectiveTab === 'database') {
         loadSystemStats();
-    } else if (tabName === 'settings') {
+    } else if (effectiveTab === 'settings') {
         loadAppointmentSettings();
         loadPublicNotificationsList();
         
@@ -1804,14 +2132,14 @@ function switchTab(tabName) {
                 }
             }
         }, 100);
-    } else if (tabName === 'appointments') {
+    } else if (effectiveTab === 'appointments') {
         console.log('Cargando pestaña de citas previas...');
         loadAppointments();
         loadAppointmentsList();
         loadAppointmentStats();
         loadMunicipalAlertsList();
         console.log('Pestaña de citas previas cargada');
-    } else if (tabName === 'servicios') {
+    } else if (effectiveTab === 'servicios') {
         loadServiciosAdmin();
     }
 }
@@ -1950,74 +2278,163 @@ function loadBandoList() {
     });
 }
 
-// Cargar lista de usuarios
+async function deletePanelUser(email) {
+    if (!isAdmin) {
+        showNotification('Sin permisos', 'error');
+        return;
+    }
+    if (!confirm(`¿Eliminar definitivamente al usuario ${email}? (Auth + datos en Firestore)`)) {
+        return;
+    }
+    const u = users.find((x) => String(x.email).toLowerCase() === String(email).toLowerCase());
+    if (!u || !u.id) {
+        showNotification('Usuario no encontrado en la lista cargada.', 'error');
+        return;
+    }
+    if (!window.firebase || typeof firebase.functions !== 'function') {
+        showNotification('Firebase Functions no disponible. Despliega removeEndUser.', 'error');
+        return;
+    }
+    try {
+        const fn = firebase.functions().httpsCallable('removeEndUser');
+        await fn({ uid: u.id });
+        await loadUsersFromFirestore();
+        loadUsersList();
+        showNotification('Usuario eliminado correctamente', 'success');
+    } catch (err) {
+        console.error('removeEndUser:', err);
+        showNotification(err.message || 'No se pudo eliminar el usuario', 'error');
+    }
+}
+
+async function deletePanelAdmin(email) {
+    if (!isSuperAdmin) {
+        showNotification('Solo el superadministrador puede eliminar administradores.', 'error');
+        return;
+    }
+    const adminRow = administrators.find(
+        (a) => String(a.email).toLowerCase() === String(email).toLowerCase()
+    );
+    const uid = adminRow && (adminRow.authUid || adminRow.id);
+    if (!uid) {
+        showNotification('No se encontró el UID del administrador.', 'error');
+        return;
+    }
+    if (firebase.auth().currentUser && uid === firebase.auth().currentUser.uid) {
+        showNotification('No puede eliminar su propia cuenta.', 'error');
+        return;
+    }
+    if (!confirm(`¿Eliminar administrador ${email}? (cuenta Firebase y permisos)`)) {
+        return;
+    }
+    if (!window.firebase || typeof firebase.functions !== 'function') {
+        showNotification('Firebase Functions no disponible. Despliega removeStaffAdmin.', 'error');
+        return;
+    }
+    try {
+        const fn = firebase.functions().httpsCallable('removeStaffAdmin');
+        await fn({ uid });
+        await loadAdministrators();
+        loadAdminsList();
+        showNotification('Administrador eliminado', 'success');
+    } catch (err) {
+        console.error('removeStaffAdmin:', err);
+        showNotification(err.message || 'No se pudo eliminar', 'error');
+    }
+}
+
+// Cargar lista de usuarios (panel admin)
 function loadUsersList() {
     const usersList = document.getElementById('usersList');
     if (!usersList) return;
 
     usersList.innerHTML = '';
-    
-    // Filtrar usuarios ocultos (super admin no debe aparecer en la lista)
-    const visibleUsers = users.filter(user => !user.isHidden && !user.isSuperAdmin);
-    
-    visibleUsers.forEach(user => {
+
+    const visibleUsers = users.filter((user) => !user.isHidden && !user.isSuperAdmin);
+
+    if (visibleUsers.length === 0) {
+        usersList.innerHTML =
+            '<p style="text-align: center; color: #666; padding: 2rem;">No hay usuarios registrados</p>';
+        return;
+    }
+
+    visibleUsers.forEach((user) => {
         const userItem = document.createElement('div');
         userItem.className = 'user-item';
+        userItem.style.cssText =
+            'background: var(--bg-secondary, #f9fafb); padding: 1rem; margin: 0.5rem 0; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;';
         userItem.innerHTML = `
             <div>
-                <h4>${user.name}</h4>
-                <p>${user.email}</p>
-                <p>Registrado: ${formatDate(user.registeredAt)}</p>
+                <h4 style="margin: 0 0 0.5rem 0;">${user.name || ''}</h4>
+                <p style="margin: 0; color: #666;">${user.email || ''}</p>
+                <small style="color: #999;">Registrado: ${formatDate(user.registeredAt || user.registrationDate)}</small>
             </div>
-            <div>
+            <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
                 <span class="badge ${user.consent ? 'badge-success' : 'badge-warning'}">
-                    ${user.consent ? 'Consentimiento dado' : 'Sin consentimiento'}
+                    ${user.consent ? 'Consentimiento' : 'Sin consentimiento'}
                 </span>
-                ${user.notificationConsent ? '<span class="badge badge-info">Notificaciones</span>' : ''}
+                ${user.notificationConsent ? '<span class="badge badge-info">Notif.</span>' : ''}
+                <button type="button" class="btn btn-sm btn-danger panel-del-user" data-email="${String(user.email || '').replace(/"/g, '&quot;')}">Eliminar</button>
             </div>
         `;
+        const del = userItem.querySelector('.panel-del-user');
+        if (del) {
+            del.addEventListener('click', () => deletePanelUser(user.email));
+        }
         usersList.appendChild(userItem);
     });
-    
-    // Super administrador oculto - no se muestra en la lista
 }
 
-// Cargar lista de administradores
+// Cargar lista de administradores (panel superadmin)
 function loadAdminsList() {
     const adminsList = document.getElementById('adminsList');
     if (!adminsList) return;
 
     adminsList.innerHTML = '';
-    
-    // Mostrar todos los administradores
-    administrators.forEach(admin => {
+
+    const visibleAdmins = administrators.filter((a) => !a.isHidden);
+
+    if (visibleAdmins.length === 0) {
+        adminsList.innerHTML =
+            '<p style="text-align: center; color: #666; padding: 2rem;">No hay administradores en Firestore. Cree uno con el formulario o despliegue las Functions.</p>';
+        return;
+    }
+
+    const authUid = firebase.auth().currentUser ? firebase.auth().currentUser.uid : null;
+
+    visibleAdmins.forEach((admin) => {
         const adminItem = document.createElement('div');
         adminItem.className = 'admin-item';
-        adminItem.style.cssText = 'border: 1px solid #e5e7eb; border-radius: 8px; padding: 1rem; margin-bottom: 1rem; background: #f9fafb;';
-        
-        const createdBy = admin.createdBy === 'system' ? 'Sistema' : admin.createdBy;
-        const isCurrentAdmin = currentUser && currentUser.adminId === admin.id;
-        
+        adminItem.style.cssText =
+            'border: 1px solid #e5e7eb; border-radius: 8px; padding: 1rem; margin-bottom: 1rem; background: #f9fafb;';
+
+        const uid = admin.authUid || admin.id;
+        const createdBy = admin.createdBy === 'system' ? 'Sistema' : admin.createdBy || '—';
+        const isSelf = authUid && uid === authUid;
+
         adminItem.innerHTML = `
-            <div style="display: flex; justify-content: space-between; align-items: start;">
+            <div style="display: flex; justify-content: space-between; align-items: start; flex-wrap: wrap; gap: 0.75rem;">
                 <div>
-                    <h4>${admin.name} ${isCurrentAdmin ? '(Tú)' : ''}</h4>
-                    <p><strong>Email:</strong> ${admin.email}</p>
-                    <p><strong>Creado por:</strong> ${createdBy}</p>
-                    <p><strong>Fecha de creación:</strong> ${formatDate(admin.createdAt)}</p>
+                    <h4 style="margin: 0 0 0.35rem 0;">${admin.name || ''} ${isSelf ? '(Tú)' : ''}</h4>
+                    <p style="margin: 0.2rem 0;"><strong>Email:</strong> ${admin.email || ''}</p>
+                    <p style="margin: 0.2rem 0;"><strong>UID:</strong> ${uid || '—'}</p>
+                    <p style="margin: 0.2rem 0;"><strong>Creado por:</strong> ${createdBy}</p>
+                    <p style="margin: 0.2rem 0;"><strong>Fecha:</strong> ${formatDate(admin.createdAt || admin.createdDate)}</p>
                 </div>
-                <div>
-                    <span class="badge ${admin.isActive ? 'badge-success' : 'badge-warning'}">
-                        ${admin.isActive ? 'Activo' : 'Inactivo'}
+                <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 0.5rem;">
+                    <span class="badge ${admin.isActive !== false ? 'badge-success' : 'badge-warning'}">
+                        ${admin.isActive !== false ? 'Activo' : 'Inactivo'}
                     </span>
-                    ${isCurrentAdmin ? '<span class="badge badge-info">Actual</span>' : ''}
+                    ${isSuperAdmin && !isSelf ? `<button type="button" class="btn btn-sm btn-danger panel-del-admin" data-email="${String(admin.email || '').replace(/"/g, '&quot;')}">Eliminar</button>` : ''}
                 </div>
             </div>
         `;
+        const del = adminItem.querySelector('.panel-del-admin');
+        if (del) {
+            del.addEventListener('click', () => deletePanelAdmin(admin.email));
+        }
         adminsList.appendChild(adminItem);
     });
-    
-    // Super administrador oculto - no se muestra en la lista
 }
 
 // Cargar lista de documentos
@@ -2153,6 +2570,67 @@ function loadQuickAccessList() {
     });
 }
 
+function saveQuickAccessData() {
+    localStorage.setItem('quickAccess', JSON.stringify(quickAccess));
+    loadQuickAccessList();
+    showNotification('Acceso rápido actualizado', 'success');
+}
+
+function openQuickAccessEditor() {
+    const title = prompt('Título de la tarjeta de acceso rápido:');
+    if (!title) return;
+    const description = prompt('Descripción:') || '';
+    const section = prompt('Sección destino (ej: bando, documentos, sede-electronica, cultura-ocio):', 'bando') || 'bando';
+    const icon = prompt('Clase de icono Font Awesome (ej: fas fa-link):', 'fas fa-link') || 'fas fa-link';
+    const order = parseInt(prompt('Orden de visualización:', String(quickAccess.length + 1)) || String(quickAccess.length + 1), 10);
+
+    const newItem = {
+        id: Date.now(),
+        title: title.trim(),
+        description: description.trim(),
+        section: section.trim(),
+        icon: icon.trim(),
+        order: Number.isNaN(order) ? quickAccess.length + 1 : order,
+        isActive: true,
+        createdBy: currentUser?.email || 'admin',
+        createdAt: new Date().toISOString()
+    };
+    quickAccess.push(newItem);
+    saveQuickAccessData();
+}
+
+function editQuickAccess(itemId) {
+    const item = quickAccess.find((q) => q.id === itemId);
+    if (!item) {
+        showNotification('Tarjeta no encontrada', 'error');
+        return;
+    }
+    const title = prompt('Título:', item.title);
+    if (!title) return;
+    const description = prompt('Descripción:', item.description || '') || '';
+    const section = prompt('Sección destino:', item.section || 'bando') || item.section;
+    const icon = prompt('Clase de icono Font Awesome:', item.icon || 'fas fa-link') || item.icon;
+    const orderRaw = prompt('Orden:', String(item.order || 1)) || String(item.order || 1);
+    const order = parseInt(orderRaw, 10);
+    const activeRaw = prompt('¿Activa? (si/no):', item.isActive ? 'si' : 'no') || (item.isActive ? 'si' : 'no');
+
+    item.title = title.trim();
+    item.description = description.trim();
+    item.section = section.trim();
+    item.icon = icon.trim();
+    item.order = Number.isNaN(order) ? item.order : order;
+    item.isActive = activeRaw.trim().toLowerCase() !== 'no';
+    item.updatedAt = new Date().toISOString();
+    item.updatedBy = currentUser?.email || 'admin';
+    saveQuickAccessData();
+}
+
+function deleteQuickAccess(itemId) {
+    if (!confirm('¿Eliminar esta tarjeta de acceso rápido?')) return;
+    quickAccess = quickAccess.filter((q) => q.id !== itemId);
+    saveQuickAccessData();
+}
+
 // Cargar historial de notificaciones
 function loadNotificationsHistory() {
     const history = document.getElementById('notificationsHistory');
@@ -2180,6 +2658,24 @@ function loadNotifications() {
         const userNotifications = JSON.parse(savedNotifications);
         updateNotificationCenter(userNotifications);
     }
+}
+
+function clearAllData() {
+    const firstConfirm = confirm('Esto eliminará los datos locales del panel (contenido, servicios, citas locales y configuraciones). ¿Deseas continuar?');
+    if (!firstConfirm) return;
+    const secondConfirm = confirm('Última confirmación: esta acción no se puede deshacer. ¿Eliminar todo?');
+    if (!secondConfirm) return;
+
+    const keysToClear = [
+        'news', 'bandos', 'events', 'quickAccess', 'documents', 'notifications', 'userNotifications',
+        'administrators', 'appointmentSettings', 'appointmentAvailability', 'appointments',
+        'publicNotifications', 'culturaOcioConfig', 'servicios', 'seccionesConfig',
+        'consultorioConfig', 'itvConfig', 'telefonosInteresConfig', 'transporteConfig',
+        'municipalAlerts'
+    ];
+    keysToClear.forEach((key) => localStorage.removeItem(key));
+    showNotification('Datos locales eliminados. Recargando...', 'success');
+    setTimeout(() => window.location.reload(), 600);
 }
 
 // Actualizar centro de notificaciones
@@ -2350,6 +2846,19 @@ function showNotification(message, type = 'info') {
     setTimeout(() => {
         notification.remove();
     }, 3000);
+}
+
+function shareOnWhatsApp() {
+    try {
+        const pageTitle = document.title || 'Ayuntamiento de Cobreros';
+        const pageUrl = window.location.href;
+        const text = `${pageTitle} - ${pageUrl}`;
+        const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(text)}`;
+        window.open(whatsappUrl, '_blank');
+    } catch (error) {
+        console.error('Error compartiendo por WhatsApp:', error);
+        showNotification('No se pudo abrir WhatsApp para compartir', 'error');
+    }
 }
 
 // Alternar menú móvil
@@ -2696,9 +3205,11 @@ function deleteDocument(docId) {
     const doc = documents[docIndex];
     documents.splice(docIndex, 1);
     localStorage.setItem('documents', JSON.stringify(documents));
-    
-    showNotification(`Documento "${doc.name}" eliminado correctamente`, 'success');
-    loadDocumentsList();
+
+    deleteDocumentFromStorage(doc.storagePath).finally(() => {
+        showNotification(`Documento "${doc.name}" eliminado correctamente`, 'success');
+        loadDocumentsList();
+    });
 }
 
 // Funciones de gestión de noticias
@@ -4261,6 +4772,254 @@ function loadAppointmentSettings() {
     console.log('✅ Configuración de citas previas cargada completamente');
 }
 
+function normalizeAppointmentAvailability(raw) {
+    const normalizedDays = Array.isArray(raw?.enabledDays)
+        ? raw.enabledDays.map((d) => parseInt(d, 10)).filter((d) => Number.isInteger(d) && d >= 0 && d <= 6)
+        : [1, 2, 3, 4, 5];
+    const uniqueDays = [...new Set(normalizedDays)];
+    const normalizedSlots = Array.isArray(raw?.timeSlots)
+        ? raw.timeSlots
+              .map((slot) => String(slot).trim())
+              .filter((slot) => /^([01]\d|2[0-3]):([0-5]\d)$/.test(slot))
+        : ['09:00', '10:00', '11:00', '12:00', '16:00', '17:00', '18:00'];
+    const uniqueSlots = [...new Set(normalizedSlots)].sort();
+    const slotCapacityDefault = Math.max(1, parseInt(raw?.slotCapacityDefault || 1, 10) || 1);
+    const capacityBySlot = {};
+    if (raw?.capacityBySlot && typeof raw.capacityBySlot === 'object') {
+        Object.entries(raw.capacityBySlot).forEach(([slot, cap]) => {
+            if (/^([01]\d|2[0-3]):([0-5]\d)$/.test(slot)) {
+                const parsedCap = Math.max(1, parseInt(cap, 10) || slotCapacityDefault);
+                capacityBySlot[slot] = parsedCap;
+            }
+        });
+    }
+    const holidays = Array.isArray(raw?.holidays)
+        ? raw.holidays
+              .map((d) => String(d).trim())
+              .filter((d) => /^\d{4}-\d{2}-\d{2}$/.test(d))
+        : [];
+    const exceptionsByDate = {};
+    if (raw?.exceptionsByDate && typeof raw.exceptionsByDate === 'object') {
+        Object.entries(raw.exceptionsByDate).forEach(([date, exception]) => {
+            if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return;
+            const ex = exception || {};
+            const exTimeSlots = Array.isArray(ex.timeSlots)
+                ? ex.timeSlots
+                      .map((slot) => String(slot).trim())
+                      .filter((slot) => /^([01]\d|2[0-3]):([0-5]\d)$/.test(slot))
+                : null;
+            const exCapacityBySlot = {};
+            if (ex.capacityBySlot && typeof ex.capacityBySlot === 'object') {
+                Object.entries(ex.capacityBySlot).forEach(([slot, cap]) => {
+                    if (/^([01]\d|2[0-3]):([0-5]\d)$/.test(slot)) {
+                        exCapacityBySlot[slot] = Math.max(1, parseInt(cap, 10) || slotCapacityDefault);
+                    }
+                });
+            }
+            exceptionsByDate[date] = {
+                enabled: ex.enabled !== false,
+                timeSlots: exTimeSlots,
+                capacityBySlot: exCapacityBySlot
+            };
+        });
+    }
+
+    return {
+        enabledDays: uniqueDays.length ? uniqueDays : [1, 2, 3, 4, 5],
+        timeSlots: uniqueSlots.length ? uniqueSlots : ['09:00', '10:00', '11:00', '12:00', '16:00', '17:00', '18:00'],
+        slotCapacityDefault,
+        capacityBySlot,
+        holidays: [...new Set(holidays)].sort(),
+        exceptionsByDate,
+        updatedAt: raw?.updatedAt || null,
+        updatedBy: raw?.updatedBy || 'system'
+    };
+}
+
+function renderAppointmentAvailabilityAdmin() {
+    for (let day = 0; day <= 6; day += 1) {
+        const checkbox = document.getElementById(`day-${day}`);
+        if (checkbox) {
+            checkbox.checked = appointmentAvailability.enabledDays.includes(day);
+        }
+    }
+    const slotsInput = document.getElementById('appointmentTimeSlotsInput');
+    if (slotsInput) {
+        slotsInput.value = appointmentAvailability.timeSlots.join(',');
+    }
+    const capacityInput = document.getElementById('appointmentSlotCapacityInput');
+    if (capacityInput) {
+        capacityInput.value = String(appointmentAvailability.slotCapacityDefault || 1);
+    }
+    const holidaysInput = document.getElementById('appointmentHolidaysInput');
+    if (holidaysInput) {
+        holidaysInput.value = (appointmentAvailability.holidays || []).join(',');
+    }
+    const exceptionsInput = document.getElementById('appointmentExceptionsInput');
+    if (exceptionsInput) {
+        const list = Object.entries(appointmentAvailability.exceptionsByDate || {}).map(([date, ex]) => ({
+            date,
+            enabled: ex.enabled !== false,
+            timeSlots: Array.isArray(ex.timeSlots) ? ex.timeSlots : undefined,
+            capacityBySlot: ex.capacityBySlot && Object.keys(ex.capacityBySlot).length ? ex.capacityBySlot : undefined
+        }));
+        exceptionsInput.value = JSON.stringify(list, null, 2);
+    }
+}
+
+function loadAppointmentAvailabilitySettings() {
+    const saved = localStorage.getItem('appointmentAvailability');
+    if (saved) {
+        try {
+            appointmentAvailability = normalizeAppointmentAvailability(JSON.parse(saved));
+        } catch (error) {
+            console.warn('No se pudo cargar appointmentAvailability, se mantiene el valor por defecto', error);
+        }
+    }
+    renderAppointmentAvailabilityAdmin();
+    refreshAppointmentTimeOptions();
+}
+
+function saveAppointmentAvailabilitySettings() {
+    if (!isAdmin) {
+        showNotification('Solo los administradores pueden cambiar la disponibilidad', 'error');
+        return;
+    }
+    const enabledDays = [];
+    for (let day = 0; day <= 6; day += 1) {
+        const checkbox = document.getElementById(`day-${day}`);
+        if (checkbox && checkbox.checked) {
+            enabledDays.push(day);
+        }
+    }
+    if (enabledDays.length === 0) {
+        showNotification('Selecciona al menos un día disponible', 'error');
+        return;
+    }
+    const slotsInput = document.getElementById('appointmentTimeSlotsInput');
+    const rawSlots = slotsInput ? slotsInput.value : '';
+    const validSlots = [...new Set(rawSlots.split(',').map((slot) => slot.trim()))]
+        .filter((slot) => /^([01]\d|2[0-3]):([0-5]\d)$/.test(slot))
+        .sort();
+    if (validSlots.length === 0) {
+        showNotification('Introduce al menos una hora válida (ej: 09:00)', 'error');
+        return;
+    }
+    const capacityInput = document.getElementById('appointmentSlotCapacityInput');
+    const slotCapacityDefault = Math.max(1, parseInt(capacityInput?.value || '1', 10) || 1);
+    const holidaysInput = document.getElementById('appointmentHolidaysInput');
+    const holidays = [...new Set((holidaysInput?.value || '')
+        .split(',')
+        .map((d) => d.trim())
+        .filter((d) => /^\d{4}-\d{2}-\d{2}$/.test(d)))].sort();
+
+    let exceptionsByDate = {};
+    const exceptionsInput = document.getElementById('appointmentExceptionsInput');
+    const rawExceptions = exceptionsInput?.value?.trim();
+    if (rawExceptions) {
+        try {
+            const parsed = JSON.parse(rawExceptions);
+            if (!Array.isArray(parsed)) {
+                throw new Error('El JSON de excepciones debe ser una lista');
+            }
+            parsed.forEach((item) => {
+                if (!item || !/^\d{4}-\d{2}-\d{2}$/.test(item.date || '')) {
+                    return;
+                }
+                const exTimeSlots = Array.isArray(item.timeSlots)
+                    ? item.timeSlots
+                          .map((slot) => String(slot).trim())
+                          .filter((slot) => /^([01]\d|2[0-3]):([0-5]\d)$/.test(slot))
+                    : undefined;
+                const exCapacityBySlot = {};
+                if (item.capacityBySlot && typeof item.capacityBySlot === 'object') {
+                    Object.entries(item.capacityBySlot).forEach(([slot, cap]) => {
+                        if (/^([01]\d|2[0-3]):([0-5]\d)$/.test(slot)) {
+                            exCapacityBySlot[slot] = Math.max(1, parseInt(cap, 10) || slotCapacityDefault);
+                        }
+                    });
+                }
+                exceptionsByDate[item.date] = {
+                    enabled: item.enabled !== false,
+                    timeSlots: exTimeSlots,
+                    capacityBySlot: exCapacityBySlot
+                };
+            });
+        } catch (error) {
+            showNotification('JSON de excepciones inválido', 'error');
+            return;
+        }
+    }
+
+    appointmentAvailability = {
+        enabledDays: enabledDays.sort(),
+        timeSlots: validSlots,
+        slotCapacityDefault,
+        capacityBySlot: {},
+        holidays,
+        exceptionsByDate,
+        updatedAt: new Date().toISOString(),
+        updatedBy: currentUser?.email || 'admin'
+    };
+    localStorage.setItem('appointmentAvailability', JSON.stringify(appointmentAvailability));
+    refreshAppointmentTimeOptions();
+    showNotification('Disponibilidad de cita previa guardada', 'success');
+}
+
+function setAppointmentDateConstraints() {
+    const dateInput = document.getElementById('date');
+    if (!dateInput) return;
+    dateInput.setAttribute('min', new Date().toISOString().split('T')[0]);
+}
+
+function isDateAllowedByAvailability(dateIso) {
+    if (!dateIso) return false;
+    const d = new Date(dateIso + 'T00:00:00');
+    if (Number.isNaN(d.getTime())) return false;
+    if ((appointmentAvailability.holidays || []).includes(dateIso)) return false;
+    const dateException = appointmentAvailability.exceptionsByDate?.[dateIso];
+    if (dateException && dateException.enabled === false) return false;
+    return appointmentAvailability.enabledDays.includes(d.getDay());
+}
+
+function getEffectiveTimeSlotsForDate(dateIso) {
+    const dateException = appointmentAvailability.exceptionsByDate?.[dateIso];
+    if (dateException && Array.isArray(dateException.timeSlots) && dateException.timeSlots.length) {
+        return dateException.timeSlots;
+    }
+    return appointmentAvailability.timeSlots;
+}
+
+function getEffectiveCapacityForSlot(dateIso, slot) {
+    const dateException = appointmentAvailability.exceptionsByDate?.[dateIso];
+    if (dateException?.capacityBySlot?.[slot]) {
+        return dateException.capacityBySlot[slot];
+    }
+    if (appointmentAvailability.capacityBySlot?.[slot]) {
+        return appointmentAvailability.capacityBySlot[slot];
+    }
+    return appointmentAvailability.slotCapacityDefault || 1;
+}
+
+function refreshAppointmentTimeOptions() {
+    const timeSelect = document.getElementById('time');
+    const dateInput = document.getElementById('date');
+    if (!timeSelect) return;
+    const currentValue = timeSelect.value;
+    timeSelect.innerHTML = '<option value="">Seleccione una hora</option>';
+    const selectedDate = dateInput ? dateInput.value : '';
+    const slots = getEffectiveTimeSlotsForDate(selectedDate);
+    slots.forEach((slot) => {
+        const option = document.createElement('option');
+        option.value = slot;
+        option.textContent = slot;
+        timeSelect.appendChild(option);
+    });
+    if (slots.includes(currentValue)) {
+        timeSelect.value = currentValue;
+    }
+}
+
 function updateAppointmentUI() {
     // Verificar que la configuración esté cargada
     if (appointmentsEnabled === null) {
@@ -4312,6 +5071,8 @@ function updateAppointmentUI() {
             });
         }
     }
+    setAppointmentDateConstraints();
+    refreshAppointmentTimeOptions();
 }
 
 function updateAppointmentMode() {
@@ -4515,10 +5276,231 @@ function loadAppointments() {
     if (savedAppointments) {
         appointments = JSON.parse(savedAppointments);
     }
+    loadAppointmentsFromFirestoreInBackground();
 }
 
 function saveAppointments() {
     localStorage.setItem('appointments', JSON.stringify(appointments));
+}
+
+function mapAppointmentFromFirestore(doc) {
+    const d = doc.data() || {};
+    return {
+        id: doc.id,
+        userId: d.userId || '',
+        name: d.name || '',
+        dni: d.dni || '',
+        email: d.email || '',
+        phone: d.phone || '',
+        service: d.service || '',
+        date: d.date || '',
+        time: d.time || '',
+        comments: d.comments || '',
+        status: d.status || 'pending',
+        gdprConsent: d.gdprConsent || false,
+        createdAt: d.createdAt || new Date().toISOString(),
+        updatedAt: d.updatedAt || new Date().toISOString()
+    };
+}
+
+async function canReadAppointmentsFromFirestore() {
+    if (!window.firebase || !window.firebase.auth || !window.firebase.firestore) {
+        return false;
+    }
+    if (await isFirebaseAdmin()) {
+        return true;
+    }
+    return !!firebase.auth().currentUser;
+}
+
+async function loadAppointmentsFromFirestoreInBackground() {
+    try {
+        if (!(await canReadAppointmentsFromFirestore())) {
+            return;
+        }
+        const db = firebase.firestore();
+        const isAdminFirestore = await isFirebaseAdmin();
+        const authUser = firebase.auth().currentUser;
+        let snapshot;
+        if (isAdminFirestore) {
+            snapshot = await db.collection('appointments').orderBy('createdAt', 'desc').limit(500).get();
+        } else if (authUser) {
+            snapshot = await db
+                .collection('appointments')
+                .where('userId', '==', authUser.uid)
+                .orderBy('createdAt', 'desc')
+                .limit(200)
+                .get();
+        } else {
+            return;
+        }
+        const loaded = [];
+        snapshot.forEach((doc) => loaded.push(mapAppointmentFromFirestore(doc)));
+        appointments = loaded;
+        saveAppointments();
+        if (document.getElementById('appointmentsList')) {
+            loadAppointmentsList();
+            loadAppointmentStats();
+        }
+    } catch (err) {
+        console.warn('No se pudieron cargar citas desde Firestore:', err);
+    }
+}
+
+async function createAppointmentInFirestore(appointment) {
+    try {
+        const db = firebase.firestore();
+        const payload = {
+            userId: appointment.userId || '',
+            name: appointment.name || '',
+            dni: appointment.dni || '',
+            email: appointment.email || '',
+            phone: appointment.phone || '',
+            service: appointment.service || '',
+            date: appointment.date || '',
+            time: appointment.time || '',
+            comments: appointment.comments || '',
+            status: appointment.status || 'pending',
+            gdprConsent: !!appointment.gdprConsent,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            source: 'WEB'
+        };
+        const ref = await db.collection('appointments').add(payload);
+        const snap = await ref.get();
+        return mapAppointmentFromFirestore(snap);
+    } catch (err) {
+        console.error('Error creando cita en Firestore:', err);
+        return null;
+    }
+}
+
+async function createAppointmentAtomic(appointment) {
+    const endpoint =
+        'https://us-central1-ayuntamiento-de-cobreros.cloudfunctions.net/createAppointmentAtomic';
+    try {
+        const token = await getAuthBearerToken();
+        const response = await fetch(endpoint, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                ...(token ? { Authorization: `Bearer ${token}` } : {})
+            },
+            body: JSON.stringify({ appointment })
+        });
+        const data = await response.json();
+        if (!response.ok || !data?.success || !data?.appointment) {
+            if (data?.errorCode === 'SLOT_FULL') {
+                showNotification('La franja seleccionada ya está completa', 'error');
+            } else if (data?.errorCode === 'DAY_NOT_AVAILABLE') {
+                showNotification('El día seleccionado no está disponible', 'error');
+            } else if (data?.errorCode === 'TIME_NOT_AVAILABLE') {
+                showNotification('La hora seleccionada no está disponible para ese día', 'error');
+            }
+            return null;
+        }
+        return data.appointment;
+    } catch (error) {
+        console.warn('Fallback a escritura directa por error en createAppointmentAtomic:', error);
+        return createAppointmentInFirestore(appointment);
+    }
+}
+
+async function isAppointmentSlotAvailable(date, time, excludeAppointmentId = null) {
+    if (!window.firebase || !window.firebase.firestore) {
+        return true;
+    }
+    try {
+        const snapshot = await firebase
+            .firestore()
+            .collection('appointments')
+            .where('date', '==', date)
+            .where('time', '==', time)
+            .where('status', 'in', ['pending', 'confirmed'])
+            .limit(10)
+            .get();
+        let occupied = 0;
+        snapshot.forEach((doc) => {
+            if (!excludeAppointmentId || doc.id !== excludeAppointmentId) {
+                occupied += 1;
+            }
+        });
+        const capacity = getEffectiveCapacityForSlot(date, time);
+        return occupied < capacity;
+    } catch (err) {
+        console.warn('No se pudo validar disponibilidad en Firestore:', err);
+        return true;
+    }
+}
+
+async function updateAppointmentInFirestore(appointmentId, patch) {
+    if (!window.firebase || !window.firebase.firestore) return false;
+    try {
+        await firebase
+            .firestore()
+            .collection('appointments')
+            .doc(appointmentId)
+            .set(
+                {
+                    ...patch,
+                    updatedAt: new Date().toISOString()
+                },
+                { merge: true }
+            );
+        return true;
+    } catch (err) {
+        console.error('Error actualizando cita en Firestore:', err);
+        return false;
+    }
+}
+
+async function deleteAppointmentInFirestore(appointmentId) {
+    if (!window.firebase || !window.firebase.firestore) return false;
+    try {
+        await firebase.firestore().collection('appointments').doc(appointmentId).delete();
+        return true;
+    } catch (err) {
+        console.error('Error eliminando cita en Firestore:', err);
+        return false;
+    }
+}
+
+async function invokeAppointmentNotificationEvent(eventType, appointment, oldStatus) {
+    const endpoint =
+        'https://us-central1-ayuntamiento-de-cobreros.cloudfunctions.net/notifyAppointmentEvent';
+    const payload = {
+        eventType: eventType,
+        appointment: appointment,
+        oldStatus: oldStatus || null
+    };
+    const token = await getAuthBearerToken();
+    const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { Authorization: `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify(payload)
+    });
+    if (!res.ok) {
+        throw new Error('HTTP ' + res.status);
+    }
+}
+
+async function getAuthBearerToken() {
+    try {
+        if (!window.firebase || !window.firebase.auth) {
+            return null;
+        }
+        const user = firebase.auth().currentUser;
+        if (!user) {
+            return null;
+        }
+        return await user.getIdToken();
+    } catch (error) {
+        console.warn('No se pudo obtener ID token:', error);
+        return null;
+    }
 }
 
 function loadAppointmentsList() {
@@ -4654,26 +5636,39 @@ function formatDateTime(dateString) {
     });
 }
 
-function updateAppointmentStatus(appointmentId, newStatus) {
+async function updateAppointmentStatus(appointmentId, newStatus) {
     const appointment = appointments.find(a => a.id === appointmentId);
     if (appointment) {
         const oldStatus = appointment.status;
         appointment.status = newStatus;
         appointment.updatedAt = new Date().toISOString();
+        const persisted = await updateAppointmentInFirestore(appointment.id, { status: newStatus });
+        if (!persisted) {
+            showNotification('No se pudo actualizar el estado en servidor', 'error');
+            return;
+        }
         saveAppointments();
         loadAppointmentsList();
         loadAppointmentStats();
         
         // Enviar email de confirmación al usuario
         sendStatusChangeEmail(appointment, oldStatus, newStatus);
+        invokeAppointmentNotificationEvent('status_changed', appointment, oldStatus).catch((err) =>
+            console.warn('Aviso cita (status_changed):', err)
+        );
         
         const statusText = getStatusText(newStatus);
         showNotification(`Cita ${statusText.toLowerCase()} correctamente. Se ha enviado un email de confirmación.`, 'success');
     }
 }
 
-function deleteAppointment(appointmentId) {
+async function deleteAppointment(appointmentId) {
     if (confirm('¿Está seguro de que desea eliminar esta cita previa?')) {
+        const deleted = await deleteAppointmentInFirestore(appointmentId);
+        if (!deleted) {
+            showNotification('No se pudo eliminar la cita en servidor', 'error');
+            return;
+        }
         appointments = appointments.filter(a => a.id !== appointmentId);
         saveAppointments();
         loadAppointmentsList();
@@ -4717,8 +5712,11 @@ function filterAppointments() {
     });
 }
 
-function refreshAppointments() {
-    loadAppointments();
+async function refreshAppointments() {
+    await loadAppointmentsFromFirestoreInBackground();
+    if (appointments.length === 0) {
+        loadAppointments();
+    }
     loadAppointmentsList();
     loadAppointmentStats();
     showNotification('Lista de citas actualizada', 'success');
@@ -4777,7 +5775,7 @@ function closeEditAppointmentModal() {
     document.body.style.overflow = 'auto';
 }
 
-function saveEditedAppointment() {
+async function saveEditedAppointment() {
     const form = document.getElementById('editAppointmentForm');
     const formData = new FormData(form);
     const appointmentId = formData.get('id');
@@ -4814,6 +5812,21 @@ function saveEditedAppointment() {
         appointment.comments = formData.get('comments');
         appointment.status = formData.get('status');
         appointment.updatedAt = new Date().toISOString();
+        const persisted = await updateAppointmentInFirestore(appointment.id, {
+            service: appointment.service,
+            name: appointment.name,
+            dni: appointment.dni,
+            email: appointment.email,
+            phone: appointment.phone,
+            date: appointment.date,
+            time: appointment.time,
+            comments: appointment.comments,
+            status: appointment.status
+        });
+        if (!persisted) {
+            showNotification('No se pudo guardar la edición en servidor', 'error');
+            return;
+        }
         
         saveAppointments();
         loadAppointmentsList();
@@ -4822,6 +5835,9 @@ function saveEditedAppointment() {
         // Si cambió el estado, enviar email de confirmación
         if (oldStatus !== appointment.status) {
             sendStatusChangeEmail(appointment, oldStatus, appointment.status);
+            invokeAppointmentNotificationEvent('status_changed', appointment, oldStatus).catch((err) =>
+                console.warn('Aviso cita (status_changed):', err)
+            );
         }
         
         closeEditAppointmentModal();
@@ -5347,134 +6363,17 @@ style.textContent = `
 `;
 document.head.appendChild(style); 
 
-// ===== FUNCIONES DE AUTENTICACIÓN =====
-
-// Función de login
-function login() {
-    const email = document.getElementById('loginEmail').value;
-    const password = document.getElementById('loginPassword').value;
-    
-    if (!email || !password) {
-        alert('Por favor, complete todos los campos.');
-        return;
-    }
-    
-    // Verificar super administrador
-    if (email === SUPER_ADMIN.email && password === SUPER_ADMIN.password) {
-        currentUser = SUPER_ADMIN;
-        isAdmin = true;
-        isSuperAdmin = true;
-        localStorage.setItem('currentUser', JSON.stringify(currentUser));
-        localStorage.setItem('isAdmin', 'true');
-        localStorage.setItem('isSuperAdmin', 'true');
-        updateUserInterface();
-        
-        // Ocultar mensaje de app en desktop
-        hideDesktopAppMessage();
-        closeModal('loginModal');
-        showNotification('Sesión de administrador iniciada correctamente', 'success');
-        return;
-    }
-    
-    // Verificar usuarios normales
-    const user = users.find(u => u.email === email && u.password === password);
-    if (user) {
-        currentUser = user;
-        isAdmin = user.isAdmin || false;
-        localStorage.setItem('currentUser', JSON.stringify(currentUser));
-        localStorage.setItem('isAdmin', isAdmin.toString());
-        updateUserInterface();
-        closeModal('loginModal');
-        
-        // Ocultar mensaje de app en desktop
-        hideDesktopAppMessage();
-        showNotification('Inicio de sesión exitoso', 'success');
-    } else {
-        alert('Credenciales incorrectas.');
-    }
-}
-
-// Función de registro
-async function register() {
-    const name = document.getElementById('regName').value;
-    const email = document.getElementById('regEmail').value;
-    const phone = document.getElementById('regPhone').value;
-    const password = document.getElementById('regPassword').value;
-    const confirmPassword = document.getElementById('regPasswordConfirm').value;
-    const consent = document.getElementById('consent').checked;
-    const notificationConsent = document.getElementById('notificationConsent').checked;
-    
-    // Obtener localidades seleccionadas
-    const selectedLocalities = [];
-    const localityCheckboxes = document.querySelectorAll('input[name="localities"]:checked');
-    localityCheckboxes.forEach(checkbox => {
-        selectedLocalities.push(checkbox.value);
-    });
-    
-    if (!name || !email || !phone || !password || !confirmPassword) {
-        alert('Por favor, complete todos los campos.');
-        return;
-    }
-    
-    if (password !== confirmPassword) {
-        alert('Las contraseñas no coinciden.');
-        return;
-    }
-    
-    if (!consent) {
-        alert('Debe aceptar el tratamiento de datos personales.');
-        return;
-    }
-    
-    if (users.find(u => u.email === email)) {
-        alert('Ya existe un usuario con este email.');
-        return;
-    }
-    
-    // Obtener token FCM si el usuario da consentimiento para notificaciones
-    let fcmToken = null;
-    if (notificationConsent) {
-        try {
-            // Solicitar permiso para notificaciones
-            const permission = await Notification.requestPermission();
-            if (permission === 'granted') {
-                // Obtener token FCM
-                if (window.getFCMToken) {
-                    fcmToken = await window.getFCMToken();
-                }
-            }
-        } catch (error) {
-            console.error('Error obteniendo token FCM:', error);
-        }
-    }
-    
-    const newUser = {
-        id: Date.now(),
-        name,
-        email,
-        phone,
-        password,
-        consent,
-        notificationConsent,
-        fcmToken,
-        localities: selectedLocalities,
-        isAdmin: false,
-        registrationDate: new Date().toISOString()
-    };
-    
-    users.push(newUser);
-    localStorage.setItem('users', JSON.stringify(users));
-    closeModal('registerModal');
-    showNotification('Usuario registrado correctamente', 'success');
-    
-    // Si dio consentimiento para notificaciones, mostrar mensaje
-    if (notificationConsent && fcmToken) {
-        showNotification('Notificaciones push activadas correctamente', 'success');
-    }
-}
+// Login / registro: handleLogin y handleRegister (eventos del formulario). Sesión persistente: onAuthStateChanged.
 
 // Función de logout
-function logout() {
+async function logout() {
+    try {
+        if (window.firebase && window.firebase.auth && firebase.auth().currentUser) {
+            await firebase.auth().signOut();
+        }
+    } catch (e) {
+        console.warn('signOut:', e);
+    }
     currentUser = null;
     isAdmin = false;
     isSuperAdmin = false;
@@ -5516,6 +6415,7 @@ function openAdminPanel() {
     loadNotificationsHistory();
     loadSystemStats();
     loadAppointmentSettings();
+    loadAppointmentAvailabilitySettings();
     loadPublicNotificationsList();
     
     // Actualizar información del sistema para la pestaña de backup
@@ -5720,6 +6620,12 @@ let consultorioConfig = {
     fotos: []
 };
 
+// Configuración de ITV
+let itvConfig = {
+    documentos: [],
+    fotos: []
+};
+
 // Cargar configuración del consultorio
 function loadConsultorioConfig() {
     const saved = localStorage.getItem('consultorioConfig');
@@ -5731,6 +6637,19 @@ function loadConsultorioConfig() {
 // Guardar configuración del consultorio
 function saveConsultorioConfig() {
     localStorage.setItem('consultorioConfig', JSON.stringify(consultorioConfig));
+}
+
+// Cargar configuración de ITV
+function loadItvConfig() {
+    const saved = localStorage.getItem('itvConfig');
+    if (saved) {
+        itvConfig = JSON.parse(saved);
+    }
+}
+
+// Guardar configuración de ITV
+function saveItvConfig() {
+    localStorage.setItem('itvConfig', JSON.stringify(itvConfig));
 }
 
 // Funciones para el consultorio
@@ -5754,18 +6673,18 @@ function viewConsultorioPhoto() {
 
 // Funciones para ITV - PUEBLA DE SANABRIA
 function viewItvDocument() {
-    if (consultorioConfig.documentos.length > 0) {
+    if (itvConfig.documentos.length > 0) {
         // Mostrar el primer documento disponible
-        window.open(consultorioConfig.documentos[0].url, '_blank');
+        window.open(itvConfig.documentos[0].url, '_blank');
     } else {
         alert('No hay documentos disponibles. Contacte con el administrador.');
     }
 }
 
 function viewItvPhoto() {
-    if (consultorioConfig.fotos.length > 0) {
+    if (itvConfig.fotos.length > 0) {
         // Mostrar la primera foto disponible
-        window.open(consultorioConfig.fotos[0].url, '_blank');
+        window.open(itvConfig.fotos[0].url, '_blank');
     } else {
         alert('No hay fotos disponibles. Contacte con el administrador.');
     }
@@ -5898,14 +6817,14 @@ function renderServicios() {
     html += '<div class="itv-puebla">';
     html += '<h4>🏘️ PUEBLA DE SANABRIA</h4>';
     
-    if (consultorioConfig.documentos.length > 0 || consultorioConfig.fotos.length > 0) {
+    if (itvConfig.documentos.length > 0 || itvConfig.fotos.length > 0) {
         html += '<div class="itv-enlaces">';
         
-        if (consultorioConfig.documentos.length > 0) {
+        if (itvConfig.documentos.length > 0) {
             html += `<a href="#" class="btn btn-outline" onclick="viewItvDocument()">📋 Ver Documento</a>`;
         }
         
-        if (consultorioConfig.fotos.length > 0) {
+        if (itvConfig.fotos.length > 0) {
             html += `<a href="#" class="btn btn-outline" onclick="viewItvPhoto()">📸 Ver Foto</a>`;
         }
         
@@ -6138,6 +7057,10 @@ function openTransporteManager() {
     loadTransporteLinesList();
 }
 
+function openTransporteModal() {
+    openTransporteManager();
+}
+
 // Cerrar gestor de transporte
 function closeTransporteModal() {
     closeModal('transporteModal');
@@ -6232,6 +7155,10 @@ function addTransporteLinea() {
         saveTransporteLinea();
         modal.remove();
     });
+}
+
+function openTransporteLineaModal() {
+    addTransporteLinea();
 }
 
 // Guardar línea de transporte
@@ -7524,106 +8451,22 @@ function handleCustomModalSubmit() {
     closeGenericModal();
 }
 
-// ===== GESTIÓN DE USUARIOS Y ADMINISTRADORES =====
-
-// Cargar lista de usuarios (ocultando super admin)
-function loadUsersList() {
-    const usersList = document.getElementById('usersList');
-    if (!usersList) return;
-    
-    const allUsers = JSON.parse(localStorage.getItem('users') || '[]');
-    // Filtrar usuarios ocultos (super admin)
-    const visibleUsers = allUsers.filter(user => !user.isHidden);
-    
-    if (visibleUsers.length === 0) {
-        usersList.innerHTML = '<p style="text-align: center; color: #666; padding: 2rem;">No hay usuarios registrados</p>';
-        return;
-    }
-    
-    let html = '';
-    visibleUsers.forEach(user => {
-        html += `
-            <div class="user-item" style="background: var(--bg-secondary); padding: 1rem; margin: 0.5rem 0; border-radius: 8px; display: flex; justify-content: space-between; align-items: center;">
-                <div>
-                    <h4 style="margin: 0 0 0.5rem 0;">${user.name}</h4>
-                    <p style="margin: 0; color: #666;">${user.email}</p>
-                    <small style="color: #999;">Registrado: ${new Date(user.registrationDate || Date.now()).toLocaleDateString()}</small>
-                </div>
-                <div class="user-actions">
-                    <button class="btn btn-sm btn-outline" onclick="editUser('${user.email}')">Editar</button>
-                    <button class="btn btn-sm btn-danger" onclick="deleteUser('${user.email}')">Eliminar</button>
-                </div>
-            </div>
-        `;
-    });
-    
-    usersList.innerHTML = html;
-}
-
-// Cargar lista de administradores (ocultando super admin)
-function loadAdminsList() {
-    const adminsList = document.getElementById('adminsList');
-    if (!adminsList) return;
-    
-    const allAdmins = JSON.parse(localStorage.getItem('administrators') || '[]');
-    // Filtrar administradores ocultos (super admin)
-    const visibleAdmins = allAdmins.filter(admin => !admin.isHidden);
-    
-    if (visibleAdmins.length === 0) {
-        adminsList.innerHTML = '<p style="text-align: center; color: #666; padding: 2rem;">No hay administradores registrados</p>';
-        return;
-    }
-    
-    let html = '';
-    visibleAdmins.forEach(admin => {
-        html += `
-            <div class="admin-item" style="background: var(--bg-secondary); padding: 1rem; margin: 0.5rem 0; border-radius: 8px; display: flex; justify-content: space-between; align-items: center;">
-                <div>
-                    <h4 style="margin: 0 0 0.5rem 0;">${admin.name}</h4>
-                    <p style="margin: 0; color: #666;">${admin.email}</p>
-                    <small style="color: #999;">Creado: ${new Date(admin.createdDate || Date.now()).toLocaleDateString()}</small>
-                </div>
-                <div class="admin-actions">
-                    <button class="btn btn-sm btn-outline" onclick="editAdmin('${admin.email}')">Editar</button>
-                    <button class="btn btn-sm btn-danger" onclick="deleteAdmin('${admin.email}')">Eliminar</button>
-                </div>
-            </div>
-        `;
-    });
-    
-    adminsList.innerHTML = html;
-}
-
-// Funciones auxiliares para gestión de usuarios
 function editUser(email) {
     alert(`Función de editar usuario: ${email}`);
-    // Implementar lógica de edición
 }
 
-function deleteUser(email) {
-    if (confirm(`¿Estás seguro de que quieres eliminar al usuario ${email}?`)) {
-        const users = JSON.parse(localStorage.getItem('users') || '[]');
-        const updatedUsers = users.filter(user => user.email !== email);
-        localStorage.setItem('users', JSON.stringify(updatedUsers));
-        loadUsersList();
-        showNotification('Usuario eliminado correctamente', 'success');
-    }
-}
-
-// Funciones auxiliares para gestión de administradores
 function editAdmin(email) {
     alert(`Función de editar administrador: ${email}`);
-    // Implementar lógica de edición
 }
 
+/** @deprecated usar deletePanelUser */
+function deleteUser(email) {
+    return deletePanelUser(email);
+}
+
+/** @deprecated usar deletePanelAdmin */
 function deleteAdmin(email) {
-    if (confirm(`¿Estás seguro de que quieres eliminar al administrador ${email}?`)) {
-        const admins = JSON.parse(localStorage.getItem('administrators') || '[]');
-        const updatedAdmins = admins.filter(admin => admin.email !== email);
-        localStorage.setItem('administrators', JSON.stringify(updatedAdmins));
-        loadAdminsList();
-        showNotification('Administrador eliminado correctamente', 'success');
-    }
+    return deletePanelAdmin(email);
 }
 
 // ===== CONFIGURACIÓN DE SECCIONES =====
@@ -8040,8 +8883,8 @@ function loadCobrerosContent() {
                 description: "Cobreros es famoso por sus setas. Temporada de otoño con especies como boletus, níscalos y setas de cardo.",
                 image: "images/setas-cobreros.jpg",
                 links: [
-                    { text: "📋 Guía de Setas", url: "#", type: "pdf" },
-                    { text: "🗓️ Calendario de Recolección", url: "#", type: "external" }
+                    { text: "📋 Guía de Setas", url: "https://www.diputaciondezamora.es/opencms/export/sites/dipu-zamora/.Archivos/documentos/servicios/agro-ganaderia-y-servicios-forestales/Guia-de-la-Unidad-de-Gestion-Micologica-de-Sanabria-y-La-Carballeda.pdf", type: "pdf" },
+                    { text: "📘 Guía del Recolector", url: "https://www.diputaciondezamora.es/opencms/export/sites/dipu-zamora/.Archivos/documentos/diputacion/areas-gestion/agricultura-ganaderia-zonas-verdes/Guia-del-Recolector-de-setas-PROYECTO-MYASRC.pdf", type: "pdf" }
                 ]
             },
             {
@@ -8211,12 +9054,64 @@ function loadCobrerosContent() {
         localStorage.setItem('culturaOcioData', JSON.stringify(culturaOcioData));
     }
     
+    // Normalizar enlaces actualizados aunque existan datos antiguos en localStorage
+    enforceMushroomGuideLinks();
+
     // Renderizar cada sección
     Object.keys(culturaOcioData).forEach(section => {
         renderAccordionSection(section, culturaOcioData[section]);
     });
     
     console.log('✅ Contenido de Cobreros cargado');
+}
+
+function enforceMushroomGuideLinks() {
+    try {
+        if (!culturaOcioData || !Array.isArray(culturaOcioData.gastronomia)) {
+            return;
+        }
+        let changed = false;
+        const guiaSetasUrl =
+            'https://www.diputaciondezamora.es/opencms/export/sites/dipu-zamora/.Archivos/documentos/servicios/agro-ganaderia-y-servicios-forestales/Guia-de-la-Unidad-de-Gestion-Micologica-de-Sanabria-y-La-Carballeda.pdf';
+        const guiaRecolectorUrl =
+            'https://www.diputaciondezamora.es/opencms/export/sites/dipu-zamora/.Archivos/documentos/diputacion/areas-gestion/agricultura-ganaderia-zonas-verdes/Guia-del-Recolector-de-setas-PROYECTO-MYASRC.pdf';
+
+        culturaOcioData.gastronomia.forEach((item) => {
+            if (!item || item.title !== '🍄 Recolección de Setas' || !Array.isArray(item.links)) {
+                return;
+            }
+
+            item.links.forEach((link) => {
+                if (!link || typeof link.text !== 'string') return;
+                if (link.text.trim() === '📋 Guía de Setas') {
+                    if (link.url !== guiaSetasUrl || link.type !== 'pdf') {
+                        link.url = guiaSetasUrl;
+                        link.type = 'pdf';
+                        changed = true;
+                    }
+                }
+                if (link.text.trim() === '🗓️ Calendario de Recolección' || link.text.trim() === '📘 Guía del Recolector') {
+                    if (
+                        link.text !== '📘 Guía del Recolector' ||
+                        link.url !== guiaRecolectorUrl ||
+                        link.type !== 'pdf'
+                    ) {
+                        link.text = '📘 Guía del Recolector';
+                        link.url = guiaRecolectorUrl;
+                        link.type = 'pdf';
+                        changed = true;
+                    }
+                }
+            });
+        });
+
+        if (changed) {
+            localStorage.setItem('culturaOcioData', JSON.stringify(culturaOcioData));
+            console.log('✅ Enlaces micológicos actualizados en datos guardados');
+        }
+    } catch (error) {
+        console.warn('No se pudieron ajustar enlaces micológicos:', error);
+    }
 }
 
 // Renderizar una sección del acordeón
@@ -8267,8 +9162,9 @@ async function ensureCompletePersistence() {
         // 1. Verificar y migrar usuarios a Firestore si es necesario
         await migrateUsersToFirestore();
         
-        // 2. Sincronizar datos locales con Firestore
-        await syncLocalDataToFirestore();
+        // 2. Cargar primero desde Firestore para evitar sobrescribir
+        // datos recientes con caché local antigua al abrir sesión admin.
+        await refreshLatestPublicDataFromFirestore('ensureCompletePersistence');
         
         // 3. Verificar integridad de datos
         const isDataValid = verifyDataIntegrity();
@@ -8299,6 +9195,10 @@ async function syncLocalDataToFirestore() {
     try {
         if (!window.firebase || !window.firebase.firestore()) {
             console.log('⚠️ Firebase no disponible para sincronización');
+            return;
+        }
+        if (!(await isFirebaseAdmin())) {
+            console.log('⚠️ Sincronización bandos/noticias/eventos omitida: solo administrador Firebase');
             return;
         }
 
@@ -8338,6 +9238,15 @@ async function syncLocalDataToFirestore() {
         const configData = {
             culturaOcioConfig: localStorage.getItem('culturaOcioConfig'),
             appointmentSettings: localStorage.getItem('appointmentSettings'),
+            appointmentAvailability: localStorage.getItem('appointmentAvailability')
+                ? JSON.parse(localStorage.getItem('appointmentAvailability'))
+                : null,
+            servicios: localStorage.getItem('servicios'),
+            seccionesConfig: localStorage.getItem('seccionesConfig'),
+            consultorioConfig: localStorage.getItem('consultorioConfig'),
+            itvConfig: localStorage.getItem('itvConfig'),
+            telefonosInteresConfig: localStorage.getItem('telefonosInteresConfig'),
+            transporteConfig: localStorage.getItem('transporteConfig'),
             lastUpdate: new Date(),
             source: 'WEB_SYNC'
         };
@@ -8386,6 +9295,10 @@ async function guardarNotificacionApp(titulo, mensaje, tipo, documentUrl = null,
             console.log('⚠️ Firebase no disponible para guardar notificación de app');
             return;
         }
+        if (!(await isFirebaseAdmin())) {
+            console.log('⚠️ No se guarda notificación en Firestore: se requiere administrador Firebase');
+            return;
+        }
 
         const db = window.firebase.firestore();
         
@@ -8396,8 +9309,8 @@ async function guardarNotificacionApp(titulo, mensaje, tipo, documentUrl = null,
             documentUrl: documentUrl,
             targetPueblos: targetPueblos,
             timestamp: new Date(),
-            read: false,
-            sentFrom: 'WEB_AYUNTAMIENTO'
+            sentFrom: 'WEB_AYUNTAMIENTO',
+            sentTo: 'ALL'
         };
         
         await db.collection('notifications').add(notificationData);
@@ -8415,6 +9328,10 @@ async function backupContentToFirestore() {
     try {
         if (!window.firebase || !window.firebase.firestore()) {
             console.log('⚠️ Firebase no disponible para backup');
+            return;
+        }
+        if (!(await isFirebaseAdmin())) {
+            console.log('⚠️ Backup a Firestore omitido: no hay sesión de administrador Firebase');
             return;
         }
 
@@ -8456,7 +9373,14 @@ async function backupContentToFirestore() {
         // Backup de configuraciones
         const configData = {
             appointmentsEnabled: appointmentsEnabled,
+            appointmentAvailability: localStorage.getItem('appointmentAvailability') ? JSON.parse(localStorage.getItem('appointmentAvailability')) : {},
             culturaOcioConfig: localStorage.getItem('culturaOcioConfig') ? JSON.parse(localStorage.getItem('culturaOcioConfig')) : {},
+            servicios: localStorage.getItem('servicios') ? JSON.parse(localStorage.getItem('servicios')) : {},
+            seccionesConfig: localStorage.getItem('seccionesConfig') ? JSON.parse(localStorage.getItem('seccionesConfig')) : {},
+            consultorioConfig: localStorage.getItem('consultorioConfig') ? JSON.parse(localStorage.getItem('consultorioConfig')) : {},
+            itvConfig: localStorage.getItem('itvConfig') ? JSON.parse(localStorage.getItem('itvConfig')) : {},
+            telefonosInteresConfig: localStorage.getItem('telefonosInteresConfig') ? JSON.parse(localStorage.getItem('telefonosInteresConfig')) : {},
+            transporteConfig: localStorage.getItem('transporteConfig') ? JSON.parse(localStorage.getItem('transporteConfig')) : {},
             lastBackup: new Date(),
             source: 'WEB_BACKUP'
         };
@@ -8474,6 +9398,10 @@ async function restoreContentFromFirestore() {
     try {
         if (!window.firebase || !window.firebase.firestore()) {
             console.log('⚠️ Firebase no disponible para restauración');
+            return;
+        }
+        if (!(await isFirebaseAdmin())) {
+            console.log('⚠️ Restauración desde backups omitida: solo administradores Firebase');
             return;
         }
 
@@ -8521,9 +9449,32 @@ async function restoreContentFromFirestore() {
                 localStorage.setItem('appointmentSettings', JSON.stringify({ enabled: appointmentsEnabled }));
                 console.log('✅ Configuraciones restauradas desde Firestore');
             }
+            if (configData.appointmentAvailability) {
+                localStorage.setItem('appointmentAvailability', JSON.stringify(configData.appointmentAvailability));
+                appointmentAvailability = normalizeAppointmentAvailability(configData.appointmentAvailability);
+            }
+            if (configData.servicios) {
+                localStorage.setItem('servicios', JSON.stringify(configData.servicios));
+            }
+            if (configData.seccionesConfig) {
+                localStorage.setItem('seccionesConfig', JSON.stringify(configData.seccionesConfig));
+            }
+            if (configData.consultorioConfig) {
+                localStorage.setItem('consultorioConfig', JSON.stringify(configData.consultorioConfig));
+            }
+            if (configData.itvConfig) {
+                localStorage.setItem('itvConfig', JSON.stringify(configData.itvConfig));
+            }
+            if (configData.telefonosInteresConfig) {
+                localStorage.setItem('telefonosInteresConfig', JSON.stringify(configData.telefonosInteresConfig));
+            }
+            if (configData.transporteConfig) {
+                localStorage.setItem('transporteConfig', JSON.stringify(configData.transporteConfig));
+            }
         }
         
         // Actualizar contenido
+        loadAppointmentAvailabilitySettings();
         updateContent();
         updateCulturaOcioSection();
         
@@ -8535,8 +9486,14 @@ async function restoreContentFromFirestore() {
 // Backup completo de localStorage
 async function backupLocalStorageToFirestore() {
     try {
+        if (_applyingRemoteFirestoreSync) {
+            return;
+        }
         if (!window.firebase || !window.firebase.firestore()) {
             console.log('⚠️ Firebase no disponible para backup completo');
+            return;
+        }
+        if (!(await isFirebaseAdmin())) {
             return;
         }
 
@@ -8547,7 +9504,9 @@ async function backupLocalStorageToFirestore() {
         const keysToBackup = [
             'users', 'bandos', 'news', 'events', 'notifications', 
             'administrators', 'documents', 'quickAccess', 'publicNotifications',
-            'appointmentSettings', 'culturaOcioConfig'
+            'appointmentSettings', 'appointmentAvailability', 'culturaOcioConfig', 'servicios',
+            'seccionesConfig', 'consultorioConfig', 'itvConfig',
+            'telefonosInteresConfig', 'transporteConfig'
         ];
         
         keysToBackup.forEach(key => {
@@ -8564,6 +9523,8 @@ async function backupLocalStorageToFirestore() {
             totalKeys: Object.keys(backupData).length,
             source: 'COMPLETE_BACKUP'
         };
+
+        backupData._syncUpdatedAt = firebase.firestore.FieldValue.serverTimestamp();
         
         // Guardar backup completo
         await db.collection('backups').doc('localStorage_completo').set(backupData);
@@ -8575,6 +9536,156 @@ async function backupLocalStorageToFirestore() {
         console.error('❌ Error en backup completo:', error);
         return false;
     }
+}
+
+let _firestoreBackupSyncUnsubscribe = null;
+
+/**
+ * Escucha cambios en Firestore del backup completo (solo administrador Firebase; reglas backups).
+ */
+function setupFirestoreRealtimeSync() {
+    try {
+        if (!window.firebase || !window.firebase.firestore || !window.firebase.auth) {
+            return;
+        }
+        const attachIfAdmin = async () => {
+            if (_firestoreBackupSyncUnsubscribe) {
+                _firestoreBackupSyncUnsubscribe();
+                _firestoreBackupSyncUnsubscribe = null;
+            }
+            if (!(await isFirebaseAdmin())) {
+                return;
+            }
+            const db = window.firebase.firestore();
+            _firestoreBackupSyncUnsubscribe = db.collection('backups').doc('localStorage_completo').onSnapshot(
+                { includeMetadataChanges: true },
+                (snapshot) => {
+                    if (!snapshot.exists) {
+                        return;
+                    }
+                    if (snapshot.metadata.hasPendingWrites) {
+                        return;
+                    }
+                    const data = snapshot.data();
+                    if (!data) {
+                        return;
+                    }
+                    let remoteMs = 0;
+                    if (data._syncUpdatedAt && typeof data._syncUpdatedAt.toMillis === 'function') {
+                        remoteMs = data._syncUpdatedAt.toMillis();
+                    } else if (data.metadata && data.metadata.timestamp) {
+                        const ts = data.metadata.timestamp;
+                        if (ts && typeof ts.toMillis === 'function') {
+                            remoteMs = ts.toMillis();
+                        }
+                    }
+                    if (remoteMs && remoteMs <= _lastRemoteFirestoreSyncMs) {
+                        return;
+                    }
+                    applyRemoteFirestoreBackupPayload(data);
+                    if (remoteMs) {
+                        _lastRemoteFirestoreSyncMs = remoteMs;
+                    }
+                },
+                (err) => console.warn('Firestore sync:', err)
+            );
+        };
+        firebase.auth().onAuthStateChanged(() => {
+            attachIfAdmin();
+        });
+    } catch (e) {
+        console.warn('No se pudo iniciar sync en tiempo real:', e);
+    }
+}
+
+function applyRemoteFirestoreBackupPayload(data) {
+    const skip = new Set(['metadata', '_syncUpdatedAt']);
+    const keys = [
+        'users',
+        'bandos',
+        'news',
+        'events',
+        'notifications',
+        'administrators',
+        'documents',
+        'quickAccess',
+        'publicNotifications',
+        'appointmentSettings',
+        'appointmentAvailability',
+        'culturaOcioConfig',
+        'servicios',
+        'seccionesConfig',
+        'consultorioConfig',
+        'itvConfig',
+        'telefonosInteresConfig',
+        'transporteConfig'
+    ];
+    _applyingRemoteFirestoreSync = true;
+    try {
+        keys.forEach((key) => {
+            if (skip.has(key) || data[key] === undefined || data[key] === null) {
+                return;
+            }
+            try {
+                const val =
+                    typeof data[key] === 'string' ? data[key] : JSON.stringify(data[key]);
+                localStorage.setItem(key, val);
+            } catch (err) {
+                console.warn('Sync clave ' + key + ':', err);
+            }
+        });
+        if (typeof loadData === 'function') {
+            loadData();
+        }
+        if (typeof loadAdministrators === 'function') {
+            loadAdministrators();
+        }
+        if (typeof loadDocuments === 'function') {
+            loadDocuments();
+        }
+        if (typeof loadEvents === 'function') {
+            loadEvents();
+        }
+        if (typeof renderEventos === 'function') {
+            renderEventos();
+        }
+        if (typeof updateCulturaOcioSection === 'function') {
+            updateCulturaOcioSection();
+        }
+        if (typeof loadQuickAccess === 'function') {
+            loadQuickAccess();
+        }
+        if (typeof loadAppointmentSettings === 'function') {
+            loadAppointmentSettings();
+        }
+        if (typeof loadAppointmentAvailabilitySettings === 'function') {
+            loadAppointmentAvailabilitySettings();
+        }
+        if (typeof updateContent === 'function') {
+            updateContent();
+        }
+        if (typeof updateAppointmentUI === 'function') {
+            updateAppointmentUI();
+        }
+    } finally {
+        _applyingRemoteFirestoreSync = false;
+    }
+}
+
+/** Envía periódicamente el estado local a Firestore para que Android / otras pestañas lo reciban */
+function scheduleFirestoreBackupInterval() {
+    setInterval(async () => {
+        if (!window.firebase || !window.firebase.firestore()) {
+            return;
+        }
+        if (_applyingRemoteFirestoreSync) {
+            return;
+        }
+        if (!(await isFirebaseAdmin())) {
+            return;
+        }
+        backupLocalStorageToFirestore();
+    }, 90000);
 }
 
 // Exportar datos como JSON
@@ -8590,7 +9701,14 @@ function exportDataAsJSON() {
             quickAccess: JSON.parse(localStorage.getItem('quickAccess') || '[]'),
             notifications: notifications,
             appointmentsEnabled: appointmentsEnabled,
+            appointmentAvailability: JSON.parse(localStorage.getItem('appointmentAvailability') || '{}'),
             culturaOcioConfig: JSON.parse(localStorage.getItem('culturaOcioConfig') || '{}'),
+            servicios: JSON.parse(localStorage.getItem('servicios') || '{}'),
+            seccionesConfig: JSON.parse(localStorage.getItem('seccionesConfig') || '{}'),
+            consultorioConfig: JSON.parse(localStorage.getItem('consultorioConfig') || '{}'),
+            itvConfig: JSON.parse(localStorage.getItem('itvConfig') || '{}'),
+            telefonosInteresConfig: JSON.parse(localStorage.getItem('telefonosInteresConfig') || '{}'),
+            transporteConfig: JSON.parse(localStorage.getItem('transporteConfig') || '{}'),
             exportDate: new Date().toISOString(),
             version: '1.0'
         };
@@ -8662,12 +9780,35 @@ function importDataFromJSON(file) {
                 appointmentsEnabled = importData.appointmentsEnabled;
                 localStorage.setItem('appointmentSettings', JSON.stringify({ enabled: appointmentsEnabled }));
             }
+            if (importData.appointmentAvailability) {
+                localStorage.setItem('appointmentAvailability', JSON.stringify(importData.appointmentAvailability));
+                appointmentAvailability = normalizeAppointmentAvailability(importData.appointmentAvailability);
+            }
             
             if (importData.culturaOcioConfig) {
                 localStorage.setItem('culturaOcioConfig', JSON.stringify(importData.culturaOcioConfig));
             }
+            if (importData.servicios) {
+                localStorage.setItem('servicios', JSON.stringify(importData.servicios));
+            }
+            if (importData.seccionesConfig) {
+                localStorage.setItem('seccionesConfig', JSON.stringify(importData.seccionesConfig));
+            }
+            if (importData.consultorioConfig) {
+                localStorage.setItem('consultorioConfig', JSON.stringify(importData.consultorioConfig));
+            }
+            if (importData.itvConfig) {
+                localStorage.setItem('itvConfig', JSON.stringify(importData.itvConfig));
+            }
+            if (importData.telefonosInteresConfig) {
+                localStorage.setItem('telefonosInteresConfig', JSON.stringify(importData.telefonosInteresConfig));
+            }
+            if (importData.transporteConfig) {
+                localStorage.setItem('transporteConfig', JSON.stringify(importData.transporteConfig));
+            }
             
             // Actualizar contenido
+            loadAppointmentAvailabilitySettings();
             updateContent();
             updateCulturaOcioSection();
             loadAdministrators();
@@ -8898,91 +10039,202 @@ function verifyDataIntegrity() {
     }
 }
 
+// ===== FIREBASE AUTH (sesión + admin en Firestore) =====
+
+async function isFirebaseAdmin() {
+    try {
+        if (!window.firebase || !window.firebase.auth || !window.firebase.firestore) {
+            return false;
+        }
+        const authUser = firebase.auth().currentUser;
+        if (!authUser) {
+            return false;
+        }
+        const snap = await firebase.firestore().collection('admins').doc(authUser.uid).get();
+        return snap.exists && snap.data().isAdmin === true;
+    } catch (e) {
+        return false;
+    }
+}
+
+const FIREBASE_SETUP_ADMIN_EMAILS = ['aytocobreros@gmail.com', 'amco@gmx.es', 'admin@cobreros.es'];
+
+async function ensureAllowlistedAdminFirestoreDoc() {
+    const authUser = firebase.auth().currentUser;
+    if (!authUser || !authUser.email) {
+        return;
+    }
+    const em = authUser.email.toLowerCase();
+    if (!FIREBASE_SETUP_ADMIN_EMAILS.includes(em)) {
+        return;
+    }
+    const ref = firebase.firestore().collection('admins').doc(authUser.uid);
+    const isSuper = em === 'amco@gmx.es';
+    await ref.set(
+        {
+            email: authUser.email,
+            isAdmin: true,
+            isSuperAdmin: isSuper,
+            role: isSuper ? 'super_admin' : 'admin',
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        },
+        { merge: true }
+    );
+    if (isSuper) {
+        isSuperAdmin = true;
+        localStorage.setItem('isSuperAdmin', 'true');
+    }
+}
+
+function setupFirebaseAuthListener() {
+    if (!window.firebase || !window.firebase.auth) {
+        return;
+    }
+    firebase.auth().onAuthStateChanged(async function (user) {
+        if (!user) {
+            currentUser = null;
+            isAdmin = false;
+            isSuperAdmin = false;
+            localStorage.removeItem('currentUser');
+            localStorage.removeItem('isAdmin');
+            localStorage.removeItem('isSuperAdmin');
+            try {
+                users = [];
+            } catch (_) {}
+            updateUserInterface();
+            return;
+        }
+        try {
+            const adminSnap = await firebase.firestore().collection('admins').doc(user.uid).get();
+            if (adminSnap.exists && adminSnap.data().isAdmin === true) {
+                const d = adminSnap.data() || {};
+                isAdmin = true;
+                isSuperAdmin = d.isSuperAdmin === true;
+                localStorage.setItem('isAdmin', 'true');
+                if (isSuperAdmin) {
+                    localStorage.setItem('isSuperAdmin', 'true');
+                } else {
+                    localStorage.removeItem('isSuperAdmin');
+                }
+                currentUser = {
+                    email: user.email,
+                    name: d.displayName || d.name || user.email || '',
+                    isAdmin: true,
+                    adminUid: user.uid,
+                    id: user.uid
+                };
+                localStorage.setItem('currentUser', JSON.stringify(currentUser));
+                await loadUsersFromFirestore();
+                await loadAdministrators();
+                updateUserInterface();
+                return;
+            }
+        } catch (e) {
+            console.warn('onAuthStateChanged admin check:', e);
+        }
+        isAdmin = false;
+        isSuperAdmin = false;
+        localStorage.removeItem('isAdmin');
+        localStorage.removeItem('isSuperAdmin');
+        let displayName = user.email || '';
+        let localities = [];
+        try {
+            const uSnap = await firebase.firestore().collection('users').doc(user.uid).get();
+            if (uSnap.exists) {
+                const ud = uSnap.data();
+                displayName = ud.name || ud.nombre || displayName;
+                localities = Array.isArray(ud.localities) ? ud.localities : [];
+            }
+        } catch (_) {}
+        currentUser = {
+            email: user.email,
+            name: displayName,
+            id: user.uid,
+            isRegularUser: true,
+            localities
+        };
+        localStorage.setItem('currentUser', JSON.stringify(currentUser));
+        await loadUsersFromFirestore();
+        updateUserInterface();
+        try {
+            loadReceivedNotifications();
+        } catch (_) {}
+    });
+}
+
 // ===== MIGRACIÓN Y SINCRONIZACIÓN DE USUARIOS =====
 
-// Migrar usuarios del localStorage a Firestore
+// Migración masiva desde localStorage desactivada: las reglas exigen users/{uid} = auth.uid.
+// Solo se marca estado y se cargan usuarios según rol (admin: todos; ciudadano: su doc).
 async function migrateUsersToFirestore() {
     try {
-        // Verificar si ya se migró
+        if (!window.firebase || !window.firebase.firestore) {
+            loadUsersFromLocalStorage();
+            return;
+        }
         const migrationDone = localStorage.getItem('usersMigratedToFirestore');
-        if (migrationDone === 'true') {
-            // Cargar usuarios desde Firestore
-            await loadUsersFromFirestore();
-            return;
+        if (migrationDone !== 'true') {
+            localStorage.setItem('usersMigratedToFirestore', 'true');
+            console.log(
+                'ℹ️ Migración masiva de usuarios omitida: use registro Firebase o panel admin para datos en Firestore.'
+            );
         }
-        
-        // Obtener usuarios del localStorage
-        const localUsers = JSON.parse(localStorage.getItem('users') || '[]');
-        
-        if (localUsers.length === 0) {
-            console.log('No hay usuarios locales para migrar');
-            await loadUsersFromFirestore();
-            return;
-        }
-        
-        console.log(`Migrando ${localUsers.length} usuarios a Firestore...`);
-        
-        // Migrar cada usuario a Firestore
-        for (const user of localUsers) {
-            try {
-                await window.firebase.firestore().collection('users').add({
-                    nombre: user.nombre || '',
-                    apellidos: user.apellidos || '',
-                    email: user.email || '',
-                    telefono: user.telefono || '',
-                    notificationConsent: user.notificationConsent || false,
-                    localities: user.localities || [],
-                    fcmToken: user.fcmToken || '',
-                    registeredFrom: 'WEB_MIGRATION',
-                    registrationDate: new Date(),
-                    originalId: user.id || Date.now().toString()
-                });
-                console.log(`✅ Usuario migrado: ${user.email}`);
-            } catch (error) {
-                console.error(`❌ Error migrando usuario ${user.email}:`, error);
-            }
-        }
-        
-        // Marcar migración como completada
-        localStorage.setItem('usersMigratedToFirestore', 'true');
-        console.log('✅ Migración completada');
-        
-        // Cargar usuarios desde Firestore
         await loadUsersFromFirestore();
-        
     } catch (error) {
         console.error('Error en la migración:', error);
-        // Si hay error, mantener usuarios locales
         loadUsersFromLocalStorage();
     }
 }
 
-// Cargar usuarios desde Firestore
+function mapFirestoreUserDoc(docId, userData) {
+    const name = userData.name || userData.nombre || '';
+    const phone = userData.phone || userData.telefono || '';
+    return {
+        id: docId,
+        name: name,
+        nombre: userData.nombre || name,
+        apellidos: userData.apellidos || '',
+        email: userData.email || '',
+        phone: phone,
+        telefono: userData.telefono || phone,
+        notificationConsent: userData.notificationConsent || false,
+        localities: userData.localities || [],
+        fcmToken: userData.fcmToken || '',
+        registeredFrom: userData.registeredFrom || 'WEB',
+        registrationDate: userData.registrationDate || new Date()
+    };
+}
+
+// Cargar usuarios: administrador Firebase ve la colección; ciudadano autenticado solo users/{uid}.
 async function loadUsersFromFirestore() {
     try {
-        const snapshot = await window.firebase.firestore().collection('users').get();
+        if (!window.firebase || !window.firebase.firestore) {
+            loadUsersFromLocalStorage();
+            return;
+        }
+        const db = window.firebase.firestore();
+        const admin = await isFirebaseAdmin();
+        const authUser = firebase.auth().currentUser;
+
         users = [];
-        
-        snapshot.forEach(doc => {
-            const userData = doc.data();
-            users.push({
-                id: doc.id,
-                nombre: userData.nombre || '',
-                apellidos: userData.apellidos || '',
-                email: userData.email || '',
-                telefono: userData.telefono || '',
-                notificationConsent: userData.notificationConsent || false,
-                localities: userData.localities || [],
-                fcmToken: userData.fcmToken || '',
-                registeredFrom: userData.registeredFrom || 'WEB',
-                registrationDate: userData.registrationDate || new Date()
+
+        if (admin) {
+            const snapshot = await db.collection('users').get();
+            snapshot.forEach((doc) => {
+                users.push(mapFirestoreUserDoc(doc.id, doc.data()));
             });
-        });
-        
-        // Actualizar localStorage como respaldo con verificación
+        } else if (authUser) {
+            const doc = await db.collection('users').doc(authUser.uid).get();
+            if (doc.exists) {
+                users.push(mapFirestoreUserDoc(doc.id, doc.data()));
+            }
+        } else {
+            loadUsersFromLocalStorage();
+            return;
+        }
+
         localStorage.setItem('users', JSON.stringify(users));
-        
-        // Verificar que se guardó correctamente en localStorage
+
         setTimeout(() => {
             const verification = JSON.parse(localStorage.getItem('users') || '[]');
             if (verification.length !== users.length) {
@@ -8990,15 +10242,11 @@ async function loadUsersFromFirestore() {
                 localStorage.setItem('users', JSON.stringify(users));
             }
         }, 100);
-        
-        console.log(`✅ Cargados ${users.length} usuarios desde Firestore`);
-        
-        // Actualizar estadísticas
+
+        console.log(`✅ Cargados ${users.length} usuario(s) desde Firestore`);
         actualizarEstadisticasNotificaciones();
-        
     } catch (error) {
         console.error('Error cargando usuarios desde Firestore:', error);
-        // Fallback a localStorage
         loadUsersFromLocalStorage();
     }
 }
@@ -9010,20 +10258,30 @@ function loadUsersFromLocalStorage() {
     actualizarEstadisticasNotificaciones();
 }
 
-// Sincronizar usuario con Firestore
+// Sincronizar perfil del usuario autenticado en users/{uid} (sin contraseña)
 async function syncUserToFirestore(userData) {
     try {
-        await window.firebase.firestore().collection('users').add({
-            nombre: userData.nombre,
-            apellidos: userData.apellidos,
-            email: userData.email,
-            telefono: userData.telefono,
-            notificationConsent: userData.notificationConsent,
-            localities: userData.localities,
+        if (!window.firebase || !window.firebase.auth || !window.firebase.firestore) {
+            return;
+        }
+        const authUser = firebase.auth().currentUser;
+        if (!authUser) {
+            return;
+        }
+        const payload = {
+            nombre: userData.nombre || userData.name || '',
+            name: userData.name || userData.nombre || '',
+            apellidos: userData.apellidos || '',
+            email: userData.email || authUser.email || '',
+            telefono: userData.telefono || userData.phone || '',
+            phone: userData.phone || userData.telefono || '',
+            notificationConsent: !!userData.notificationConsent,
+            localities: userData.localities || [],
             fcmToken: userData.fcmToken || '',
-            registeredFrom: 'WEB',
-            registrationDate: new Date()
-        });
+            registeredFrom: userData.registeredFrom || 'WEB',
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        };
+        await firebase.firestore().collection('users').doc(authUser.uid).set(payload, { merge: true });
         console.log('✅ Usuario sincronizado con Firestore');
     } catch (error) {
         console.error('Error sincronizando usuario:', error);
@@ -9036,7 +10294,9 @@ async function syncUserToFirestore(userData) {
 function registerServiceWorker() {
     if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-            navigator.serviceWorker.register('/sw.js')
+            const swPath = new URL('sw.js', window.location.href).pathname;
+            const swScope = new URL('./', window.location.href).pathname;
+            navigator.serviceWorker.register(swPath, { scope: swScope })
                 .then(registration => {
                     console.log('✅ Service Worker registrado exitosamente:', registration.scope);
                     
@@ -9183,13 +10443,48 @@ function showWebNotification(notificationData) {
     new Notification(notificationData.title || '🏛️ Ayuntamiento de Cobreros', options);
 }
 
+// —— Notificaciones: generales (todos) vs por pueblos (targetPueblos) ——
+function getCurrentUserLocalitiesForNotifications() {
+    if (currentUser && Array.isArray(currentUser.localities) && currentUser.localities.length > 0) {
+        return currentUser.localities;
+    }
+    if (!currentUser) {
+        return [];
+    }
+    const u = users.find((x) => x.email === currentUser.email || x.id === currentUser.id);
+    return u && Array.isArray(u.localities) ? u.localities : [];
+}
+
+/** Generales: type general, sin targetPueblos o lista vacía. Por pueblo: intersección con localities del registro. */
+function isNotificationForUserLocalities(data, userLocalities) {
+    const type = (data.type || '').toString().toLowerCase();
+    const targets = Array.isArray(data.targetPueblos) ? data.targetPueblos : [];
+    const isGeneral =
+        type === 'general' ||
+        targets.length === 0 ||
+        data.scope === 'general';
+    if (isGeneral) {
+        return true;
+    }
+    const locs = Array.isArray(userLocalities) ? userLocalities : [];
+    if (locs.length === 0) {
+        return false;
+    }
+    return targets.some((p) => locs.includes(p));
+}
+
 // Cargar notificaciones recibidas desde Firestore
 async function loadReceivedNotifications() {
     try {
         if (window.firebase && window.firebase.firestore) {
+            const skipPuebloFilter = isAdmin || isSuperAdmin;
+            if (!currentUser && !skipPuebloFilter) {
+                displayReceivedNotifications([]);
+                return;
+            }
+
             const snapshot = await window.firebase.firestore()
                 .collection('notifications')
-                .where('sentTo', '==', 'WEB')
                 .orderBy('timestamp', 'desc')
                 .limit(50)
                 .get();
@@ -9197,13 +10492,33 @@ async function loadReceivedNotifications() {
             const receivedNotifications = [];
             snapshot.forEach(doc => {
                 const data = doc.data();
+                const rawLocalities = data.localities;
+                const formattedLocalities = Array.isArray(rawLocalities)
+                    ? rawLocalities.join(', ')
+                    : (rawLocalities || '');
+                const localitiesLabel =
+                    formattedLocalities ||
+                    (Array.isArray(data.targetPueblos) && data.targetPueblos.length
+                        ? data.targetPueblos.join(', ')
+                        : '');
                 receivedNotifications.push({
                     id: doc.id,
-                    ...data
+                    ...data,
+                    localities: localitiesLabel,
+                    hasAttachments: !!(data.hasAttachments || data.documentUrl),
+                    attachmentUrl: data.attachmentUrl || data.documentUrl || null
                 });
             });
-            
-            displayReceivedNotifications(receivedNotifications);
+
+            let filtered = receivedNotifications;
+            if (!skipPuebloFilter) {
+                const userLocalities = getCurrentUserLocalitiesForNotifications();
+                filtered = receivedNotifications.filter((n) =>
+                    isNotificationForUserLocalities(n, userLocalities)
+                );
+            }
+
+            displayReceivedNotifications(filtered);
         }
     } catch (error) {
         console.error('Error cargando notificaciones recibidas:', error);
@@ -9223,8 +10538,8 @@ function displayReceivedNotifications(notifications) {
     container.innerHTML = notifications.map(notification => `
         <div class="notification-item received" data-id="${notification.id}">
             <div class="notification-header">
-                <span class="notification-type ${notification.type}">
-                    ${getTypeIcon(notification.type)} ${notification.type.toUpperCase()}
+                <span class="notification-type ${notification.type || 'general'}">
+                    ${getTypeIcon(notification.type)} ${(notification.type || 'general').toString().toUpperCase()}
                 </span>
                 <span class="notification-time">
                     ${formatNotificationTime(notification.timestamp)}
@@ -9239,7 +10554,6 @@ function displayReceivedNotifications(notifications) {
             </div>
             <div class="notification-actions">
                 ${notification.hasAttachments ? '<button onclick="downloadAttachment(\'' + notification.attachmentUrl + '\')" class="btn btn-small">📥 Descargar</button>' : ''}
-                <button onclick="markNotificationAsRead('${notification.id}')" class="btn btn-small">✓ Leído</button>
             </div>
         </div>
     `).join('');
@@ -9280,7 +10594,12 @@ function getTypeIcon(type) {
 
 // Formatear tiempo de notificación
 function formatNotificationTime(timestamp) {
-    const date = new Date(timestamp);
+    let date;
+    if (timestamp && typeof timestamp.toDate === 'function') {
+        date = timestamp.toDate();
+    } else {
+        date = new Date(timestamp);
+    }
     const now = new Date();
     const diff = now - date;
     
@@ -9288,28 +10607,6 @@ function formatNotificationTime(timestamp) {
     if (diff < 3600000) return `Hace ${Math.floor(diff / 60000)} minutos`;
     if (diff < 86400000) return `Hace ${Math.floor(diff / 3600000)} horas`;
     return date.toLocaleDateString('es-ES');
-}
-
-// Marcar notificación como leída
-async function markNotificationAsRead(notificationId) {
-    try {
-        if (window.firebase && window.firebase.firestore) {
-            await window.firebase.firestore()
-                .collection('notifications')
-                .doc(notificationId)
-                .update({ read: true });
-            
-            // Remover de la lista
-            const notificationElement = document.querySelector(`[data-id="${notificationId}"]`);
-            if (notificationElement) {
-                notificationElement.remove();
-            }
-            
-            showNotification('Notificación marcada como leída', 'success');
-        }
-    } catch (error) {
-        console.error('Error marcando notificación como leída:', error);
-    }
 }
 
 // Descargar archivo adjunto
@@ -9326,157 +10623,38 @@ function downloadAttachment(attachmentUrl) {
 // Enviar notificación push con filtrado por localidades (SOLO DESDE WEB)
 async function enviarNotificacionPushConLocalidades(titulo, mensaje, tipo = 'general', alcance = 'todos', localidadesSeleccionadas = [], hasAttachments = false, attachmentUrl = null, attachmentType = null) {
     try {
-        // Verificar que se está enviando desde la web
-        console.log('🌐 Enviando notificación desde la WEB hacia la APK');
-        
-        // Obtener usuarios que han dado consentimiento para notificaciones
-        let usuariosConNotificaciones = users.filter(user => 
-            user.notificationConsent && user.fcmToken
-        );
-        
-        // Filtrar por localidades si es necesario
-        if (alcance === 'localidades' && localidadesSeleccionadas.length > 0) {
-            usuariosConNotificaciones = usuariosConNotificaciones.filter(user => 
-                user.localities && user.localities.some(localidad => 
-                    localidadesSeleccionadas.includes(localidad)
-                )
-            );
-        }
-        
-        if (usuariosConNotificaciones.length === 0) {
-            if (alcance === 'localidades') {
-                alert('No hay usuarios registrados en las localidades seleccionadas que hayan dado consentimiento para recibir notificaciones.');
-            } else {
-                alert('No hay usuarios registrados que hayan dado consentimiento para recibir notificaciones.');
-            }
-            return;
-        }
-
-        // Datos de la notificación
-        const notificationData = {
-            titulo: titulo,
-            mensaje: mensaje,
-            tipo: tipo,
-            timestamp: new Date().toISOString(),
-            enviadoPor: currentUser ? currentUser.name : 'Administrador',
-            proyecto: 'Ayuntamiento de Cobreros'
-        };
-
-        let notificacionesEnviadas = 0;
-        let notificacionesFallidas = 0;
-
-        // Enviar a cada usuario individualmente
-        for (const usuario of usuariosConNotificaciones) {
-            try {
-                const response = await fetch('https://fcm.googleapis.com/fcm/send', {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': 'key=TU_SERVER_KEY_AQUI', // Necesitas tu Server Key de Firebase
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        to: usuario.fcmToken,
-                        notification: {
-                            title: titulo,
-                            body: mensaje,
-                            icon: 'images/escudo-cobreros.png',
-                            badge: 'images/escudo-cobreros.png',
-                            click_action: window.location.origin
-                        },
-                        data: {
-                            ...notificationData,
-                            destinatario: usuario.email,
-                            has_attachments: hasAttachments,
-                            attachment_url: attachmentUrl,
-                            attachment_type: attachmentType,
-                            sent_from: 'WEB',
-                            sent_to: 'APK'
-                        }
-                    })
-                });
-
-                if (response.ok) {
-                    notificacionesEnviadas++;
-                    
-                    // Guardar notificación en Firestore para sincronización
-                    if (window.firebase && window.firebase.firestore) {
-                        window.firebase.firestore().collection('notifications').add({
-                            userId: usuario.id,
-                            userEmail: usuario.email,
-                            title: titulo,
-                            message: mensaje,
-                            type: tipo,
-                            localities: localidadesSeleccionadas.length > 0 ? localidadesSeleccionadas.join(', ') : 'Todas',
-                            hasAttachments: hasAttachments,
-                            attachmentUrl: attachmentUrl,
-                            attachmentType: attachmentType,
-                            timestamp: new Date(),
-                            read: false,
-                            sentFrom: 'WEB',
-                            sentTo: 'APK',
-                            fcmToken: usuario.fcmToken
-                        }).catch(error => {
-                            console.error('Error guardando notificación en Firestore:', error);
-                        });
-                    }
-                } else {
-                    notificacionesFallidas++;
-                }
-            } catch (error) {
-                console.error(`Error enviando notificación a ${usuario.email}:`, error);
-                notificacionesFallidas++;
-            }
-        }
-
-        // Mostrar resultado
-        if (notificacionesEnviadas > 0) {
-            let mensaje = `Notificación enviada a ${notificacionesEnviadas} usuarios`;
-            if (alcance === 'localidades' && localidadesSeleccionadas.length > 0) {
-                mensaje += ` en: ${localidadesSeleccionadas.join(', ')}`;
-            }
-            showNotification(mensaje, 'success');
-        }
-        if (notificacionesFallidas > 0) {
-            showNotification(`${notificacionesFallidas} notificaciones fallaron`, 'warning');
-        }
-
-        console.log('Notificación enviada:', {
-            ...notificationData,
-            alcance: alcance,
-            localidades: localidadesSeleccionadas,
-            totalUsuarios: usuariosConNotificaciones.length,
-            enviadas: notificacionesEnviadas,
-            fallidas: notificacionesFallidas
+        const token = await getAuthBearerToken();
+        const endpoint = 'https://us-central1-ayuntamiento-de-cobreros.cloudfunctions.net/sendPushNotification';
+        const localities = alcance === 'localidades' ? localidadesSeleccionadas : [];
+        const response = await fetch(endpoint, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                ...(token ? { Authorization: `Bearer ${token}` } : {})
+            },
+            body: JSON.stringify({
+                title: titulo,
+                message: mensaje,
+                type: tipo,
+                localities,
+                hasAttachments,
+                attachmentUrl,
+                attachmentType
+            })
         });
-
+        const data = await response.json();
+        if (!response.ok || !data?.success) {
+            throw new Error(data?.error || `HTTP ${response.status}`);
+        }
+        showNotification(`Notificación enviada a ${data.sent || 0} usuarios`, 'success');
     } catch (error) {
         console.error('Error enviando notificación push:', error);
         showNotification('Error al enviar notificación push', 'error');
     }
 }
 
-// Función original para compatibilidad (envía a todos)
+// Envía push a todos los usuarios con consentimiento (Cloud Function HTTP + Bearer admin)
 async function enviarNotificacionPush(titulo, mensaje, tipo = 'general') {
-    // Intentar usar Firebase si está disponible
-    if (window.firebase && window.firebase.functions) {
-        try {
-            const sendPushNotification = window.firebase.functions().httpsCallable('sendPushNotification');
-            const result = await sendPushNotification({
-                title: titulo,
-                message: mensaje,
-                type: tipo,
-                localities: []
-            });
-            
-            console.log('✅ Notificación enviada via Firebase:', result.data);
-            showNotification(`Notificación enviada a ${result.data.sent} usuarios`, 'success');
-            return result.data;
-        } catch (error) {
-            console.error('❌ Error enviando via Firebase, usando método local:', error);
-        }
-    }
-    
-    // Fallback al método local
     return await enviarNotificacionPushConLocalidades(titulo, mensaje, tipo, 'todos', []);
 }
 
@@ -9551,6 +10729,47 @@ function setupNotificationForm() {
             e.preventDefault();
             enviarNotificacionDesdeFormulario();
         });
+    }
+}
+
+async function migrateNotificationsFromAdmin() {
+    const resultEl = document.getElementById('notificationMigrationResult');
+    if (resultEl) {
+        resultEl.textContent = 'Migrando...';
+    }
+    try {
+        const token = await getAuthBearerToken();
+        if (!token) {
+            showNotification('Debe iniciar sesión como administrador para migrar', 'error');
+            if (resultEl) resultEl.textContent = 'Error: sin sesión admin';
+            return;
+        }
+        const endpoint =
+            'https://us-central1-ayuntamiento-de-cobreros.cloudfunctions.net/migrateNotificationsSchema';
+        const res = await fetch(endpoint, {
+            method: 'POST',
+            headers: {
+                Authorization: `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            },
+            body: '{}'
+        });
+        const data = await res.json();
+        if (!res.ok || !data?.success) {
+            throw new Error(data?.error || `HTTP ${res.status}`);
+        }
+        const summary = `OK - revisadas: ${data.scanned || 0}, actualizadas: ${data.updated || 0}`;
+        if (resultEl) {
+            resultEl.textContent = summary;
+        }
+        showNotification('Migración de notificaciones completada', 'success');
+        loadReceivedNotifications();
+    } catch (error) {
+        console.error('Error en migración de notificaciones:', error);
+        if (resultEl) {
+            resultEl.textContent = `Error: ${error.message || 'No se pudo migrar'}`;
+        }
+        showNotification('No se pudo ejecutar la migración de notificaciones', 'error');
     }
 }
 
@@ -10007,7 +11226,7 @@ function loadItvList() {
     
     container.innerHTML = '';
     
-    if (consultorioConfig.documentos.length === 0 && consultorioConfig.fotos.length === 0) {
+    if (itvConfig.documentos.length === 0 && itvConfig.fotos.length === 0) {
         container.innerHTML = '<p>No hay contenido disponible para ITV.</p>';
         return;
     }
@@ -10015,19 +11234,19 @@ function loadItvList() {
     let html = '<div class="content-items">';
     
     // Mostrar documentos
-    if (consultorioConfig.documentos.length > 0) {
+    if (itvConfig.documentos.length > 0) {
         html += '<div class="content-item"><h5>📋 Documentos:</h5><ul>';
-        consultorioConfig.documentos.forEach((doc, index) => {
-            html += `<li>${doc.nombre} <button class="btn btn-danger btn-small" onclick="deleteConsultorioDocument(${index})">Eliminar</button></li>`;
+        itvConfig.documentos.forEach((doc, index) => {
+            html += `<li>${doc.nombre} <button class="btn btn-danger btn-small" onclick="deleteItvDocument(${index})">Eliminar</button></li>`;
         });
         html += '</ul></div>';
     }
     
     // Mostrar fotos
-    if (consultorioConfig.fotos.length > 0) {
+    if (itvConfig.fotos.length > 0) {
         html += '<div class="content-item"><h5>📸 Fotos:</h5><ul>';
-        consultorioConfig.fotos.forEach((foto, index) => {
-            html += `<li>${foto.nombre} <button class="btn btn-danger btn-small" onclick="deleteConsultorioFoto(${index})">Eliminar</button></li>`;
+        itvConfig.fotos.forEach((foto, index) => {
+            html += `<li>${foto.nombre} <button class="btn btn-danger btn-small" onclick="deleteItvFoto(${index})">Eliminar</button></li>`;
         });
         html += '</ul></div>';
     }
@@ -10159,12 +11378,12 @@ function loadConsultorioDocumentosInModal() {
     
     container.innerHTML = '';
     
-    if (consultorioConfig.documentos.length === 0) {
+    if (itvConfig.documentos.length === 0) {
         container.innerHTML = '<p>No hay documentos disponibles.</p>';
         return;
     }
     
-    consultorioConfig.documentos.forEach((doc, index) => {
+    itvConfig.documentos.forEach((doc, index) => {
         const docItem = document.createElement('div');
         docItem.className = 'content-item';
         docItem.innerHTML = `
@@ -10174,7 +11393,7 @@ function loadConsultorioDocumentosInModal() {
                     <p>${doc.descripcion || 'Sin descripción'}</p>
                     <a href="${doc.url}" target="_blank" class="btn btn-outline btn-small">Ver Documento</a>
                 </div>
-                <button class="btn btn-danger btn-small" onclick="deleteConsultorioDocument(${index})">
+                <button class="btn btn-danger btn-small" onclick="deleteItvDocument(${index})">
                     <i class="fas fa-trash"></i> Eliminar
                 </button>
             </div>
@@ -10190,12 +11409,12 @@ function loadConsultorioFotosInModal() {
     
     container.innerHTML = '';
     
-    if (consultorioConfig.fotos.length === 0) {
+    if (itvConfig.fotos.length === 0) {
         container.innerHTML = '<p>No hay fotos disponibles.</p>';
         return;
     }
     
-    consultorioConfig.fotos.forEach((foto, index) => {
+    itvConfig.fotos.forEach((foto, index) => {
         const fotoItem = document.createElement('div');
         fotoItem.className = 'content-item';
         fotoItem.innerHTML = `
@@ -10205,7 +11424,7 @@ function loadConsultorioFotosInModal() {
                     <p>${foto.descripcion || 'Sin descripción'}</p>
                     <img src="${foto.url}" alt="${foto.nombre}" style="width: 100px; height: 100px; object-fit: cover; border-radius: 4px;">
                 </div>
-                <button class="btn btn-danger btn-small" onclick="deleteConsultorioFoto(${index})">
+                <button class="btn btn-danger btn-small" onclick="deleteItvFoto(${index})">
                     <i class="fas fa-trash"></i> Eliminar
                 </button>
             </div>
@@ -10481,8 +11700,8 @@ function openItvDocumentModal() {
             fileName: fileInput.files.length > 0 ? fileInput.files[0].name : null
         };
         
-        consultorioConfig.documentos.push(nuevoDocumento);
-        saveConsultorioConfig();
+        itvConfig.documentos.push(nuevoDocumento);
+        saveItvConfig();
         loadItvDocumentosInModal();
         loadItvList();
         renderServicios();
@@ -10553,8 +11772,8 @@ function openItvFotoModal() {
             fileName: fileInput.files.length > 0 ? fileInput.files[0].name : null
         };
         
-        consultorioConfig.fotos.push(nuevaFoto);
-        saveConsultorioConfig();
+        itvConfig.fotos.push(nuevaFoto);
+        saveItvConfig();
         loadItvFotosInModal();
         loadItvList();
         renderServicios();
@@ -10578,6 +11797,26 @@ function handleFileUpload(fileInputId, urlInputId) {
     } else {
         urlInput.disabled = false;
         urlInput.style.backgroundColor = '';
+    }
+}
+
+function deleteItvDocument(index) {
+    if (confirm('¿Estás seguro de que quieres eliminar este documento de ITV?')) {
+        itvConfig.documentos.splice(index, 1);
+        saveItvConfig();
+        loadItvDocumentosInModal();
+        loadItvList();
+        renderServicios();
+    }
+}
+
+function deleteItvFoto(index) {
+    if (confirm('¿Estás seguro de que quieres eliminar esta foto de ITV?')) {
+        itvConfig.fotos.splice(index, 1);
+        saveItvConfig();
+        loadItvFotosInModal();
+        loadItvList();
+        renderServicios();
     }
 }
 

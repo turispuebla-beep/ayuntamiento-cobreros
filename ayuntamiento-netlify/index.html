@@ -16,93 +16,98 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="Cobreros">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="format-detection" content="telephone=no">
     <link rel="apple-touch-icon" href="images/escudo-cobreros-192.png">
     
     <!-- reCAPTCHA v3 -->
     <script src="https://www.google.com/recaptcha/api.js?render=6LeBYM4rAAAAALaDVtPi1H4jWjpj_Ovjf9g8VnT4"></script>
+    <script>
+        window.__FIREBASE_VAPID_PUBLIC_KEY__ =
+            "BKc_1JYmZ1qStiJxFFKOVCxq_QazGWSZ57FmjGRsdGScuYkY10NZdwfYpSFiKDXmurAkKV_6cBYzPJRZC1Ew_ow";
+    </script>
     
-    <!-- Firebase SDK -->
-    <script type="module">
-        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
-        import { getMessaging, getToken, onMessage } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging.js';
-        
-        // Configuración de Firebase
-        const firebaseConfig = {
-            apiKey: "AIzaSyBXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX", // Necesitas tu API key real
-            authDomain: "turisteam-80f1b.firebaseapp.com",
-            projectId: "turisteam-80f1b",
-            storageBucket: "turisteam-80f1b.appspot.com",
-            messagingSenderId: "623846192437",
-            appId: "1:623846192437:web:XXXXXXXXXXXXXXXX" // Necesitas tu App ID real
+    <!-- Firebase SDK compat -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-functions-compat.js"></script>
+    <script>
+    (function () {
+        var firebaseConfig = {
+            apiKey: "AIzaSyC7gfaHifIGVMN94mQAGnW6VcA4wVFMZsg",
+            authDomain: "ayuntamiento-de-cobreros.firebaseapp.com",
+            projectId: "ayuntamiento-de-cobreros",
+            storageBucket: "ayuntamiento-de-cobreros.firebasestorage.app",
+            messagingSenderId: "527550932354",
+            appId: "1:527550932354:web:9bd8431defa7c293b1db9b"
         };
-        
-        // Inicializar Firebase
-        const app = initializeApp(firebaseConfig);
-        const messaging = getMessaging(app);
-        
-        // Solicitar permiso para notificaciones
-        async function requestNotificationPermission() {
-            const permission = await Notification.requestPermission();
-            if (permission === 'granted') {
-                console.log('Permiso de notificaciones concedido');
-                return true;
-            } else {
-                console.log('Permiso de notificaciones denegado');
-                return false;
+        if (!firebase.apps.length) {
+            firebase.initializeApp(firebaseConfig);
+        }
+        try {
+            firebase.firestore().enablePersistence({ synchronizeTabs: true }).catch(function () {});
+        } catch (e) {}
+        function showCustomNotification(title, body) {
+            if (typeof Notification !== "undefined" && Notification.permission === "granted") {
+                new Notification(title, {
+                    body: body,
+                    icon: "images/escudo-cobreros-192.png",
+                    badge: "images/escudo-cobreros-192.png"
+                });
             }
         }
-        
-        // Obtener token de FCM
+        async function requestNotificationPermission() {
+            if (typeof Notification === "undefined") return false;
+            var permission = await Notification.requestPermission();
+            return permission === "granted";
+        }
+        var VAPID_KEY =
+            typeof window.__FIREBASE_VAPID_PUBLIC_KEY__ === "string" &&
+            window.__FIREBASE_VAPID_PUBLIC_KEY__.length > 40
+                ? window.__FIREBASE_VAPID_PUBLIC_KEY__
+                : "";
         async function getFCMToken() {
             try {
-                const token = await getToken(messaging, {
-                    vapidKey: 'TU_VAPID_KEY_AQUI' // Necesitas generar una VAPID key
-                });
-                console.log('FCM Token:', token);
-                return token;
+                if (!firebase.messaging.isSupported || !firebase.messaging.isSupported()) {
+                    return null;
+                }
+                if (!VAPID_KEY) {
+                    console.warn(
+                        "Clave VAPID: revisa el script inline antes de Firebase e importa el par en Firebase (Cloud Messaging)."
+                    );
+                    return null;
+                }
+                var messaging = firebase.messaging();
+                return await messaging.getToken({ vapidKey: VAPID_KEY });
             } catch (error) {
-                console.error('Error obteniendo token:', error);
+                console.error("Error obteniendo token FCM:", error);
                 return null;
             }
         }
-        
-        // Escuchar mensajes en primer plano
-        onMessage(messaging, (payload) => {
-            console.log('Mensaje recibido:', payload);
-            // Mostrar notificación personalizada
-            if (payload.notification) {
-                showCustomNotification(payload.notification.title, payload.notification.body);
-            }
-        });
-        
-        // Función para mostrar notificación personalizada
-        function showCustomNotification(title, body) {
-            if (Notification.permission === 'granted') {
-                new Notification(title, {
-                    body: body,
-                    icon: 'images/escudo-cobreros.png',
-                    badge: 'images/escudo-cobreros.png'
-                });
-            }
-        }
-        
-        // Inicializar cuando se carga la página
-        window.addEventListener('load', async () => {
-            const hasPermission = await requestNotificationPermission();
-            if (hasPermission) {
-                const token = await getFCMToken();
+        window.addEventListener("load", async function () {
+            try {
+                if (firebase.messaging.isSupported && firebase.messaging.isSupported()) {
+                    firebase.messaging().onMessage(function (payload) {
+                        if (payload && payload.notification) {
+                            showCustomNotification(payload.notification.title, payload.notification.body);
+                        }
+                    });
+                }
+            } catch (e) {}
+            var granted = await requestNotificationPermission();
+            if (granted) {
+                var token = await getFCMToken();
                 if (token) {
-                    // Guardar token para enviar notificaciones
-                    localStorage.setItem('fcmToken', token);
-                    console.log('Token guardado para notificaciones');
+                    try { localStorage.setItem("fcmToken", token); } catch (x) {}
                 }
             }
         });
-        
-        // Hacer funciones globales
         window.requestNotificationPermission = requestNotificationPermission;
         window.getFCMToken = getFCMToken;
         window.showCustomNotification = showCustomNotification;
+    })();
     </script>
 </head>
 <body>

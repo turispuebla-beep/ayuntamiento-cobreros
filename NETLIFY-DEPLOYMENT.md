@@ -92,7 +92,7 @@ echo "/*    /index.html   200" > _redirects
 
 ### **1. 🔥 Configurar Firebase:**
 1. **Ir a** [console.firebase.google.com](https://console.firebase.google.com)
-2. **Seleccionar proyecto** "TURISTEAM"
+2. **Seleccionar proyecto** "ayuntamiento-de-cobreros"
 3. **Agregar app web** al proyecto
 4. **Copiar configuración** Firebase
 
@@ -100,12 +100,12 @@ echo "/*    /index.html   200" > _redirects
 ```javascript
 // En index.html, reemplazar en la configuración Firebase:
 const firebaseConfig = {
-  apiKey: "TU_API_KEY_AQUI",
-  authDomain: "turisteam-80f1b.firebaseapp.com",
-  projectId: "turisteam-80f1b",
-  storageBucket: "turisteam-80f1b.appspot.com",
-  messagingSenderId: "623846192437",
-  appId: "TU_APP_ID_AQUI"
+  apiKey: "AIzaSyC7gfaHifIGVMN94mQAGnW6VcA4wVFMZsg",
+  authDomain: "ayuntamiento-de-cobreros.firebaseapp.com",
+  projectId: "ayuntamiento-de-cobreros",
+  storageBucket: "ayuntamiento-de-cobreros.firebasestorage.app",
+  messagingSenderId: "527550932354",
+  appId: "1:527550932354:web:9bd8431defa7c293b1db9b"
 };
 ```
 
@@ -166,9 +166,9 @@ service cloud.firestore {
 1. **Site Settings** → Environment Variables
 2. **Agregar variables:**
 ```
-FIREBASE_API_KEY=tu_api_key
-FIREBASE_PROJECT_ID=turisteam-80f1b
-FIREBASE_MESSAGING_SENDER_ID=623846192437
+FIREBASE_API_KEY=AIzaSyC7gfaHifIGVMN94mQAGnW6VcA4wVFMZsg
+FIREBASE_PROJECT_ID=ayuntamiento-de-cobreros
+FIREBASE_MESSAGING_SENDER_ID=527550932354
 ```
 
 ## ✅ **Checklist de Despliegue:**

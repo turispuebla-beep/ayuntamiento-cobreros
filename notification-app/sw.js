@@ -4,12 +4,12 @@ importScripts('https://www.gstatic.com/firebasejs/9.0.0/firebase-messaging-compa
 
 // Configuración de Firebase
 const firebaseConfig = {
-    apiKey: "AIzaSyBXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
-    authDomain: "turisteam-80f1b.firebaseapp.com",
-    projectId: "turisteam-80f1b",
-    storageBucket: "turisteam-80f1b.appspot.com",
-    messagingSenderId: "123456789012",
-    appId: "1:123456789012:web:abcdefghijklmnop"
+    apiKey: "AIzaSyC7gfaHifIGVMN94mQAGnW6VcA4wVFMZsg",
+    authDomain: "ayuntamiento-de-cobreros.firebaseapp.com",
+    projectId: "ayuntamiento-de-cobreros",
+    storageBucket: "ayuntamiento-de-cobreros.firebasestorage.app",
+    messagingSenderId: "527550932354",
+    appId: "1:527550932354:web:9bd8431defa7c293b1db9b"
 };
 
 // Inicializar Firebase
@@ -23,8 +23,8 @@ messaging.onBackgroundMessage((payload) => {
     const notificationTitle = payload.notification.title;
     const notificationOptions = {
         body: payload.notification.body,
-        icon: '/images/escudo-cobreros.png',
-        badge: '/images/escudo-cobreros.png',
+        icon: '/images/escudo-cobreros-192.png',
+        badge: '/images/escudo-cobreros-192.png',
         tag: 'ayuntamiento-notification',
         requireInteraction: true,
         actions: [
@@ -63,7 +63,8 @@ const urlsToCache = [
     '/notification-app/index.html',
     '/notification-app/app.js',
     '/notification-app/manifest.json',
-    '/images/escudo-cobreros.png'
+    '/images/escudo-cobreros.png',
+    '/images/escudo-cobreros-192.png'
 ];
 
 // Instalar Service Worker

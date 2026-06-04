@@ -1,0 +1,30 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "users",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "notificationConsent", "order": "ASCENDING" },
+        { "fieldPath": "fcmToken", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "users",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "notificationConsent", "order": "ASCENDING" },
+        { "fieldPath": "fcmToken", "order": "ASCENDING" },
+        { "fieldPath": "localities", "arrayConfig": "CONTAINS" }
+      ]
+    },
+    {
+      "collectionGroup": "appointments",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "userId", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}

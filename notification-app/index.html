@@ -5,6 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>COBREROS - Notificaciones Oficiales</title>
     <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#2c3e50">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="Cobreros">
+    <link rel="apple-touch-icon" href="../images/escudo-cobreros-192.png">
     <link rel="icon" type="image/png" href="../images/escudo-cobreros.png">
     <style>
         * {
@@ -98,6 +102,82 @@
             color: rgba(255, 255, 255, 0.8);
             font-size: 0.75rem;
             display: block;
+        }
+
+        .citizen-auth-box {
+            margin-top: 12px;
+            padding: 12px 14px;
+            background: rgba(255, 255, 255, 0.12);
+            border-radius: 10px;
+            text-align: left;
+            max-width: 420px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .citizen-auth-box h3 {
+            color: white;
+            font-size: 1rem;
+            margin: 0 0 10px 0;
+            text-align: center;
+        }
+
+        .citizen-auth-box input,
+        .citizen-auth-box button {
+            width: 100%;
+            box-sizing: border-box;
+            margin-bottom: 8px;
+            padding: 8px 10px;
+            border-radius: 8px;
+            border: none;
+            font-size: 0.9rem;
+        }
+
+        .citizen-auth-box button.btn-primary {
+            background: #27ae60;
+            color: white;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .citizen-auth-box button.btn-secondary {
+            background: rgba(255, 255, 255, 0.25);
+            color: white;
+            cursor: pointer;
+        }
+
+        .citizen-auth-box details {
+            margin-top: 6px;
+            color: rgba(255, 255, 255, 0.95);
+            font-size: 0.85rem;
+        }
+
+        .citizen-auth-box .localities-mini {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 4px 10px;
+            margin: 8px 0;
+            max-height: 160px;
+            overflow-y: auto;
+            font-size: 0.78rem;
+        }
+
+        .citizen-auth-box .localities-mini label {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            color: white;
+            font-weight: 500;
+        }
+
+        .citizen-logged {
+            color: white;
+            font-size: 0.9rem;
+        }
+
+        .citizen-logged strong {
+            display: block;
+            margin-bottom: 6px;
         }
 
         .header h1 {
@@ -471,22 +551,55 @@
             </div>
         </div>
         
-        <!-- Selector de Pueblos -->
-        <div class="pueblos-selector">
-            <label for="pueblosSelect">Pueblos de interés:</label>
-            <select id="pueblosSelect" multiple onchange="updatePueblosSelection()">
-                <option value="cobreros">Cobreros</option>
-                <option value="puebla">Puebla de Sanabria</option>
-                <option value="galende">Galende</option>
-                <option value="robles">Robleda-Cervantes</option>
-                <option value="pedralba">Pedralba de la Pradería</option>
-                <option value="lubian">Lubián</option>
-                <option value="hermisende">Hermisende</option>
-                <option value="requejo">Requejo</option>
-                <option value="sanabria">Sanabria</option>
-                <option value="trefacio">Trefacio</option>
-            </select>
-            <small>Mantén presionado para seleccionar múltiples pueblos</small>
+        <!-- Misma cuenta y localidades que la web (Firebase users/{uid}) -->
+        <div class="citizen-auth-box" id="citizenAuthBox">
+            <h3>Mi cuenta</h3>
+            <div id="citizenGuestView">
+                <input type="email" id="citizenLoginEmail" placeholder="Correo" autocomplete="username">
+                <input type="password" id="citizenLoginPassword" placeholder="Contraseña" autocomplete="current-password">
+                <button type="button" class="btn-primary" onclick="citizenLogin()">Entrar</button>
+                <details id="citizenRegisterDetails">
+                    <summary style="cursor:pointer;">Registrarse (mismos datos que la web)</summary>
+                    <input type="text" id="citizenRegName" placeholder="Nombre y apellidos">
+                    <input type="tel" id="citizenRegPhone" placeholder="Teléfono">
+                    <input type="email" id="citizenRegEmail" placeholder="Correo">
+                    <input type="password" id="citizenRegPassword" placeholder="Contraseña (mín. 6)">
+                    <input type="password" id="citizenRegPassword2" placeholder="Repetir contraseña">
+                    <p style="margin:6px 0;font-size:0.8rem;">Localidades para avisos (las generales las recibe siempre):</p>
+                    <div class="localities-mini" id="citizenRegLocalities"></div>
+                    <label style="display:flex;align-items:center;gap:8px;margin:6px 0;">
+                        <input type="checkbox" id="citizenRegConsent"> Acepto el tratamiento de datos
+                    </label>
+                    <label style="display:flex;align-items:center;gap:8px;margin:6px 0;">
+                        <input type="checkbox" id="citizenRegNotifConsent"> Quiero notificaciones del ayuntamiento
+                    </label>
+                    <button type="button" class="btn-primary" onclick="citizenRegister()">Crear cuenta</button>
+                </details>
+            </div>
+            <div id="citizenLoggedView" class="citizen-logged" style="display:none;">
+                <strong id="citizenWelcomeText"></strong>
+                <span id="citizenLocalitiesText"></span>
+                <label style="display:flex;align-items:center;gap:8px;margin:10px 0 6px 0;">
+                    <input type="checkbox" id="citizenNotifConsentEdit"> Quiero recibir notificaciones del ayuntamiento
+                </label>
+                <button type="button" class="btn-primary" onclick="saveCitizenNotificationConsent()">Guardar consentimiento</button>
+                <details id="citizenEditLocalitiesDetails" style="margin-top:8px;">
+                    <summary style="cursor:pointer;">Editar mis pueblos</summary>
+                    <div class="localities-mini" id="citizenEditLocalities"></div>
+                    <button type="button" class="btn-primary" onclick="saveCitizenLocalities()">Guardar pueblos</button>
+                </details>
+                <button type="button" class="btn-secondary" onclick="citizenLogout()" style="margin-top:10px;">Cerrar sesión</button>
+            </div>
+            <div id="citizenAdminBanner" class="citizen-logged" style="display:none;margin-top:8px;">
+                <strong>Sesión de administrador</strong>
+                <small style="display:block;opacity:0.9;">Use el botón + para enviar avisos. Aquí ve todos los mensajes.</small>
+            </div>
+        </div>
+
+        <div class="pueblos-selector" id="pueblosGuestBlock">
+            <label for="pueblosSelect">Sin sesión: elija pueblos (solo verá generales si no marca ninguno)</label>
+            <select id="pueblosSelect" multiple onchange="updatePueblosSelection()"></select>
+            <small>Misma lista que en el registro web. Con sesión, se usan los pueblos de su perfil.</small>
         </div>
     </div>
 
@@ -556,20 +669,9 @@
                     </select>
                 </div>
                 <div class="form-group">
-                    <label for="targetPueblos">Pueblos objetivo:</label>
-                    <select id="targetPueblos" multiple>
-                        <option value="cobreros">Cobreros</option>
-                        <option value="puebla">Puebla de Sanabria</option>
-                        <option value="galende">Galende</option>
-                        <option value="robles">Robleda-Cervantes</option>
-                        <option value="pedralba">Pedralba de la Pradería</option>
-                        <option value="lubian">Lubián</option>
-                        <option value="hermisende">Hermisende</option>
-                        <option value="requejo">Requejo</option>
-                        <option value="sanabria">Sanabria</option>
-                        <option value="trefacio">Trefacio</option>
-                    </select>
-                    <small>Selecciona pueblos específicos o deja vacío para todos</small>
+                    <label for="targetPueblos">Pueblos objetivo (mismos nombres que la web):</label>
+                    <select id="targetPueblos" multiple></select>
+                    <small>Vacío = aviso general para todos los usuarios registrados</small>
                 </div>
                 <div class="form-group">
                     <label for="documentFile">Documento (PDF/JPG):</label>
@@ -581,9 +683,14 @@
         </div>
     </div>
 
-    <!-- Scripts -->
+    <!-- Scripts: VAPID + reCAPTCHA + Firebase + Storage -->
+    <script src="../js/push-config.js"></script>
+    <script src="https://www.google.com/recaptcha/api.js?render=6LeBYM4rAAAAALaDVtPi1H4jWjpj_Ovjf9g8VnT4"></script>
+    <script src="../js/recaptcha.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-storage-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-messaging-compat.js"></script>
     <script src="https://kit.fontawesome.com/a076d05399.js"></script>
     <script src="app.js"></script>

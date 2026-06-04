@@ -136,12 +136,12 @@ ayuntamiento-cobreros/
 ```javascript
 // Configuración en index.html
 const firebaseConfig = {
-  apiKey: "TU_API_KEY",
-  authDomain: "turisteam-80f1b.firebaseapp.com",
-  projectId: "turisteam-80f1b",
-  storageBucket: "turisteam-80f1b.appspot.com",
-  messagingSenderId: "623846192437",
-  appId: "TU_APP_ID"
+  apiKey: "AIzaSyC7gfaHifIGVMN94mQAGnW6VcA4wVFMZsg",
+  authDomain: "ayuntamiento-de-cobreros.firebaseapp.com",
+  projectId: "ayuntamiento-de-cobreros",
+  storageBucket: "ayuntamiento-de-cobreros.firebasestorage.app",
+  messagingSenderId: "527550932354",
+  appId: "1:527550932354:web:9bd8431defa7c293b1db9b"
 };
 ```
 

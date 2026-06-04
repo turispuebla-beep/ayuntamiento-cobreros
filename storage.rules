@@ -1,0 +1,99 @@
+rules_version = '2';
+
+// -----------------------------------------------------------------------------
+// Storage: acceso condicionado por documento Firestore admins/{uid}
+//
+// AVISO "llamadas a la base de datos entre servicios":
+// En Firebase Console → Build → Storage → Reglas, si aparece el aviso,
+// usa el enlace "Habilitar" / "Configurar" para permitir que las reglas de
+// Storage consulten Firestore (cross-service rules). Sin eso, firestore.get
+// / firestore.exists fallan al simular o desplegar.
+//
+// Requisitos para que isAdmin() funcione:
+// 1) El cliente que sube archivos debe usar Firebase Authentication (token).
+// 2) Debe existir el documento Firestore: admins/{uid} con uid = request.auth.uid
+//    y uno de: isAdmin / isSuperAdmin / role == 'admin' | 'super_admin'
+// -----------------------------------------------------------------------------
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function adminDocPath() {
+      return /databases/(default)/documents/admins/$(request.auth.uid);
+    }
+
+    function adminData() {
+      return firestore.get(adminDocPath()).data;
+    }
+
+    function isAdmin() {
+      return isSignedIn()
+        && firestore.exists(adminDocPath())
+        && (
+          adminData().isAdmin == true
+          || adminData().isSuperAdmin == true
+          || adminData().role == 'admin'
+          || adminData().role == 'super_admin'
+        );
+    }
+
+    // Contenido público del ayuntamiento
+    match /logos/{allPaths=**} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /hero/{allPaths=**} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /multimedia/{allPaths=**} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /documents/{allPaths=**} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Adjuntos enviados desde el panel de notificaciones (notification-app)
+    match /notifications/{allPaths=**} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Rutas heredadas del otro proyecto (por si migráis carpetas)
+    match /penas/{allPaths=**} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /association/{allPaths=**} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /products/{allPaths=**} {
+      allow read: if true;
+      allow write: if isSignedIn();
+    }
+
+    match /events/{allPaths=**} {
+      allow read: if true;
+      allow write: if isSignedIn();
+    }
+
+    match /backups/{allPaths=**} {
+      allow read, write: if isAdmin();
+    }
+
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

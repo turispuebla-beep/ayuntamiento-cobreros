@@ -1,22 +1,64 @@
 // 🔥 Firebase Functions - Ayuntamiento de Cobreros
 // Funciones para validar reCAPTCHA y manejar notificaciones
 
-const functions = require('firebase-functions');
+const functions = require('firebase-functions/v1');
 const admin = require('firebase-admin');
 const axios = require('axios');
 
 // Inicializar Firebase Admin
 admin.initializeApp();
 
-// ⚠️ IMPORTANTE: Configura tu SECRET KEY en Firebase Console
-// firebase functions:config:set recaptcha.secret_key="TU_SECRET_KEY_AQUI"
-const RECAPTCHA_SECRET_KEY = functions.config().recaptcha?.secret_key || 'TU_SECRET_KEY_AQUI';
+// Remitente Brevo (debe estar verificado en Brevo). Params CLI alternativos no disponibles en todas las versiones.
+const DEFAULT_EMAIL_FROM = 'aytocobreroscitaprevia@gmail.com';
+const DEFAULT_EMAIL_FROM_NAME = 'Ayuntamiento de Cobreros';
+
+async function getAuthContext(req) {
+    const authHeader = req.headers.authorization || req.headers.Authorization || '';
+    if (!authHeader.startsWith('Bearer ')) {
+        const err = new Error('Falta token Bearer');
+        err.status = 401;
+        throw err;
+    }
+    const idToken = authHeader.substring('Bearer '.length).trim();
+    if (!idToken) {
+        const err = new Error('Token vacío');
+        err.status = 401;
+        throw err;
+    }
+    const decoded = await admin.auth().verifyIdToken(idToken);
+    return decoded;
+}
+
+async function assertAdminByUid(uid) {
+    const snap = await admin.firestore().collection('admins').doc(uid).get();
+    if (!snap.exists) {
+        const err = new Error('Usuario sin perfil admin');
+        err.status = 403;
+        throw err;
+    }
+    const d = snap.data() || {};
+    const isAdmin = d.isAdmin === true || d.isSuperAdmin === true || d.role === 'admin' || d.role === 'super_admin';
+    if (!isAdmin) {
+        const err = new Error('Permisos insuficientes');
+        err.status = 403;
+        throw err;
+    }
+    return d;
+}
+
+// Secreto Brevo: firebase functions:secrets:set BREVO_API_KEY — notifyAppointmentEvent usa runWith({ secrets }).
+// reCAPTCHA: sin runWith por ahora (no bloquea deploy). Cuando tengas la clave en Google reCAPTCHA:
+//   firebase functions:secrets:set RECAPTCHA_SECRET_KEY --data-file clave.txt
+//   y vuelve a envolver validateRecaptcha con .runWith({ secrets: ['RECAPTCHA_SECRET_KEY'] }).
 
 /**
  * 🛡️ Validar token de reCAPTCHA v3
- * Endpoint: https://us-central1-turisteam-80f1b.cloudfunctions.net/validateRecaptcha
+ * Endpoint: https://us-central1-ayuntamiento-de-cobreros.cloudfunctions.net/validateRecaptcha
+ * Secreto: firebase functions:secrets:set RECAPTCHA_SECRET_KEY
  */
-exports.validateRecaptcha = functions.https.onRequest(async (req, res) => {
+exports.validateRecaptcha = functions
+    .runWith({ secrets: ['RECAPTCHA_SECRET_KEY'] })
+    .https.onRequest(async (req, res) => {
     // Configurar CORS
     res.set('Access-Control-Allow-Origin', '*');
     res.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
@@ -50,11 +92,13 @@ exports.validateRecaptcha = functions.https.onRequest(async (req, res) => {
         }
 
         // Verificar que la clave secreta esté configurada
-        if (RECAPTCHA_SECRET_KEY === 'TU_SECRET_KEY_AQUI') {
+        const recaptchaSecret = process.env.RECAPTCHA_SECRET_KEY;
+        if (!recaptchaSecret) {
             console.error('⚠️ RECAPTCHA_SECRET_KEY no configurada');
             res.status(500).json({
                 success: false,
-                error: 'reCAPTCHA no configurado en el servidor'
+                error:
+                'reCAPTCHA aún no activo en el servidor. Configura el secreto RECAPTCHA_SECRET_KEY y runWith en esta función cuando lo actives.'
             });
             return;
         }
@@ -65,7 +109,7 @@ exports.validateRecaptcha = functions.https.onRequest(async (req, res) => {
         const verificationUrl = 'https://www.google.com/recaptcha/api/siteverify';
         const verificationResponse = await axios.post(verificationUrl, null, {
             params: {
-                secret: RECAPTCHA_SECRET_KEY,
+                secret: recaptchaSecret,
                 response: token
             }
         });
@@ -150,7 +194,7 @@ exports.validateRecaptcha = functions.https.onRequest(async (req, res) => {
 
 /**
  * 📊 Obtener estadísticas de reCAPTCHA (solo para administradores)
- * Endpoint: https://us-central1-turisteam-80f1b.cloudfunctions.net/getRecaptchaStats
+ * Endpoint: https://us-central1-ayuntamiento-de-cobreros.cloudfunctions.net/getRecaptchaStats
  */
 exports.getRecaptchaStats = functions.https.onRequest(async (req, res) => {
     // Configurar CORS
@@ -169,9 +213,8 @@ exports.getRecaptchaStats = functions.https.onRequest(async (req, res) => {
     }
 
     try {
-        // TODO: Implementar autenticación de administrador
-        // const adminToken = req.headers.authorization?.split('Bearer ')[1];
-        // await verifyAdminToken(adminToken);
+        const auth = await getAuthContext(req);
+        await assertAdminByUid(auth.uid);
 
         const logsRef = admin.firestore().collection('recaptcha_logs');
         
@@ -243,13 +286,14 @@ exports.getRecaptchaStats = functions.https.onRequest(async (req, res) => {
 
     } catch (error) {
         console.error('❌ Error obteniendo estadísticas:', error);
-        res.status(500).json({ error: 'Error interno del servidor' });
+        const status = error?.status || 500;
+        res.status(status).json({ error: error?.message || 'Error interno del servidor' });
     }
 });
 
 /**
  * 📱 Enviar notificaciones push masivas
- * Endpoint: https://us-central1-turisteam-80f1b.cloudfunctions.net/sendPushNotification
+ * Endpoint: https://us-central1-ayuntamiento-de-cobreros.cloudfunctions.net/sendPushNotification
  */
 exports.sendPushNotification = functions.https.onRequest(async (req, res) => {
     // Configurar CORS
@@ -268,6 +312,9 @@ exports.sendPushNotification = functions.https.onRequest(async (req, res) => {
     }
 
     try {
+        const auth = await getAuthContext(req);
+        await assertAdminByUid(auth.uid);
+
         const { title, message, type, targetUsers, localities } = req.body;
 
         // Validar parámetros
@@ -332,7 +379,7 @@ exports.sendPushNotification = functions.https.onRequest(async (req, res) => {
             notification: {
                 title: title,
                 body: message,
-                icon: '/images/escudo-cobreros.png'
+                icon: '/images/escudo-cobreros-192.png'
             },
             data: {
                 type: type || 'general',
@@ -341,8 +388,8 @@ exports.sendPushNotification = functions.https.onRequest(async (req, res) => {
             },
             webpush: {
                 notification: {
-                    icon: '/images/escudo-cobreros.png',
-                    badge: '/images/escudo-cobreros.png',
+                    icon: '/images/escudo-cobreros-192.png',
+                    badge: '/images/escudo-cobreros-192.png',
                     requireInteraction: true
                 }
             }
@@ -384,8 +431,10 @@ exports.sendPushNotification = functions.https.onRequest(async (req, res) => {
                             timestamp: admin.firestore.FieldValue.serverTimestamp(),
                             read: false,
                             sentFrom: 'FIREBASE_FUNCTION',
+                            sentTo: 'ALL',
                             fcmToken: user.fcmToken,
-                            localities: localities || []
+                            localities: localities || [],
+                            targetPueblos: localities || []
                         });
                     }
                 });
@@ -410,10 +459,116 @@ exports.sendPushNotification = functions.https.onRequest(async (req, res) => {
 
     } catch (error) {
         console.error('❌ Error enviando notificaciones push:', error);
-        res.status(500).json({
+        const status = error?.status || 500;
+        res.status(status).json({
             success: false,
-            error: 'Error interno del servidor'
+            error: error?.message || 'Error interno del servidor'
         });
+    }
+});
+
+/**
+ * 🛠️ Migrar esquema de notificaciones antiguas a formato unificado
+ * Endpoint: https://us-central1-ayuntamiento-de-cobreros.cloudfunctions.net/migrateNotificationsSchema
+ * Solo administradores autenticados.
+ */
+exports.migrateNotificationsSchema = functions.https.onRequest(async (req, res) => {
+    res.set('Access-Control-Allow-Origin', '*');
+    res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
+    res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+
+    if (req.method === 'OPTIONS') {
+        res.status(204).send('');
+        return;
+    }
+    if (req.method !== 'POST') {
+        res.status(405).json({ success: false, error: 'Método no permitido' });
+        return;
+    }
+
+    try {
+        const auth = await getAuthContext(req);
+        await assertAdminByUid(auth.uid);
+
+        const notificationsRef = admin.firestore().collection('notifications');
+        let lastDoc = null;
+        let scanned = 0;
+        let updated = 0;
+        const pageSize = 400;
+
+        while (true) {
+            let query = notificationsRef.orderBy(admin.firestore.FieldPath.documentId()).limit(pageSize);
+            if (lastDoc) {
+                query = query.startAfter(lastDoc);
+            }
+            const page = await query.get();
+            if (page.empty) {
+                break;
+            }
+
+            const batch = admin.firestore().batch();
+
+            page.docs.forEach((doc) => {
+                scanned++;
+                const data = doc.data() || {};
+                const patch = {};
+
+                if (!data.sentTo || data.sentTo === 'WEB' || data.sentTo === 'APK') {
+                    patch.sentTo = 'ALL';
+                }
+
+                const localitiesArray = Array.isArray(data.localities)
+                    ? data.localities.filter(Boolean)
+                    : [];
+                const targetArray = Array.isArray(data.targetPueblos)
+                    ? data.targetPueblos.filter(Boolean)
+                    : [];
+
+                if (!Array.isArray(data.targetPueblos) || targetArray.length === 0) {
+                    if (localitiesArray.length > 0) {
+                        patch.targetPueblos = localitiesArray;
+                    } else if (typeof data.localities === 'string' && data.localities.trim()) {
+                        patch.targetPueblos = data.localities
+                            .split(',')
+                            .map((s) => s.trim())
+                            .filter(Boolean);
+                    }
+                }
+
+                if ((!Array.isArray(data.localities) || data.localities.length === 0) && targetArray.length > 0) {
+                    patch.localities = targetArray;
+                }
+
+                if (!data.attachmentUrl && data.documentUrl) {
+                    patch.attachmentUrl = data.documentUrl;
+                }
+                if (data.attachmentUrl && !data.hasAttachments) {
+                    patch.hasAttachments = true;
+                }
+
+                if (Object.keys(patch).length > 0) {
+                    batch.set(doc.ref, patch, { merge: true });
+                    updated++;
+                }
+            });
+
+            await batch.commit();
+            lastDoc = page.docs[page.docs.length - 1];
+            if (page.size < pageSize) {
+                break;
+            }
+        }
+
+        res.status(200).json({
+            success: true,
+            message: 'Migración de notificaciones completada',
+            scanned,
+            updated
+        });
+    } catch (error) {
+        console.error('❌ Error en migración de notificaciones:', error);
+        const status = error?.status || 500;
+        res.status(status).json({ success: false, error: error?.message || 'Error interno del servidor' });
     }
 });
 
@@ -531,7 +686,7 @@ exports.cleanupOldBackups = functions.pubsub
 
 /**
  * 📊 Obtener estadísticas de backup
- * Endpoint: https://us-central1-turisteam-80f1b.cloudfunctions.net/getBackupStats
+ * Endpoint: https://us-central1-ayuntamiento-de-cobreros.cloudfunctions.net/getBackupStats
  */
 exports.getBackupStats = functions.https.onRequest(async (req, res) => {
     // Configurar CORS
@@ -587,4 +742,452 @@ exports.getBackupStats = functions.https.onRequest(async (req, res) => {
         console.error('❌ Error obteniendo estadísticas de backup:', error);
         res.status(500).json({ error: 'Error interno del servidor' });
     }
+});
+
+/**
+ * ✉️ Notificaciones reales de citas previas por email (Brevo API)
+ * Configuración (params/secrets):
+ * firebase functions:secrets:set BREVO_API_KEY
+ * Remitente: constantes DEFAULT_EMAIL_FROM / DEFAULT_EMAIL_FROM_NAME en este archivo.
+ */
+exports.notifyAppointmentEvent = functions
+    .runWith({ secrets: ['BREVO_API_KEY'] })
+    .https.onRequest(async (req, res) => {
+    res.set('Access-Control-Allow-Origin', '*');
+    res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
+    res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+
+    if (req.method === 'OPTIONS') {
+        res.status(204).send('');
+        return;
+    }
+    if (req.method !== 'POST') {
+        res.status(405).json({ success: false, error: 'Método no permitido' });
+        return;
+    }
+
+    const brevoApiKey = process.env.BREVO_API_KEY;
+    const fromEmail = DEFAULT_EMAIL_FROM;
+    const fromName = DEFAULT_EMAIL_FROM_NAME;
+    const ADMIN_EMAIL = 'aytocobreros@gmail.com';
+
+    try {
+        const auth = await getAuthContext(req);
+        const { eventType, appointment, oldStatus } = req.body || {};
+        if (!eventType || !appointment || !appointment.email) {
+            res.status(400).json({ success: false, error: 'eventType y appointment son requeridos' });
+            return;
+        }
+        if (eventType === 'created') {
+            if (!appointment.userId || appointment.userId !== auth.uid) {
+                res.status(403).json({ success: false, error: 'No autorizado para crear este evento de cita' });
+                return;
+            }
+        } else if (eventType === 'status_changed') {
+            await assertAdminByUid(auth.uid);
+        }
+
+        const serviceNameMap = {
+            empadronamiento: 'Empadronamiento',
+            certificados: 'Certificados',
+            multas: 'Consulta de multas',
+            otros: 'Otros trámites'
+        };
+        const serviceName = serviceNameMap[appointment.service] || appointment.service || 'Trámite municipal';
+
+        let userSubject = '';
+        let userBody = '';
+        let adminSubject = '';
+        let adminBody = '';
+
+        if (eventType === 'created') {
+            userSubject = 'Confirmación de solicitud de cita previa';
+            userBody = `
+Estimado/a ${appointment.name || ''},
+
+Hemos recibido su solicitud de cita previa:
+- Servicio: ${serviceName}
+- Fecha preferida: ${appointment.date || '-'}
+- Hora preferida: ${appointment.time || '-'}
+
+Le contactaremos para confirmar la cita.
+
+Ayuntamiento de Cobreros
+            `.trim();
+
+            adminSubject = 'Nueva solicitud de cita previa';
+            adminBody = `
+Nueva solicitud de cita recibida:
+- Nombre: ${appointment.name || '-'}
+- Email: ${appointment.email || '-'}
+- Teléfono: ${appointment.phone || '-'}
+- DNI: ${appointment.dni || '-'}
+- Servicio: ${serviceName}
+- Fecha: ${appointment.date || '-'}
+- Hora: ${appointment.time || '-'}
+- Comentarios: ${appointment.comments || 'Ninguno'}
+            `.trim();
+        } else if (eventType === 'status_changed') {
+            const statusLabel = appointment.status || 'pending';
+            userSubject = `Actualización de estado de su cita: ${statusLabel}`;
+            userBody = `
+Estimado/a ${appointment.name || ''},
+
+El estado de su cita ha cambiado:
+- Estado anterior: ${oldStatus || '-'}
+- Estado actual: ${appointment.status || '-'}
+- Servicio: ${serviceName}
+- Fecha: ${appointment.date || '-'}
+- Hora: ${appointment.time || '-'}
+
+Ayuntamiento de Cobreros
+            `.trim();
+
+            adminSubject = `Estado de cita actualizado (${appointment.status || '-'})`;
+            adminBody = `
+Actualización de cita:
+- Nombre: ${appointment.name || '-'}
+- Email: ${appointment.email || '-'}
+- Estado anterior: ${oldStatus || '-'}
+- Estado actual: ${appointment.status || '-'}
+- Fecha: ${appointment.date || '-'} ${appointment.time || ''}
+            `.trim();
+        } else {
+            res.status(400).json({ success: false, error: 'eventType no soportado' });
+            return;
+        }
+
+        if (!brevoApiKey) {
+            console.warn('BREVO API key no configurada; se registra en logs sin envío real');
+            console.log({ eventType, userSubject, adminSubject, appointment });
+            res.status(200).json({
+                success: true,
+                mode: 'log-only',
+                message: 'Evento procesado sin envío real (falta brevo.api_key)'
+            });
+            return;
+        }
+
+        const sendEmail = async (toEmail, toName, subject, textContent) => {
+            return axios.post(
+                'https://api.brevo.com/v3/smtp/email',
+                {
+                    sender: { email: fromEmail, name: fromName },
+                    to: [{ email: toEmail, name: toName || '' }],
+                    subject: subject,
+                    textContent: textContent
+                },
+                {
+                    headers: {
+                        'api-key': brevoApiKey,
+                        'Content-Type': 'application/json'
+                    }
+                }
+            );
+        };
+
+        await Promise.all([
+            sendEmail(appointment.email, appointment.name || '', userSubject, userBody),
+            sendEmail(ADMIN_EMAIL, 'Ayuntamiento de Cobreros', adminSubject, adminBody)
+        ]);
+
+        res.status(200).json({ success: true, mode: 'brevo', message: 'Emails enviados' });
+    } catch (error) {
+        console.error('notifyAppointmentEvent error:', error?.response?.data || error.message || error);
+        const status = error?.status || 500;
+        res.status(status).json({ success: false, error: error?.message || 'Error enviando notificaciones de cita' });
+    }
+});
+
+function normalizeServerAvailability(raw) {
+    const baseSlots = ['09:00', '10:00', '11:00', '12:00', '16:00', '17:00', '18:00'];
+    const enabledDays = Array.isArray(raw?.enabledDays)
+        ? raw.enabledDays.map((d) => parseInt(d, 10)).filter((d) => Number.isInteger(d) && d >= 0 && d <= 6)
+        : [1, 2, 3, 4, 5];
+    const timeSlots = Array.isArray(raw?.timeSlots)
+        ? raw.timeSlots.map((slot) => String(slot).trim()).filter((slot) => /^([01]\d|2[0-3]):([0-5]\d)$/.test(slot))
+        : baseSlots;
+    const slotCapacityDefault = Math.max(1, parseInt(raw?.slotCapacityDefault || 1, 10) || 1);
+    const holidays = Array.isArray(raw?.holidays)
+        ? raw.holidays.map((d) => String(d).trim()).filter((d) => /^\d{4}-\d{2}-\d{2}$/.test(d))
+        : [];
+    const exceptionsByDate = raw?.exceptionsByDate && typeof raw.exceptionsByDate === 'object'
+        ? raw.exceptionsByDate
+        : {};
+    return {
+        enabledDays: [...new Set(enabledDays)],
+        timeSlots: [...new Set(timeSlots)],
+        slotCapacityDefault,
+        holidays: [...new Set(holidays)],
+        exceptionsByDate
+    };
+}
+
+function getServerEffectiveSlots(availability, dateIso) {
+    const ex = availability.exceptionsByDate?.[dateIso];
+    if (ex && Array.isArray(ex.timeSlots) && ex.timeSlots.length) {
+        return ex.timeSlots.map((slot) => String(slot).trim()).filter((slot) => /^([01]\d|2[0-3]):([0-5]\d)$/.test(slot));
+    }
+    return availability.timeSlots;
+}
+
+function getServerCapacity(availability, dateIso, slot) {
+    const ex = availability.exceptionsByDate?.[dateIso];
+    if (ex?.capacityBySlot?.[slot]) {
+        return Math.max(1, parseInt(ex.capacityBySlot[slot], 10) || availability.slotCapacityDefault);
+    }
+    if (availability?.capacityBySlot?.[slot]) {
+        return Math.max(1, parseInt(availability.capacityBySlot[slot], 10) || availability.slotCapacityDefault);
+    }
+    return availability.slotCapacityDefault;
+}
+
+exports.createAppointmentAtomic = functions.https.onRequest(async (req, res) => {
+    res.set('Access-Control-Allow-Origin', '*');
+    res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
+    res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+
+    if (req.method === 'OPTIONS') {
+        res.status(204).send('');
+        return;
+    }
+    if (req.method !== 'POST') {
+        res.status(405).json({ success: false, error: 'Método no permitido' });
+        return;
+    }
+
+    try {
+        const auth = await getAuthContext(req);
+        const appointment = req.body?.appointment || {};
+        const date = String(appointment.date || '');
+        const time = String(appointment.time || '');
+
+        if (!date || !time || !appointment.email || !appointment.userId) {
+            res.status(400).json({ success: false, errorCode: 'INVALID_INPUT', error: 'Datos de cita incompletos' });
+            return;
+        }
+        if (String(appointment.userId) !== String(auth.uid)) {
+            res.status(403).json({ success: false, errorCode: 'FORBIDDEN', error: 'No autorizado para crear cita de otro usuario' });
+            return;
+        }
+
+        const selectedDate = new Date(date + 'T00:00:00');
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        if (Number.isNaN(selectedDate.getTime()) || selectedDate < today) {
+            res.status(400).json({ success: false, errorCode: 'INVALID_DATE', error: 'Fecha inválida' });
+            return;
+        }
+
+        const db = admin.firestore();
+        const configRef = db.collection('configuraciones').doc('data');
+        const appointmentsCol = db.collection('appointments');
+
+        const created = await db.runTransaction(async (tx) => {
+            const configSnap = await tx.get(configRef);
+            const rawAvailability = configSnap.exists
+                ? (configSnap.data()?.appointmentAvailability || {})
+                : {};
+            const availability = normalizeServerAvailability(rawAvailability);
+
+            if (availability.holidays.includes(date)) {
+                const err = new Error('Festivo');
+                err.code = 'HOLIDAY_BLOCKED';
+                throw err;
+            }
+            const ex = availability.exceptionsByDate?.[date];
+            if (ex && ex.enabled === false) {
+                const err = new Error('Día bloqueado');
+                err.code = 'DAY_NOT_AVAILABLE';
+                throw err;
+            }
+            if (!availability.enabledDays.includes(selectedDate.getDay())) {
+                const err = new Error('Día fuera de agenda');
+                err.code = 'DAY_NOT_AVAILABLE';
+                throw err;
+            }
+            const effectiveSlots = getServerEffectiveSlots(availability, date);
+            if (!effectiveSlots.includes(time)) {
+                const err = new Error('Hora fuera de agenda');
+                err.code = 'TIME_NOT_AVAILABLE';
+                throw err;
+            }
+
+            const capacity = getServerCapacity(availability, date, time);
+            const existingSnap = await tx.get(
+                appointmentsCol
+                    .where('date', '==', date)
+                    .where('time', '==', time)
+                    .where('status', 'in', ['pending', 'confirmed'])
+            );
+
+            if (existingSnap.size >= capacity) {
+                const err = new Error('Slot completo');
+                err.code = 'SLOT_FULL';
+                throw err;
+            }
+
+            const payload = {
+                userId: String(appointment.userId || ''),
+                name: String(appointment.name || ''),
+                dni: String(appointment.dni || ''),
+                email: String(appointment.email || ''),
+                phone: String(appointment.phone || ''),
+                service: String(appointment.service || ''),
+                date,
+                time,
+                comments: String(appointment.comments || ''),
+                status: String(appointment.status || 'pending'),
+                gdprConsent: !!appointment.gdprConsent,
+                source: 'WEB',
+                capacityUsed: existingSnap.size + 1,
+                capacityMax: capacity,
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString()
+            };
+            const newRef = appointmentsCol.doc();
+            tx.set(newRef, payload);
+            return { id: newRef.id, ...payload };
+        });
+
+        res.status(200).json({ success: true, appointment: created });
+    } catch (error) {
+        const code = error?.code || 'UNKNOWN';
+        const mappedStatus = ['SLOT_FULL', 'DAY_NOT_AVAILABLE', 'TIME_NOT_AVAILABLE', 'HOLIDAY_BLOCKED'].includes(code) ? 409 : 500;
+        res.status(mappedStatus).json({
+            success: false,
+            errorCode: code,
+            error: error?.message || 'No se pudo crear la cita de forma atómica'
+        });
+    }
+});
+
+/**
+ * Crea cuenta Firebase Auth + admins/{uid} + administrators/{uid} (solo superadmin).
+ */
+exports.createStaffAdmin = functions.https.onCall(async (data, context) => {
+    if (!context.auth) {
+        throw new functions.https.HttpsError('unauthenticated', 'Debe iniciar sesión');
+    }
+    const callerSnap = await admin.firestore().collection('admins').doc(context.auth.uid).get();
+    const caller = callerSnap.data() || {};
+    if (!caller.isSuperAdmin) {
+        throw new functions.https.HttpsError(
+            'permission-denied',
+            'Solo el superadministrador puede crear administradores'
+        );
+    }
+    const email = String(data.email || '').trim().toLowerCase();
+    const password = String(data.password || '');
+    const name = String(data.name || '').trim();
+    if (!email || !password || password.length < 6) {
+        throw new functions.https.HttpsError(
+            'invalid-argument',
+            'Email y contraseña (mín. 6 caracteres) son obligatorios'
+        );
+    }
+    let userRecord;
+    try {
+        userRecord = await admin.auth().createUser({
+            email,
+            password,
+            displayName: name || email
+        });
+    } catch (e) {
+        if (e.code === 'auth/email-already-exists') {
+            throw new functions.https.HttpsError(
+                'already-exists',
+                'Ese correo ya tiene cuenta en Authentication'
+            );
+        }
+        throw new functions.https.HttpsError('internal', e.message || 'Error creando usuario');
+    }
+    const uid = userRecord.uid;
+    const now = admin.firestore.FieldValue.serverTimestamp();
+    await admin.firestore().collection('admins').doc(uid).set(
+        {
+            email: data.email.trim(),
+            isAdmin: true,
+            isSuperAdmin: false,
+            displayName: name,
+            name: name,
+            role: 'admin',
+            createdBy: context.auth.uid,
+            createdAt: now,
+            updatedAt: now
+        },
+        { merge: true }
+    );
+    await admin.firestore().collection('administrators').doc(uid).set(
+        {
+            id: uid,
+            authUid: uid,
+            name,
+            email: data.email.trim(),
+            createdBy: context.auth.uid,
+            createdAt: new Date().toISOString(),
+            createdDate: new Date().toISOString(),
+            isActive: true,
+            isHidden: false
+        },
+        { merge: true }
+    );
+    return { uid, email: data.email.trim() };
+});
+
+/**
+ * Elimina administrador: Auth + admins + administrators (solo superadmin; no puede borrarse a sí mismo ni otro superadmin).
+ */
+exports.removeStaffAdmin = functions.https.onCall(async (data, context) => {
+    if (!context.auth) {
+        throw new functions.https.HttpsError('unauthenticated', 'Debe iniciar sesión');
+    }
+    const callerSnap = await admin.firestore().collection('admins').doc(context.auth.uid).get();
+    if (!(callerSnap.data() || {}).isSuperAdmin) {
+        throw new functions.https.HttpsError('permission-denied', 'Solo superadministrador');
+    }
+    const targetUid = String(data.uid || '').trim();
+    if (!targetUid || targetUid === context.auth.uid) {
+        throw new functions.https.HttpsError('invalid-argument', 'UID no válido');
+    }
+    const targetSnap = await admin.firestore().collection('admins').doc(targetUid).get();
+    if (!targetSnap.exists) {
+        throw new functions.https.HttpsError('not-found', 'Administrador no encontrado');
+    }
+    if ((targetSnap.data() || {}).isSuperAdmin) {
+        throw new functions.https.HttpsError('permission-denied', 'No se puede eliminar un superadministrador');
+    }
+    try {
+        await admin.auth().deleteUser(targetUid);
+    } catch (e) {
+        if (e.code !== 'auth/user-not-found') {
+            throw new functions.https.HttpsError('internal', e.message || 'Error borrando usuario Auth');
+        }
+    }
+    await admin.firestore().collection('admins').doc(targetUid).delete();
+    await admin.firestore().collection('administrators').doc(targetUid).delete();
+    return { ok: true };
+});
+
+/**
+ * Elimina ciudadano: Authentication + users/{uid} (cualquier administrador del panel).
+ */
+exports.removeEndUser = functions.https.onCall(async (data, context) => {
+    if (!context.auth) {
+        throw new functions.https.HttpsError('unauthenticated', 'Debe iniciar sesión');
+    }
+    await assertAdminByUid(context.auth.uid);
+    const targetUid = String(data.uid || '').trim();
+    if (!targetUid) {
+        throw new functions.https.HttpsError('invalid-argument', 'UID requerido');
+    }
+    try {
+        await admin.auth().deleteUser(targetUid);
+    } catch (e) {
+        if (e.code !== 'auth/user-not-found') {
+            throw new functions.https.HttpsError('internal', e.message || 'Error borrando usuario');
+        }
+    }
+    await admin.firestore().collection('users').doc(targetUid).delete();
+    return { ok: true };
 });

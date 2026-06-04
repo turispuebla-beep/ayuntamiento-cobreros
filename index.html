@@ -16,93 +16,105 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="Cobreros">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="format-detection" content="telephone=no">
     <link rel="apple-touch-icon" href="images/escudo-cobreros-192.png">
+    <!-- PWA en iOS / Safari: añadir a pantalla de inicio. Huawei/HarmonyOS: abrir en navegador; datos vía Firestore (sin GMS, FCM nativo puede no estar disponible). -->
     
     <!-- reCAPTCHA v3 -->
     <script src="https://www.google.com/recaptcha/api.js?render=6LeBYM4rAAAAALaDVtPi1H4jWjpj_Ovjf9g8VnT4"></script>
+    <script src="js/push-config.js"></script>
     
-    <!-- Firebase SDK -->
-    <script type="module">
-        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
-        import { getMessaging, getToken, onMessage } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging.js';
-        
-        // Configuración de Firebase
-        const firebaseConfig = {
-            apiKey: "AIzaSyBXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX", // Necesitas tu API key real
-            authDomain: "turisteam-80f1b.firebaseapp.com",
-            projectId: "turisteam-80f1b",
-            storageBucket: "turisteam-80f1b.appspot.com",
-            messagingSenderId: "623846192437",
-            appId: "1:623846192437:web:XXXXXXXXXXXXXXXX" // Necesitas tu App ID real
+    <!-- Firebase SDK compat: una sola app para Firestore (script.js), Auth, Functions y Messaging -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-storage-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-functions-compat.js"></script>
+    <script>
+    (function () {
+        var firebaseConfig = {
+            apiKey: "AIzaSyC7gfaHifIGVMN94mQAGnW6VcA4wVFMZsg",
+            authDomain: "ayuntamiento-de-cobreros.firebaseapp.com",
+            projectId: "ayuntamiento-de-cobreros",
+            storageBucket: "ayuntamiento-de-cobreros.firebasestorage.app",
+            messagingSenderId: "527550932354",
+            appId: "1:527550932354:web:9bd8431defa7c293b1db9b"
         };
-        
-        // Inicializar Firebase
-        const app = initializeApp(firebaseConfig);
-        const messaging = getMessaging(app);
-        
-        // Solicitar permiso para notificaciones
-        async function requestNotificationPermission() {
-            const permission = await Notification.requestPermission();
-            if (permission === 'granted') {
-                console.log('Permiso de notificaciones concedido');
-                return true;
-            } else {
-                console.log('Permiso de notificaciones denegado');
-                return false;
+        if (!firebase.apps.length) {
+            firebase.initializeApp(firebaseConfig);
+        }
+        try {
+            firebase.firestore().enablePersistence({ synchronizeTabs: true }).catch(function () {});
+        } catch (e) {}
+        function showCustomNotification(title, body) {
+            if (typeof Notification !== "undefined" && Notification.permission === "granted") {
+                new Notification(title, {
+                    body: body,
+                    icon: "images/escudo-cobreros-192.png",
+                    badge: "images/escudo-cobreros-192.png"
+                });
             }
         }
-        
-        // Obtener token de FCM
+        async function requestNotificationPermission() {
+            if (typeof Notification === "undefined") return false;
+            var permission = await Notification.requestPermission();
+            return permission === "granted";
+        }
+        var VAPID_KEY =
+            typeof window.__FIREBASE_VAPID_PUBLIC_KEY__ === "string" &&
+            window.__FIREBASE_VAPID_PUBLIC_KEY__.length > 40
+                ? window.__FIREBASE_VAPID_PUBLIC_KEY__
+                : "";
         async function getFCMToken() {
             try {
-                const token = await getToken(messaging, {
-                    vapidKey: 'TU_VAPID_KEY_AQUI' // Necesitas generar una VAPID key
+                if (!firebase.messaging.isSupported || !firebase.messaging.isSupported()) {
+                    return null;
+                }
+                if (!VAPID_KEY) {
+                    console.warn(
+                        "Clave VAPID: revisa js/push-config.js e importa el par en Firebase (Cloud Messaging → certificados push web)."
+                    );
+                    return null;
+                }
+                var messaging = firebase.messaging();
+                var swReg = null;
+                if ("serviceWorker" in navigator) {
+                    swReg = await navigator.serviceWorker.register("/sw.js");
+                    await navigator.serviceWorker.ready;
+                }
+                return await messaging.getToken({
+                    vapidKey: VAPID_KEY,
+                    serviceWorkerRegistration: swReg || undefined
                 });
-                console.log('FCM Token:', token);
-                return token;
             } catch (error) {
-                console.error('Error obteniendo token:', error);
+                console.error("Error obteniendo token FCM:", error);
                 return null;
             }
         }
-        
-        // Escuchar mensajes en primer plano
-        onMessage(messaging, (payload) => {
-            console.log('Mensaje recibido:', payload);
-            // Mostrar notificación personalizada
-            if (payload.notification) {
-                showCustomNotification(payload.notification.title, payload.notification.body);
-            }
-        });
-        
-        // Función para mostrar notificación personalizada
-        function showCustomNotification(title, body) {
-            if (Notification.permission === 'granted') {
-                new Notification(title, {
-                    body: body,
-                    icon: 'images/escudo-cobreros.png',
-                    badge: 'images/escudo-cobreros.png'
-                });
-            }
-        }
-        
-        // Inicializar cuando se carga la página
-        window.addEventListener('load', async () => {
-            const hasPermission = await requestNotificationPermission();
-            if (hasPermission) {
-                const token = await getFCMToken();
+        window.addEventListener("load", async function () {
+            try {
+                if (firebase.messaging.isSupported && firebase.messaging.isSupported()) {
+                    firebase.messaging().onMessage(function (payload) {
+                        if (payload && payload.notification) {
+                            showCustomNotification(payload.notification.title, payload.notification.body);
+                        }
+                    });
+                }
+            } catch (e) {}
+            var granted = await requestNotificationPermission();
+            if (granted) {
+                var token = await getFCMToken();
                 if (token) {
-                    // Guardar token para enviar notificaciones
-                    localStorage.setItem('fcmToken', token);
-                    console.log('Token guardado para notificaciones');
+                    try { localStorage.setItem("fcmToken", token); } catch (x) {}
                 }
             }
         });
-        
-        // Hacer funciones globales
         window.requestNotificationPermission = requestNotificationPermission;
         window.getFCMToken = getFCMToken;
         window.showCustomNotification = showCustomNotification;
+    })();
     </script>
 </head>
 <body>
@@ -428,6 +440,11 @@
 
     </main>
 
+    <button class="whatsapp-share-floating" onclick="shareOnWhatsApp()" title="Compartir por WhatsApp">
+        <i class="fab fa-whatsapp"></i>
+        <span>Compartir</span>
+    </button>
+
     <!-- Footer -->
     <footer class="footer">
         <div class="container">
@@ -661,7 +678,6 @@
                 <button class="tab-btn" data-tab="notifications">Notificaciones</button>
                 <button class="tab-btn" data-tab="database">Base de Datos</button>
                 <button class="tab-btn" data-tab="backup">Backup & Persistencia</button>
-                <button class="tab-btn" data-tab="cultura-ocio">Cultura y Ocio</button>
                 <button class="tab-btn" data-tab="settings">Configuración</button>
                 <button class="tab-btn" data-tab="servicios">Datos y Enlaces</button>
             </div>
@@ -780,6 +796,43 @@
                             </div>
                             <button class="btn btn-primary" onclick="updateAppointmentMode()">
                                 <i class="fas fa-save"></i> Guardar Configuración
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="admin-section">
+                        <h4>Disponibilidad de Agenda (Cita Previa)</h4>
+                        <div class="appointment-settings">
+                            <div class="form-group">
+                                <label>Días con cita previa:</label>
+                                <div class="availability-days">
+                                    <label><input type="checkbox" id="day-1"> Lunes</label>
+                                    <label><input type="checkbox" id="day-2"> Martes</label>
+                                    <label><input type="checkbox" id="day-3"> Miércoles</label>
+                                    <label><input type="checkbox" id="day-4"> Jueves</label>
+                                    <label><input type="checkbox" id="day-5"> Viernes</label>
+                                    <label><input type="checkbox" id="day-6"> Sábado</label>
+                                    <label><input type="checkbox" id="day-0"> Domingo</label>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label for="appointmentTimeSlotsInput">Horas disponibles (formato 24h, separadas por coma):</label>
+                                <input type="text" id="appointmentTimeSlotsInput" placeholder="09:00,10:00,11:00,12:00,16:00">
+                            </div>
+                            <div class="form-group">
+                                <label for="appointmentSlotCapacityInput">Cupo por franja (personas por hora):</label>
+                                <input type="number" id="appointmentSlotCapacityInput" min="1" value="1">
+                            </div>
+                            <div class="form-group">
+                                <label for="appointmentHolidaysInput">Festivos (YYYY-MM-DD, separados por coma):</label>
+                                <textarea id="appointmentHolidaysInput" rows="2" placeholder="2026-01-01,2026-12-25"></textarea>
+                            </div>
+                            <div class="form-group">
+                                <label for="appointmentExceptionsInput">Excepciones por día (JSON):</label>
+                                <textarea id="appointmentExceptionsInput" rows="4" placeholder='[{"date":"2026-05-01","enabled":false},{"date":"2026-05-15","timeSlots":["09:00","10:00"],"capacityBySlot":{"09:00":2}}]'></textarea>
+                            </div>
+                            <button class="btn btn-primary" onclick="saveAppointmentAvailabilitySettings()">
+                                <i class="fas fa-save"></i> Guardar Horarios y Días
                             </button>
                         </div>
                     </div>
@@ -925,17 +978,20 @@
                 <!-- Notifications Tab -->
                 <div id="notifications-tab" class="tab-content">
                     <h3>📱 Enviar Notificación</h3>
+                    <p style="margin-bottom: 1rem; color: var(--text-secondary);">
+                        Flujo recomendado: <strong>Paso 1</strong> título, <strong>Paso 2</strong> descripción, <strong>Paso 3</strong> PDF opcional descargable.
+                    </p>
                     
                     <!-- Formulario Principal de Notificación -->
                     <div class="admin-section">
                         <form id="notificationForm">
                             <div class="form-group">
-                                <label for="notifTitle">Título de la notificación:</label>
+                                <label for="notifTitle">Paso 1 - Título de la notificación (obligatorio):</label>
                                 <input type="text" id="notifTitle" name="title" placeholder="Ej: Nuevo bando municipal" required>
                             </div>
                             
                             <div class="form-group">
-                                <label for="notifMessage">Mensaje (opcional):</label>
+                                <label for="notifMessage">Paso 2 - Descripción del aviso (obligatoria):</label>
                                 <textarea id="notifMessage" name="message" rows="3" placeholder="Información adicional sobre la notificación..."></textarea>
                             </div>
                             
@@ -954,7 +1010,7 @@
                             </div>
                             
                             <div class="form-group">
-                                <label for="notifAttachment">Documento adjunto (opcional):</label>
+                                <label for="notifAttachment">Paso 3 - PDF o documento adjunto (opcional, descargable):</label>
                                 <input type="file" id="notifAttachment" name="attachment" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png">
                                 <small>Formatos permitidos: PDF, DOC, DOCX, JPG, PNG</small>
                             </div>
@@ -1062,6 +1118,12 @@
                     
                     <div class="admin-section">
                         <h4>📋 Historial de Notificaciones</h4>
+                        <div style="display: flex; gap: 0.5rem; align-items: center; margin-bottom: 0.75rem; flex-wrap: wrap;">
+                            <button class="btn btn-outline btn-sm" onclick="migrateNotificationsFromAdmin()">
+                                <i class="fas fa-database"></i> Migrar notificaciones antiguas
+                            </button>
+                            <span id="notificationMigrationResult" style="font-size: 0.85rem; color: var(--text-secondary);"></span>
+                        </div>
                         <div class="notifications-history" id="notificationsHistory">
                             <!-- Se cargará dinámicamente -->
                         </div>

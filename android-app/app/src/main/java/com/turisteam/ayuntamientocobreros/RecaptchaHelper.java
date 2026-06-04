@@ -24,7 +24,7 @@ public class RecaptchaHelper {
     private static final String RECAPTCHA_SITE_KEY = "6LeBYM4rAAAAALaDVtPi1H4jWjpj_Ovjf9g8VnT4";
     
     // URL para validar reCAPTCHA (Firebase Function o tu backend)
-    private static final String VALIDATION_URL = "https://us-central1-turisteam-80f1b.cloudfunctions.net/validateRecaptcha";
+    private static final String VALIDATION_URL = "https://us-central1-ayuntamiento-de-cobreros.cloudfunctions.net/validateRecaptcha";
     
     // Puntuación mínima para considerar válido
     private static final double MIN_SCORE = 0.5;

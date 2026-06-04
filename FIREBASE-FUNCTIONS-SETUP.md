@@ -22,7 +22,7 @@ firebase login
 firebase init functions
 
 # Seleccionar:
-# - Use an existing project: turisteam-80f1b
+# - Use an existing project: ayuntamiento-de-cobreros
 # - Language: JavaScript
 # - ESLint: No (opcional)
 # - Install dependencies: Yes
@@ -31,10 +31,12 @@ firebase init functions
 ### **3. 📁 Estructura de Archivos**
 
 ```
-firebase-functions/
-├── index.js              # Funciones principales
-├── package.json          # Dependencias
-└── .firebaserc          # Configuración del proyecto
+(raíz ayuntamiento-cobreros)
+├── firebase.json         # Apunta "functions" → firebase-functions/
+├── .firebaserc           # Proyecto default ayuntamiento-de-cobreros
+└── firebase-functions/
+    ├── index.js          # Funciones principales
+    └── package.json      # Dependencias
 ```
 
 ### **4. ⚙️ Configurar Variables de Entorno**
@@ -50,11 +52,10 @@ firebase functions:config:get
 ### **5. 🚀 Desplegar Functions**
 
 ```bash
-# Ir a la carpeta de functions
+# Desde la raíz del repo (donde están firebase.json y .firebaserc)
 cd firebase-functions
-
-# Instalar dependencias
 npm install
+cd ..
 
 # Desplegar todas las functions
 firebase deploy --only functions
@@ -69,10 +70,10 @@ Después del despliegue, tendrás estas URLs:
 
 ```
 📍 validateRecaptcha:
-https://us-central1-turisteam-80f1b.cloudfunctions.net/validateRecaptcha
+https://us-central1-ayuntamiento-de-cobreros.cloudfunctions.net/validateRecaptcha
 
 📍 getRecaptchaStats:
-https://us-central1-turisteam-80f1b.cloudfunctions.net/getRecaptchaStats
+https://us-central1-ayuntamiento-de-cobreros.cloudfunctions.net/getRecaptchaStats
 
 📍 cleanupRecaptchaLogs:
 Función automática (ejecuta diariamente)
@@ -83,7 +84,7 @@ Función automática (ejecuta diariamente)
 #### **Probar validateRecaptcha:**
 ```bash
 curl -X POST \
-  https://us-central1-turisteam-80f1b.cloudfunctions.net/validateRecaptcha \
+  https://us-central1-ayuntamiento-de-cobreros.cloudfunctions.net/validateRecaptcha \
   -H "Content-Type: application/json" \
   -d '{
     "token": "TOKEN_DE_RECAPTCHA_AQUI",
@@ -94,7 +95,7 @@ curl -X POST \
 #### **Probar getRecaptchaStats:**
 ```bash
 curl -X GET \
-  https://us-central1-turisteam-80f1b.cloudfunctions.net/getRecaptchaStats
+  https://us-central1-ayuntamiento-de-cobreros.cloudfunctions.net/getRecaptchaStats
 ```
 
 ### **8. 📊 Monitoreo y Logs**
@@ -107,7 +108,7 @@ firebase functions:log
 firebase functions:log --only validateRecaptcha
 
 # Ver logs en Firebase Console
-# https://console.firebase.google.com/project/turisteam-80f1b/functions/logs
+# https://console.firebase.google.com/project/ayuntamiento-de-cobreros/functions/logs
 ```
 
 ### **9. 🔧 Configuración Adicional**
@@ -117,13 +118,13 @@ firebase functions:log --only validateRecaptcha
 **En `js/recaptcha.js`:**
 ```javascript
 // Actualizar URL de validación
-const VALIDATION_URL = 'https://us-central1-turisteam-80f1b.cloudfunctions.net/validateRecaptcha';
+const VALIDATION_URL = 'https://us-central1-ayuntamiento-de-cobreros.cloudfunctions.net/validateRecaptcha';
 ```
 
 **En `RecaptchaHelper.java`:**
 ```java
 // Actualizar URL de validación
-private static final String VALIDATION_URL = "https://us-central1-turisteam-80f1b.cloudfunctions.net/validateRecaptcha";
+private static final String VALIDATION_URL = "https://us-central1-ayuntamiento-de-cobreros.cloudfunctions.net/validateRecaptcha";
 ```
 
 ### **10. 🛡️ Seguridad**
@@ -164,7 +165,7 @@ firebase login --reauth
 
 # Verificar proyecto activo
 firebase use --list
-firebase use turisteam-80f1b
+firebase use ayuntamiento-de-cobreros
 ```
 
 ### **12. 💰 Costos**
