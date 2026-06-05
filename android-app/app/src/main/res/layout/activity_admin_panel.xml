@@ -28,19 +28,30 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="🏛️ Panel de Administración"
+                android:text="📢 Avisos a vecinos"
                 android:textSize="20sp"
                 android:textStyle="bold"
                 android:textColor="@color/ayuntamiento_blue"
                 android:layout_marginTop="12dp" />
 
             <TextView
+                android:id="@+id/adminNameTextView"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Enviar Notificaciones desde APK"
-                android:textSize="16sp"
+                android:text="Conectando..."
+                android:textSize="14sp"
                 android:textColor="@color/ayuntamiento_blue"
                 android:layout_marginTop="8dp" />
+
+            <Button
+                android:id="@+id/logoutButton"
+                android:layout_width="wrap_content"
+                android:layout_height="40dp"
+                android:layout_marginTop="12dp"
+                android:text="Cerrar sesión"
+                android:textSize="13sp"
+                android:background="@drawable/button_outline_ayuntamiento"
+                android:textColor="@color/ayuntamiento_blue" />
 
         </LinearLayout>
 
@@ -96,11 +107,86 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="📢 Nueva Notificación"
+                    android:text="📢 Nuevo aviso"
                     android:textSize="18sp"
                     android:textStyle="bold"
                     android:textColor="@color/ayuntamiento_blue"
-                    android:layout_marginBottom="16dp" />
+                    android:layout_marginBottom="12dp" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Plantillas rápidas:"
+                    android:textSize="14sp"
+                    android:textColor="@color/ayuntamiento_blue"
+                    android:layout_marginBottom="8dp" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:layout_marginBottom="16dp">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal">
+
+                        <Button
+                            android:id="@+id/presetAguaButton"
+                            android:layout_width="0dp"
+                            android:layout_height="40dp"
+                            android:layout_weight="1"
+                            android:layout_marginEnd="4dp"
+                            android:text="🚰 Agua"
+                            android:textSize="11sp"
+                            android:background="@drawable/button_outline_ayuntamiento"
+                            android:textColor="@color/ayuntamiento_blue" />
+
+                        <Button
+                            android:id="@+id/presetCarreteraButton"
+                            android:layout_width="0dp"
+                            android:layout_height="40dp"
+                            android:layout_weight="1"
+                            android:layout_marginStart="4dp"
+                            android:text="🚧 Carretera"
+                            android:textSize="11sp"
+                            android:background="@drawable/button_outline_ayuntamiento"
+                            android:textColor="@color/ayuntamiento_blue" />
+
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:layout_marginTop="8dp">
+
+                        <Button
+                            android:id="@+id/presetObrasButton"
+                            android:layout_width="0dp"
+                            android:layout_height="40dp"
+                            android:layout_weight="1"
+                            android:layout_marginEnd="4dp"
+                            android:text="🔧 Obras"
+                            android:textSize="11sp"
+                            android:background="@drawable/button_outline_ayuntamiento"
+                            android:textColor="@color/ayuntamiento_blue" />
+
+                        <Button
+                            android:id="@+id/presetEmergenciaButton"
+                            android:layout_width="0dp"
+                            android:layout_height="40dp"
+                            android:layout_weight="1"
+                            android:layout_marginStart="4dp"
+                            android:text="🚨 Urgente"
+                            android:textSize="11sp"
+                            android:background="@drawable/button_outline_ayuntamiento"
+                            android:textColor="@color/ayuntamiento_blue" />
+
+                    </LinearLayout>
+
+                </LinearLayout>
 
                 <!-- Título -->
                 <com.google.android.material.textfield.TextInputLayout
@@ -240,12 +326,37 @@
 
         </androidx.cardview.widget.CardView>
 
+        <androidx.cardview.widget.CardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="16dp"
+            app:cardCornerRadius="12dp"
+            app:cardElevation="4dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="16dp">
+
+                <CheckBox
+                    android:id="@+id/bannerCheckBox"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Mostrar también en el banner de la web/PWA"
+                    android:textColor="@color/ayuntamiento_blue"
+                    android:checked="true" />
+
+            </LinearLayout>
+
+        </androidx.cardview.widget.CardView>
+
         <!-- Botón de envío -->
         <Button
             android:id="@+id/enviarButton"
             android:layout_width="match_parent"
             android:layout_height="56dp"
-            android:text="📤 Enviar Notificación"
+            android:text="📤 Enviar aviso a vecinos"
             android:textSize="18sp"
             android:textStyle="bold"
             android:background="@drawable/button_ayuntamiento"

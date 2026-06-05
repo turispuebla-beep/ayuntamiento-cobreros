@@ -99,10 +99,9 @@ public class NotificationDetailActivity extends AppCompatActivity {
             shareButton.setVisibility(View.VISIBLE);
             
             // Cargar imagen si es un archivo de imagen
-            if (attachmentType != null && attachmentType.startsWith("image/")) {
+            if (isImageAttachment(attachmentUrl, attachmentType)) {
                 loadAttachmentImage(attachmentUrl);
             } else {
-                // Mostrar icono genérico para otros tipos de archivo
                 attachmentImageView.setImageResource(R.drawable.ic_attachment);
             }
         } else {
@@ -164,6 +163,18 @@ public class NotificationDetailActivity extends AppCompatActivity {
         }
     }
     
+    private boolean isImageAttachment(String url, String type) {
+        if (type != null && (type.startsWith("image/") || "image".equalsIgnoreCase(type))) {
+            return true;
+        }
+        if (url == null) {
+            return false;
+        }
+        String lower = url.toLowerCase();
+        return lower.endsWith(".jpg") || lower.endsWith(".jpeg")
+                || lower.endsWith(".png") || lower.endsWith(".webp") || lower.endsWith(".gif");
+    }
+
     private void shareNotification() {
         try {
             Intent shareIntent = new Intent(Intent.ACTION_SEND);

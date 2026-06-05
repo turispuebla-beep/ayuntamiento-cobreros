@@ -48,13 +48,17 @@ firebase apps:sdkconfig ANDROID 1:527550932354:android:d80d0845b64d6626b1db9b --
 compilar_apk.bat
 ```
 
-## 5. Netlify
+## 5. Netlify (PWA en producción)
 
-Copiar a carpeta de despliegue y subir:
+Guía completa: **`NETLIFY-PASO-A-PASO.md`**
 
 ```bat
 sync-netlify.bat
+desplegar-netlify.bat
 ```
+
+Dominios en Firebase → Authentication → **Authorized domains**:  
+`ayuntamiento-cobreros.netlify.app`, `www.ayuntamientocobreros.es`
 
 ## 6. Probar push
 

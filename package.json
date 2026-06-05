@@ -489,7 +489,9 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "icons": "node scripts/generate-pwa-icons.mjs",
-    "prep-netlify": "node scripts/generate-pwa-icons.mjs"
+    "prep-netlify": "node scripts/generate-pwa-icons.mjs",
+    "sync-netlify": "cmd /c sync-netlify.bat",
+    "deploy:netlify": "cmd /c sync-netlify.bat && cd ayuntamiento-cobreros-netlify && npx --yes netlify-cli@17 deploy --prod --dir=."
   },
   "repository": {
     "type": "git",

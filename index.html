@@ -32,90 +32,8 @@
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-storage-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-functions-compat.js"></script>
-    <script>
-    (function () {
-        var firebaseConfig = {
-            apiKey: "AIzaSyC7gfaHifIGVMN94mQAGnW6VcA4wVFMZsg",
-            authDomain: "ayuntamiento-de-cobreros.firebaseapp.com",
-            projectId: "ayuntamiento-de-cobreros",
-            storageBucket: "ayuntamiento-de-cobreros.firebasestorage.app",
-            messagingSenderId: "527550932354",
-            appId: "1:527550932354:web:9bd8431defa7c293b1db9b"
-        };
-        if (!firebase.apps.length) {
-            firebase.initializeApp(firebaseConfig);
-        }
-        try {
-            firebase.firestore().enablePersistence({ synchronizeTabs: true }).catch(function () {});
-        } catch (e) {}
-        function showCustomNotification(title, body) {
-            if (typeof Notification !== "undefined" && Notification.permission === "granted") {
-                new Notification(title, {
-                    body: body,
-                    icon: "images/escudo-cobreros-192.png",
-                    badge: "images/escudo-cobreros-192.png"
-                });
-            }
-        }
-        async function requestNotificationPermission() {
-            if (typeof Notification === "undefined") return false;
-            var permission = await Notification.requestPermission();
-            return permission === "granted";
-        }
-        var VAPID_KEY =
-            typeof window.__FIREBASE_VAPID_PUBLIC_KEY__ === "string" &&
-            window.__FIREBASE_VAPID_PUBLIC_KEY__.length > 40
-                ? window.__FIREBASE_VAPID_PUBLIC_KEY__
-                : "";
-        async function getFCMToken() {
-            try {
-                if (!firebase.messaging.isSupported || !firebase.messaging.isSupported()) {
-                    return null;
-                }
-                if (!VAPID_KEY) {
-                    console.warn(
-                        "Clave VAPID: revisa js/push-config.js e importa el par en Firebase (Cloud Messaging → certificados push web)."
-                    );
-                    return null;
-                }
-                var messaging = firebase.messaging();
-                var swReg = null;
-                if ("serviceWorker" in navigator) {
-                    swReg = await navigator.serviceWorker.register("/sw.js");
-                    await navigator.serviceWorker.ready;
-                }
-                return await messaging.getToken({
-                    vapidKey: VAPID_KEY,
-                    serviceWorkerRegistration: swReg || undefined
-                });
-            } catch (error) {
-                console.error("Error obteniendo token FCM:", error);
-                return null;
-            }
-        }
-        window.addEventListener("load", async function () {
-            try {
-                if (firebase.messaging.isSupported && firebase.messaging.isSupported()) {
-                    firebase.messaging().onMessage(function (payload) {
-                        if (payload && payload.notification) {
-                            showCustomNotification(payload.notification.title, payload.notification.body);
-                        }
-                    });
-                }
-            } catch (e) {}
-            var granted = await requestNotificationPermission();
-            if (granted) {
-                var token = await getFCMToken();
-                if (token) {
-                    try { localStorage.setItem("fcmToken", token); } catch (x) {}
-                }
-            }
-        });
-        window.requestNotificationPermission = requestNotificationPermission;
-        window.getFCMToken = getFCMToken;
-        window.showCustomNotification = showCustomNotification;
-    })();
-    </script>
+    <script src="js/firebase-config.generated.js"></script>
+    <script src="js/firebase-bootstrap.js"></script>
 </head>
 <body>
     <!-- Header -->
@@ -151,6 +69,7 @@
                     </ul>
                 </nav>
                 <div class="header-actions">
+                    <button class="btn btn-outline" id="myLocalitiesBtn" style="display: none;" title="Ver o cambiar mis localidades">📍 Mis localidades</button>
                     <button class="btn btn-outline" id="loginBtn">Iniciar Sesión</button>
                     <button class="btn btn-primary" id="registerBtn">Registrarse</button>
                     <button class="btn btn-secondary" id="adminBtn" style="display: none;">Panel Admin</button>
@@ -179,7 +98,17 @@
                             <i class="fas fa-bullhorn"></i>
                             Ver Anuncios
                         </button>
+                        <button type="button" class="btn btn-outline btn-large apk-vecinos-android-only" onclick="downloadVecinosApk()" title="App Android para recibir avisos">
+                            <i class="fab fa-android"></i>
+                            App Android (avisos)
+                        </button>
                     </div>
+                    <p class="apk-download-hint apk-vecinos-android-only" style="margin-top: 1rem; font-size: 0.9rem; opacity: 0.9;">
+                        ¿Prefieres no usar la web? Descarga <strong>Cobreros Vecinos</strong> para recibir avisos con sonido.
+                    </p>
+                    <p class="apk-download-hint apk-vecinos-ios-hint" style="display:none; margin-top: 1rem; font-size: 0.9rem; opacity: 0.9;">
+                        En iPhone: regístrate y añade esta web a la pantalla de inicio (PWA) para recibir avisos.
+                    </p>
                 </div>
             </div>
         </section>
@@ -1277,6 +1206,43 @@
                         </div>
                     </div>
                     
+                    <div class="admin-section admin-apk-avisos-section" id="adminApkAvisosSection">
+                        <h4>📲 App Cobreros Avisos (solo personal autorizado)</h4>
+                        <p style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 1rem;">
+                            Para alguaciles y personal que <strong>envían</strong> avisos. No es pública: solo visible aquí, en el panel de administración.
+                        </p>
+                        <div style="display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1rem;">
+                            <button type="button" class="btn btn-primary" onclick="downloadAvisosApkAdmin()">
+                                <i class="fas fa-download"></i> Descargar APK en este dispositivo
+                            </button>
+                        </div>
+                        <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 0.75rem;">
+                            <strong>Enviar a otro móvil:</strong> comparte las instrucciones por SMS, WhatsApp o email. La otra persona debe entrar como administrador y descargar desde este panel.
+                        </p>
+                        <div class="form-group">
+                            <label for="avisosApkSharePhone">Móvil (opcional, con prefijo país):</label>
+                            <input type="tel" id="avisosApkSharePhone" placeholder="34600123456" autocomplete="off">
+                        </div>
+                        <div class="form-group">
+                            <label for="avisosApkShareEmail">Email (opcional):</label>
+                            <input type="email" id="avisosApkShareEmail" placeholder="personal@ejemplo.es" autocomplete="off">
+                        </div>
+                        <div style="display: flex; flex-wrap: wrap; gap: 0.5rem;">
+                            <button type="button" class="btn btn-outline" onclick="shareAvisosApkViaSms()">
+                                <i class="fas fa-sms"></i> SMS
+                            </button>
+                            <button type="button" class="btn btn-outline" onclick="shareAvisosApkViaWhatsApp()">
+                                <i class="fab fa-whatsapp"></i> WhatsApp
+                            </button>
+                            <button type="button" class="btn btn-outline" onclick="shareAvisosApkViaEmail()">
+                                <i class="fas fa-envelope"></i> Email
+                            </button>
+                        </div>
+                        <p style="font-size: 0.8rem; color: #64748b; margin-top: 0.75rem;">
+                            La APK de avisos debe estar en Firebase Storage: <code>private/cobreros-avisos.apk</code>
+                        </p>
+                    </div>
+
                     <div class="admin-section">
                         <h4>Escudo del Ayuntamiento</h4>
                         <form id="logoForm">
@@ -1419,6 +1385,10 @@
             </div>
             <div id="receivedNotificationsList" class="notifications-list" style="display: none;">
                 <!-- Las notificaciones recibidas se cargarán dinámicamente -->
+            </div>
+            <div class="apk-vecinos-promo" style="margin-top: 1rem; padding: 0.75rem; background: #f0f9ff; border-radius: 8px; font-size: 0.85rem;">
+                <strong>📱 App Android</strong> — Recibe avisos con sonido sin depender del navegador.
+                <button type="button" class="btn btn-small btn-primary apk-vecinos-android-only" style="margin-top: 0.5rem;" onclick="downloadVecinosApk()">Descargar Cobreros Vecinos</button>
             </div>
         </div>
     </div>
@@ -2290,11 +2260,45 @@
                             </label>
                         </div>
                     </div>
+                    <div class="form-group" style="border-top: 1px solid #e5e7eb; padding-top: 1rem; margin-top: 0.5rem;">
+                        <h4 style="margin: 0 0 0.75rem 0;">📱 Notificación push (opcional)</h4>
+                        <div class="checkbox-group">
+                            <input type="checkbox" id="publicNotifSendPush" name="sendPush">
+                            <label for="publicNotifSendPush" class="checkbox-label">
+                                Enviar también notificación push a usuarios registrados (PWA)
+                            </label>
+                        </div>
+                        <div id="publicNotifPushOptions" style="display: none; margin-top: 0.75rem;">
+                            <label for="publicNotifPushScope">Alcance del push:</label>
+                            <select id="publicNotifPushScope" class="form-control" onchange="togglePublicNotifPushLocalidades()" style="margin: 0.5rem 0 1rem 0;">
+                                <option value="todos">Todos los usuarios con notificaciones activas</option>
+                                <option value="localidades">Localidades específicas</option>
+                            </select>
+                            <div id="publicNotifPushLocalidades" style="display: none;">
+                                <label>Seleccionar localidades:</label>
+                                <div class="localities-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 0.5rem; margin-top: 0.5rem;">
+                                    <label class="locality-checkbox"><input type="checkbox" name="publicNotifLocalities" value="Cobreros"> Cobreros</label>
+                                    <label class="locality-checkbox"><input type="checkbox" name="publicNotifLocalities" value="Avedillo de Sanabria"> Avedillo de Sanabria</label>
+                                    <label class="locality-checkbox"><input type="checkbox" name="publicNotifLocalities" value="Barrio de Lomba"> Barrio de Lomba</label>
+                                    <label class="locality-checkbox"><input type="checkbox" name="publicNotifLocalities" value="Castro de Sanabria"> Castro de Sanabria</label>
+                                    <label class="locality-checkbox"><input type="checkbox" name="publicNotifLocalities" value="Limianos"> Limianos</label>
+                                    <label class="locality-checkbox"><input type="checkbox" name="publicNotifLocalities" value="Quintana de Sanabria"> Quintana de Sanabria</label>
+                                    <label class="locality-checkbox"><input type="checkbox" name="publicNotifLocalities" value="Riego de Lomba"> Riego de Lomba</label>
+                                    <label class="locality-checkbox"><input type="checkbox" name="publicNotifLocalities" value="San Martín del Terroso"> San Martín del Terroso</label>
+                                    <label class="locality-checkbox"><input type="checkbox" name="publicNotifLocalities" value="San Miguel de Lomba"> San Miguel de Lomba</label>
+                                    <label class="locality-checkbox"><input type="checkbox" name="publicNotifLocalities" value="San Román de Sanabria"> San Román de Sanabria</label>
+                                    <label class="locality-checkbox"><input type="checkbox" name="publicNotifLocalities" value="Santa Colomba"> Santa Colomba</label>
+                                    <label class="locality-checkbox"><input type="checkbox" name="publicNotifLocalities" value="Sotillo"> Sotillo</label>
+                                    <label class="locality-checkbox"><input type="checkbox" name="publicNotifLocalities" value="Terroso"> Terroso</label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </form>
             </div>
             <div class="modal-footer">
                 <button class="btn btn-outline" onclick="closePublicNotificationModal()">Cancelar</button>
-                <button class="btn btn-primary" onclick="savePublicNotification()">Guardar Notificación</button>
+                <button class="btn btn-primary" onclick="savePublicNotification()">Guardar y publicar</button>
             </div>
         </div>
     </div>
@@ -3096,8 +3100,32 @@
     <div class="floating-desktop-info desktop-only" id="desktopAppInfo">
         <button class="close-floating-info" onclick="closeDesktopInfo()" title="Cerrar">×</button>
         <div class="floating-content">
-            <h4>📱 App COBREROS</h4>
-            <p>Regístrate desde tu móvil y descarga la app para notificaciones oficiales</p>
+            <h4>📱 App COBREROS Vecinos</h4>
+            <p>Regístrate y descarga la app Android para recibir avisos del ayuntamiento (o usa la PWA en iPhone)</p>
+            <button type="button" class="btn btn-small btn-primary apk-vecinos-android-only" onclick="downloadVecinosApk()" style="margin-top: 0.5rem;">Descargar APK</button>
+        </div>
+    </div>
+
+    <!-- Mis localidades (usuario) / edición admin -->
+    <div id="userLocalitiesModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeUserLocalitiesModal()">&times;</span>
+            <h2 id="userLocalitiesModalTitle">Mis localidades</h2>
+            <p id="userLocalitiesModalSubtitle" style="color: #64748b; margin-bottom: 1rem;">
+                Recibirá avisos generales y los específicos de los pueblos que marque.
+            </p>
+            <input type="hidden" id="userLocalitiesEditUid" value="">
+            <div class="form-group">
+                <div class="localities-controls" style="margin-bottom: 0.75rem; display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                    <button type="button" class="btn btn-outline btn-small" onclick="selectAllUserLocalitiesCheckboxes()">Seleccionar todas</button>
+                    <button type="button" class="btn btn-outline btn-small" onclick="deselectAllUserLocalitiesCheckboxes()">Quitar todas</button>
+                </div>
+                <div id="userLocalitiesGrid" class="localities-grid"></div>
+            </div>
+            <div class="modal-footer" style="margin-top: 1rem; display: flex; gap: 0.5rem; justify-content: flex-end;">
+                <button type="button" class="btn btn-outline" onclick="closeUserLocalitiesModal()">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="saveUserLocalitiesFromModal()">Guardar localidades</button>
+            </div>
         </div>
     </div>
 

@@ -11,10 +11,22 @@ android {
         applicationId "com.turisteam.ayuntamientocobreros"
         minSdk 21
         targetSdk 34
-        versionCode 1
-        versionName "1.0"
+        versionCode 3
+        versionName "3.0"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    flavorDimensions "role"
+    productFlavors {
+        avisos {
+            dimension "role"
+            resValue "string", "app_name", "Cobreros Avisos"
+        }
+        vecinos {
+            dimension "role"
+            resValue "string", "app_name", "Cobreros Vecinos"
+        }
     }
 
     buildTypes {
@@ -34,6 +46,7 @@ dependencies {
     implementation 'androidx.appcompat:appcompat:1.6.1'
     implementation 'com.google.android.material:material:1.10.0'
     implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
+    implementation 'androidx.cardview:cardview:1.0.0'
     
     // Firebase
     implementation platform('com.google.firebase:firebase-bom:32.7.0')

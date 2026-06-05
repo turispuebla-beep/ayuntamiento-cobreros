@@ -1,23 +1,19 @@
 // Service Worker — PWA Ayuntamiento de Cobreros (cache + FCM en segundo plano)
 importScripts('https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js');
 importScripts('https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging-compat.js');
+importScripts('/js/firebase-config.generated.js');
 
-const FIREBASE_CONFIG = {
-  apiKey: 'AIzaSyC7gfaHifIGVMN94mQAGnW6VcA4wVFMZsg',
-  authDomain: 'ayuntamiento-de-cobreros.firebaseapp.com',
-  projectId: 'ayuntamiento-de-cobreros',
-  storageBucket: 'ayuntamiento-de-cobreros.firebasestorage.app',
-  messagingSenderId: '527550932354',
-  appId: '1:527550932354:web:9bd8431defa7c293b1db9b'
-};
-
-if (!firebase.apps.length) {
+var FIREBASE_CONFIG = self.FIREBASE_CONFIG || self.__FIREBASE_CONFIG__;
+if (!FIREBASE_CONFIG || !FIREBASE_CONFIG.apiKey) {
+  console.error('Service Worker: falta /js/firebase-config.generated.js (build Netlify o inject local).');
+} else if (!firebase.apps.length) {
   firebase.initializeApp(FIREBASE_CONFIG);
 }
 
-const messaging = firebase.messaging();
+if (FIREBASE_CONFIG && FIREBASE_CONFIG.apiKey && firebase.apps.length) {
+  const messaging = firebase.messaging();
 
-messaging.onBackgroundMessage(function (payload) {
+  messaging.onBackgroundMessage(function (payload) {
   const notification = payload.notification || {};
   const data = payload.data || {};
   const title = notification.title || '🏛️ Ayuntamiento de Cobreros';
@@ -35,9 +31,10 @@ messaging.onBackgroundMessage(function (payload) {
       sentFrom: data.source || data.sent_from || 'FCM'
     }
   });
-});
+  });
+}
 
-const CACHE_NAME = 'ayuntamiento-cobreros-v5';
+const CACHE_NAME = 'ayuntamiento-cobreros-v6';
 const urlsToCache = [
   '/',
   '/index.html',
@@ -45,6 +42,8 @@ const urlsToCache = [
   '/js/script.js',
   '/js/push-config.js',
   '/js/recaptcha.js',
+  '/js/firebase-config.generated.js',
+  '/js/firebase-bootstrap.js',
   '/images/escudo-cobreros.jpg',
   '/images/escudo-cobreros.png',
   '/images/escudo-cobreros-192.png',

@@ -1,5 +1,8 @@
 # 🚀 Despliegue en Netlify - Ayuntamiento de Cobreros
 
+> **Guía actualizada (2026):** usa **`NETLIFY-PASO-A-PASO.md`** — Firebase, dominios, PWA y checklist.  
+> Scripts: `sync-netlify.bat` → `desplegar-netlify.bat`
+
 ## 📋 **Archivos a Subir a Netlify:**
 
 ### **✅ Archivos Principales (OBLIGATORIOS):**

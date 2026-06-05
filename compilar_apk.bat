@@ -1,44 +1,51 @@
 @echo off
-echo 📱 Compilando APK - Ayuntamiento de Cobreros
+chcp 65001 >nul
+echo Compilando APKs Cobreros (vecinos + avisos)
 echo ============================================
 
-echo 🔧 Verificando proyecto Android...
+if exist "C:\Program Files\Android\Android Studio\jbr" (
+    set "JAVA_HOME=C:\Program Files\Android\Android Studio\jbr"
+    set "PATH=%JAVA_HOME%\bin;%PATH%"
+)
+
+if not defined ANDROID_HOME (
+    set "ANDROID_HOME=%LOCALAPPDATA%\Android\Sdk"
+)
+if not exist "android-app\local.properties" (
+    echo sdk.dir=%ANDROID_HOME:\=\\%> android-app\local.properties
+)
+
 if not exist "android-app\gradlew.bat" (
-    echo ❌ No se encontró el proyecto Android
-    echo 📁 Asegúrate de estar en la carpeta correcta
-    pause
+    echo No se encontro android-app\gradlew.bat
     exit /b 1
 )
 
-echo ✅ Proyecto Android encontrado
-
-echo 🏗️ Compilando APK...
 cd android-app
+call gradlew.bat assembleVecinosRelease assembleAvisosRelease --no-daemon
+set BUILD_ERR=%errorlevel%
+cd ..
 
-echo 📦 Ejecutando Gradle...
-call gradlew.bat assembleDebug
-
-if %errorlevel% equ 0 (
-    echo ✅ APK compilada exitosamente
-    
-    echo 📱 Copiando APK al escritorio...
-    if exist "app\build\outputs\apk\debug\app-debug.apk" (
-        copy "app\build\outputs\apk\debug\app-debug.apk" "%USERPROFILE%\Desktop\AyuntamientoCobreros.apk"
-        echo ✅ APK copiada al escritorio como: AyuntamientoCobreros.apk
-        echo.
-        echo 🎉 ¡APK lista para instalar!
-        echo 📍 Ubicación: %USERPROFILE%\Desktop\AyuntamientoCobreros.apk
-    ) else (
-        echo ❌ No se encontró la APK compilada
-        echo 📁 Buscando en otras ubicaciones...
-        dir app\build\outputs\apk\ /s /b
-    )
-) else (
-    echo ❌ Error compilando la APK
-    echo 💡 Asegúrate de tener Android Studio y Java configurados
+if not %BUILD_ERR%==0 (
+    echo Error en la compilacion Gradle
+    exit /b 1
 )
 
-cd ..
-echo.
-pause
+if not exist "downloads" mkdir downloads
 
+if exist "android-app\app\build\outputs\apk\vecinos\release\app-vecinos-release.apk" (
+    copy /Y "android-app\app\build\outputs\apk\vecinos\release\app-vecinos-release.apk" "downloads\cobreros-vecinos.apk"
+    echo OK: downloads\cobreros-vecinos.apk
+) else (
+    echo AVISO: no se genero app-vecinos-release.apk
+)
+
+if exist "android-app\app\build\outputs\apk\avisos\release\app-avisos-release.apk" (
+    copy /Y "android-app\app\build\outputs\apk\avisos\release\app-avisos-release.apk" "downloads\cobreros-avisos.apk"
+    echo OK: downloads\cobreros-avisos.apk (subir tambien a Firebase Storage private/cobreros-avisos.apk)
+) else (
+    echo AVISO: no se genero app-avisos-release.apk
+)
+
+echo.
+echo Compilacion terminada.
+exit /b 0

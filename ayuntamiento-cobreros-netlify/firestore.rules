@@ -6,7 +6,7 @@ rules_version = '2';
 // 1) Authentication: crea usuarios con email/contraseña para cada administrador.
 // 2) El primer acceso web con ese email (tras desplegar reglas) puede crear
 //    admins/{uid} solo si el email está en allowlistedAdminEmail() (misma lista en script.js).
-// 3) Super admin local (sin Auth) sigue funcionando en la UI pero no escribirá en Firestore.
+// 3) No hay administradores locales: solo cuentas Firebase Auth con admins/{uid}.isAdmin == true.
 //
 service cloud.firestore {
   match /databases/{database}/documents {

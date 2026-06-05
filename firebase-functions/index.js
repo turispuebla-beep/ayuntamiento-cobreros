@@ -328,26 +328,21 @@ exports.sendPushNotification = functions.https.onRequest(async (req, res) => {
 
         console.log(`📱 Enviando notificación: "${title}"`);
 
-        // Obtener usuarios que han dado consentimiento
+        const localityFilter = Array.isArray(localities)
+            ? localities.map((l) => String(l).trim()).filter(Boolean)
+            : [];
+
         let usersQuery = admin.firestore()
             .collection('users')
             .where('notificationConsent', '==', true)
             .where('fcmToken', '!=', '');
 
-        // Filtrar por localidades si se especifica
-        if (localities && localities.length > 0) {
-            usersQuery = usersQuery.where('localities', 'array-contains-any', localities);
-        }
-
-        const usersSnapshot = await usersQuery.get();
-        
-        if (usersSnapshot.empty) {
-            res.status(200).json({
-                success: true,
-                message: 'No hay usuarios con notificaciones activadas',
-                sent: 0
-            });
-            return;
+        let usersSnapshot;
+        // array-contains-any admite máximo 10 valores; si hay más, filtramos en memoria
+        if (localityFilter.length > 0 && localityFilter.length <= 10) {
+            usersSnapshot = await usersQuery.where('localities', 'array-contains-any', localityFilter).get();
+        } else {
+            usersSnapshot = await usersQuery.get();
         }
 
         const tokens = [];
@@ -355,20 +350,28 @@ exports.sendPushNotification = functions.https.onRequest(async (req, res) => {
 
         usersSnapshot.forEach(doc => {
             const userData = doc.data();
-            if (userData.fcmToken) {
-                tokens.push(userData.fcmToken);
-                users.push({
-                    id: doc.id,
-                    email: userData.email,
-                    fcmToken: userData.fcmToken
-                });
+            if (!userData.fcmToken) {
+                return;
             }
+            if (localityFilter.length > 0) {
+                const userLocs = Array.isArray(userData.localities) ? userData.localities : [];
+                const matches = userLocs.some((loc) => localityFilter.includes(loc));
+                if (!matches) {
+                    return;
+                }
+            }
+            tokens.push(userData.fcmToken);
+            users.push({
+                id: doc.id,
+                email: userData.email,
+                fcmToken: userData.fcmToken
+            });
         });
 
         if (tokens.length === 0) {
             res.status(200).json({
                 success: true,
-                message: 'No hay tokens FCM válidos',
+                message: 'No hay usuarios con notificaciones activadas para esas localidades',
                 sent: 0
             });
             return;
@@ -383,6 +386,9 @@ exports.sendPushNotification = functions.https.onRequest(async (req, res) => {
             },
             data: {
                 type: type || 'general',
+                title: String(title),
+                message: String(message),
+                localities: localityFilter.join(', '),
                 timestamp: new Date().toISOString(),
                 source: 'ayuntamiento-cobreros'
             },
@@ -433,8 +439,9 @@ exports.sendPushNotification = functions.https.onRequest(async (req, res) => {
                             sentFrom: 'FIREBASE_FUNCTION',
                             sentTo: 'ALL',
                             fcmToken: user.fcmToken,
-                            localities: localities || [],
-                            targetPueblos: localities || []
+                            localities: localityFilter,
+                            targetPueblos: localityFilter,
+                            scope: localityFilter.length > 0 ? 'localidades' : 'general'
                         });
                     }
                 });
@@ -985,9 +992,13 @@ exports.createAppointmentAtomic = functions.https.onRequest(async (req, res) => 
 
         const created = await db.runTransaction(async (tx) => {
             const configSnap = await tx.get(configRef);
-            const rawAvailability = configSnap.exists
-                ? (configSnap.data()?.appointmentAvailability || {})
-                : {};
+            const configData = configSnap.exists ? configSnap.data() : {};
+            if (configData.appointmentSettings?.enabled === false) {
+                const err = new Error('Citas previas desactivadas');
+                err.code = 'APPOINTMENTS_DISABLED';
+                throw err;
+            }
+            const rawAvailability = configData.appointmentAvailability || {};
             const availability = normalizeServerAvailability(rawAvailability);
 
             if (availability.holidays.includes(date)) {
@@ -1053,7 +1064,7 @@ exports.createAppointmentAtomic = functions.https.onRequest(async (req, res) => 
         res.status(200).json({ success: true, appointment: created });
     } catch (error) {
         const code = error?.code || 'UNKNOWN';
-        const mappedStatus = ['SLOT_FULL', 'DAY_NOT_AVAILABLE', 'TIME_NOT_AVAILABLE', 'HOLIDAY_BLOCKED'].includes(code) ? 409 : 500;
+        const mappedStatus = ['SLOT_FULL', 'DAY_NOT_AVAILABLE', 'TIME_NOT_AVAILABLE', 'HOLIDAY_BLOCKED', 'APPOINTMENTS_DISABLED'].includes(code) ? 409 : 500;
         res.status(mappedStatus).json({
             success: false,
             errorCode: code,
@@ -1190,4 +1201,53 @@ exports.removeEndUser = functions.https.onCall(async (data, context) => {
     }
     await admin.firestore().collection('users').doc(targetUid).delete();
     return { ok: true };
+});
+
+/**
+ * Descarga APK Cobreros Avisos — solo administradores (Bearer).
+ * Subir el archivo a Storage: private/cobreros-avisos.apk
+ */
+exports.downloadAvisosApk = functions.https.onRequest(async (req, res) => {
+    res.set('Access-Control-Allow-Origin', '*');
+    res.set('Access-Control-Allow-Methods', 'GET, OPTIONS');
+    res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+
+    if (req.method === 'OPTIONS') {
+        res.status(204).send('');
+        return;
+    }
+    if (req.method !== 'GET') {
+        res.status(405).json({ error: 'Método no permitido' });
+        return;
+    }
+
+    try {
+        const auth = await getAuthContext(req);
+        await assertAdminByUid(auth.uid);
+
+        const bucket = admin.storage().bucket();
+        const file = bucket.file('private/cobreros-avisos.apk');
+        const [exists] = await file.exists();
+        if (!exists) {
+            res.status(404).json({
+                error: 'APK no encontrada. Sube private/cobreros-avisos.apk en Firebase Storage.'
+            });
+            return;
+        }
+
+        res.setHeader('Content-Type', 'application/vnd.android.package-archive');
+        res.setHeader('Content-Disposition', 'attachment; filename="cobreros-avisos.apk"');
+        file.createReadStream()
+            .on('error', (err) => {
+                console.error('downloadAvisosApk stream:', err);
+                if (!res.headersSent) {
+                    res.status(500).json({ error: 'Error leyendo la APK' });
+                }
+            })
+            .pipe(res);
+    } catch (error) {
+        console.error('downloadAvisosApk:', error);
+        const status = error.status || 500;
+        res.status(status).json({ error: error.message || 'Error interno' });
+    }
 });
