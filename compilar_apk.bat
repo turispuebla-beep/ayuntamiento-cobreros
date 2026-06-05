@@ -32,18 +32,22 @@ if not %BUILD_ERR%==0 (
 
 if not exist "downloads" mkdir downloads
 
-if exist "android-app\app\build\outputs\apk\vecinos\release\app-vecinos-release.apk" (
-    copy /Y "android-app\app\build\outputs\apk\vecinos\release\app-vecinos-release.apk" "downloads\cobreros-vecinos.apk"
+set VECINOS_APK=android-app\app\build\outputs\apk\vecinos\release\app-vecinos-release.apk
+if not exist "%VECINOS_APK%" set VECINOS_APK=android-app\app\build\outputs\apk\vecinos\release\app-vecinos-release-unsigned.apk
+if exist "%VECINOS_APK%" (
+    copy /Y "%VECINOS_APK%" "downloads\cobreros-vecinos.apk"
     echo OK: downloads\cobreros-vecinos.apk
 ) else (
-    echo AVISO: no se genero app-vecinos-release.apk
+    echo AVISO: no se genero APK vecinos
 )
 
-if exist "android-app\app\build\outputs\apk\avisos\release\app-avisos-release.apk" (
-    copy /Y "android-app\app\build\outputs\apk\avisos\release\app-avisos-release.apk" "downloads\cobreros-avisos.apk"
+set AVISOS_APK=android-app\app\build\outputs\apk\avisos\release\app-avisos-release.apk
+if not exist "%AVISOS_APK%" set AVISOS_APK=android-app\app\build\outputs\apk\avisos\release\app-avisos-release-unsigned.apk
+if exist "%AVISOS_APK%" (
+    copy /Y "%AVISOS_APK%" "downloads\cobreros-avisos.apk"
     echo OK: downloads\cobreros-avisos.apk (subir tambien a Firebase Storage private/cobreros-avisos.apk)
 ) else (
-    echo AVISO: no se genero app-avisos-release.apk
+    echo AVISO: no se genero APK avisos
 )
 
 echo.
