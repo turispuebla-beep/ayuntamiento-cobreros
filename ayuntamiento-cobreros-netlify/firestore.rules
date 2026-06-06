@@ -1,0 +1,123 @@
+rules_version = '2';
+
+// Ayuntamiento de Cobreros — ayuntamiento-de-cobreros
+//
+// PRIMER ARRANQUE (una vez en Firebase Console):
+// 1) Authentication: crea usuarios con email/contraseña para cada administrador.
+// 2) El primer acceso web con ese email (tras desplegar reglas) puede crear
+//    admins/{uid} solo si el email está en allowlistedAdminEmail() (misma lista en script.js).
+// 3) No hay administradores locales: solo cuentas Firebase Auth con admins/{uid}.isAdmin == true.
+//
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function allowlistedAdminEmail() {
+      return request.auth.token.email != null
+        && request.auth.token.email.lower() in [
+          'aytocobreros@gmail.com',
+          'amco@gmx.es',
+          'admin@cobreros.es'
+        ];
+    }
+
+    function adminRecord() {
+      return get(/databases/$(database)/documents/admins/$(request.auth.uid));
+    }
+
+    function isAdminUser() {
+      return signedIn()
+        && exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+        && adminRecord().data.isAdmin == true;
+    }
+
+    function isSuperAdminUser() {
+      return signedIn()
+        && exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+        && get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.isSuperAdmin == true;
+    }
+
+    match /users/{userId} {
+      allow read: if signedIn() && (request.auth.uid == userId || isAdminUser());
+      allow create: if signedIn() && request.auth.uid == userId;
+      allow update: if signedIn() && (request.auth.uid == userId || isAdminUser());
+      allow delete: if isAdminUser();
+    }
+
+    match /admins/{adminId} {
+      allow read: if signedIn()
+        && (request.auth.uid == adminId || isSuperAdminUser());
+      allow create, update: if signedIn()
+        && adminId == request.auth.uid
+        && allowlistedAdminEmail()
+        && request.resource.data.isAdmin == true;
+      // Borrado de cuentas admin: solo Cloud Functions (Admin SDK)
+      allow delete: if false;
+    }
+
+    match /notifications/{notifId} {
+      allow read: if true;
+      allow create, update, delete: if isAdminUser();
+    }
+
+    match /bandos/{docId} {
+      allow read: if true;
+      allow write: if isAdminUser();
+    }
+
+    match /noticias/{docId} {
+      allow read: if true;
+      allow write: if isAdminUser();
+    }
+
+    match /eventos/{docId} {
+      allow read: if true;
+      allow write: if isAdminUser();
+    }
+
+    match /configuraciones/{docId} {
+      allow read: if true;
+      allow write: if isAdminUser();
+    }
+
+    match /backups/{docId} {
+      allow read, write: if isAdminUser();
+    }
+
+    match /userPreferences/{docId} {
+      allow read, write: if signedIn();
+    }
+
+    match /appState/{docId} {
+      allow read, write: if signedIn();
+    }
+
+    match /administrators/{docId} {
+      allow read, write: if isAdminUser();
+    }
+
+    match /appointments/{appointmentId} {
+      // Admin: acceso total. Ciudadano: solo sus propias citas.
+      allow read: if isAdminUser()
+        || (signedIn() && resource.data.userId == request.auth.uid);
+
+      allow create: if signedIn()
+        && request.resource.data.userId == request.auth.uid;
+
+      allow update: if isAdminUser()
+        || (signedIn()
+          && resource.data.userId == request.auth.uid
+          && request.resource.data.userId == resource.data.userId);
+
+      allow delete: if isAdminUser()
+        || (signedIn() && resource.data.userId == request.auth.uid);
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

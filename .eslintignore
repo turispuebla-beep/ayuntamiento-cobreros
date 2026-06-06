@@ -1,0 +1,26 @@
+node_modules/
+android-app/
+downloads/
+deploy-final/
+deploy-netlify/
+netlify-deploy/
+functions/
+firebase-functions/
+ayuntamiento-cobreros-netlify/
+temp_revert/
+.cursor/
+# Archivos legacy muy grandes (lint incremental en módulos nuevos)
+js/script.js
+js/recaptcha.js
+js/push-config.js
+js/firebase-bootstrap.js
+js/storage-uploader.js
+js/admin-dashboard.js
+js/admin-expedients-management.js
+js/admin-participation-management.js
+js/admin-payments-management.js
+js/admin-stats-panel.js
+js/admin-transparency-management.js
+js/backup-system.js
+js/online-payments.js
+js/transparency-portal.js

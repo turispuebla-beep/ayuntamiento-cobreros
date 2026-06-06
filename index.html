@@ -4,8 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Ayuntamiento de Cobreros</title>
-    <link rel="icon" type="image/x-icon" href="images/favicon.ico">
-    <link rel="shortcut icon" type="image/x-icon" href="images/favicon.ico">
+    <link rel="icon" type="image/png" sizes="32x32" href="images/favicon-32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="images/favicon-16.png">
+    <link rel="shortcut icon" href="images/favicon.ico">
     <link rel="stylesheet" href="css/styles.css">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -16,91 +17,27 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="Cobreros">
-    <link rel="apple-touch-icon" href="images/escudo-cobreros-192.png">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="format-detection" content="telephone=no">
+    <link rel="apple-touch-icon" href="images/apple-touch-icon.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="images/apple-touch-icon.png">
+    <link rel="apple-touch-icon" sizes="152x152" href="images/escudo-cobreros-152.png">
+    <link rel="apple-touch-icon" sizes="192x192" href="images/escudo-cobreros-192.png">
+    <!-- PWA en iOS / Safari: añadir a pantalla de inicio. Huawei/HarmonyOS: abrir en navegador; datos vía Firestore (sin GMS, FCM nativo puede no estar disponible). -->
     
-    <!-- Firebase SDK -->
-    <script type="module">
-        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
-        import { getMessaging, getToken, onMessage } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging.js';
-        
-        // Configuración de Firebase
-        const firebaseConfig = {
-            apiKey: "AIzaSyBXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX", // Necesitas tu API key real
-            authDomain: "turisteam-80f1b.firebaseapp.com",
-            projectId: "turisteam-80f1b",
-            storageBucket: "turisteam-80f1b.appspot.com",
-            messagingSenderId: "623846192437",
-            appId: "1:623846192437:web:XXXXXXXXXXXXXXXX" // Necesitas tu App ID real
-        };
-        
-        // Inicializar Firebase
-        const app = initializeApp(firebaseConfig);
-        const messaging = getMessaging(app);
-        
-        // Solicitar permiso para notificaciones
-        async function requestNotificationPermission() {
-            const permission = await Notification.requestPermission();
-            if (permission === 'granted') {
-                console.log('Permiso de notificaciones concedido');
-                return true;
-            } else {
-                console.log('Permiso de notificaciones denegado');
-                return false;
-            }
-        }
-        
-        // Obtener token de FCM
-        async function getFCMToken() {
-            try {
-                const token = await getToken(messaging, {
-                    vapidKey: 'TU_VAPID_KEY_AQUI' // Necesitas generar una VAPID key
-                });
-                console.log('FCM Token:', token);
-                return token;
-            } catch (error) {
-                console.error('Error obteniendo token:', error);
-                return null;
-            }
-        }
-        
-        // Escuchar mensajes en primer plano
-        onMessage(messaging, (payload) => {
-            console.log('Mensaje recibido:', payload);
-            // Mostrar notificación personalizada
-            if (payload.notification) {
-                showCustomNotification(payload.notification.title, payload.notification.body);
-            }
-        });
-        
-        // Función para mostrar notificación personalizada
-        function showCustomNotification(title, body) {
-            if (Notification.permission === 'granted') {
-                new Notification(title, {
-                    body: body,
-                    icon: 'images/escudo-cobreros.png',
-                    badge: 'images/escudo-cobreros.png'
-                });
-            }
-        }
-        
-        // Inicializar cuando se carga la página
-        window.addEventListener('load', async () => {
-            const hasPermission = await requestNotificationPermission();
-            if (hasPermission) {
-                const token = await getFCMToken();
-                if (token) {
-                    // Guardar token para enviar notificaciones
-                    localStorage.setItem('fcmToken', token);
-                    console.log('Token guardado para notificaciones');
-                }
-            }
-        });
-        
-        // Hacer funciones globales
-        window.requestNotificationPermission = requestNotificationPermission;
-        window.getFCMToken = getFCMToken;
-        window.showCustomNotification = showCustomNotification;
-    </script>
+    <!-- reCAPTCHA v3 -->
+    <script src="https://www.google.com/recaptcha/api.js?render=6LcZ6hAtAAAAANXSqXPVP-O4EdEPANlPctGoM0Qu"></script>
+    <script src="js/push-config.js"></script>
+    
+    <!-- Firebase SDK compat: una sola app para Firestore (script.js), Auth, Functions y Messaging -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-storage-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-functions-compat.js"></script>
+    <script src="js/firebase-config.generated.js"></script>
+    <script src="js/firebase-bootstrap.js"></script>
 </head>
 <body>
     <!-- Header -->
@@ -115,25 +52,28 @@
         <div class="container">
             <div class="header-content">
                 <div class="logo-section">
-                    <img src="images/escudo-cobreros.jpg" alt="Escudo de Cobreros" class="logo">
+                    <img src="images/escudo-cobreros.png" alt="Escudo de Cobreros" class="logo">
                     <div class="title-section">
                         <h1>Ayuntamiento de Cobreros</h1>
-                        <p>Servicios municipales</p>
+                        <p>Datos y Enlaces de Interés</p>
                     </div>
                 </div>
+            </div>
+
                 <nav class="main-nav">
                     <ul>
                         <li><a href="#inicio" class="nav-link active" data-icon="home">🏠 Inicio</a></li>
                         <li><a href="#bando" class="nav-link" data-icon="gavel">⚖️ Bando</a></li>
-                        <li><a href="#noticias" class="nav-link" data-icon="newspaper">📰 Noticias</a></li>
+                        <li><a href="#noticias" class="nav-link" data-icon="bullhorn">📢 Tablón de Anuncios</a></li>
                         <li><a href="#cita-previa" class="nav-link" data-icon="calendar">📅 Cita Previa</a></li>
                         <li><a href="#sede-electronica" class="nav-link" data-icon="laptop">💻 Sede Electrónica</a></li>
                         <li><a href="#documentos" class="nav-link" data-icon="file">📄 Documentos</a></li>
                         <li><a href="#cultura-ocio" class="nav-link" data-icon="theater">🎭 Cultura y Ocio</a></li>
-                        <li><a href="#servicios" class="nav-link" data-icon="services">🏥 Servicios</a></li>
+                        <li><a href="#servicios" class="nav-link" data-icon="link">🔗 Datos y Enlaces</a></li>
                     </ul>
                 </nav>
                 <div class="header-actions">
+                    <button class="btn btn-outline" id="myLocalitiesBtn" style="display: none;" title="Ver o cambiar mis localidades">📍 Mis localidades</button>
                     <button class="btn btn-outline" id="loginBtn">Iniciar Sesión</button>
                     <button class="btn btn-primary" id="registerBtn">Registrarse</button>
                     <button class="btn btn-secondary" id="adminBtn" style="display: none;">Panel Admin</button>
@@ -152,17 +92,31 @@
             <div class="container">
                 <div class="hero-content">
                     <h2>Bienvenidos al Ayuntamiento de Cobreros</h2>
-                    <p>Su portal de servicios municipales e información local</p>
+                    <p>Su portal de datos y enlaces de interés e información local</p>
                     <div class="hero-actions">
                         <button class="btn btn-primary btn-large" onclick="scrollToSection('cita-previa')">
                             <i class="fas fa-calendar-alt"></i>
                             Solicitar Cita Previa
                         </button>
                         <button class="btn btn-outline btn-large" onclick="scrollToSection('noticias')">
-                            <i class="fas fa-newspaper"></i>
-                            Ver Noticias
+                            <i class="fas fa-bullhorn"></i>
+                            Ver Anuncios
+                        </button>
+                        <button type="button" class="btn btn-outline btn-large apk-vecinos-android-only" onclick="downloadVecinosApk()" title="App Android para recibir avisos">
+                            <i class="fab fa-android"></i>
+                            App Android (avisos)
+                        </button>
+                        <button type="button" class="btn btn-outline btn-large apk-vecinos-ios-only" onclick="openIosVecinosApp()" title="Instalar app de avisos en iPhone">
+                            <i class="fab fa-apple"></i>
+                            App iPhone (avisos)
                         </button>
                     </div>
+                    <p class="apk-download-hint apk-vecinos-android-only" style="margin-top: 1rem; font-size: 0.9rem; opacity: 0.9;">
+                        <strong>Android:</strong> descarga <strong>Cobreros Vecinos</strong> para recibir avisos con sonido.
+                    </p>
+                    <p class="apk-download-hint apk-vecinos-ios-hint" style="display:none; margin-top: 0.5rem; font-size: 0.9rem; opacity: 0.9;">
+                        <strong>iPhone:</strong> pulsa <strong>App iPhone (avisos)</strong> y sigue los pasos en Safari para instalar con el escudo de Cobreros.
+                    </p>
                 </div>
             </div>
         </section>
@@ -172,16 +126,16 @@
         <section id="bando" class="content-section">
             <div class="container">
                 <h2>Bando Municipal</h2>
-                <div class="bando-content" id="bandoContent">
+                <div class="bando-content" id="bandoSectionContent">
                     <!-- Contenido cargado dinámicamente -->
                 </div>
             </div>
         </section>
 
-        <!-- Noticias Section -->
+        <!-- Tablón de Anuncios Section -->
         <section id="noticias" class="content-section">
             <div class="container">
-                <h2>Noticias</h2>
+                <h2>Tablón de Anuncios</h2>
                 <div class="news-grid" id="newsGrid">
                     <!-- Contenido cargado dinámicamente -->
                 </div>
@@ -316,18 +270,17 @@
                     <div class="document-category">
                         <h3>Formularios</h3>
                         <ul class="document-list">
-                            <li><a href="#" class="document-link"><i class="fas fa-download"></i> Solicitud de empadronamiento</a></li>
-                            <li><a href="#" class="document-link"><i class="fas fa-download"></i> Licencia de obras</a></li>
-                            <li><a href="#" class="document-link"><i class="fas fa-download"></i> Certificado de empadronamiento</a></li>
-                            <li><a href="#" class="document-link"><i class="fas fa-download"></i> Solicitud de subvenciones</a></li>
+                            <li><a href="https://cobreros.sedelectronica.es/catalog/t/15fabacb-83b1-47d1-b435-508245672051" target="_blank" class="document-link"><i class="fas fa-download"></i> Licencia de obras</a></li>
+                            <li><a href="https://cobreros.sedelectronica.es/catalog/t/d120f65c-c936-4a95-bd50-e7ae970ca149" target="_blank" class="document-link"><i class="fas fa-download"></i> Solicitud de empadronamiento</a></li>
+                            <li><a href="https://cobreros.sedelectronica.es/catalog/t/1c74bc66-8b69-4f3c-8183-d3591f0504ed" target="_blank" class="document-link"><i class="fas fa-download"></i> Certificado de empadronamiento</a></li>
+                            <li><a href="https://cobreros.sedelectronica.es/?x=YNOk4QU4OCH1VkP5PEIUePAoMJMUn8b-T88O9vfrVKUeSihv2bENIqzWyk461HpKudzhAdFOWwE9q4qefF-Mxi32kuWV4orZqsZxo8GjkR0m9UsFMZJrvtQI8cQXwqOE5h8yPgI9lbLQB86*ZKIMyz9hPheu1upkL85pK64JPLMMHjMYAS8uiKjtaeB2Hr*mQ8UtWDh77MXQZ4v-fH9CQw" target="_blank" class="document-link"><i class="fas fa-download"></i> Instancia General</a></li>
                         </ul>
                     </div>
                     <div class="document-category">
                         <h3>Normativas</h3>
                         <ul class="document-list">
                             <li><a href="#" class="document-link"><i class="fas fa-download"></i> Ordenanzas municipales</a></li>
-                            <li><a href="#" class="document-link"><i class="fas fa-download"></i> Reglamento de funcionamiento</a></li>
-                            <li><a href="#" class="document-link"><i class="fas fa-download"></i> Normativa de ruidos</a></li>
+                            <li><a href="https://cobreros.sedelectronica.es/catalog/t/96514574-aca1-40e1-a800-e06485e6d016" target="_blank" class="document-link"><i class="fas fa-download"></i> Planeamiento General (Modificación)</a></li>
                         </ul>
                     </div>
                 </div>
@@ -337,17 +290,84 @@
         <!-- Cultura y Ocio Section -->
         <section id="cultura-ocio" class="content-section">
             <div class="container">
-                <h2>Cultura y Ocio</h2>
-                <div class="cultura-tarjetas-container" id="culturaTarjetasContainer">
-                    <!-- Se llenará dinámicamente con tarjetas configurables -->
+                <h2>🏔️ Cobreros - Naturaleza y Patrimonio</h2>
+                
+                <!-- Sistema de acordeón desplegable -->
+                <div class="accordion-container">
+                    
+                    <!-- Naturaleza y Senderismo -->
+                    <div class="accordion-item">
+                        <div class="accordion-header" onclick="toggleAccordion('naturaleza')">
+                            <h3>🥾 Naturaleza y Senderismo</h3>
+                            <span class="accordion-icon">+</span>
+                        </div>
+                        <div class="accordion-content" id="naturaleza-content">
+                            <div class="accordion-items" id="naturalezaItems">
+                                <!-- Se llenará dinámicamente -->
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Patrimonio y Arte -->
+                    <div class="accordion-item">
+                        <div class="accordion-header" onclick="toggleAccordion('patrimonio')">
+                            <h3>🏛️ Patrimonio y Arte</h3>
+                            <span class="accordion-icon">+</span>
+                        </div>
+                        <div class="accordion-content" id="patrimonio-content">
+                            <div class="accordion-items" id="patrimonioItems">
+                                <!-- Se llenará dinámicamente -->
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Recolección y Gastronomía -->
+                    <div class="accordion-item">
+                        <div class="accordion-header" onclick="toggleAccordion('gastronomia')">
+                            <h3>🍄 Recolección y Gastronomía</h3>
+                            <span class="accordion-icon">+</span>
+                        </div>
+                        <div class="accordion-content" id="gastronomia-content">
+                            <div class="accordion-items" id="gastronomiaItems">
+                                <!-- Se llenará dinámicamente -->
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Eventos y Tradiciones -->
+                    <div class="accordion-item">
+                        <div class="accordion-header" onclick="toggleAccordion('eventos')">
+                            <h3>🎪 Eventos y Tradiciones</h3>
+                            <span class="accordion-icon">+</span>
+                        </div>
+                        <div class="accordion-content" id="eventos-content">
+                            <div class="accordion-items" id="eventosItems">
+                                <!-- Se llenará dinámicamente -->
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Sitios Cercanos de Interés -->
+                    <div class="accordion-item">
+                        <div class="accordion-header" onclick="toggleAccordion('cercanos')">
+                            <h3>🗺️ Sitios Cercanos de Interés</h3>
+                            <span class="accordion-icon">+</span>
+                        </div>
+                        <div class="accordion-content" id="cercanos-content">
+                            <div class="accordion-items" id="cercanosItems">
+                                <!-- Se llenará dinámicamente -->
+                            </div>
+                        </div>
+                    </div>
+                    
                 </div>
             </div>
         </section>
 
-        <!-- Servicios Section -->
+        <!-- Datos y Enlaces de Interés Section -->
         <section id="servicios" class="content-section">
             <div class="container">
-                <h2>Servicios Municipales</h2>
+                <h2>Datos y Enlaces de Interés</h2>
                 <div id="serviciosContent">
                     <!-- Se llenará dinámicamente -->
                 </div>
@@ -356,6 +376,30 @@
 
 
     </main>
+
+    <div class="vecinos-share-fab-wrap" id="vecinosShareFab">
+        <div class="vecinos-share-panel" id="vecinosSharePanel" hidden>
+            <p class="vecinos-share-panel-title">Compartir con vecinos</p>
+            <button type="button" class="vecinos-share-option vecinos-share-wa" onclick="shareVecinosApp('whatsapp')">
+                <i class="fab fa-whatsapp"></i> WhatsApp
+            </button>
+            <button type="button" class="vecinos-share-option" onclick="shareVecinosApp('sms')">
+                <i class="fas fa-sms"></i> SMS
+            </button>
+            <button type="button" class="vecinos-share-option" onclick="shareVecinosApp('email')">
+                <i class="fas fa-envelope"></i> Email
+            </button>
+            <button type="button" class="vecinos-share-option" onclick="shareVecinosApp('copy')">
+                <i class="fas fa-link"></i> Copiar enlace
+            </button>
+            <button type="button" class="vecinos-share-option vecinos-share-more" onclick="shareVecinosApp('native')">
+                <i class="fas fa-share-alt"></i> Más opciones
+            </button>
+        </div>
+        <button type="button" class="vecinos-share-fab" id="vecinosShareFabBtn" onclick="toggleVecinosSharePanel()" title="Compartir app con vecinos" aria-label="Compartir app con vecinos" aria-expanded="false">
+            <i class="fas fa-share-alt"></i>
+        </button>
+    </div>
 
     <!-- Footer -->
     <footer class="footer">
@@ -415,7 +459,20 @@
                     <label for="loginPassword">Contraseña:</label>
                     <input type="password" id="loginPassword" name="password" required>
                 </div>
-                <button type="submit" class="btn btn-primary">Iniciar Sesión</button>
+                <!-- reCAPTCHA Info -->
+                <div class="recaptcha-info">
+                    <small>🛡️ Este sitio está protegido por reCAPTCHA y se aplican la 
+                        <a href="https://policies.google.com/privacy" target="_blank">Política de Privacidad</a> 
+                        y los <a href="https://policies.google.com/terms" target="_blank">Términos de Servicio</a> 
+                        de Google.
+                    </small>
+                </div>
+                <button type="submit" class="btn btn-primary" id="loginSubmitBtn">
+                    <span class="btn-text">Iniciar Sesión</span>
+                    <span class="btn-loading" style="display: none;">
+                        <i class="fas fa-spinner fa-spin"></i> Verificando...
+                    </span>
+                </button>
             </form>
         </div>
     </div>
@@ -515,7 +572,20 @@
                     <input type="checkbox" id="notificationConsent" name="notificationConsent" required>
                     <label for="notificationConsent">Doy mi consentimiento para recibir notificaciones del Ayuntamiento de Cobreros, incluyendo comunicaciones importantes, eventos y documentos oficiales.</label>
                 </div>
-                <button type="submit" class="btn btn-primary">Registrarse</button>
+                <!-- reCAPTCHA Info -->
+                <div class="recaptcha-info">
+                    <small>🛡️ Este sitio está protegido por reCAPTCHA y se aplican la 
+                        <a href="https://policies.google.com/privacy" target="_blank">Política de Privacidad</a> 
+                        y los <a href="https://policies.google.com/terms" target="_blank">Términos de Servicio</a> 
+                        de Google.
+                    </small>
+                </div>
+                <button type="submit" class="btn btn-primary" id="registerSubmitBtn">
+                    <span class="btn-text">Registrarse</span>
+                    <span class="btn-loading" style="display: none;">
+                        <i class="fas fa-spinner fa-spin"></i> Verificando...
+                    </span>
+                </button>
             </form>
         </div>
     </div>
@@ -563,20 +633,21 @@
                 <button class="tab-btn" data-tab="documents">Documentos</button>
                 <button class="tab-btn" data-tab="notifications">Notificaciones</button>
                 <button class="tab-btn" data-tab="database">Base de Datos</button>
+                <button class="tab-btn" data-tab="backup">Backup & Persistencia</button>
                 <button class="tab-btn" data-tab="settings">Configuración</button>
-                <button class="tab-btn" data-tab="servicios">Servicios</button>
+                <button class="tab-btn" data-tab="servicios">Datos y Enlaces</button>
             </div>
             <div class="admin-content-area">
                 <!-- Content Management Tab -->
                 <div id="content-tab" class="tab-content active">
                     <h3>Gestión de Contenido</h3>
                     
-                    <!-- Noticias -->
+                    <!-- Anuncios -->
                     <div class="admin-section">
-                        <h4>Gestionar Noticias</h4>
+                        <h4>Gestionar Anuncios</h4>
                         <div class="content-actions">
                             <button class="btn btn-primary" onclick="openNewsEditor()">
-                                <i class="fas fa-plus"></i> Nueva Noticia
+                                <i class="fas fa-plus"></i> Nuevo Anuncio
                             </button>
                             <button class="btn btn-secondary" onclick="exportNews()">
                                 <i class="fas fa-download"></i> Exportar
@@ -681,6 +752,43 @@
                             </div>
                             <button class="btn btn-primary" onclick="updateAppointmentMode()">
                                 <i class="fas fa-save"></i> Guardar Configuración
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="admin-section">
+                        <h4>Disponibilidad de Agenda (Cita Previa)</h4>
+                        <div class="appointment-settings">
+                            <div class="form-group">
+                                <label>Días con cita previa:</label>
+                                <div class="availability-days">
+                                    <label><input type="checkbox" id="day-1"> Lunes</label>
+                                    <label><input type="checkbox" id="day-2"> Martes</label>
+                                    <label><input type="checkbox" id="day-3"> Miércoles</label>
+                                    <label><input type="checkbox" id="day-4"> Jueves</label>
+                                    <label><input type="checkbox" id="day-5"> Viernes</label>
+                                    <label><input type="checkbox" id="day-6"> Sábado</label>
+                                    <label><input type="checkbox" id="day-0"> Domingo</label>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label for="appointmentTimeSlotsInput">Horas disponibles (formato 24h, separadas por coma):</label>
+                                <input type="text" id="appointmentTimeSlotsInput" placeholder="09:00,10:00,11:00,12:00,16:00">
+                            </div>
+                            <div class="form-group">
+                                <label for="appointmentSlotCapacityInput">Cupo por franja (personas por hora):</label>
+                                <input type="number" id="appointmentSlotCapacityInput" min="1" value="1">
+                            </div>
+                            <div class="form-group">
+                                <label for="appointmentHolidaysInput">Festivos (YYYY-MM-DD, separados por coma):</label>
+                                <textarea id="appointmentHolidaysInput" rows="2" placeholder="2026-01-01,2026-12-25"></textarea>
+                            </div>
+                            <div class="form-group">
+                                <label for="appointmentExceptionsInput">Excepciones por día (JSON):</label>
+                                <textarea id="appointmentExceptionsInput" rows="4" placeholder='[{"date":"2026-05-01","enabled":false},{"date":"2026-05-15","timeSlots":["09:00","10:00"],"capacityBySlot":{"09:00":2}}]'></textarea>
+                            </div>
+                            <button class="btn btn-primary" onclick="saveAppointmentAvailabilitySettings()">
+                                <i class="fas fa-save"></i> Guardar Horarios y Días
                             </button>
                         </div>
                     </div>
@@ -826,17 +934,20 @@
                 <!-- Notifications Tab -->
                 <div id="notifications-tab" class="tab-content">
                     <h3>📱 Enviar Notificación</h3>
+                    <p style="margin-bottom: 1rem; color: var(--text-secondary);">
+                        Flujo recomendado: <strong>Paso 1</strong> título, <strong>Paso 2</strong> descripción, <strong>Paso 3</strong> PDF opcional descargable.
+                    </p>
                     
                     <!-- Formulario Principal de Notificación -->
                     <div class="admin-section">
                         <form id="notificationForm">
                             <div class="form-group">
-                                <label for="notifTitle">Título de la notificación:</label>
+                                <label for="notifTitle">Paso 1 - Título de la notificación (obligatorio):</label>
                                 <input type="text" id="notifTitle" name="title" placeholder="Ej: Nuevo bando municipal" required>
                             </div>
                             
                             <div class="form-group">
-                                <label for="notifMessage">Mensaje (opcional):</label>
+                                <label for="notifMessage">Paso 2 - Descripción del aviso (obligatoria):</label>
                                 <textarea id="notifMessage" name="message" rows="3" placeholder="Información adicional sobre la notificación..."></textarea>
                             </div>
                             
@@ -845,7 +956,7 @@
                                 <select id="notifType" name="type" required>
                                     <option value="">Seleccione un tipo</option>
                                     <option value="bando">📄 Bando Municipal</option>
-                                    <option value="noticia">📰 Noticia</option>
+                                    <option value="noticia">📢 Anuncio</option>
                                     <option value="evento">🎉 Evento</option>
                                     <option value="incidencia">⚠️ Incidencia</option>
                                     <option value="cita">📅 Cita Previa</option>
@@ -855,7 +966,7 @@
                             </div>
                             
                             <div class="form-group">
-                                <label for="notifAttachment">Documento adjunto (opcional):</label>
+                                <label for="notifAttachment">Paso 3 - PDF o documento adjunto (opcional, descargable):</label>
                                 <input type="file" id="notifAttachment" name="attachment" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png">
                                 <small>Formatos permitidos: PDF, DOC, DOCX, JPG, PNG</small>
                             </div>
@@ -963,6 +1074,12 @@
                     
                     <div class="admin-section">
                         <h4>📋 Historial de Notificaciones</h4>
+                        <div style="display: flex; gap: 0.5rem; align-items: center; margin-bottom: 0.75rem; flex-wrap: wrap;">
+                            <button class="btn btn-outline btn-sm" onclick="migrateNotificationsFromAdmin()">
+                                <i class="fas fa-database"></i> Migrar notificaciones antiguas
+                            </button>
+                            <span id="notificationMigrationResult" style="font-size: 0.85rem; color: var(--text-secondary);"></span>
+                        </div>
                         <div class="notifications-history" id="notificationsHistory">
                             <!-- Se cargará dinámicamente -->
                         </div>
@@ -1020,6 +1137,80 @@
                     </div>
                 </div>
                 
+                <!-- Backup Tab -->
+                <div id="backup-tab" class="tab-content">
+                    <h3>🔐 Backup & Persistencia de Datos</h3>
+                    
+                    <!-- Backup automático en la nube -->
+                    <div class="admin-section">
+                        <h4>☁️ Backup automático en la nube</h4>
+                        <p>Gestionar copias de seguridad automáticas en la nube:</p>
+                        <div class="backup-buttons">
+                            <button class="btn btn-info" onclick="backupContentToFirestore()">
+                                <i class="fas fa-cloud-upload-alt"></i> Backup Contenido (Bandos, Noticias, Eventos)
+                            </button>
+                            <button class="btn btn-secondary" onclick="backupLocalStorageToFirestore()">
+                                <i class="fas fa-save"></i> Backup Completo localStorage
+                            </button>
+                            <button class="btn btn-warning" onclick="restoreContentFromFirestore()">
+                                <i class="fas fa-cloud-download-alt"></i> Restaurar desde la nube
+                            </button>
+                        </div>
+                        <div class="backup-status">
+                            <p><strong>Estado de la nube:</strong> <span id="firebaseStatus">Verificando conexión...</span></p>
+                            <p><strong>Último backup:</strong> <span id="lastBackupTime">No disponible</span></p>
+                        </div>
+                    </div>
+                    
+                    <!-- Exportar/Importar Datos -->
+                    <div class="admin-section">
+                        <h4>📁 Exportar/Importar Datos</h4>
+                        <p>Crear copias de seguridad locales y restaurar datos:</p>
+                        <div class="export-import-buttons">
+                            <button class="btn btn-success" onclick="exportDataAsJSON()">
+                                <i class="fas fa-download"></i> Exportar Todo (JSON)
+                            </button>
+                            <button class="btn btn-primary" onclick="document.getElementById('importBackupFile').click()">
+                                <i class="fas fa-upload"></i> Importar Backup (JSON)
+                            </button>
+                            <input type="file" id="importBackupFile" accept=".json" style="display: none;" onchange="importDataFromJSON(this.files[0])">
+                        </div>
+                    </div>
+                    
+                    <!-- Verificación y Reparación -->
+                    <div class="admin-section">
+                        <h4>🔧 Verificación y Reparación</h4>
+                        <p>Verificar integridad de datos y reparar problemas:</p>
+                        <div class="repair-buttons">
+                            <button class="btn btn-info" onclick="verifyDataIntegrity()">
+                                <i class="fas fa-check-circle"></i> Verificar Integridad de Datos
+                            </button>
+                            <button class="btn btn-warning" onclick="repairCorruptedData()">
+                                <i class="fas fa-wrench"></i> Reparar Datos Corruptos
+                            </button>
+                            <button class="btn btn-danger" onclick="clearAllData()">
+                                <i class="fas fa-trash"></i> Limpiar Todos los Datos
+                            </button>
+                        </div>
+                        <div class="integrity-status">
+                            <p><strong>Estado de integridad:</strong> <span id="integrityStatus">No verificado</span></p>
+                        </div>
+                    </div>
+                    
+                    <!-- Información del Sistema -->
+                    <div class="admin-section">
+                        <h4>📊 Información del Sistema</h4>
+                        <div class="system-info">
+                            <p><strong>Versión:</strong> 1.0</p>
+                            <p><strong>Última verificación:</strong> <span id="lastIntegrityCheck">Nunca</span></p>
+                            <p><strong>Total bandos:</strong> <span id="totalBandos">0</span></p>
+                            <p><strong>Total noticias:</strong> <span id="totalNoticias">0</span></p>
+                            <p><strong>Total eventos:</strong> <span id="totalEventos">0</span></p>
+                            <p><strong>Total usuarios:</strong> <span id="totalUsuarios">0</span></p>
+                        </div>
+                    </div>
+                </div>
+                
                 <!-- Settings Tab -->
                 <div id="settings-tab" class="tab-content">
                     <h3>Configuración</h3>
@@ -1042,6 +1233,43 @@
                         </div>
                     </div>
                     
+                    <div class="admin-section admin-apk-avisos-section" id="adminApkAvisosSection">
+                        <h4>📲 App Cobreros Avisos (solo personal autorizado)</h4>
+                        <p style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 1rem;">
+                            Para alguaciles y personal que <strong>envían</strong> avisos. No es pública: solo visible aquí, en el panel de administración.
+                        </p>
+                        <div style="display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1rem;">
+                            <button type="button" class="btn btn-primary" onclick="downloadAvisosApkAdmin()">
+                                <i class="fas fa-download"></i> Descargar APK en este dispositivo
+                            </button>
+                        </div>
+                        <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 0.75rem;">
+                            <strong>Enviar a otro móvil:</strong> comparte las instrucciones por SMS, WhatsApp o email. La otra persona debe entrar como administrador y descargar desde este panel.
+                        </p>
+                        <div class="form-group">
+                            <label for="avisosApkSharePhone">Móvil (opcional, con prefijo país):</label>
+                            <input type="tel" id="avisosApkSharePhone" placeholder="34600123456" autocomplete="off">
+                        </div>
+                        <div class="form-group">
+                            <label for="avisosApkShareEmail">Email (opcional):</label>
+                            <input type="email" id="avisosApkShareEmail" placeholder="personal@ejemplo.es" autocomplete="off">
+                        </div>
+                        <div style="display: flex; flex-wrap: wrap; gap: 0.5rem;">
+                            <button type="button" class="btn btn-outline" onclick="shareAvisosApkViaSms()">
+                                <i class="fas fa-sms"></i> SMS
+                            </button>
+                            <button type="button" class="btn btn-outline" onclick="shareAvisosApkViaWhatsApp()">
+                                <i class="fab fa-whatsapp"></i> WhatsApp
+                            </button>
+                            <button type="button" class="btn btn-outline" onclick="shareAvisosApkViaEmail()">
+                                <i class="fas fa-envelope"></i> Email
+                            </button>
+                        </div>
+                        <p style="font-size: 0.8rem; color: #64748b; margin-top: 0.75rem;">
+                            La APK de avisos debe estar en el almacenamiento en la nube: <code>private/cobreros-avisos.apk</code>
+                        </p>
+                    </div>
+
                     <div class="admin-section">
                         <h4>Escudo del Ayuntamiento</h4>
                         <form id="logoForm">
@@ -1054,9 +1282,59 @@
                     </div>
                 </div>
 
-                <!-- Servicios Tab -->
+                <!-- Datos y Enlaces Tab -->
                 <div id="servicios-tab" class="tab-content">
-                    <h3>Gestión de Servicios</h3>
+                    <h3>Gestión de Datos y Enlaces</h3>
+                    
+                    <!-- Consultorio Médico -->
+                    <div class="admin-section">
+                        <h4>🏥 Consultorio Médico</h4>
+                        <div class="content-actions">
+                            <button class="btn btn-primary" onclick="openConsultorioModal()">
+                                <i class="fas fa-edit"></i> Editar Consultorio
+                            </button>
+                        </div>
+                        <div class="content-list" id="consultorioList"></div>
+                    </div>
+                    
+                    <!-- ITV Puebla de Sanabria -->
+                    <div class="admin-section">
+                        <h4>🚗 ITV - Puebla de Sanabria</h4>
+                        <div class="content-actions">
+                            <button class="btn btn-primary" onclick="openItvModal()">
+                                <i class="fas fa-edit"></i> Editar ITV
+                            </button>
+                        </div>
+                        <div class="content-list" id="itvList"></div>
+                    </div>
+                    
+                    <!-- Teléfonos de Interés -->
+                    <div class="admin-section">
+                        <h4>📞 Teléfonos de Interés</h4>
+                        <div class="content-actions">
+                            <button class="btn btn-primary" onclick="openTelefonosInteresModal()">
+                                <i class="fas fa-edit"></i> Editar Configuración
+                            </button>
+                            <button class="btn btn-secondary" onclick="openTelefonoElementoModal()">
+                                <i class="fas fa-plus"></i> Nuevo Elemento
+                            </button>
+                        </div>
+                        <div class="content-list" id="telefonosElementosList"></div>
+                    </div>
+                    
+                    <!-- Líneas de Transporte -->
+                    <div class="admin-section">
+                        <h4>🚌 Líneas de Transporte</h4>
+                        <div class="content-actions">
+                            <button class="btn btn-primary" onclick="openTransporteModal()">
+                                <i class="fas fa-edit"></i> Editar Configuración
+                            </button>
+                            <button class="btn btn-secondary" onclick="openTransporteLineaModal()">
+                                <i class="fas fa-plus"></i> Nueva Línea
+                            </button>
+                        </div>
+                        <div class="content-list" id="transporteLinesList"></div>
+                    </div>
                     
                     <!-- Configuración de Secciones -->
                     <div class="admin-section">
@@ -1070,6 +1348,9 @@
                             </button>
                             <button class="btn btn-primary" onclick="openTelefonosInteresManager()">
                                 <i class="fas fa-phone"></i> Gestionar Teléfonos de Interés
+                            </button>
+                            <button class="btn btn-primary" onclick="openTransporteManager()">
+                                <i class="fas fa-bus"></i> Gestionar Líneas de Transporte
                             </button>
                         </div>
                         <p style="margin-top: 10px; color: #666; font-size: 0.9em;">
@@ -1112,7 +1393,10 @@
     <div id="notificationCenter" class="notification-center">
         <div class="notification-header">
             <h3>Notificaciones</h3>
-            <button class="btn btn-small" onclick="markAllAsRead()">Marcar todas como leídas</button>
+            <div class="notification-header-actions">
+                <button type="button" class="btn btn-small" onclick="markAllAsRead()">Marcar todas como leídas</button>
+                <button type="button" class="notification-close-btn" onclick="closeNotificationCenter()" title="Cerrar" aria-label="Cerrar notificaciones">&times;</button>
+            </div>
         </div>
         <div class="notifications-list" id="notificationsList">
             <!-- Notifications will be populated here -->
@@ -1131,6 +1415,13 @@
             </div>
             <div id="receivedNotificationsList" class="notifications-list" style="display: none;">
                 <!-- Las notificaciones recibidas se cargarán dinámicamente -->
+            </div>
+            <div class="apk-vecinos-promo" style="margin-top: 1rem; padding: 0.75rem; background: #f0f9ff; border-radius: 8px; font-size: 0.85rem;">
+                <strong>📱 App de avisos</strong> — Recibe avisos con sonido sin depender del navegador.
+                <div style="margin-top: 0.5rem; display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                    <button type="button" class="btn btn-small btn-primary apk-vecinos-android-only" onclick="downloadVecinosApk()">Android: Cobreros Vecinos</button>
+                    <button type="button" class="btn btn-small btn-primary apk-vecinos-ios-only" onclick="openIosVecinosApp()">iPhone: instalar app</button>
+                </div>
             </div>
         </div>
     </div>
@@ -1242,10 +1533,649 @@
         .admin-access-btn:active {
             transform: scale(0.95);
         }
+
+        /* ===== ESTILOS ESPECÍFICOS POR DISPOSITIVO ===== */
+        
+        /* Estilos para móvil */
+        .device-mobile .container {
+            padding: 10px;
+        }
+        
+        .device-mobile .card {
+            margin-bottom: 15px;
+            padding: 15px;
+        }
+        
+        .device-mobile .admin-panel {
+            width: 95%;
+            max-width: none;
+        }
+        
+        .device-mobile .tab-content {
+            padding: 15px;
+        }
+        
+        .device-mobile .form-group input,
+        .device-mobile .form-group textarea,
+        .device-mobile .form-group select {
+            font-size: 16px; /* Evita zoom en iOS */
+        }
+        
+        /* Estilos para tablet */
+        .device-tablet .container {
+            padding: 20px;
+            max-width: 800px;
+        }
+        
+        .device-tablet .card {
+            margin-bottom: 20px;
+            padding: 20px;
+        }
+        
+        .device-tablet .admin-panel {
+            width: 80%;
+            max-width: 600px;
+        }
+        
+        /* Estilos para desktop */
+        .device-desktop .container {
+            padding: 30px;
+            max-width: 1200px;
+        }
+        
+        .device-desktop .card {
+            margin-bottom: 25px;
+            padding: 25px;
+        }
+        
+        .device-desktop .admin-panel {
+            width: 70%;
+            max-width: 800px;
+        }
+        
+        /* Mensaje flotante para desktop */
+        .floating-desktop-info {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 400px;
+            background: linear-gradient(135deg, #007bff, #0056b3);
+            color: white;
+            border-radius: 12px;
+            box-shadow: 0 8px 25px rgba(0, 123, 255, 0.3);
+            z-index: 1000;
+            animation: slideInCenter 0.5s ease-out;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        @keyframes slideInCenter {
+            from {
+                transform: translate(-50%, -50%) scale(0.8);
+                opacity: 0;
+            }
+            to {
+                transform: translate(-50%, -50%) scale(1);
+                opacity: 1;
+            }
+        }
+
+        .close-floating-info {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            color: white;
+            font-size: 18px;
+            cursor: pointer;
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            transition: all 0.3s ease;
+        }
+
+        .close-floating-info:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: scale(1.1);
+        }
+
+        .floating-content {
+            padding: 20px 24px 20px 20px;
+            text-align: center;
+        }
+
+        .floating-content h4 {
+            margin: 0 0 12px 0;
+            font-size: 1.1rem;
+            font-weight: 600;
+        }
+
+        .floating-content p {
+            margin: 0;
+            font-size: 0.9rem;
+            line-height: 1.5;
+            opacity: 0.9;
+        }
+
+        /* Animación de salida */
+        .floating-desktop-info.closing {
+            animation: slideOutCenter 0.3s ease-in forwards;
+        }
+
+        @keyframes slideOutCenter {
+            from {
+                transform: translate(-50%, -50%) scale(1);
+                opacity: 1;
+            }
+            to {
+                transform: translate(-50%, -50%) scale(0.8);
+                opacity: 0;
+            }
+        }
+        
+        /* Optimizaciones para touch */
+        .touch-optimized button,
+        .touch-optimized .btn {
+            min-height: 44px;
+            min-width: 44px;
+        }
+        
+        .touch-optimized .card {
+            cursor: pointer;
+        }
+        
+        /* Ocultar elementos en móvil */
+        .device-mobile .desktop-only {
+            display: none !important;
+        }
+        
+        /* Mostrar elementos solo en desktop */
+        .desktop-only {
+            display: block;
+        }
+        
+        .device-mobile .desktop-only,
+        .device-tablet .desktop-only {
+            display: none !important;
+        }
+
+        /* ===== EDITOR DE TEXTO ENRIQUECIDO ===== */
+        
+        .editor-toolbar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            padding: 10px;
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-bottom: none;
+            border-radius: 8px 8px 0 0;
+            align-items: center;
+        }
+        
+        .toolbar-group {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            padding: 0 8px;
+            border-right: 1px solid #dee2e6;
+        }
+        
+        .toolbar-group:last-child {
+            border-right: none;
+        }
+        
+        .toolbar-btn {
+            background: white;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 6px 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            color: #495057;
+        }
+        
+        .toolbar-btn:hover {
+            background: #e9ecef;
+            border-color: #adb5bd;
+        }
+        
+        .toolbar-btn.active {
+            background: #007bff;
+            color: white;
+            border-color: #007bff;
+        }
+        
+        .toolbar-select {
+            background: white;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 6px 8px;
+            font-size: 0.9rem;
+            cursor: pointer;
+        }
+        
+        .toolbar-color {
+            width: 30px;
+            height: 30px;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            cursor: pointer;
+            background: none;
+        }
+        
+        .rich-editor {
+            min-height: 120px;
+            padding: 15px;
+            border: 1px solid #dee2e6;
+            border-top: none;
+            border-radius: 0 0 8px 8px;
+            background: white;
+            font-family: inherit;
+            font-size: 14px;
+            line-height: 1.5;
+            outline: none;
+            overflow-y: auto;
+        }
+        
+        .rich-editor:focus {
+            border-color: #007bff;
+            box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+        }
+        
+        .rich-editor:empty:before {
+            content: attr(placeholder);
+            color: #6c757d;
+            font-style: italic;
+        }
+        
+        .preview-section {
+            margin-top: 15px;
+            padding: 15px;
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+        }
+        
+        .preview-section h4 {
+            margin: 0 0 10px 0;
+            color: #495057;
+            font-size: 0.9rem;
+            font-weight: 600;
+        }
+        
+        .message-preview {
+            min-height: 60px;
+            padding: 10px;
+            background: white;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+        
+        /* Estilos para el contenido del editor */
+        .rich-editor b, .rich-editor strong {
+            font-weight: bold;
+        }
+        
+        .rich-editor i, .rich-editor em {
+            font-style: italic;
+        }
+        
+        .rich-editor u {
+            text-decoration: underline;
+        }
+        
+        /* Responsive para móvil */
+        .device-mobile .editor-toolbar {
+            flex-direction: column;
+            align-items: stretch;
+        }
+        
+        .device-mobile .toolbar-group {
+            justify-content: center;
+            border-right: none;
+            border-bottom: 1px solid #dee2e6;
+            padding: 8px 0;
+        }
+        
+        .device-mobile .toolbar-group:last-child {
+            border-bottom: none;
+        }
+        
+        .device-mobile .rich-editor {
+            min-height: 100px;
+            font-size: 16px; /* Evita zoom en iOS */
+        }
+
+        /* ===== ACORDEÓN DESPLEGABLE ===== */
+        
+        .accordion-container {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+        
+        .accordion-item {
+            background: white;
+            border-radius: 12px;
+            margin-bottom: 15px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+        
+        .accordion-item:hover {
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+        }
+        
+        .accordion-header {
+            background: linear-gradient(135deg, #2c3e50, #34495e);
+            color: white;
+            padding: 20px 25px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all 0.3s ease;
+            user-select: none;
+        }
+        
+        .accordion-header:hover {
+            background: linear-gradient(135deg, #34495e, #2c3e50);
+        }
+        
+        .accordion-header h3 {
+            margin: 0;
+            font-size: 1.2rem;
+            font-weight: 600;
+        }
+        
+        .accordion-icon {
+            font-size: 1.5rem;
+            font-weight: bold;
+            transition: transform 0.3s ease;
+        }
+        
+        .accordion-item.active .accordion-icon {
+            transform: rotate(45deg);
+        }
+        
+        .accordion-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease;
+            background: #f8f9fa;
+        }
+        
+        .accordion-item.active .accordion-content {
+            max-height: 2000px;
+        }
+        
+        .accordion-items {
+            padding: 25px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+        
+        .accordion-item-card {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+        }
+        
+        .accordion-item-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+        }
+        
+        .accordion-item-card h4 {
+            color: #2c3e50;
+            margin: 0 0 10px 0;
+            font-size: 1.1rem;
+            font-weight: 600;
+        }
+        
+        .accordion-item-card p {
+            color: #555;
+            margin: 0 0 15px 0;
+            line-height: 1.6;
+        }
+        
+        .accordion-item-card .item-image {
+            width: 100%;
+            height: 200px;
+            object-fit: cover;
+            border-radius: 6px;
+            margin-bottom: 15px;
+        }
+        
+        .accordion-item-card .item-links {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        
+        .accordion-item-card .item-link {
+            background: #007bff;
+            color: white;
+            padding: 8px 12px;
+            border-radius: 4px;
+            text-decoration: none;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+        }
+        
+        .accordion-item-card .item-link:hover {
+            background: #0056b3;
+            transform: translateY(-1px);
+        }
+        
+        .accordion-item-card .item-link.pdf {
+            background: #dc3545;
+        }
+        
+        .accordion-item-card .item-link.pdf:hover {
+            background: #c82333;
+        }
+        
+        .accordion-item-card .item-link.external {
+            background: #28a745;
+        }
+        
+        .accordion-item-card .item-link.external:hover {
+            background: #218838;
+        }
+        
+        /* Responsive para móvil */
+        .device-mobile .accordion-items {
+            grid-template-columns: 1fr;
+            padding: 15px;
+        }
+        
+        .device-mobile .accordion-header {
+            padding: 15px 20px;
+        }
+        
+        .device-mobile .accordion-header h3 {
+            font-size: 1.1rem;
+        }
+        
+        .device-mobile .accordion-item-card {
+            padding: 15px;
+        }
+        
+        /* Estilos para gestión administrativa de Cultura y Ocio */
+        .admin-item-card {
+            background: #fff;
+            border: 1px solid #e0e0e0;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 15px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            transition: all 0.3s ease;
+        }
+        
+        .admin-item-card:hover {
+            box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+            transform: translateY(-2px);
+        }
+        
+        .admin-item-content h4 {
+            margin: 0 0 10px 0;
+            color: #2c3e50;
+            font-size: 1.2em;
+        }
+        
+        .admin-item-content p {
+            margin: 0 0 15px 0;
+            color: #6c757d;
+            line-height: 1.5;
+        }
+        
+        .admin-item-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 15px;
+        }
+        
+        .badge {
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 0.8em;
+            font-weight: 500;
+        }
+        
+        .badge-info {
+            background: #17a2b8;
+            color: white;
+        }
+        
+        .badge-success {
+            background: #28a745;
+            color: white;
+        }
+        
+        .badge-warning {
+            background: #ffc107;
+            color: #212529;
+        }
+        
+        .badge-primary {
+            background: #007bff;
+            color: white;
+        }
+        
+        .admin-item-actions {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .btn-sm {
+            padding: 6px 12px;
+            font-size: 0.875em;
+        }
+        
+        /* Estilos para modales de cultura y ocio */
+        .setas-guide, .calendario-recoleccion, .rutas-map, .eventos-calendario {
+            padding: 20px 0;
+        }
+        
+        .setas-grid, .rutas-grid, .eventos-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin: 20px 0;
+        }
+        
+        .seta-item, .ruta-item, .evento-item {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+            padding: 15px;
+            transition: all 0.3s ease;
+        }
+        
+        .seta-item:hover, .ruta-item:hover, .evento-item:hover {
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            transform: translateY(-2px);
+        }
+        
+        .seta-item h5, .ruta-item h5, .evento-item h5 {
+            margin: 0 0 10px 0;
+            color: #2c3e50;
+            font-size: 1.1em;
+        }
+        
+        .seta-item p, .ruta-item p, .evento-item p {
+            margin: 5px 0;
+            color: #6c757d;
+            font-size: 0.9em;
+        }
+        
+        .mes-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        
+        .mes-item {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+        }
+        
+        .mes-item h4 {
+            margin: 0 0 15px 0;
+            font-size: 1.2em;
+        }
+        
+        .mes-item ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        
+        .mes-item li {
+            padding: 5px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.2);
+        }
+        
+        .mes-item li:last-child {
+            border-bottom: none;
+        }
+        
+        .consejos-recoleccion, .consejos-recoleccion ul {
+            background: #e8f5e8;
+            border-left: 4px solid #28a745;
+            padding: 15px;
+            border-radius: 0 8px 8px 0;
+        }
+        
+        .consejos-recoleccion h4 {
+            color: #155724;
+            margin: 0 0 10px 0;
+        }
+        
+        .consejos-recoleccion li {
+            margin: 8px 0;
+            color: #155724;
+        }
     </style>
 
     <!-- Botón de acceso admin en esquina superior derecha -->
-    <button class="admin-access-btn" id="adminLoginBtn" title="Acceso Administradores">
+    <button type="button" class="admin-access-btn" id="adminLoginBtn" title="Acceso Administradores">
         <i class="fas fa-cog"></i>
         <span style="font-size: 10px; margin-top: 2px;">ADMIN</span>
         <span class="notification-badge" id="municipalNotificationBadge" style="display: none;">0</span>
@@ -1279,7 +2209,64 @@
                     </div>
                     <div class="form-group">
                         <label for="notificationMessage">Mensaje completo:</label>
-                        <textarea id="notificationMessage" name="message" rows="3" placeholder="Descripción detallada de la notificación..." required></textarea>
+                        
+                        <!-- Barra de herramientas del editor -->
+                        <div class="editor-toolbar">
+                            <div class="toolbar-group">
+                                <button type="button" class="toolbar-btn" onclick="formatText('bold')" title="Negrita">
+                                    <i class="fas fa-bold"></i>
+                                </button>
+                                <button type="button" class="toolbar-btn" onclick="formatText('italic')" title="Cursiva">
+                                    <i class="fas fa-italic"></i>
+                                </button>
+                                <button type="button" class="toolbar-btn" onclick="formatText('underline')" title="Subrayado">
+                                    <i class="fas fa-underline"></i>
+                                </button>
+                            </div>
+                            
+                            <div class="toolbar-group">
+                                <select class="toolbar-select" onchange="formatText('fontSize', this.value)" title="Tamaño de letra">
+                                    <option value="">Tamaño</option>
+                                    <option value="12px">Pequeño</option>
+                                    <option value="14px">Normal</option>
+                                    <option value="16px">Mediano</option>
+                                    <option value="18px">Grande</option>
+                                    <option value="20px">Muy Grande</option>
+                                </select>
+                            </div>
+                            
+                            <div class="toolbar-group">
+                                <input type="color" class="toolbar-color" id="textColor" onchange="formatText('foreColor', this.value)" title="Color del texto">
+                                <input type="color" class="toolbar-color" id="bgColor" onchange="formatText('backColor', this.value)" title="Color de fondo">
+                            </div>
+                            
+                            <div class="toolbar-group">
+                                <button type="button" class="toolbar-btn" onclick="formatText('justifyLeft')" title="Alinear izquierda">
+                                    <i class="fas fa-align-left"></i>
+                                </button>
+                                <button type="button" class="toolbar-btn" onclick="formatText('justifyCenter')" title="Centrar">
+                                    <i class="fas fa-align-center"></i>
+                                </button>
+                                <button type="button" class="toolbar-btn" onclick="formatText('justifyRight')" title="Alinear derecha">
+                                    <i class="fas fa-align-right"></i>
+                                </button>
+                            </div>
+                            
+                            <div class="toolbar-group">
+                                <button type="button" class="toolbar-btn" onclick="clearFormatting()" title="Limpiar formato">
+                                    <i class="fas fa-remove-format"></i>
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- Editor de texto enriquecido -->
+                        <div id="notificationMessage" class="rich-editor" contenteditable="true" placeholder="Escribe tu mensaje aquí..."></div>
+                        
+                        <!-- Vista previa -->
+                        <div class="preview-section">
+                            <h4>Vista previa:</h4>
+                            <div id="messagePreview" class="message-preview"></div>
+                        </div>
                     </div>
                     <div class="form-group">
                         <label for="notificationStartDate">Fecha de inicio:</label>
@@ -1306,11 +2293,45 @@
                             </label>
                         </div>
                     </div>
+                    <div class="form-group" style="border-top: 1px solid #e5e7eb; padding-top: 1rem; margin-top: 0.5rem;">
+                        <h4 style="margin: 0 0 0.75rem 0;">📱 Notificación push (opcional)</h4>
+                        <div class="checkbox-group">
+                            <input type="checkbox" id="publicNotifSendPush" name="sendPush">
+                            <label for="publicNotifSendPush" class="checkbox-label">
+                                Enviar también notificación push a usuarios registrados (PWA)
+                            </label>
+                        </div>
+                        <div id="publicNotifPushOptions" style="display: none; margin-top: 0.75rem;">
+                            <label for="publicNotifPushScope">Alcance del push:</label>
+                            <select id="publicNotifPushScope" class="form-control" onchange="togglePublicNotifPushLocalidades()" style="margin: 0.5rem 0 1rem 0;">
+                                <option value="todos">Todos los usuarios con notificaciones activas</option>
+                                <option value="localidades">Localidades específicas</option>
+                            </select>
+                            <div id="publicNotifPushLocalidades" style="display: none;">
+                                <label>Seleccionar localidades:</label>
+                                <div class="localities-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 0.5rem; margin-top: 0.5rem;">
+                                    <label class="locality-checkbox"><input type="checkbox" name="publicNotifLocalities" value="Cobreros"> Cobreros</label>
+                                    <label class="locality-checkbox"><input type="checkbox" name="publicNotifLocalities" value="Avedillo de Sanabria"> Avedillo de Sanabria</label>
+                                    <label class="locality-checkbox"><input type="checkbox" name="publicNotifLocalities" value="Barrio de Lomba"> Barrio de Lomba</label>
+                                    <label class="locality-checkbox"><input type="checkbox" name="publicNotifLocalities" value="Castro de Sanabria"> Castro de Sanabria</label>
+                                    <label class="locality-checkbox"><input type="checkbox" name="publicNotifLocalities" value="Limianos"> Limianos</label>
+                                    <label class="locality-checkbox"><input type="checkbox" name="publicNotifLocalities" value="Quintana de Sanabria"> Quintana de Sanabria</label>
+                                    <label class="locality-checkbox"><input type="checkbox" name="publicNotifLocalities" value="Riego de Lomba"> Riego de Lomba</label>
+                                    <label class="locality-checkbox"><input type="checkbox" name="publicNotifLocalities" value="San Martín del Terroso"> San Martín del Terroso</label>
+                                    <label class="locality-checkbox"><input type="checkbox" name="publicNotifLocalities" value="San Miguel de Lomba"> San Miguel de Lomba</label>
+                                    <label class="locality-checkbox"><input type="checkbox" name="publicNotifLocalities" value="San Román de Sanabria"> San Román de Sanabria</label>
+                                    <label class="locality-checkbox"><input type="checkbox" name="publicNotifLocalities" value="Santa Colomba"> Santa Colomba</label>
+                                    <label class="locality-checkbox"><input type="checkbox" name="publicNotifLocalities" value="Sotillo"> Sotillo</label>
+                                    <label class="locality-checkbox"><input type="checkbox" name="publicNotifLocalities" value="Terroso"> Terroso</label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </form>
             </div>
             <div class="modal-footer">
                 <button class="btn btn-outline" onclick="closePublicNotificationModal()">Cancelar</button>
-                <button class="btn btn-primary" onclick="savePublicNotification()">Guardar Notificación</button>
+                <button class="btn btn-primary" onclick="savePublicNotification()">Guardar y publicar</button>
             </div>
         </div>
     </div>
@@ -1654,8 +2675,11 @@
             <div class="modal-body">
                 <div class="cultura-tabs">
                     <button class="tab-btn active" onclick="switchCulturaTab('contenido')">📝 Contenido</button>
-                    <button class="tab-btn" onclick="switchCulturaTab('tarjetas')">🃏 Tarjetas</button>
-                    <button class="tab-btn" onclick="switchCulturaTab('eventos')">🎉 Eventos</button>
+                    <button class="tab-btn" onclick="switchCulturaTab('naturaleza')">🥾 Naturaleza</button>
+                    <button class="tab-btn" onclick="switchCulturaTab('patrimonio')">🏛️ Patrimonio</button>
+                    <button class="tab-btn" onclick="switchCulturaTab('gastronomia')">🍄 Gastronomía</button>
+                    <button class="tab-btn" onclick="switchCulturaTab('eventos')">🎪 Eventos</button>
+                    <button class="tab-btn" onclick="switchCulturaTab('cercanos')">🗺️ Sitios Cercanos</button>
                 </div>
                 
                 <!-- Tab de Contenido -->
@@ -1674,17 +2698,77 @@
                     </div>
                 </div>
                 
+                <!-- Tab de Naturaleza -->
+                <div id="cultura-naturaleza-tab" class="tab-content">
+                    <div class="content-actions">
+                        <button class="btn btn-primary" onclick="openCulturaItemEditor('naturaleza')">
+                            <i class="fas fa-plus"></i> Nuevo Elemento
+                        </button>
+                        <button class="btn btn-secondary" onclick="exportCulturaSection('naturaleza')">
+                            <i class="fas fa-download"></i> Exportar
+                        </button>
+                    </div>
+                    <div class="content-list" id="naturalezaAdminList">
+                        <!-- Se cargará dinámicamente -->
+                    </div>
+                </div>
+                
+                <!-- Tab de Patrimonio -->
+                <div id="cultura-patrimonio-tab" class="tab-content">
+                    <div class="content-actions">
+                        <button class="btn btn-primary" onclick="openCulturaItemEditor('patrimonio')">
+                            <i class="fas fa-plus"></i> Nuevo Elemento
+                        </button>
+                        <button class="btn btn-secondary" onclick="exportCulturaSection('patrimonio')">
+                            <i class="fas fa-download"></i> Exportar
+                        </button>
+                    </div>
+                    <div class="content-list" id="patrimonioAdminList">
+                        <!-- Se cargará dinámicamente -->
+                    </div>
+                </div>
+                
+                <!-- Tab de Gastronomía -->
+                <div id="cultura-gastronomia-tab" class="tab-content">
+                    <div class="content-actions">
+                        <button class="btn btn-primary" onclick="openCulturaItemEditor('gastronomia')">
+                            <i class="fas fa-plus"></i> Nuevo Elemento
+                        </button>
+                        <button class="btn btn-secondary" onclick="exportCulturaSection('gastronomia')">
+                            <i class="fas fa-download"></i> Exportar
+                        </button>
+                    </div>
+                    <div class="content-list" id="gastronomiaAdminList">
+                        <!-- Se cargará dinámicamente -->
+                    </div>
+                </div>
+                
                 <!-- Tab de Eventos -->
                 <div id="cultura-eventos-tab" class="tab-content">
                     <div class="content-actions">
-                        <button class="btn btn-primary" onclick="openEventEditor()">
-                            <i class="fas fa-plus"></i> Nuevo Evento
+                        <button class="btn btn-primary" onclick="openCulturaItemEditor('eventos')">
+                            <i class="fas fa-plus"></i> Nuevo Elemento
                         </button>
-                        <button class="btn btn-secondary" onclick="exportEvents()">
-                            <i class="fas fa-download"></i> Exportar Eventos
+                        <button class="btn btn-secondary" onclick="exportCulturaSection('eventos')">
+                            <i class="fas fa-download"></i> Exportar
                         </button>
                     </div>
-                    <div class="content-list" id="culturaEventsList">
+                    <div class="content-list" id="eventosAdminList">
+                        <!-- Se cargará dinámicamente -->
+                    </div>
+                </div>
+                
+                <!-- Tab de Sitios Cercanos -->
+                <div id="cultura-cercanos-tab" class="tab-content">
+                    <div class="content-actions">
+                        <button class="btn btn-primary" onclick="openCulturaItemEditor('cercanos')">
+                            <i class="fas fa-plus"></i> Nuevo Elemento
+                        </button>
+                        <button class="btn btn-secondary" onclick="exportCulturaSection('cercanos')">
+                            <i class="fas fa-download"></i> Exportar
+                        </button>
+                    </div>
+                    <div class="content-list" id="cercanosAdminList">
                         <!-- Se cargará dinámicamente -->
                     </div>
                 </div>
@@ -1722,6 +2806,64 @@
         </div>
     </div>
 
+    <!-- Modal para editar elementos de Cultura y Ocio -->
+    <div id="culturaItemModal" class="modal">
+        <div class="modal-content" style="max-width: 800px;">
+            <div class="modal-header">
+                <h3 id="culturaItemModalTitle">Editar Elemento</h3>
+                <span class="close" onclick="closeCulturaItemModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form id="culturaItemForm">
+                    <input type="hidden" id="culturaItemId">
+                    <input type="hidden" id="culturaItemSection">
+                    
+                    <div class="form-group">
+                        <label for="culturaItemTitle">Título:</label>
+                        <input type="text" id="culturaItemTitle" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="culturaItemDescription">Descripción:</label>
+                        <textarea id="culturaItemDescription" rows="4" required></textarea>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="culturaItemImage">Imagen (URL o archivo):</label>
+                        <input type="text" id="culturaItemImage" placeholder="URL de imagen o subir archivo">
+                        <input type="file" id="culturaItemImageFile" accept="image/*" style="margin-top: 5px;">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="culturaItemLinks">Enlaces (uno por línea, formato: texto|url):</label>
+                        <textarea id="culturaItemLinks" rows="3" placeholder="Ejemplo: Ver más información|https://ejemplo.com"></textarea>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="culturaItemDocument">Documento (PDF/JPG):</label>
+                        <input type="file" id="culturaItemDocument" accept=".pdf,.jpg,.jpeg,.png">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="culturaItemExternalLink">Enlace externo:</label>
+                        <input type="url" id="culturaItemExternalLink" placeholder="https://ejemplo.com">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="culturaItemOrder">Orden de visualización:</label>
+                        <input type="number" id="culturaItemOrder" min="1" value="1">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline" onclick="closeCulturaItemModal()">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="saveCulturaItem()">
+                    <i class="fas fa-save"></i> Guardar
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- Modal para gestionar Teléfonos de Interés -->
     <div id="telefonosInteresModal" class="modal">
         <div class="modal-content" style="max-width: 1000px;">
@@ -1747,7 +2889,7 @@
                     </div>
                     <div class="form-group">
                         <label for="telefonosTarjetaNombre">Nombre de la tarjeta:</label>
-                        <input type="text" id="telefonosTarjetaNombre" value="Servicios">
+                        <input type="text" id="telefonosTarjetaNombre" value="Datos y Enlaces">
                     </div>
                     <div class="form-group">
                         <label for="telefonosTarjetaEmoji">Emoji de la tarjeta:</label>
@@ -1968,7 +3110,64 @@
         </div>
     </div>
 
+    <!-- Modal de Gestión de Transporte -->
+    <div id="transporteModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>🚌 Gestión de Líneas de Transporte</h3>
+                <span class="close" onclick="closeTransporteModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <button class="btn btn-primary" onclick="addTransporteLinea()">
+                        <i class="fas fa-plus"></i> Añadir Nueva Línea
+                    </button>
+                </div>
+                
+                <div id="transporteLinesList"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mensaje flotante para desktop -->
+    <div class="floating-desktop-info desktop-only" id="desktopAppInfo">
+        <button class="close-floating-info" onclick="closeDesktopInfo()" title="Cerrar">×</button>
+        <div class="floating-content">
+            <h4>📱 App COBREROS Vecinos</h4>
+            <p>Regístrate y recibe avisos: Android (APK) o iPhone (instalar desde Safari).</p>
+            <div style="margin-top: 0.5rem; display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                <button type="button" class="btn btn-small btn-primary apk-vecinos-android-only" onclick="downloadVecinosApk()">Descargar APK</button>
+                <button type="button" class="btn btn-small btn-primary apk-vecinos-ios-only" onclick="openIosVecinosApp()">Instalar en iPhone</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mis localidades (usuario) / edición admin -->
+    <div id="userLocalitiesModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeUserLocalitiesModal()">&times;</span>
+            <h2 id="userLocalitiesModalTitle">Mis localidades</h2>
+            <p id="userLocalitiesModalSubtitle" style="color: #64748b; margin-bottom: 1rem;">
+                Recibirá avisos generales y los específicos de los pueblos que marque.
+            </p>
+            <input type="hidden" id="userLocalitiesEditUid" value="">
+            <div class="form-group">
+                <div class="localities-controls" style="margin-bottom: 0.75rem; display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                    <button type="button" class="btn btn-outline btn-small" onclick="selectAllUserLocalitiesCheckboxes()">Seleccionar todas</button>
+                    <button type="button" class="btn btn-outline btn-small" onclick="deselectAllUserLocalitiesCheckboxes()">Quitar todas</button>
+                </div>
+                <div id="userLocalitiesGrid" class="localities-grid"></div>
+            </div>
+            <div class="modal-footer" style="margin-top: 1rem; display: flex; gap: 0.5rem; justify-content: flex-end;">
+                <button type="button" class="btn btn-outline" onclick="closeUserLocalitiesModal()">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="saveUserLocalitiesFromModal()">Guardar localidades</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/admin-access-bootstrap.js"></script>
     <script src="js/script.js"></script>
+    <script src="js/recaptcha.js"></script>
 </body> 
 
 

@@ -1,0 +1,5 @@
+# Digital Asset Links para TWA (DEBE IR ANTES de la redirección general)
+/.well-known/assetlinks.json    /.well-known/assetlinks.json   200
+
+# Redirección general para SPA (debe ir al final)
+/*    /index.html   200

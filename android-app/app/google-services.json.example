@@ -1,0 +1,20 @@
+{
+  "_comment": "Descarga el archivo real desde Firebase Console o ejecuta:",
+  "_cmd": "firebase apps:sdkconfig ANDROID 1:527550932354:android:d80d0845b64d6626b1db9b --out android-app/app/google-services.json",
+  "project_info": {
+    "project_number": "527550932354",
+    "project_id": "ayuntamiento-de-cobreros",
+    "storage_bucket": "ayuntamiento-de-cobreros.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:527550932354:android:d80d0845b64d6626b1db9b",
+        "android_client_info": {
+          "package_name": "com.turisteam.ayuntamientocobreros"
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

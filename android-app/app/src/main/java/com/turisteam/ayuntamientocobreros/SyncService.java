@@ -7,12 +7,18 @@ import android.util.Log;
 import androidx.annotation.Nullable;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
+import android.text.TextUtils;
+import com.google.firebase.firestore.DocumentChange;
 import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.ListenerRegistration;
+import com.google.firebase.firestore.Query;
 import com.google.firebase.messaging.FirebaseMessaging;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public class SyncService extends Service {
     
@@ -87,21 +93,68 @@ public class SyncService extends Service {
     }
     
     private void syncNotifications(String userId) {
+        final android.content.SharedPreferences prefs =
+                getSharedPreferences("ayuntamiento_prefs", MODE_PRIVATE);
         notificationsListener = db.collection("notifications")
-            .whereEqualTo("userId", userId)
+            .orderBy("timestamp", Query.Direction.DESCENDING)
+            .limit(50)
             .addSnapshotListener((querySnapshot, e) -> {
                 if (e != null) {
                     Log.w(TAG, "Error escuchando notificaciones", e);
                     return;
                 }
-                
-                if (querySnapshot != null) {
-                    for (DocumentSnapshot document : querySnapshot.getDocuments()) {
-                        // Procesar notificación recibida
+                if (querySnapshot == null) {
+                    return;
+                }
+                if (!prefs.getBoolean("notif_sync_ready", false)) {
+                    prefs.edit().putBoolean("notif_sync_ready", true).apply();
+                    return;
+                }
+                String userLocalitiesStr = prefs.getString("user_localities", "");
+                for (DocumentChange dc : querySnapshot.getDocumentChanges()) {
+                    if (dc.getType() != DocumentChange.Type.ADDED) {
+                        continue;
+                    }
+                    DocumentSnapshot document = dc.getDocument();
+                    Map<String, Object> data = document.getData();
+                    if (data == null) {
+                        continue;
+                    }
+                    if (shouldShowNotificationForUser(data, userLocalitiesStr)) {
                         processNotification(document);
                     }
                 }
             });
+    }
+
+    private boolean shouldShowNotificationForUser(Map<String, Object> notificationData, String userLocalitiesStr) {
+        Object tp = notificationData.get("targetPueblos");
+        if (tp == null) {
+            return true;
+        }
+        if (!(tp instanceof List)) {
+            return true;
+        }
+        List<?> list = (List<?>) tp;
+        if (list.isEmpty()) {
+            return true;
+        }
+        if (userLocalitiesStr == null || userLocalitiesStr.trim().isEmpty()) {
+            return true;
+        }
+        Set<String> targets = new HashSet<>();
+        for (Object o : list) {
+            if (o != null) {
+                targets.add(String.valueOf(o).trim().toLowerCase());
+            }
+        }
+        String[] parts = userLocalitiesStr.split(",");
+        for (String p : parts) {
+            if (targets.contains(p.trim().toLowerCase())) {
+                return true;
+            }
+        }
+        return false;
     }
     
     private void processNotification(DocumentSnapshot document) {
@@ -112,15 +165,26 @@ public class SyncService extends Service {
                 String message = (String) notificationData.get("message");
                 String type = (String) notificationData.get("type");
                 String localities = (String) notificationData.get("localities");
+                Object tp = notificationData.get("targetPueblos");
+                if (localities == null && tp instanceof List) {
+                    List<?> list = (List<?>) tp;
+                    String[] arr = new String[list.size()];
+                    for (int i = 0; i < list.size(); i++) {
+                        arr[i] = list.get(i) != null ? String.valueOf(list.get(i)) : "";
+                    }
+                    localities = TextUtils.join(",", arr);
+                }
                 boolean hasAttachments = (Boolean) notificationData.getOrDefault("hasAttachments", false);
                 String attachmentUrl = (String) notificationData.get("attachmentUrl");
+                if (attachmentUrl == null) {
+                    attachmentUrl = (String) notificationData.get("documentUrl");
+                }
+                if (attachmentUrl != null && !attachmentUrl.isEmpty()) {
+                    hasAttachments = true;
+                }
                 String attachmentType = (String) notificationData.get("attachmentType");
                 
-                // Crear notificación local
                 createLocalNotification(title, message, type, localities, hasAttachments, attachmentUrl, attachmentType);
-                
-                // Marcar como leída
-                document.getReference().update("read", true);
             }
         } catch (Exception e) {
             Log.e(TAG, "Error procesando notificación", e);

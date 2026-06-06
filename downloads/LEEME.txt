@@ -1,0 +1,12 @@
+Coloca aquí las APK compiladas:
+
+1) cobreros-vecinos.apk  — descarga PÚBLICA (vecinos, recibir avisos)
+   Compilar: cd android-app && gradlew.bat assembleVecinosRelease
+   Copiar desde: app/build/outputs/apk/vecinos/release/app-vecinos-release.apk
+
+2) cobreros-avisos.apk — solo administradores (enviar avisos)
+   Compilar: cd android-app && gradlew.bat assembleAvisosRelease
+   Subir a Firebase Storage: private/cobreros-avisos.apk
+   (La web no enlaza esta APK en público; solo el panel admin con login Firebase)
+
+Después de copiar la APK vecinos, ejecuta sync-netlify.bat para publicar en Netlify.

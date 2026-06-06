@@ -1,5 +1,15 @@
 # 📱 PWA del Ayuntamiento de Cobreros
 
+## 📱 **Plataformas Soportadas:**
+
+- ✅ **iPhone/iPad** (iOS Safari)
+- ✅ **Android** (Chrome, Firefox, Samsung Internet)
+- ✅ **Huawei/HONOR** (Navegador de Huawei, Chrome) ⭐ **NUEVO**
+- ✅ **Windows** (Edge, Chrome)
+- ✅ **Mac** (Safari, Chrome)
+
+---
+
 ## 🍎 **Instalación en iPhone:**
 
 ### **Método 1: Safari (Recomendado)**

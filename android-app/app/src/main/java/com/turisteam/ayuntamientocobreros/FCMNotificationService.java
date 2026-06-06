@@ -3,6 +3,7 @@ package com.turisteam.ayuntamientocobreros;
 import android.util.Log;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.QueryDocumentSnapshot;
+import com.google.firebase.firestore.DocumentSnapshot;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -42,7 +43,10 @@ public class FCMNotificationService {
                             }
                         }
                     } else {
-                        users.addAll(task.getResult().getDocuments());
+                        // Agregar todos los usuarios si no hay filtro de localidades
+                        for (QueryDocumentSnapshot document : task.getResult()) {
+                            users.add(document);
+                        }
                     }
                     
                     // Enviar notificación a cada usuario

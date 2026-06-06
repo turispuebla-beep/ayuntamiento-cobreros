@@ -37,8 +37,8 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Acceso de Administrador"
-                android:textSize="18sp"
+                android:text="Envío de avisos (solo personal autorizado)"
+                android:textSize="16sp"
                 android:textColor="@color/ayuntamiento_blue"
                 android:layout_marginTop="8dp" />
 
@@ -146,7 +146,7 @@
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="• Solo administradores autorizados pueden acceder\n• Las notificaciones se envían a usuarios de la APK\n• Se puede filtrar por localidades específicas"
+                    android:text="• Cuenta Firebase de administrador (admins/{uid})\n• Los avisos llegan por push a la PWA y web\n• Opcional: banner superior y filtro por localidad"
                     android:textSize="14sp"
                     android:textColor="@color/ayuntamiento_blue"
                     android:lineSpacingExtra="4dp" />

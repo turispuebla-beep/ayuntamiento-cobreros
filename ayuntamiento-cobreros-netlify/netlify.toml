@@ -1,0 +1,32 @@
+# Netlify — Ayuntamiento de Cobreros (carpeta de publicación estática)
+[build]
+  publish = "."
+  command = "node scripts/inject-firebase-config.mjs ."
+
+[build.environment]
+  # La apiKey web de Firebase va en FIREBASE_API_KEY (Site settings → Environment variables).
+  # El JS generado en build es público por diseño; omitir escaneo de falsos positivos AIza*.
+  SECRETS_SCAN_OMIT_PATHS = "js/firebase-config.generated.js,config/firebase.web.build.json"
+  SECRETS_SCAN_SMART_DETECTION_ENABLED = "false"
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+
+[[headers]]
+  for = "/sw.js"
+  [headers.values]
+    Cache-Control = "no-cache, no-store, must-revalidate"
+
+[[headers]]
+  for = "/manifest.json"
+  [headers.values]
+    Cache-Control = "public, max-age=3600"

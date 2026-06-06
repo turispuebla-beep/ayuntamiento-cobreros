@@ -1,0 +1,20 @@
+User-agent: *
+Allow: /
+
+# Sitemap
+Sitemap: https://www.ayuntamientocobreros.com/sitemap.xml
+
+# No indexar archivos de administración y modales
+Disallow: /admin
+Disallow: /*modal
+Disallow: /*admin
+
+# Permitir recursos estáticos
+Allow: /css/
+Allow: /js/
+Allow: /images/
+Allow: /manifest.json
+
+
+
+

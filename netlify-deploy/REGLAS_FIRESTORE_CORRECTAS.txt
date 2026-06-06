@@ -1,0 +1,61 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // ===== FUNCIÓN AUXILIAR: Verificar si es admin =====
+    function isAdmin() {
+      return request.auth != null && 
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.isAdmin == true;
+    }
+    
+    // ===== COLECCIÓN: users =====
+    match /users/{userId} {
+      // Usuarios pueden leer/escribir sus propios datos
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+      
+      // Admins pueden leer todos los usuarios
+      allow read: if isAdmin();
+    }
+    
+    // Permitir listar todos los usuarios (solo para admins)
+    match /users/{document=**} {
+      allow list: if isAdmin();
+    }
+    
+    // ===== COLECCIÓN: notifications (subcolección de users) =====
+    match /users/{userId}/notifications/{notificationId} {
+      // Usuarios pueden leer sus propias notificaciones
+      allow read: if request.auth != null && request.auth.uid == userId;
+      
+      // Solo administradores pueden crear notificaciones
+      allow create: if isAdmin();
+    }
+    
+    // Permitir listar notificaciones (usuarios las suyas, admins todas)
+    match /users/{userId}/notifications/{document=**} {
+      allow list: if request.auth != null && (request.auth.uid == userId || isAdmin());
+    }
+    
+    // ===== COLECCIÓN: config =====
+    match /config/{configId} {
+      // Todos pueden leer configuración (pública)
+      allow read: if true;
+      
+      // Solo administradores pueden escribir configuración
+      allow write: if isAdmin();
+    }
+    
+    // ===== COLECCIÓN: admins =====
+    match /admins/{adminId} {
+      // Solo los administradores pueden leer su propio documento
+      allow read: if request.auth != null && request.auth.uid == adminId;
+      
+      // Solo los super administradores pueden escribir
+      allow write: if request.auth != null && 
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.isSuperAdmin == true;
+    }
+  }
+}
+
