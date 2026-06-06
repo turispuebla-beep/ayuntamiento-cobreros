@@ -1326,10 +1326,12 @@ function setupEventListeners() {
     document.getElementById('documentUploadForm').addEventListener('submit', handleDocumentUpload);
     document.getElementById('importDataForm').addEventListener('submit', handleDataImport);
 
-    // Tabs del admin
-    document.querySelectorAll('.tab-btn').forEach(btn => {
+    // Tabs del panel de administración (solo #adminModal, no otros modales)
+    document.querySelectorAll('#adminModal .admin-tabs .tab-btn').forEach(btn => {
         btn.addEventListener('click', function() {
-            switchTab(this.dataset.tab);
+            if (this.dataset.tab) {
+                switchTab(this.dataset.tab);
+            }
         });
     });
 
@@ -1731,6 +1733,7 @@ function closeAllModals() {
     document.querySelectorAll('.modal').forEach(modal => {
         modal.style.display = 'none';
     });
+    closeNotificationCenter();
     document.body.style.overflow = 'auto';
 }
 
@@ -2403,8 +2406,8 @@ function switchTab(tabName) {
         activeBtn.classList.add('active');
     }
 
-    // Actualizar contenido
-    adminModal.querySelectorAll(':scope > .modal-content > .tab-content').forEach(content => {
+    // Actualizar contenido (las pestañas están dentro de .admin-content-area)
+    adminModal.querySelectorAll('.admin-content-area .tab-content').forEach(content => {
         content.classList.remove('active');
     });
     const targetTab = adminModal.querySelector(`#${effectiveTab}-tab`);
@@ -2471,6 +2474,8 @@ function switchTab(tabName) {
         console.log('Pestaña de citas previas cargada');
     } else if (effectiveTab === 'servicios') {
         loadServiciosAdmin();
+    } else if (effectiveTab === 'backup') {
+        updateSystemInfo();
     }
 }
 
@@ -3164,6 +3169,13 @@ function toggleNotificationCenter() {
     
     const center = document.getElementById('notificationCenter');
     center.classList.toggle('show');
+}
+
+function closeNotificationCenter() {
+    const center = document.getElementById('notificationCenter');
+    if (center) {
+        center.classList.remove('show');
+    }
 }
 
 // Marcar todas las notificaciones como leídas

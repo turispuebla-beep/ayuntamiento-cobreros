@@ -1987,6 +1987,27 @@ a.btn {
     color: var(--text-primary);
 }
 
+.notification-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.notification-close-btn {
+    border: none;
+    background: transparent;
+    color: var(--text-secondary);
+    font-size: 1.75rem;
+    line-height: 1;
+    cursor: pointer;
+    padding: 0 0.25rem;
+    margin: 0;
+}
+
+.notification-close-btn:hover {
+    color: var(--text-primary);
+}
+
 .notifications-list {
     max-height: 300px;
     overflow-y: auto;

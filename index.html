@@ -1393,7 +1393,10 @@
     <div id="notificationCenter" class="notification-center">
         <div class="notification-header">
             <h3>Notificaciones</h3>
-            <button class="btn btn-small" onclick="markAllAsRead()">Marcar todas como leídas</button>
+            <div class="notification-header-actions">
+                <button type="button" class="btn btn-small" onclick="markAllAsRead()">Marcar todas como leídas</button>
+                <button type="button" class="notification-close-btn" onclick="closeNotificationCenter()" title="Cerrar" aria-label="Cerrar notificaciones">&times;</button>
+            </div>
         </div>
         <div class="notifications-list" id="notificationsList">
             <!-- Notifications will be populated here -->
