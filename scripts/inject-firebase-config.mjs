@@ -12,7 +12,10 @@ const targetDir = path.resolve(targetDirArg());
 
 function targetDirArg() {
   const arg = process.argv[2];
-  if (arg) return path.isAbsolute(arg) ? arg : path.resolve(process.cwd(), arg);
+  if (arg) {
+    const cleaned = String(arg).trim().replace(/^["']|["']$/g, '').replace(/[\\/]+$/g, '');
+    return path.isAbsolute(cleaned) ? cleaned : path.resolve(process.cwd(), cleaned);
+  }
   return process.cwd();
 }
 

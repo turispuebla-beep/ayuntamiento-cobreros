@@ -31,7 +31,7 @@ xcopy /Y /E /I "%SRC%downloads" "%DST%downloads"
 
 echo.
 echo Generando js\firebase-config.generated.js en ayuntamiento-cobreros-netlify...
-node "%SRC%scripts\inject-firebase-config.mjs" "%DST%"
+node "%SRC%scripts\inject-firebase-config.mjs" "%SRC%ayuntamiento-cobreros-netlify"
 if errorlevel 1 (
   echo ERROR: no se pudo generar firebase-config.generated.js
   pause
