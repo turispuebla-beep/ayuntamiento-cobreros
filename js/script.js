@@ -2143,7 +2143,7 @@ function sendNotificationToUsers(title, message, type, attachment = null) {
     if ('Notification' in window && Notification.permission === 'granted') {
         new Notification(title, {
             body: message,
-            icon: 'images/escudo-cobreros.jpg'
+            icon: 'images/escudo-cobreros-192.png'
         });
     }
 
@@ -2978,12 +2978,22 @@ function toggleNotificationCenter() {
 }
 
 // Marcar todas las notificaciones como leídas
-function markAllAsRead() {
+async function markAllAsRead() {
     notifications.forEach(notification => {
         notification.read = true;
     });
     localStorage.setItem('notifications', JSON.stringify(notifications));
     updateNotificationCenter();
+
+    const authUser = firebase.auth && firebase.auth().currentUser;
+    if (authUser && lastReceivedNotifications.length) {
+        for (const n of lastReceivedNotifications) {
+            await markFirestoreNotificationAsRead(n);
+        }
+        await updateAppIconBadgeCount(lastReceivedNotifications);
+        displayReceivedNotifications(lastReceivedNotifications);
+    }
+
     showNotification('Todas las notificaciones marcadas como leídas', 'success');
 }
 
@@ -10921,6 +10931,13 @@ function setupNotificationReception() {
                 if (event.data.type === 'NOTIFICATION_RECEIVED') {
                     handleReceivedNotification(event.data.notification);
                 }
+                if (event.data.type === 'BADGE_REFRESH' || event.data.type === 'BADGE_COUNT') {
+                    if (typeof event.data.count === 'number') {
+                        syncAppIconBadge(event.data.count);
+                    } else {
+                        loadReceivedNotifications();
+                    }
+                }
             });
         });
     }
@@ -11033,6 +11050,119 @@ async function syncUserFcmTokenToFirestore() {
     }
 }
 
+// —— Badge en icono de la app (PWA): avisos sin leer ——
+
+let cachedReadBroadcastIds = [];
+let lastReceivedNotifications = [];
+
+async function syncAppIconBadge(count) {
+    const n = Math.max(0, Number(count) || 0);
+    try {
+        if ('setAppBadge' in navigator) {
+            if (n > 0) {
+                await navigator.setAppBadge(n);
+            } else if ('clearAppBadge' in navigator) {
+                await navigator.clearAppBadge();
+            }
+        }
+        if (navigator.serviceWorker && navigator.serviceWorker.controller) {
+            navigator.serviceWorker.controller.postMessage({ type: 'BADGE_COUNT', count: n });
+        }
+    } catch (err) {
+        console.warn('No se pudo actualizar badge del icono:', err);
+    }
+    const notificationBadge = document.getElementById('notificationBadge');
+    if (notificationBadge) {
+        notificationBadge.textContent = String(n);
+        notificationBadge.style.display = n > 0 ? 'flex' : 'none';
+    }
+}
+
+function isFirestoreNotificationUnread(n, uid, readBroadcastIds) {
+    if (!n) return false;
+    if (n.userId && uid && n.userId === uid) {
+        return n.read !== true;
+    }
+    const id = n.id || '';
+    return id && !(readBroadcastIds || []).includes(id);
+}
+
+function countUnreadNotifications(notifications, uid, readBroadcastIds) {
+    return (notifications || []).filter((n) =>
+        isFirestoreNotificationUnread(n, uid, readBroadcastIds)
+    ).length;
+}
+
+async function loadUserReadBroadcastIds(uid) {
+    if (!uid || !window.firebase || !window.firebase.firestore) {
+        return [];
+    }
+    try {
+        const doc = await firebase.firestore().collection('users').doc(uid).get();
+        const raw = doc.exists ? doc.get('readBroadcastNotificationIds') : [];
+        return Array.isArray(raw) ? raw.map(String) : [];
+    } catch (e) {
+        return [];
+    }
+}
+
+async function markFirestoreNotificationAsRead(notification) {
+    if (!notification || !notification.id) return;
+    const authUser = firebase.auth && firebase.auth().currentUser;
+    const uid = authUser ? authUser.uid : null;
+    if (!uid || !window.firebase || !window.firebase.firestore) return;
+
+    try {
+        if (notification.userId && notification.userId === uid) {
+            await firebase.firestore().collection('notifications').doc(notification.id)
+                .update({ read: true });
+        } else {
+            if (!cachedReadBroadcastIds.includes(notification.id)) {
+                cachedReadBroadcastIds.push(notification.id);
+            }
+            await firebase.firestore().collection('users').doc(uid).set({
+                readBroadcastNotificationIds: cachedReadBroadcastIds
+            }, { merge: true });
+        }
+        notification.read = true;
+    } catch (err) {
+        console.warn('No se pudo marcar aviso como leído:', err);
+    }
+}
+
+async function updateAppIconBadgeCount(notificationsOverride) {
+    try {
+        const authUser = firebase.auth && firebase.auth().currentUser;
+        const uid = authUser ? authUser.uid : null;
+        if (!uid) {
+            await syncAppIconBadge(0);
+            return;
+        }
+        if (!cachedReadBroadcastIds.length) {
+            cachedReadBroadcastIds = await loadUserReadBroadcastIds(uid);
+        }
+        let list = notificationsOverride;
+        if (!list) {
+            const snap = await firebase.firestore().collection('notifications')
+                .orderBy('timestamp', 'desc').limit(50).get();
+            list = [];
+            snap.forEach((doc) => {
+                list.push({ id: doc.id, ...doc.data() });
+            });
+            const userLocalities = getCurrentUserLocalitiesForNotifications();
+            list = list.filter((n) => isNotificationForUserLocalities(n, userLocalities));
+        }
+        const unread = countUnreadNotifications(list, uid, cachedReadBroadcastIds);
+        await syncAppIconBadge(unread);
+    } catch (err) {
+        console.warn('updateAppIconBadgeCount:', err);
+    }
+}
+
+function updateNotificationBadge() {
+    updateAppIconBadgeCount();
+}
+
 // Cargar notificaciones recibidas desde Firestore
 async function loadReceivedNotifications() {
     try {
@@ -11078,7 +11208,13 @@ async function loadReceivedNotifications() {
                 );
             }
 
+            const authUser = firebase.auth && firebase.auth().currentUser;
+            if (authUser) {
+                cachedReadBroadcastIds = await loadUserReadBroadcastIds(authUser.uid);
+            }
+
             displayReceivedNotifications(filtered);
+            await updateAppIconBadgeCount(filtered);
         }
     } catch (error) {
         console.error('Error cargando notificaciones recibidas:', error);
@@ -11089,14 +11225,23 @@ async function loadReceivedNotifications() {
 function displayReceivedNotifications(notifications) {
     const container = document.getElementById('receivedNotificationsList');
     if (!container) return;
+
+    lastReceivedNotifications = notifications || [];
     
     if (notifications.length === 0) {
         container.innerHTML = '<p class="no-notifications">No hay notificaciones recibidas</p>';
         return;
     }
     
-    container.innerHTML = notifications.map(notification => `
-        <div class="notification-item received" data-id="${notification.id}">
+    container.innerHTML = notifications.map(notification => {
+        const unread = isFirestoreNotificationUnread(
+            notification,
+            firebase.auth && firebase.auth().currentUser ? firebase.auth().currentUser.uid : null,
+            cachedReadBroadcastIds
+        );
+        const unreadClass = unread ? ' unread' : '';
+        return `
+        <div class="notification-item received${unreadClass}" data-id="${notification.id}" onclick="openReceivedNotification('${notification.id}')">
             <div class="notification-header">
                 <span class="notification-type ${notification.type || 'general'}">
                     ${getTypeIcon(notification.type)} ${(notification.type || 'general').toString().toUpperCase()}
@@ -11113,10 +11258,29 @@ function displayReceivedNotifications(notifications) {
                 <p class="notification-source">Enviado desde: ${notification.sentFrom}</p>
             </div>
             <div class="notification-actions">
-                ${notification.hasAttachments ? '<button onclick="downloadAttachment(\'' + notification.attachmentUrl + '\')" class="btn btn-small">📥 Descargar</button>' : ''}
+                ${notification.hasAttachments ? '<button onclick="event.stopPropagation(); downloadAttachment(\'' + notification.attachmentUrl + '\')" class="btn btn-small">📥 Descargar</button>' : ''}
             </div>
         </div>
-    `).join('');
+    `;
+    }).join('');
+}
+
+async function openReceivedNotification(notificationId) {
+    const notification = lastReceivedNotifications.find((n) => n.id === notificationId);
+    if (!notification) return;
+    await markFirestoreNotificationAsRead(notification);
+    await updateAppIconBadgeCount(lastReceivedNotifications);
+    showNotificationDetail({
+        title: notification.title,
+        message: notification.message,
+        type: notification.type || 'general',
+        date: notification.timestamp,
+        attachment: notification.attachmentUrl
+            ? { url: notification.attachmentUrl, name: 'Adjunto' }
+            : null,
+        read: true
+    });
+    displayReceivedNotifications(lastReceivedNotifications);
 }
 
 // Alternar vista de notificaciones

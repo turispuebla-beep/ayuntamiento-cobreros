@@ -72,6 +72,7 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
         );
 
         Uri sound = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION);
+        int badgeCount = UnreadNotificationsHelper.incrementBadgeCount(this);
 
         NotificationCompat.Builder builder = new NotificationCompat.Builder(this, CHANNEL_ID)
                 .setSmallIcon(R.drawable.ic_escudo_cobreros)
@@ -83,6 +84,7 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
                 .setAutoCancel(true)
                 .setContentIntent(pendingIntent)
                 .setSound(sound)
+                .setNumber(badgeCount)
                 .setDefaults(NotificationCompat.DEFAULT_VIBRATE);
 
         if ("emergencia".equals(type)) {

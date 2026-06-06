@@ -1,11 +1,11 @@
 @echo off
 cd /d "%~dp0"
-echo Generando PNG PWA desde images\escudo-cobreros.jpg ...
-node scripts\generate-pwa-icons.mjs
+echo Generando iconos PWA desde images\escudo-cobreros.png ...
+call npm run icons
 if errorlevel 1 (
-  echo ERROR al ejecutar el script.
+  echo ERROR al generar iconos.
   pause
   exit /b 1
 )
-echo Listo.
+echo Listo. Ejecuta sync-netlify.bat antes de desplegar.
 pause

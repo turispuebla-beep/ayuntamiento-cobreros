@@ -10,31 +10,88 @@ if (!FIREBASE_CONFIG || !FIREBASE_CONFIG.apiKey) {
   firebase.initializeApp(FIREBASE_CONFIG);
 }
 
+const CACHE_NAME = 'ayuntamiento-cobreros-v8';
+
+function getSwBadgeCount() {
+  return caches.open(CACHE_NAME).then(function (cache) {
+    return cache.match('/__badge_count__').then(function (res) {
+      if (!res) return 0;
+      return res.text().then(function (t) {
+        var n = parseInt(t, 10);
+        return isNaN(n) ? 0 : n;
+      });
+    });
+  }).catch(function () { return 0; });
+}
+
+function setSwBadgeCount(count) {
+  var n = Math.max(0, Number(count) || 0);
+  return caches.open(CACHE_NAME).then(function (cache) {
+    return cache.put('/__badge_count__', new Response(String(n)));
+  }).then(function () {
+    if ('setAppBadge' in self.navigator) {
+      if (n > 0) {
+        return self.navigator.setAppBadge(n);
+      }
+      if ('clearAppBadge' in self.navigator) {
+        return self.navigator.clearAppBadge();
+      }
+    }
+  }).catch(function () {});
+}
+
+function incrementSwBadge() {
+  return getSwBadgeCount().then(function (c) {
+    return setSwBadgeCount(c + 1);
+  });
+}
+
+function notifyClientsBadgeRefresh() {
+  return getSwBadgeCount().then(function (count) {
+    return clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function (list) {
+      list.forEach(function (client) {
+        client.postMessage({ type: 'BADGE_COUNT', count: count });
+      });
+    });
+  });
+}
+
+self.addEventListener('message', function (event) {
+  if (!event.data) return;
+  if (event.data.type === 'BADGE_COUNT' && typeof event.data.count === 'number') {
+    event.waitUntil(setSwBadgeCount(event.data.count));
+  }
+});
+
 if (FIREBASE_CONFIG && FIREBASE_CONFIG.apiKey && firebase.apps.length) {
   const messaging = firebase.messaging();
 
   messaging.onBackgroundMessage(function (payload) {
-  const notification = payload.notification || {};
-  const data = payload.data || {};
-  const title = notification.title || '🏛️ Ayuntamiento de Cobreros';
-  const body = notification.body || 'Nueva notificación del Ayuntamiento de Cobreros';
+    const notification = payload.notification || {};
+    const data = payload.data || {};
+    const title = notification.title || '🏛️ Ayuntamiento de Cobreros';
+    const body = notification.body || 'Nueva notificación del Ayuntamiento de Cobreros';
 
-  return self.registration.showNotification(title, {
-    body: body,
-    icon: notification.icon || '/images/escudo-cobreros-192.png',
-    badge: '/images/escudo-cobreros-192.png',
-    tag: 'ayuntamiento-fcm-' + (data.type || 'general'),
-    vibrate: [200, 100, 200],
-    data: {
-      url: '/',
-      type: data.type || 'general',
-      sentFrom: data.source || data.sent_from || 'FCM'
-    }
-  });
+    return Promise.all([
+      incrementSwBadge(),
+      self.registration.showNotification(title, {
+        body: body,
+        icon: notification.icon || '/images/escudo-cobreros-192.png',
+        badge: '/images/escudo-cobreros-192.png',
+        tag: 'ayuntamiento-fcm-' + (data.type || 'general'),
+        vibrate: [200, 100, 200],
+        data: {
+          url: '/',
+          type: data.type || 'general',
+          sentFrom: data.source || data.sent_from || 'FCM'
+        }
+      })
+    ]).then(function () {
+      notifyClientsBadgeRefresh();
+    });
   });
 }
 
-const CACHE_NAME = 'ayuntamiento-cobreros-v6';
 const urlsToCache = [
   '/',
   '/index.html',
@@ -44,10 +101,13 @@ const urlsToCache = [
   '/js/recaptcha.js',
   '/js/firebase-config.generated.js',
   '/js/firebase-bootstrap.js',
-  '/images/escudo-cobreros.jpg',
   '/images/escudo-cobreros.png',
   '/images/escudo-cobreros-192.png',
   '/images/escudo-cobreros-512.png',
+  '/images/escudo-cobreros-maskable-192.png',
+  '/images/escudo-cobreros-maskable-512.png',
+  '/images/apple-touch-icon.png',
+  '/images/favicon-32.png',
   '/images/favicon.ico',
   '/manifest.json'
 ];
@@ -151,11 +211,15 @@ self.addEventListener('push', function (event) {
   }
 
   event.waitUntil(
-    self.registration.showNotification(notificationData.title, {
-      body: notificationData.body,
-      icon: notificationData.icon,
-      badge: notificationData.badge,
-      data: { url: '/', type: notificationData.type }
+    incrementSwBadge().then(function () {
+      return self.registration.showNotification(notificationData.title, {
+        body: notificationData.body,
+        icon: notificationData.icon,
+        badge: notificationData.badge,
+        data: { url: '/', type: notificationData.type }
+      });
+    }).then(function () {
+      notifyClientsBadgeRefresh();
     })
   );
 });

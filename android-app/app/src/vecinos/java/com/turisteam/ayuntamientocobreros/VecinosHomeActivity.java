@@ -16,13 +16,16 @@ import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.Query;
+import com.google.firebase.firestore.SetOptions;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 
 /** Lista de avisos del ayuntamiento filtrados por localidades del vecino. */
 public class VecinosHomeActivity extends AppCompatActivity {
@@ -33,6 +36,7 @@ public class VecinosHomeActivity extends AppCompatActivity {
     private final List<NotificationItem> items = new ArrayList<>();
     private ArrayAdapter<String> adapter;
     private List<String> userLocalities = new ArrayList<>();
+    private Set<String> readBroadcastIds = new HashSet<>();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -96,6 +100,8 @@ public class VecinosHomeActivity extends AppCompatActivity {
         FirebaseFirestore.getInstance().collection("users").document(uid).get()
                 .addOnSuccessListener(doc -> {
                     userLocalities = parseLocalities(doc);
+                    readBroadcastIds = parseReadBroadcastIds(doc);
+                    UnreadNotificationsHelper.mergeReadBroadcastIds(this, readBroadcastIds);
                     loadNotifications();
                 })
                 .addOnFailureListener(e -> {
@@ -120,7 +126,26 @@ public class VecinosHomeActivity extends AppCompatActivity {
         return list;
     }
 
+    @SuppressWarnings("unchecked")
+    private Set<String> parseReadBroadcastIds(DocumentSnapshot doc) {
+        Set<String> ids = new HashSet<>();
+        if (doc != null && doc.exists()) {
+            Object raw = doc.get("readBroadcastNotificationIds");
+            if (raw instanceof List) {
+                for (Object o : (List<?>) raw) {
+                    if (o != null) {
+                        ids.add(String.valueOf(o));
+                    }
+                }
+            }
+        }
+        return ids;
+    }
+
     private void loadNotifications() {
+        String uid = FirebaseAuth.getInstance().getCurrentUser().getUid();
+        readBroadcastIds = UnreadNotificationsHelper.getReadBroadcastIds(this);
+
         FirebaseFirestore.getInstance().collection("notifications")
                 .orderBy("timestamp", Query.Direction.DESCENDING)
                 .limit(50)
@@ -136,15 +161,17 @@ public class VecinosHomeActivity extends AppCompatActivity {
                         if (!NotificationFilterHelper.isForUser(data, userLocalities)) {
                             continue;
                         }
-                        NotificationItem item = NotificationItem.from(doc.getId(), data);
+                        NotificationItem item = NotificationItem.from(
+                                doc.getId(), data, uid, readBroadcastIds);
                         items.add(item);
-                        labels.add(item.listLabel);
+                        labels.add(item.formatLabel());
                     }
                     adapter.clear();
                     adapter.addAll(labels);
                     adapter.notifyDataSetChanged();
                     progressBar.setVisibility(View.GONE);
                     emptyText.setVisibility(items.isEmpty() ? View.VISIBLE : View.GONE);
+                    syncUnreadBadge();
                 })
                 .addOnFailureListener(e -> {
                     progressBar.setVisibility(View.GONE);
@@ -158,7 +185,9 @@ public class VecinosHomeActivity extends AppCompatActivity {
             return;
         }
         NotificationItem item = items.get(position);
+        markNotificationRead(item);
         Intent intent = new Intent(this, NotificationDetailActivity.class);
+        intent.putExtra("notification_id", item.id);
         intent.putExtra("notification_title", item.title);
         intent.putExtra("notification_message", item.message);
         intent.putExtra("notification_type", item.type);
@@ -169,8 +198,53 @@ public class VecinosHomeActivity extends AppCompatActivity {
         startActivity(intent);
     }
 
+    private void syncUnreadBadge() {
+        int unread = 0;
+        for (NotificationItem item : items) {
+            if (item.unread) {
+                unread++;
+            }
+        }
+        UnreadNotificationsHelper.saveBadgeCount(this, unread);
+        if (getSupportActionBar() != null) {
+            getSupportActionBar().setTitle(unread > 0 ? "Mis avisos (" + unread + ")" : "Mis avisos");
+        }
+    }
+
+    private void markNotificationRead(NotificationItem item) {
+        if (item == null || !item.unread) {
+            return;
+        }
+        String uid = FirebaseAuth.getInstance().getCurrentUser().getUid();
+        if (uid != null && uid.equals(item.userId)) {
+            FirebaseFirestore.getInstance().collection("notifications").document(item.id)
+                    .update("read", true);
+        } else {
+            UnreadNotificationsHelper.markBroadcastRead(this, item.id);
+            Map<String, Object> patch = new HashMap<>();
+            patch.put("readBroadcastNotificationIds",
+                    new ArrayList<>(UnreadNotificationsHelper.getReadBroadcastIds(this)));
+            FirebaseFirestore.getInstance().collection("users").document(uid)
+                    .set(patch, SetOptions.merge());
+        }
+        item.unread = false;
+        refreshAdapterLabels();
+        syncUnreadBadge();
+    }
+
+    private void refreshAdapterLabels() {
+        List<String> labels = new ArrayList<>();
+        for (NotificationItem item : items) {
+            labels.add(item.formatLabel());
+        }
+        adapter.clear();
+        adapter.addAll(labels);
+        adapter.notifyDataSetChanged();
+    }
+
     static final class NotificationItem {
         final String id;
+        final String userId;
         final String title;
         final String message;
         final String type;
@@ -178,11 +252,14 @@ public class VecinosHomeActivity extends AppCompatActivity {
         final boolean hasAttachments;
         final String attachmentUrl;
         final String attachmentType;
-        final String listLabel;
+        final String dateStr;
+        boolean unread;
 
-        NotificationItem(String id, String title, String message, String type, String localitiesLabel,
-                         boolean hasAttachments, String attachmentUrl, String attachmentType, String listLabel) {
+        NotificationItem(String id, String userId, String title, String message, String type,
+                         String localitiesLabel, boolean hasAttachments, String attachmentUrl,
+                         String attachmentType, String dateStr, boolean unread) {
             this.id = id;
+            this.userId = userId;
             this.title = title;
             this.message = message;
             this.type = type;
@@ -190,13 +267,23 @@ public class VecinosHomeActivity extends AppCompatActivity {
             this.hasAttachments = hasAttachments;
             this.attachmentUrl = attachmentUrl;
             this.attachmentType = attachmentType;
-            this.listLabel = listLabel;
+            this.dateStr = dateStr;
+            this.unread = unread;
         }
 
-        static NotificationItem from(String id, Map<String, Object> data) {
+        String formatLabel() {
+            String prefix = unread ? "● " : "";
+            String clip = hasAttachments ? " 📎" : "";
+            return prefix + title + clip + "\n" + truncate(message, 80) + "\n" + dateStr;
+        }
+
+        static NotificationItem from(String id, Map<String, Object> data, String uid,
+                                     Set<String> readBroadcastIds) {
             String title = stringVal(data.get("title"), "Aviso del ayuntamiento");
             String message = stringVal(data.get("message"), "");
             String type = stringVal(data.get("type"), "general");
+            String docUserId = data.get("userId") != null ? String.valueOf(data.get("userId")) : "";
+            boolean unread = UnreadNotificationsHelper.isUnread(data, id, uid, readBroadcastIds);
             List<String> locs = NotificationFilterHelper.getTargetPueblos(data);
             String locLabel = locs.isEmpty() ? "Todo el municipio" : String.join(", ", locs);
             String attachmentUrl = null;
@@ -209,10 +296,8 @@ public class VecinosHomeActivity extends AppCompatActivity {
                     || (attachmentUrl != null && !attachmentUrl.isEmpty());
             String attachmentType = stringVal(data.get("attachmentType"), "document");
             String date = formatDate(data.get("timestamp"));
-            String clip = hasAttachments ? " 📎" : "";
-            String listLabel = title + clip + "\n" + truncate(message, 80) + "\n" + date;
-            return new NotificationItem(id, title, message, type, locLabel, hasAttachments,
-                    attachmentUrl, attachmentType, listLabel);
+            return new NotificationItem(id, docUserId, title, message, type, locLabel,
+                    hasAttachments, attachmentUrl, attachmentType, date, unread);
         }
 
         private static String stringVal(Object o, String fallback) {
