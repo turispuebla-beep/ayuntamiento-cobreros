@@ -48,27 +48,9 @@ const CONFIG = {
         '16:00', '17:00', '18:00'
     ],
 
-    // Configuración de administración
-    admin: {
-        email: 'admin@ayuntamientocobreros.es',
-        defaultPassword: 'admin123' // Cambiar en producción
-    },
-    
-    // Administrador del ayuntamiento
-    ayuntamientoAdmin: {
-        email: 'aytocobreros@gmail.com',
-        password: 'admin123',
-        name: 'Ayuntamiento de Cobreros',
-        isDefault: true
-    },
-
-    // Configuración de super administrador (TURISTEAM)
-    superAdmin: {
-        email: 'amco@gmx.es',
-        password: '533712',
-        team: 'TURISTEAM',
-        isHidden: true
-    },
+    // ✅ Migrado a Firebase Auth - Las credenciales ahora están en Firebase Auth Console
+    // Ya no se usan credenciales embebidas por seguridad
+    // Los administradores se gestionan desde Firebase Auth y Firestore collection 'admins'
 
     // Configuración de privacidad
     privacy: {
@@ -94,6 +76,17 @@ const CONFIG = {
             adminEmail: 'aytocobreros@gmail.com',
             confirmationTemplate: 'confirmacion_cita',
             alertTemplate: 'alerta_nueva_cita'
+        },
+        calendarStyles: {
+            availableBackground: '#e0ecff',
+            availableBorder: '#3b82f6',
+            disabledBackground: '#ffffff',
+            disabledBorder: '#d1d5db',
+            fullyBookedBackground: '#fde2e2',
+            fullyBookedBorder: '#ef4444'
+        },
+        messages: {
+            dayWithoutAppointment: 'Día sin cita previa. Atención presencial sin cita disponible.'
         }
     },
 

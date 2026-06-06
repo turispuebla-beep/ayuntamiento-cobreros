@@ -9,8 +9,6 @@
   "orientation": "portrait",
   "scope": "/",
   "lang": "es",
-  "dir": "ltr",
-  "prefer_related_applications": false,
   "icons": [
     {
       "src": "images/escudo-cobreros-72.png",

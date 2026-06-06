@@ -69,11 +69,19 @@ const config = {
 };
 
 if (!config.apiKey) {
+  const hasEnvFile =
+    fs.existsSync(path.join(rootDir, '.env.firebase')) ||
+    fs.existsSync(path.join(process.cwd(), '.env.firebase'));
+  const hint = hasEnvFile
+    ? '  .env.firebase existe pero FIREBASE_API_KEY está vacía. Edítala o ejecuta setup-env-firebase.bat\n'
+    : '';
   console.error(
     'Falta FIREBASE_API_KEY. Opciones:\n' +
+      hint +
       '  1) Netlify → Site settings → Environment variables → FIREBASE_API_KEY\n' +
-      '  2) Local: .env.firebase con FIREBASE_API_KEY\n' +
-      '  3) Local: config/firebase.web.public.json (gitignored; ver firebase.web.public.example.json)'
+      '  2) Local: rellena FIREBASE_API_KEY en .env.firebase (copy .env.firebase.example .env.firebase)\n' +
+      '  3) Local: config/firebase.web.public.json (gitignored; ver firebase.web.public.example.json)\n' +
+      '  4) Local: setup-env-firebase.bat'
   );
   process.exit(1);
 }
