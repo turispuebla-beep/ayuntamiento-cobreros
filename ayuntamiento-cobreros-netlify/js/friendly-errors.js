@@ -78,7 +78,7 @@ function getFriendlyErrorMessage(error) {
   // Si no se encuentra, devolver mensaje genérico pero amigable
   if (errorMessage && errorMessage.length < 100) {
     // Si el mensaje es corto y parece amigable, usarlo
-    return errorMessage;
+    return typeof cloudUserText === 'function' ? cloudUserText(errorMessage) : errorMessage;
   }
     
   return friendlyMessages['unknown-error'];
@@ -92,11 +92,12 @@ function getFriendlyErrorMessage(error) {
 function showFriendlyError(error, context = '') {
   const friendlyMessage = getFriendlyErrorMessage(error);
   const message = context ? `${context}: ${friendlyMessage}` : friendlyMessage;
+  const displayMessage = typeof cloudUserText === 'function' ? cloudUserText(message) : message;
     
   if (typeof showNotification === 'function') {
-    showNotification(message, 'error');
+    showNotification(displayMessage, 'error');
   } else {
-    alert(message);
+    alert(displayMessage);
   }
     
   // Log técnico para debugging

@@ -112,10 +112,10 @@
                         </button>
                     </div>
                     <p class="apk-download-hint apk-vecinos-android-only" style="margin-top: 1rem; font-size: 0.9rem; opacity: 0.9;">
-                        ¿Prefieres no usar la web? Descarga <strong>Cobreros Vecinos</strong> para recibir avisos con sonido.
+                        <strong>Android:</strong> descarga <strong>Cobreros Vecinos</strong> para recibir avisos con sonido.
                     </p>
-                    <p class="apk-download-hint apk-vecinos-ios-hint" style="display:none; margin-top: 1rem; font-size: 0.9rem; opacity: 0.9;">
-                        En iPhone: pulsa <strong>App iPhone (avisos)</strong> y sigue los pasos en Safari para instalar con el escudo de Cobreros.
+                    <p class="apk-download-hint apk-vecinos-ios-hint" style="display:none; margin-top: 0.5rem; font-size: 0.9rem; opacity: 0.9;">
+                        <strong>iPhone:</strong> pulsa <strong>App iPhone (avisos)</strong> y sigue los pasos en Safari para instalar con el escudo de Cobreros.
                     </p>
                 </div>
             </div>
@@ -126,7 +126,7 @@
         <section id="bando" class="content-section">
             <div class="container">
                 <h2>Bando Municipal</h2>
-                <div class="bando-content" id="bandoContent">
+                <div class="bando-content" id="bandoSectionContent">
                     <!-- Contenido cargado dinámicamente -->
                 </div>
             </div>
@@ -1141,9 +1141,9 @@
                 <div id="backup-tab" class="tab-content">
                     <h3>🔐 Backup & Persistencia de Datos</h3>
                     
-                    <!-- Backup Automático a Firestore -->
+                    <!-- Backup automático en la nube -->
                     <div class="admin-section">
-                        <h4>☁️ Backup Automático a Firestore</h4>
+                        <h4>☁️ Backup automático en la nube</h4>
                         <p>Gestionar copias de seguridad automáticas en la nube:</p>
                         <div class="backup-buttons">
                             <button class="btn btn-info" onclick="backupContentToFirestore()">
@@ -1153,11 +1153,11 @@
                                 <i class="fas fa-save"></i> Backup Completo localStorage
                             </button>
                             <button class="btn btn-warning" onclick="restoreContentFromFirestore()">
-                                <i class="fas fa-cloud-download-alt"></i> Restaurar desde Firestore
+                                <i class="fas fa-cloud-download-alt"></i> Restaurar desde la nube
                             </button>
                         </div>
                         <div class="backup-status">
-                            <p><strong>Estado:</strong> <span id="firebaseStatus">Verificando conexión...</span></p>
+                            <p><strong>Estado de la nube:</strong> <span id="firebaseStatus">Verificando conexión...</span></p>
                             <p><strong>Último backup:</strong> <span id="lastBackupTime">No disponible</span></p>
                         </div>
                     </div>
@@ -1266,7 +1266,7 @@
                             </button>
                         </div>
                         <p style="font-size: 0.8rem; color: #64748b; margin-top: 0.75rem;">
-                            La APK de avisos debe estar en Firebase Storage: <code>private/cobreros-avisos.apk</code>
+                            La APK de avisos debe estar en el almacenamiento en la nube: <code>private/cobreros-avisos.apk</code>
                         </p>
                     </div>
 
@@ -2172,7 +2172,7 @@
     </style>
 
     <!-- Botón de acceso admin en esquina superior derecha -->
-    <button class="admin-access-btn" id="adminLoginBtn" title="Acceso Administradores">
+    <button type="button" class="admin-access-btn" id="adminLoginBtn" title="Acceso Administradores">
         <i class="fas fa-cog"></i>
         <span style="font-size: 10px; margin-top: 2px;">ADMIN</span>
         <span class="notification-badge" id="municipalNotificationBadge" style="display: none;">0</span>
@@ -3162,6 +3162,7 @@
         </div>
     </div>
 
+    <script src="js/admin-access-bootstrap.js"></script>
     <script src="js/script.js"></script>
     <script src="js/recaptcha.js"></script>
 </body> 

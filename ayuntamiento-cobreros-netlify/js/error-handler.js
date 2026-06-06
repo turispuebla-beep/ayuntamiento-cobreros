@@ -104,7 +104,7 @@ async function safeFirestoreWrite(collection, data, schemaName) {
   
   // Verificar que Firebase esté disponible
   if (!window.firebase || !window.firebase.firestore) {
-    throw new Error('Firebase no está disponible');
+    throw new Error('La nube no está disponible');
   }
   
   // Guardar con reintentos
@@ -142,7 +142,7 @@ async function safeFirestoreUpdate(collection, docId, data, schemaName) {
   
   // Verificar que Firebase esté disponible
   if (!window.firebase || !window.firebase.firestore) {
-    throw new Error('Firebase no está disponible');
+    throw new Error('La nube no está disponible');
   }
   
   // Actualizar con reintentos
@@ -160,7 +160,7 @@ async function safeFirestoreUpdate(collection, docId, data, schemaName) {
  */
 async function safeFirestoreRead(collection, docId = null) {
   if (!window.firebase || !window.firebase.firestore) {
-    throw new Error('Firebase no está disponible');
+    throw new Error('La nube no está disponible');
   }
   
   return await withRetry(async () => {

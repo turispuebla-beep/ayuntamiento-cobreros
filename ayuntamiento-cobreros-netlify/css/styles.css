@@ -146,7 +146,9 @@ body {
 }
 
 .nav-link[data-icon="newspaper"]:hover,
-.nav-link[data-icon="newspaper"].active {
+.nav-link[data-icon="newspaper"].active,
+.nav-link[data-icon="bullhorn"]:hover,
+.nav-link[data-icon="bullhorn"].active {
     background: linear-gradient(135deg, #10b981, #059669);
     color: white;
     transform: translateY(-2px);
@@ -310,8 +312,26 @@ a.btn {
 /* Quick Access */
 
 /* Content Sections */
+.content-section,
+.hero-section {
+    scroll-margin-top: 110px;
+}
+
 .content-section {
     padding: 4rem 0;
+}
+
+#bando {
+    min-height: 45vh;
+}
+
+.bando-empty {
+    text-align: center;
+    color: var(--text-muted, #64748b);
+    padding: 2rem 1rem;
+    background: var(--bg-secondary, #f8fafc);
+    border-radius: var(--border-radius);
+    border: 1px dashed #cbd5e1;
 }
 
 
@@ -1543,7 +1563,7 @@ a.btn {
 .vecinos-share-fab-wrap {
     position: fixed;
     left: 0.85rem;
-    bottom: 0.85rem;
+    bottom: 5rem;
     z-index: 1002;
 }
 

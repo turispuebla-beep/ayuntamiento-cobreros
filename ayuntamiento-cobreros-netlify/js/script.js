@@ -2,6 +2,38 @@
 let currentUser = null;
 let isAdmin = false;
 let isSuperAdmin = false; // Solo true con sesión Firebase y admins/{uid}.isSuperAdmin
+
+function isFirebaseReady() {
+    try {
+        return !!(window.firebase && firebase.apps && firebase.apps.length > 0);
+    } catch (_) {
+        return false;
+    }
+}
+
+function getFirebaseAuthSafe() {
+    if (!isFirebaseReady() || !window.firebase.auth) {
+        return null;
+    }
+    try {
+        return firebase.auth();
+    } catch (_) {
+        return null;
+    }
+}
+
+/** Texto para ciudadanos/admin: sin jerga técnica (Firebase → nube). */
+function cloudUserText(text) {
+    if (text == null) return text;
+    return String(text)
+        .replace(/Firebase Functions/gi, 'servicios en la nube')
+        .replace(/Firebase Authentication/gi, 'acceso en la nube')
+        .replace(/Firebase Storage/gi, 'almacenamiento en la nube')
+        .replace(/Firebase Auth/gi, 'acceso en la nube')
+        .replace(/Firestore/gi, 'nube')
+        .replace(/Firebase/gi, 'nube');
+}
+
 let notifications = [];
 let users = [];
 let news = [];
@@ -65,7 +97,12 @@ const COBREROS_LOCALITIES = [
 // Inicialización cuando se carga la página
 document.addEventListener('DOMContentLoaded', function() {
     detectDevice();
-    initializeApp();
+    createAdminButton();
+    try {
+        initializeApp();
+    } catch (error) {
+        console.error('Error al inicializar la aplicación:', error);
+    }
     setupApkDownloadUi();
     setupVecinosShareFab();
     setupEventListeners();
@@ -480,7 +517,7 @@ function openRegistration() {
 // Descargar app móvil (vecinos: APK Android o PWA en iOS)
 function downloadMobileApp() {
     const userAgent = navigator.userAgent.toLowerCase();
-    const isIOS = /iphone|ipad|ipod/.test(userAgent);
+    const isIOS = isAppleClientDevice();
     const isAndroid = /android/.test(userAgent);
 
     if (isAndroid) {
@@ -488,7 +525,7 @@ function downloadMobileApp() {
     } else if (isIOS) {
         openIosVecinosApp();
     } else {
-        showNotification('En Android descarga la APK. En iPhone usa el botón App iPhone (Safari).', 'info');
+        showNotification('En Android descarga la APK. En iPhone, iPad o Mac usa App iPhone (Safari).', 'info');
     }
 
     setTimeout(() => {
@@ -531,7 +568,7 @@ async function downloadAvisosApkAdmin() {
     try {
         const token = await getAuthBearerToken();
         if (!token) {
-            showNotification('Inicia sesión de administrador en Firebase', 'error');
+            showNotification('Inicia sesión de administrador en la nube', 'error');
             return;
         }
         showNotification('Preparando descarga de Cobreros Avisos…', 'info');
@@ -628,15 +665,16 @@ async function shareAvisosApkToPhone(channel) {
 /** Muestra u oculta botones de APK / app iOS según dispositivo. */
 function setupApkDownloadUi() {
     const isAndroid = /android/i.test(navigator.userAgent);
-    const isIOS = isIOSDevice();
+    const isApple = isAppleClientDevice();
+
     document.querySelectorAll('.apk-vecinos-android-only').forEach((el) => {
         el.style.display = isAndroid ? '' : 'none';
     });
     document.querySelectorAll('.apk-vecinos-ios-only').forEach((el) => {
-        el.style.display = isIOS ? '' : 'none';
+        el.style.display = isApple ? '' : 'none';
     });
     document.querySelectorAll('.apk-vecinos-ios-hint').forEach((el) => {
-        el.style.display = isIOS && !isPwaStandalone() ? '' : 'none';
+        el.style.display = isApple && !isPwaStandalone() ? '' : 'none';
     });
 }
 
@@ -648,12 +686,21 @@ function isIOSDevice() {
     return /iphone|ipad|ipod/i.test(navigator.userAgent || '');
 }
 
+/** iPhone, iPad o Mac (Safari / PWA). */
+function isAppleClientDevice() {
+    const ua = (navigator.userAgent || '').toLowerCase();
+    if (/iphone|ipad|ipod/.test(ua)) {
+        return true;
+    }
+    if (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1) {
+        return true;
+    }
+    return /macintosh|mac os x/.test(ua);
+}
+
 function isSafariBrowser() {
     const ua = (navigator.userAgent || '').toLowerCase();
-    if (!isIOSDevice()) {
-        return false;
-    }
-    const isOtherBrowser = /crios|fxios|edgios|opios|mercury|gsa\//.test(ua);
+    const isOtherBrowser = /crios|fxios|edgios|opios|mercury|gsa\/|chrome|chromium|edg\//.test(ua);
     return !isOtherBrowser && /safari/.test(ua);
 }
 
@@ -741,15 +788,15 @@ function showIosInstallInstructions(options) {
 }
 
 function openIosVecinosApp() {
-    if (!isIOSDevice()) {
-        showNotification('Este botón es para iPhone. En Android usa la descarga APK.', 'info');
+    if (!isAppleClientDevice()) {
+        showNotification('La app para iPhone/iPad/Mac solo está disponible en dispositivos Apple.', 'info');
         return;
     }
     showIosInstallInstructions();
 }
 
 function maybeShowIosInstallHintOnFirstVisit() {
-    if (!isIOSDevice() || isPwaStandalone()) {
+    if (!isAppleClientDevice() || isPwaStandalone()) {
         return;
     }
     if (localStorage.getItem(IOS_INSTALL_HINT_KEY) === 'true') {
@@ -1011,56 +1058,31 @@ function initializeApp() {
     setTimeout(forceInitialState, 200);
     
     setupFirebaseAuthListener();
-
-    // Crear botón de admin dinámicamente para asegurar que se vea
-    createAdminButton();
 }
 
-// Crear botón de admin dinámicamente
+// Crear/enlazar botón de admin (esquina superior derecha)
 function createAdminButton() {
-    // Remover botón existente si existe
-    const existingBtn = document.getElementById('adminLoginBtn');
-    if (existingBtn) {
-        existingBtn.remove();
+    let adminBtn = document.getElementById('adminLoginBtn');
+    if (!adminBtn) {
+        adminBtn = document.createElement('button');
+        adminBtn.id = 'adminLoginBtn';
+        adminBtn.className = 'admin-access-btn';
+        adminBtn.title = 'Acceso Administradores';
+        adminBtn.innerHTML =
+            '<i class="fas fa-cog"></i><br><span style="font-size: 8px;">ADMIN</span>';
+        document.body.appendChild(adminBtn);
     }
-    
-    // Crear nuevo botón
-    const adminBtn = document.createElement('button');
-    adminBtn.id = 'adminLoginBtn';
-    adminBtn.className = 'admin-access-btn';
-    adminBtn.title = 'Acceso Administradores';
-    adminBtn.innerHTML = '<i class="fas fa-cog"></i><br><span style="font-size: 8px;">ADMIN</span>';
-    
-    // Aplicar estilos directamente
-    adminBtn.style.cssText = `
-        position: fixed !important;
-        top: 20px !important;
-        right: 20px !important;
-        width: 70px !important;
-        height: 70px !important;
-        border-radius: 50% !important;
-        background: #22c55e !important;
-        color: white !important;
-        border: 2px solid #16a34a !important;
-        font-size: 16px !important;
-        cursor: pointer !important;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
-        z-index: 9999 !important;
-        display: flex !important;
-        flex-direction: column !important;
-        align-items: center !important;
-        justify-content: center !important;
-        visibility: visible !important;
-        opacity: 1 !important;
-    `;
-    
-    // Agregar event listener
-    adminBtn.addEventListener('click', () => openModal('adminLoginModal'));
-    
-    // Agregar al body
-    document.body.appendChild(adminBtn);
-    
-    console.log('Botón de admin creado dinámicamente');
+
+    adminBtn.type = 'button';
+
+    if (!adminBtn.dataset.adminClickBound && adminBtn.dataset.adminBootstrapBound !== '1') {
+        adminBtn.dataset.adminClickBound = '1';
+        adminBtn.addEventListener('click', (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            void handleAdminAccessClick();
+        });
+    }
 }
 
 // Limpiar todos los formularios al cargar la página
@@ -1230,30 +1252,32 @@ function setupEventListeners() {
         myLocalitiesBtn.addEventListener('click', () => openUserProfileModal());
     }
     
-    if (adminLoginBtn) {
-        adminLoginBtn.addEventListener('click', () => {
+    if (adminLoginBtn && !adminLoginBtn.dataset.adminClickBound && adminLoginBtn.dataset.adminBootstrapBound !== '1') {
+        adminLoginBtn.dataset.adminClickBound = '1';
+        adminLoginBtn.addEventListener('click', (event) => {
+            event.preventDefault();
+            event.stopPropagation();
             console.log('Admin login button clicked');
-            openModal('adminLoginModal');
+            void handleAdminAccessClick();
         });
     }
     
     if (adminBtn) {
-        adminBtn.addEventListener('click', async () => {
+        adminBtn.addEventListener('click', () => {
             console.log('Admin button clicked');
-            if (!(await isFirebaseAdmin())) {
-                showNotification('Inicie sesión con una cuenta de administrador en Firebase', 'warning');
-                openModal('adminLoginModal');
-                return;
-            }
-            await loadUsersFromFirestore();
-            openModal('adminModal');
-            updateAdminContent();
+            void handleAdminAccessClick();
         });
     }
 
     // Botón para abrir/cerrar formulario de cita previa
-    document.getElementById('toggleAppointmentForm').addEventListener('click', toggleAppointmentForm);
-    document.getElementById('cancelAppointment').addEventListener('click', closeAppointmentForm);
+    const toggleAppointmentFormBtn = document.getElementById('toggleAppointmentForm');
+    if (toggleAppointmentFormBtn) {
+        toggleAppointmentFormBtn.addEventListener('click', toggleAppointmentForm);
+    }
+    const cancelAppointmentBtn = document.getElementById('cancelAppointment');
+    if (cancelAppointmentBtn) {
+        cancelAppointmentBtn.addEventListener('click', closeAppointmentForm);
+    }
 
     // Cerrar modales
     document.querySelectorAll('.close').forEach(closeBtn => {
@@ -1597,8 +1621,13 @@ function updateNewsSection() {
 
 // Actualizar sección de bando
 function updateBandoSection() {
-    const bandoContent = document.getElementById('bandoContent');
-    if (!bandoContent || bandos.length === 0) return;
+    const bandoContent = document.getElementById('bandoSectionContent');
+    if (!bandoContent) return;
+
+    if (bandos.length === 0) {
+        bandoContent.innerHTML = '<p class="bando-empty">No hay bandos municipales publicados en este momento.</p>';
+        return;
+    }
 
     const latestBando = bandos[bandos.length - 1];
     bandoContent.innerHTML = `
@@ -1616,20 +1645,19 @@ function updateBandoSection() {
 // Navegación suave
 function scrollToSection(sectionId) {
     const section = document.getElementById(sectionId);
-    if (section) {
-        // Obtener la altura del header fijo
-        const header = document.querySelector('header');
-        const headerHeight = header ? header.offsetHeight : 80;
-        
-        // Calcular la posición con offset para que la sección quede visible debajo del header
-        const sectionTop = section.offsetTop;
-        const offsetPosition = sectionTop - headerHeight - 20; // 20px adicionales de margen
-        
-        // Hacer scroll suave a la posición calculada
-        window.scrollTo({
-            top: offsetPosition,
-            behavior: 'smooth'
-        });
+    if (!section) return;
+
+    section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+    if (history.replaceState) {
+        history.replaceState(null, '', '#' + sectionId);
+    } else {
+        window.location.hash = sectionId;
+    }
+
+    const navLink = document.querySelector('.nav-link[href="#' + sectionId + '"]');
+    if (navLink) {
+        updateActiveNavLink(navLink);
     }
 }
 
@@ -1654,6 +1682,29 @@ function openModal(modalId) {
         console.error('Modal not found:', modalId);
     }
 }
+
+/** Botón ADMIN / Panel Admin: abre el panel si hay sesión, si no el login. */
+async function handleAdminAccessClick() {
+    if (isAdminSessionValid()) {
+        await openAdminPanel();
+        return;
+    }
+
+    // Abrir login al instante (no esperar a Firebase/Firestore)
+    openModal('adminLoginModal');
+
+    try {
+        if (await isFirebaseAdmin()) {
+            closeModal('adminLoginModal');
+            await openAdminPanel();
+        }
+    } catch (error) {
+        console.warn('handleAdminAccessClick:', error);
+    }
+}
+
+window.handleAdminAccessClick = handleAdminAccessClick;
+window.cloudUserText = cloudUserText;
 
 // Cerrar modal
 function closeModal(modalId) {
@@ -1680,7 +1731,7 @@ async function handleLogin(e) {
     const password = (formData.get('password') || '').toString();
 
     if (!window.firebase || !window.firebase.auth) {
-        showNotification('Firebase no está disponible', 'error');
+        showNotification('La nube no está disponible', 'error');
         return;
     }
 
@@ -1741,7 +1792,7 @@ async function handleAdminLogin(e) {
             if (!adminSnap.exists || adminSnap.data().isAdmin !== true) {
                 await firebase.auth().signOut();
                 showNotification(
-                    'Sin permisos de administrador en Firestore (documento admins/{uid} con isAdmin: true).',
+                    'Sin permisos de administrador en la nube. Contacte con el ayuntamiento.',
                     'error'
                 );
                 return;
@@ -1751,9 +1802,10 @@ async function handleAdminLogin(e) {
             localStorage.setItem('currentUser', JSON.stringify(currentUser));
             updateUserInterface();
             closeModal('adminLoginModal');
-            showNotification('Sesión de administrador (Firebase) iniciada', 'success');
+            showNotification('Sesión de administrador iniciada', 'success');
             hideDesktopAppMessage();
             await loadUsersFromFirestore();
+            await openAdminPanel();
             return;
         } catch (err) {
             const code = err && err.code ? err.code : '';
@@ -1764,7 +1816,7 @@ async function handleAdminLogin(e) {
             ) {
                 showNotification('Credenciales incorrectas', 'error');
             } else if (code) {
-                showNotification('Firebase: ' + code, 'error');
+                showNotification('Error de acceso: ' + code, 'error');
             } else {
                 showNotification('No se pudo iniciar sesión de administrador', 'error');
             }
@@ -1773,7 +1825,7 @@ async function handleAdminLogin(e) {
     }
 
     showNotification(
-        'No se pudo iniciar sesión de administrador. Use una cuenta de Firebase Authentication con admins/{uid}.isAdmin=true',
+        'No se pudo iniciar sesión de administrador. Use una cuenta autorizada en la nube.',
         'error'
     );
 }
@@ -1816,7 +1868,7 @@ async function handleRegister(e) {
     }
 
     if (!window.firebase || !window.firebase.auth || !window.firebase.firestore) {
-        showNotification('Firebase no está disponible', 'error');
+        showNotification('La nube no está disponible', 'error');
         return;
     }
 
@@ -1869,7 +1921,7 @@ async function handleRegister(e) {
                 await firebase.auth().signOut();
             } catch (_) {}
             showNotification(
-                'Cuenta creada en Auth pero no en Firestore. Compruebe dominio autorizado y reglas. Intente iniciar sesión de nuevo o contacte al ayuntamiento.',
+                'Cuenta creada pero no se guardó el perfil en la nube. Intente iniciar sesión de nuevo o contacte al ayuntamiento.',
                 'error'
             );
             return;
@@ -1890,7 +1942,7 @@ async function handleRegister(e) {
         users.push(newUser);
         localStorage.setItem('users', JSON.stringify(users));
 
-        showNotification('Registro completado. Sesión iniciada con Firebase.', 'success');
+        showNotification('Registro completado. Sesión iniciada correctamente.', 'success');
         if (fcmToken) {
             showNotification('Notificaciones push activadas', 'success');
         }
@@ -1926,7 +1978,7 @@ async function handleCreateAdmin(e) {
 
     const authUser = firebase.auth && firebase.auth().currentUser;
     if (!authUser) {
-        showNotification('Inicie sesión como superadministrador (Firebase) antes de crear cuentas.', 'error');
+        showNotification('Inicie sesión como superadministrador antes de crear cuentas.', 'error');
         return;
     }
     let superOk = false;
@@ -1970,7 +2022,7 @@ async function handleCreateAdmin(e) {
 
     if (!window.firebase || typeof firebase.functions !== 'function') {
         showNotification(
-            'Firebase Functions no está disponible. Despliega las funciones createStaffAdmin / removeStaffAdmin y recarga.',
+            'Los servicios en la nube no están disponibles. Contacte con el ayuntamiento.',
             'error'
         );
         return;
@@ -1980,7 +2032,7 @@ async function handleCreateAdmin(e) {
         const createStaffAdmin = firebase.functions().httpsCallable('createStaffAdmin');
         await createStaffAdmin({ name, email, password });
         await loadAdministrators();
-        showNotification(`Administrador "${name}" creado en Firebase (cuenta y permisos listos).`, 'success');
+        showNotification(`Administrador "${name}" creado en la nube (cuenta y permisos listos).`, 'success');
         e.target.reset();
         const adminsTab = document.getElementById('admins-tab');
         if (adminsTab && adminsTab.classList.contains('active')) {
@@ -2152,7 +2204,7 @@ async function handleAppointment(e) {
     }
 
     if (!window.firebase || !window.firebase.auth || !window.firebase.firestore) {
-        showNotification('Firebase no disponible para guardar la cita', 'error');
+        showNotification('La nube no está disponible para guardar la cita', 'error');
         return;
     }
     const authUser = firebase.auth().currentUser;
@@ -2436,7 +2488,7 @@ function updateUserInterface() {
         if (myLocBtn) {
             const showProfile =
                 !isAdminSessionValid() &&
-                !!(window.firebase && firebase.auth && firebase.auth().currentUser);
+                !!(getFirebaseAuthSafe() && getFirebaseAuthSafe().currentUser);
             myLocBtn.style.display = showProfile ? 'inline-flex' : 'none';
         }
         
@@ -2563,7 +2615,7 @@ async function deletePanelUser(email) {
         showNotification('Sin permisos', 'error');
         return;
     }
-    if (!confirm(`¿Eliminar definitivamente al usuario ${email}? (Auth + datos en Firestore)`)) {
+    if (!confirm(cloudUserText(`¿Eliminar definitivamente al usuario ${email}? (acceso y datos en la nube)`))) {
         return;
     }
     const u = users.find((x) => String(x.email).toLowerCase() === String(email).toLowerCase());
@@ -2572,7 +2624,7 @@ async function deletePanelUser(email) {
         return;
     }
     if (!window.firebase || typeof firebase.functions !== 'function') {
-        showNotification('Firebase Functions no disponible. Despliega removeEndUser.', 'error');
+        showNotification('Servicios en la nube no disponibles. Contacte con el ayuntamiento.', 'error');
         return;
     }
     try {
@@ -2604,11 +2656,11 @@ async function deletePanelAdmin(email) {
         showNotification('No puede eliminar su propia cuenta.', 'error');
         return;
     }
-    if (!confirm(`¿Eliminar administrador ${email}? (cuenta Firebase y permisos)`)) {
+    if (!confirm(cloudUserText(`¿Eliminar administrador ${email}? (cuenta en la nube y permisos)`))) {
         return;
     }
     if (!window.firebase || typeof firebase.functions !== 'function') {
-        showNotification('Firebase Functions no disponible. Despliega removeStaffAdmin.', 'error');
+        showNotification('Servicios en la nube no disponibles. Contacte con el ayuntamiento.', 'error');
         return;
     }
     try {
@@ -2685,7 +2737,7 @@ function loadAdminsList() {
 
     if (visibleAdmins.length === 0) {
         adminsList.innerHTML =
-            '<p style="text-align: center; color: #666; padding: 2rem;">No hay administradores en Firestore. Cree uno con el formulario o despliegue las Functions.</p>';
+            '<p style="text-align: center; color: #666; padding: 2rem;">No hay administradores en la nube. Cree uno con el formulario.</p>';
         return;
     }
 
@@ -3139,7 +3191,7 @@ function showNotification(message, type = 'info') {
         z-index: 3000;
         animation: slideIn 0.3s ease;
     `;
-    notification.textContent = message;
+    notification.textContent = cloudUserText(message);
     document.body.appendChild(notification);
 
     setTimeout(() => {
@@ -3402,8 +3454,8 @@ function openBandoEditor(bandoId = null) {
                     <input type="text" id="bandoTitle" name="title" value="${bando ? bando.title : ''}" required>
                 </div>
                 <div class="form-group">
-                    <label for="bandoContent">Contenido:</label>
-                    <textarea id="bandoContent" name="content" rows="8" required>${bando ? bando.content : ''}</textarea>
+                    <label for="bandoEditorText">Contenido:</label>
+                    <textarea id="bandoEditorText" name="content" rows="8" required>${bando ? bando.content : ''}</textarea>
                 </div>
                 <button type="submit" class="btn btn-primary">${bando ? 'Actualizar' : 'Crear'} Bando</button>
             </form>
@@ -3706,8 +3758,8 @@ function openBandoEditor(bandoId = null) {
                     <input type="text" id="bandoTitle" value="${bando ? bando.title : ''}" required>
                 </div>
                 <div class="form-group">
-                    <label for="bandoContent">Contenido:</label>
-                    <textarea id="bandoContent" rows="8" required>${bando ? bando.content : ''}</textarea>
+                    <label for="bandoEditorText">Contenido:</label>
+                    <textarea id="bandoEditorText" rows="8" required>${bando ? bando.content : ''}</textarea>
                 </div>
                 <div class="form-group">
                     <label for="bandoDate">Fecha:</label>
@@ -3724,7 +3776,7 @@ function openBandoEditor(bandoId = null) {
         
         const bandoData = {
             title: document.getElementById('bandoTitle').value,
-            content: document.getElementById('bandoContent').value,
+            content: document.getElementById('bandoEditorText').value,
             date: document.getElementById('bandoDate').value
         };
         
@@ -4972,7 +5024,7 @@ function handleDataImport(e) {
                     break;
                 case 'admins':
                     showNotification(
-                        'Los administradores solo se crean en Firebase (Authentication + colección admins).',
+                        'Los administradores solo se crean desde el panel con acceso en la nube.',
                         'warning'
                     );
                     break;
@@ -5341,9 +5393,9 @@ function saveAppointmentAvailabilitySettings() {
     refreshAppointmentTimeOptions();
     void syncAppointmentConfigToFirestore().then((ok) => {
         if (ok) {
-            showNotification('Disponibilidad guardada y sincronizada con Firebase', 'success');
+            showNotification('Disponibilidad guardada y sincronizada en la nube', 'success');
         } else {
-            showNotification('Disponibilidad guardada localmente (inicie sesión admin Firebase para sincronizar)', 'warning');
+            showNotification('Disponibilidad guardada localmente (inicie sesión como administrador para sincronizar en la nube)', 'warning');
         }
     });
 }
@@ -6708,7 +6760,7 @@ function getPublicNotifPushOptionsFromForm() {
 
 async function sendPublicBannerPush(notification, alcance, localidades) {
     if (!(await isFirebaseAdmin())) {
-        showNotification('Debe iniciar sesión como administrador en Firebase para enviar push', 'warning');
+        showNotification('Debe iniciar sesión como administrador en la nube para enviar push', 'warning');
         return false;
     }
     const pushTitle = notification.title || 'Aviso del Ayuntamiento';
@@ -6748,7 +6800,7 @@ async function sendPublicBannerPushForId(notificationId) {
 
 async function savePublicNotification() {
     if (!(await isFirebaseAdmin())) {
-        showNotification('Solo un administrador con sesión Firebase puede gestionar avisos públicos', 'warning');
+        showNotification('Solo un administrador con sesión activa puede gestionar avisos públicos', 'warning');
         return;
     }
 
@@ -6948,13 +7000,29 @@ async function logout() {
 
 // Abrir panel de administración
 async function openAdminPanel() {
-    if (!(await isFirebaseAdmin())) {
-        showNotification('Debe iniciar sesión como administrador en Firebase', 'warning');
-        openModal('adminLoginModal');
-        return;
+    if (!isAdminSessionValid()) {
+        let firebaseAdmin = false;
+        try {
+            firebaseAdmin = await isFirebaseAdmin();
+        } catch (error) {
+            console.warn('openAdminPanel isFirebaseAdmin:', error);
+        }
+        if (!firebaseAdmin) {
+            showNotification('Debe iniciar sesión como administrador en la nube', 'warning');
+            openModal('adminLoginModal');
+            return;
+        }
     }
-    await loadUsersFromFirestore();
-    document.getElementById('adminModal').style.display = 'block';
+
+    openModal('adminModal');
+    updateAdminContent();
+
+    try {
+        await loadUsersFromFirestore();
+    } catch (error) {
+        console.warn('openAdminPanel loadUsersFromFirestore:', error);
+    }
+
     loadUsersList();
     loadAdminsList();
     loadNewsList();
@@ -6967,7 +7035,7 @@ async function openAdminPanel() {
     loadAppointmentSettings();
     loadAppointmentAvailabilitySettings();
     loadPublicNotificationsList();
-    
+
     // Actualizar información del sistema para la pestaña de backup
     setTimeout(() => {
         updateSystemInfo();
@@ -10615,10 +10683,8 @@ function purgeLegacyLocalAdminStorage() {
 
 /** Admin en memoria solo válido con sesión Firebase activa y documento admins/{uid}. */
 function isAdminSessionValid() {
-    return (
-        isAdmin === true &&
-        !!(window.firebase && firebase.auth && firebase.auth().currentUser)
-    );
+    const auth = getFirebaseAuthSafe();
+    return isAdmin === true && !!(auth && auth.currentUser);
 }
 
 function applyFirebaseAdminSession(authUser, adminData) {
@@ -10642,10 +10708,11 @@ function clearAdminSessionFlags() {
 
 async function isFirebaseAdmin() {
     try {
-        if (!window.firebase || !window.firebase.auth || !window.firebase.firestore) {
+        if (!isFirebaseReady() || !window.firebase.firestore) {
             return false;
         }
-        const authUser = firebase.auth().currentUser;
+        const auth = getFirebaseAuthSafe();
+        const authUser = auth ? auth.currentUser : null;
         if (!authUser) {
             return false;
         }
@@ -10685,10 +10752,11 @@ async function ensureAllowlistedAdminFirestoreDoc() {
 }
 
 function setupFirebaseAuthListener() {
-    if (!window.firebase || !window.firebase.auth) {
+    const auth = getFirebaseAuthSafe();
+    if (!auth) {
         return;
     }
-    firebase.auth().onAuthStateChanged(async function (user) {
+    auth.onAuthStateChanged(async function (user) {
         if (!user) {
             currentUser = null;
             clearAdminSessionFlags();
@@ -10754,7 +10822,7 @@ async function migrateUsersToFirestore() {
         if (migrationDone !== 'true') {
             localStorage.setItem('usersMigratedToFirestore', 'true');
             console.log(
-                'ℹ️ Migración masiva de usuarios omitida: use registro Firebase o panel admin para datos en Firestore.'
+                'ℹ️ Migración masiva de usuarios omitida: use el registro web o el panel de administración.'
             );
         }
         await loadUsersFromFirestore();
@@ -10908,7 +10976,7 @@ function openAdminEditUserLocalities(userId, userName, userEmail) {
     document.getElementById('userLocalitiesEditUid').value = userId;
     document.getElementById('userLocalitiesModalTitle').textContent = `Localidades: ${userName || userEmail || ''}`;
     document.getElementById('userLocalitiesModalSubtitle').textContent =
-        'Los cambios se guardan en Firebase (users/' + userId + ') y se reflejan en el panel de usuarios.';
+        'Los cambios se guardan en la nube y se reflejan en el panel de usuarios.';
     renderUserLocalitiesCheckboxes(locs);
     openModal('userLocalitiesModal');
 }
@@ -10977,7 +11045,7 @@ async function saveUserLocalitiesFromModal() {
         loadReceivedNotifications();
         actualizarEstadisticasNotificaciones();
         showNotification(
-            isAdminEdit ? 'Localidades del usuario actualizadas en Firebase' : 'Sus localidades se han guardado',
+            isAdminEdit ? 'Localidades del usuario actualizadas en la nube' : 'Sus localidades se han guardado',
             'success'
         );
     } catch (err) {

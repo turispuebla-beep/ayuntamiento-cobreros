@@ -100,12 +100,12 @@ async function uploadAttachment(file, {
 
   const firebaseReady = await waitForFirebaseStorage();
   if (!firebaseReady || !window.firebase || !window.firebase.storage) {
-    throw new Error('Firebase Storage no está disponible en este momento.');
+    throw new Error('El almacenamiento en la nube no está disponible en este momento.');
   }
 
   const storageService = window.firebase.storage && window.firebase.storage();
   if (!storageService || (typeof storageService.ref !== 'function' && typeof storageService.uploadBytes !== 'function')) {
-    throw new Error('Firebase Storage no está configurado correctamente.');
+    throw new Error('El almacenamiento en la nube no está configurado correctamente.');
   }
 
   const safeFileName = sanitizeFileName(file.name);
