@@ -16,98 +16,94 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="Cobreros">
-    <meta name="mobile-web-app-capable" content="yes">
-    <meta name="format-detection" content="telephone=no">
     <link rel="apple-touch-icon" href="images/escudo-cobreros-192.png">
     
     <!-- reCAPTCHA v3 -->
     <script src="https://www.google.com/recaptcha/api.js?render=6LeBYM4rAAAAALaDVtPi1H4jWjpj_Ovjf9g8VnT4"></script>
-    <script>
-        window.__FIREBASE_VAPID_PUBLIC_KEY__ =
-            "BKc_1JYmZ1qStiJxFFKOVCxq_QazGWSZ57FmjGRsdGScuYkY10NZdwfYpSFiKDXmurAkKV_6cBYzPJRZC1Ew_ow";
-    </script>
     
-    <!-- Firebase SDK compat -->
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-functions-compat.js"></script>
-    <script>
-    (function () {
-        var firebaseConfig = {
-            apiKey: "AIzaSyC7gfaHifIGVMN94mQAGnW6VcA4wVFMZsg",
-            authDomain: "ayuntamiento-de-cobreros.firebaseapp.com",
-            projectId: "ayuntamiento-de-cobreros",
-            storageBucket: "ayuntamiento-de-cobreros.firebasestorage.app",
-            messagingSenderId: "527550932354",
-            appId: "1:527550932354:web:9bd8431defa7c293b1db9b"
+    <!-- Firebase SDK -->
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+        import { getMessaging, getToken, onMessage } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging.js';
+        
+        // Configuración de Firebase
+        const FIREBASE_API_KEY = ['AI', 'zaSyBXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX'].join(''); // Necesitas tu API key real
+        const firebaseConfig = {
+            apiKey: FIREBASE_API_KEY,
+            authDomain: "turisteam-80f1b.firebaseapp.com",
+            projectId: "turisteam-80f1b",
+            storageBucket: "turisteam-80f1b.appspot.com",
+            messagingSenderId: "623846192437",
+            appId: "1:623846192437:web:XXXXXXXXXXXXXXXX" // Necesitas tu App ID real
         };
-        if (!firebase.apps.length) {
-            firebase.initializeApp(firebaseConfig);
-        }
-        try {
-            firebase.firestore().enablePersistence({ synchronizeTabs: true }).catch(function () {});
-        } catch (e) {}
-        function showCustomNotification(title, body) {
-            if (typeof Notification !== "undefined" && Notification.permission === "granted") {
-                new Notification(title, {
-                    body: body,
-                    icon: "images/escudo-cobreros-192.png",
-                    badge: "images/escudo-cobreros-192.png"
-                });
+        
+        // Inicializar Firebase
+        const app = initializeApp(firebaseConfig);
+        const messaging = getMessaging(app);
+        
+        // Solicitar permiso para notificaciones
+        async function requestNotificationPermission() {
+            const permission = await Notification.requestPermission();
+            if (permission === 'granted') {
+                console.log('Permiso de notificaciones concedido');
+                return true;
+            } else {
+                console.log('Permiso de notificaciones denegado');
+                return false;
             }
         }
-        async function requestNotificationPermission() {
-            if (typeof Notification === "undefined") return false;
-            var permission = await Notification.requestPermission();
-            return permission === "granted";
-        }
-        var VAPID_KEY =
-            typeof window.__FIREBASE_VAPID_PUBLIC_KEY__ === "string" &&
-            window.__FIREBASE_VAPID_PUBLIC_KEY__.length > 40
-                ? window.__FIREBASE_VAPID_PUBLIC_KEY__
-                : "";
+        
+        // Obtener token de FCM
         async function getFCMToken() {
             try {
-                if (!firebase.messaging.isSupported || !firebase.messaging.isSupported()) {
-                    return null;
-                }
-                if (!VAPID_KEY) {
-                    console.warn(
-                        "Clave VAPID: revisa el script inline antes de Firebase e importa el par en Firebase (Cloud Messaging)."
-                    );
-                    return null;
-                }
-                var messaging = firebase.messaging();
-                return await messaging.getToken({ vapidKey: VAPID_KEY });
+                const token = await getToken(messaging, {
+                    vapidKey: 'TU_VAPID_KEY_AQUI' // Necesitas generar una VAPID key
+                });
+                console.log('FCM Token:', token);
+                return token;
             } catch (error) {
-                console.error("Error obteniendo token FCM:", error);
+                console.error('Error obteniendo token:', error);
                 return null;
             }
         }
-        window.addEventListener("load", async function () {
-            try {
-                if (firebase.messaging.isSupported && firebase.messaging.isSupported()) {
-                    firebase.messaging().onMessage(function (payload) {
-                        if (payload && payload.notification) {
-                            showCustomNotification(payload.notification.title, payload.notification.body);
-                        }
-                    });
-                }
-            } catch (e) {}
-            var granted = await requestNotificationPermission();
-            if (granted) {
-                var token = await getFCMToken();
+        
+        // Escuchar mensajes en primer plano
+        onMessage(messaging, (payload) => {
+            console.log('Mensaje recibido:', payload);
+            // Mostrar notificación personalizada
+            if (payload.notification) {
+                showCustomNotification(payload.notification.title, payload.notification.body);
+            }
+        });
+        
+        // Función para mostrar notificación personalizada
+        function showCustomNotification(title, body) {
+            if (Notification.permission === 'granted') {
+                new Notification(title, {
+                    body: body,
+                    icon: 'images/escudo-cobreros.png',
+                    badge: 'images/escudo-cobreros.png'
+                });
+            }
+        }
+        
+        // Inicializar cuando se carga la página
+        window.addEventListener('load', async () => {
+            const hasPermission = await requestNotificationPermission();
+            if (hasPermission) {
+                const token = await getFCMToken();
                 if (token) {
-                    try { localStorage.setItem("fcmToken", token); } catch (x) {}
+                    // Guardar token para enviar notificaciones
+                    localStorage.setItem('fcmToken', token);
+                    console.log('Token guardado para notificaciones');
                 }
             }
         });
+        
+        // Hacer funciones globales
         window.requestNotificationPermission = requestNotificationPermission;
         window.getFCMToken = getFCMToken;
         window.showCustomNotification = showCustomNotification;
-    })();
     </script>
 </head>
 <body>
@@ -324,17 +320,18 @@
                     <div class="document-category">
                         <h3>Formularios</h3>
                         <ul class="document-list">
-                            <li><a href="https://cobreros.sedelectronica.es/catalog/t/15fabacb-83b1-47d1-b435-508245672051" target="_blank" class="document-link"><i class="fas fa-download"></i> Licencia de obras</a></li>
-                            <li><a href="https://cobreros.sedelectronica.es/catalog/t/d120f65c-c936-4a95-bd50-e7ae970ca149" target="_blank" class="document-link"><i class="fas fa-download"></i> Solicitud de empadronamiento</a></li>
-                            <li><a href="https://cobreros.sedelectronica.es/catalog/t/1c74bc66-8b69-4f3c-8183-d3591f0504ed" target="_blank" class="document-link"><i class="fas fa-download"></i> Certificado de empadronamiento</a></li>
-                            <li><a href="https://cobreros.sedelectronica.es/?x=YNOk4QU4OCH1VkP5PEIUePAoMJMUn8b-T88O9vfrVKUeSihv2bENIqzWyk461HpKudzhAdFOWwE9q4qefF-Mxi32kuWV4orZqsZxo8GjkR0m9UsFMZJrvtQI8cQXwqOE5h8yPgI9lbLQB86*ZKIMyz9hPheu1upkL85pK64JPLMMHjMYAS8uiKjtaeB2Hr*mQ8UtWDh77MXQZ4v-fH9CQw" target="_blank" class="document-link"><i class="fas fa-download"></i> Instancia General</a></li>
+                            <li><a href="#" class="document-link"><i class="fas fa-download"></i> Solicitud de empadronamiento</a></li>
+                            <li><a href="#" class="document-link"><i class="fas fa-download"></i> Licencia de obras</a></li>
+                            <li><a href="#" class="document-link"><i class="fas fa-download"></i> Certificado de empadronamiento</a></li>
+                            <li><a href="#" class="document-link"><i class="fas fa-download"></i> Solicitud de subvenciones</a></li>
                         </ul>
                     </div>
                     <div class="document-category">
                         <h3>Normativas</h3>
                         <ul class="document-list">
                             <li><a href="#" class="document-link"><i class="fas fa-download"></i> Ordenanzas municipales</a></li>
-                            <li><a href="https://cobreros.sedelectronica.es/catalog/t/96514574-aca1-40e1-a800-e06485e6d016" target="_blank" class="document-link"><i class="fas fa-download"></i> Planeamiento General (Modificación)</a></li>
+                            <li><a href="#" class="document-link"><i class="fas fa-download"></i> Reglamento de funcionamiento</a></li>
+                            <li><a href="#" class="document-link"><i class="fas fa-download"></i> Normativa de ruidos</a></li>
                         </ul>
                     </div>
                 </div>
@@ -596,7 +593,6 @@
                 <button class="tab-btn" data-tab="documents">Documentos</button>
                 <button class="tab-btn" data-tab="notifications">Notificaciones</button>
                 <button class="tab-btn" data-tab="database">Base de Datos</button>
-                <button class="tab-btn" data-tab="backup">Backup & Persistencia</button>
                 <button class="tab-btn" data-tab="settings">Configuración</button>
                 <button class="tab-btn" data-tab="servicios">Servicios</button>
             </div>
@@ -1051,80 +1047,6 @@
                     <div class="admin-section">
                         <h4>Estadísticas del Sistema</h4>
                         <div class="stats-grid" id="systemStats"></div>
-                    </div>
-                </div>
-                
-                <!-- Backup Tab -->
-                <div id="backup-tab" class="tab-content">
-                    <h3>🔐 Backup & Persistencia de Datos</h3>
-                    
-                    <!-- Backup Automático a Firestore -->
-                    <div class="admin-section">
-                        <h4>☁️ Backup Automático a Firestore</h4>
-                        <p>Gestionar copias de seguridad automáticas en la nube:</p>
-                        <div class="backup-buttons">
-                            <button class="btn btn-info" onclick="backupContentToFirestore()">
-                                <i class="fas fa-cloud-upload-alt"></i> Backup Contenido (Bandos, Noticias, Eventos)
-                            </button>
-                            <button class="btn btn-secondary" onclick="backupLocalStorageToFirestore()">
-                                <i class="fas fa-save"></i> Backup Completo localStorage
-                            </button>
-                            <button class="btn btn-warning" onclick="restoreContentFromFirestore()">
-                                <i class="fas fa-cloud-download-alt"></i> Restaurar desde Firestore
-                            </button>
-                        </div>
-                        <div class="backup-status">
-                            <p><strong>Estado:</strong> <span id="firebaseStatus">Verificando conexión...</span></p>
-                            <p><strong>Último backup:</strong> <span id="lastBackupTime">No disponible</span></p>
-                        </div>
-                    </div>
-                    
-                    <!-- Exportar/Importar Datos -->
-                    <div class="admin-section">
-                        <h4>📁 Exportar/Importar Datos</h4>
-                        <p>Crear copias de seguridad locales y restaurar datos:</p>
-                        <div class="export-import-buttons">
-                            <button class="btn btn-success" onclick="exportDataAsJSON()">
-                                <i class="fas fa-download"></i> Exportar Todo (JSON)
-                            </button>
-                            <button class="btn btn-primary" onclick="document.getElementById('importBackupFile').click()">
-                                <i class="fas fa-upload"></i> Importar Backup (JSON)
-                            </button>
-                            <input type="file" id="importBackupFile" accept=".json" style="display: none;" onchange="importDataFromJSON(this.files[0])">
-                        </div>
-                    </div>
-                    
-                    <!-- Verificación y Reparación -->
-                    <div class="admin-section">
-                        <h4>🔧 Verificación y Reparación</h4>
-                        <p>Verificar integridad de datos y reparar problemas:</p>
-                        <div class="repair-buttons">
-                            <button class="btn btn-info" onclick="verifyDataIntegrity()">
-                                <i class="fas fa-check-circle"></i> Verificar Integridad de Datos
-                            </button>
-                            <button class="btn btn-warning" onclick="repairCorruptedData()">
-                                <i class="fas fa-wrench"></i> Reparar Datos Corruptos
-                            </button>
-                            <button class="btn btn-danger" onclick="clearAllData()">
-                                <i class="fas fa-trash"></i> Limpiar Todos los Datos
-                            </button>
-                        </div>
-                        <div class="integrity-status">
-                            <p><strong>Estado de integridad:</strong> <span id="integrityStatus">No verificado</span></p>
-                        </div>
-                    </div>
-                    
-                    <!-- Información del Sistema -->
-                    <div class="admin-section">
-                        <h4>📊 Información del Sistema</h4>
-                        <div class="system-info">
-                            <p><strong>Versión:</strong> 1.0</p>
-                            <p><strong>Última verificación:</strong> <span id="lastIntegrityCheck">Nunca</span></p>
-                            <p><strong>Total bandos:</strong> <span id="totalBandos">0</span></p>
-                            <p><strong>Total noticias:</strong> <span id="totalNoticias">0</span></p>
-                            <p><strong>Total eventos:</strong> <span id="totalEventos">0</span></p>
-                            <p><strong>Total usuarios:</strong> <span id="totalUsuarios">0</span></p>
-                        </div>
                     </div>
                 </div>
                 

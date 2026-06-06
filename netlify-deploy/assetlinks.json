@@ -1,0 +1,8 @@
+[{
+      "relation": ["delegate_permission/common.handle_all_urls"],
+      "target": {
+        "namespace": "android_app",
+        "package_name": "com.ayuntamientocobreros.www.twa",
+        "sha256_cert_fingerprints": ["2A:5E:AE:74:0C:76:34:28:49:F9:68:9F:84:92:12:2A:B4:16:DA:14:BD:CE:1E:54:EC:E4:82:23:B8:BA:0A:98"]
+      }
+    }]
