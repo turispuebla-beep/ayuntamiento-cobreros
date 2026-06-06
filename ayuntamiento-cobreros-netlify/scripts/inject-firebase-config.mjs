@@ -1,8 +1,6 @@
 /**
  * Genera js/firebase-config.generated.js
- * Prioridad: variables de entorno / .env.firebase → config/firebase.web.public.json (local, gitignored)
- * Netlify: FIREBASE_API_KEY obligatoria en Environment variables (no commitear la clave).
- * Local: .env.firebase o copia config/firebase.web.public.example.json → firebase.web.public.json
+ * Prioridad: env / .env.firebase → firebase.web.public.json (local) → firebase.web.build.json (Netlify/CI)
  */
 import fs from 'fs';
 import path from 'path';
@@ -31,21 +29,30 @@ function loadEnvFile(filePath) {
   return out;
 }
 
+function loadJsonConfig(filePath, label) {
+  if (!fs.existsSync(filePath)) return null;
+  try {
+    const parsed = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+    if (parsed.apiKey) {
+      console.log(`ℹ️ ${label}:`, filePath);
+      return parsed;
+    }
+  } catch (error) {
+    console.warn('No se pudo leer', filePath, error.message);
+  }
+  return null;
+}
+
 function loadPublicConfig() {
   const candidates = [
-    path.join(targetDir, 'config', 'firebase.web.public.json'),
-    path.join(rootDir, 'config', 'firebase.web.public.json'),
-    path.join(rootDir, '..', 'config', 'firebase.web.public.json')
+    { path: path.join(targetDir, 'config', 'firebase.web.public.json'), label: 'Config local' },
+    { path: path.join(rootDir, 'config', 'firebase.web.public.json'), label: 'Config local' },
+    { path: path.join(targetDir, 'config', 'firebase.web.build.json'), label: 'Config build (Netlify/CI)' },
+    { path: path.join(rootDir, 'config', 'firebase.web.build.json'), label: 'Config build (Netlify/CI)' }
   ];
-  for (const filePath of candidates) {
-    if (!fs.existsSync(filePath)) continue;
-    try {
-      const parsed = JSON.parse(fs.readFileSync(filePath, 'utf8'));
-      console.log('ℹ️ Config Firebase pública:', filePath);
-      return parsed;
-    } catch (error) {
-      console.warn('No se pudo leer', filePath, error.message);
-    }
+  for (const { path: filePath, label } of candidates) {
+    const parsed = loadJsonConfig(filePath, label);
+    if (parsed) return parsed;
   }
   return {};
 }
@@ -53,7 +60,8 @@ function loadPublicConfig() {
 const publicConfig = loadPublicConfig();
 const fileEnv = loadEnvFile(path.join(rootDir, '.env.firebase'));
 const fileEnvParent = loadEnvFile(path.join(rootDir, '..', '.env.firebase'));
-const env = { ...publicConfig, ...fileEnvParent, ...fileEnv, ...process.env };
+const fileEnvCwd = loadEnvFile(path.join(process.cwd(), '.env.firebase'));
+const env = { ...publicConfig, ...fileEnvParent, ...fileEnv, ...fileEnvCwd, ...process.env };
 
 const config = {
   apiKey: env.FIREBASE_API_KEY || env.apiKey || '',
@@ -69,25 +77,18 @@ const config = {
 };
 
 if (!config.apiKey) {
-  const hasEnvFile =
-    fs.existsSync(path.join(rootDir, '.env.firebase')) ||
-    fs.existsSync(path.join(process.cwd(), '.env.firebase'));
-  const hint = hasEnvFile
-    ? '  .env.firebase existe pero FIREBASE_API_KEY está vacía. Edítala o ejecuta setup-env-firebase.bat\n'
-    : '';
   console.error(
     'Falta FIREBASE_API_KEY. Opciones:\n' +
-      hint +
-      '  1) Netlify → Site settings → Environment variables → FIREBASE_API_KEY\n' +
-      '  2) Local: rellena FIREBASE_API_KEY en .env.firebase (copy .env.firebase.example .env.firebase)\n' +
-      '  3) Local: config/firebase.web.public.json (gitignored; ver firebase.web.public.example.json)\n' +
-      '  4) Local: setup-env-firebase.bat'
+      '  1) Netlify → Environment variables → FIREBASE_API_KEY\n' +
+      '  2) Local: .env.firebase\n' +
+      '  3) config/firebase.web.build.json (incluido para deploy)\n' +
+      '  4) setup-env-firebase.bat'
   );
   process.exit(1);
 }
 
-if (!env.FIREBASE_API_KEY && !fileEnv.FIREBASE_API_KEY && !fileEnvParent.FIREBASE_API_KEY) {
-  console.warn('⚠️ Usando apiKey de config/firebase.web.public.json local (no commitear ese archivo).');
+if (!env.FIREBASE_API_KEY && !fileEnv.FIREBASE_API_KEY && !fileEnvParent.FIREBASE_API_KEY && !fileEnvCwd.FIREBASE_API_KEY) {
+  console.warn('⚠️ Usando apiKey de config JSON (build o local).');
 }
 
 const jsDir = path.join(targetDir, 'js');

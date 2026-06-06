@@ -29,6 +29,15 @@ xcopy /Y /E /I "%SRC%images" "%DST%images"
 if not exist "%DST%downloads" mkdir "%DST%downloads"
 xcopy /Y /E /I "%SRC%downloads" "%DST%downloads"
 
-echo Hecho. Carpeta: ayuntamiento-cobreros-netlify
-echo Siguiente: desplegar-netlify.bat o NETLIFY-PASO-A-PASO.md
+echo.
+echo Generando js\firebase-config.generated.js en ayuntamiento-cobreros-netlify...
+node "%SRC%scripts\inject-firebase-config.mjs" "%DST%"
+if errorlevel 1 (
+  echo ERROR: no se pudo generar firebase-config.generated.js
+  pause
+  exit /b 1
+)
+
+echo Hecho. Carpeta lista para subir: ayuntamiento-cobreros-netlify
+echo Arrastra esa carpeta en Netlify -^> Deploys, o ejecuta desplegar-netlify.bat
 pause

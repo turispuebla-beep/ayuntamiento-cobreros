@@ -6,7 +6,7 @@
 [build.environment]
   # La apiKey web de Firebase va en FIREBASE_API_KEY (Site settings → Environment variables).
   # El JS generado en build es público por diseño; omitir escaneo de falsos positivos AIza*.
-  SECRETS_SCAN_OMIT_PATHS = "js/firebase-config.generated.js"
+  SECRETS_SCAN_OMIT_PATHS = "js/firebase-config.generated.js,config/firebase.web.build.json"
   SECRETS_SCAN_SMART_DETECTION_ENABLED = "false"
 
 [[redirects]]
