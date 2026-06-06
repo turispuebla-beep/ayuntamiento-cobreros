@@ -6,6 +6,8 @@ config-secrets.js
 firebase-config-private.js
 firebase-vapid-import.txt
 .env.firebase
+config/firebase.web.public.json
+ayuntamiento-cobreros-netlify/config/firebase.web.public.json
 js/firebase-config.generated.js
 ayuntamiento-cobreros-netlify/js/firebase-config.generated.js
 *.env

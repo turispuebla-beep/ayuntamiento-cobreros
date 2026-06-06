@@ -1,8 +1,8 @@
 /**
  * Genera js/firebase-config.generated.js
- * Prioridad: variables de entorno / .env.firebase → config/firebase.web.public.json
- * Netlify: FIREBASE_API_KEY en Environment variables (opcional si existe el JSON público).
- * Local: copia .env.firebase.example → .env.firebase
+ * Prioridad: variables de entorno / .env.firebase → config/firebase.web.public.json (local, gitignored)
+ * Netlify: FIREBASE_API_KEY obligatoria en Environment variables (no commitear la clave).
+ * Local: .env.firebase o copia config/firebase.web.public.example.json → firebase.web.public.json
  */
 import fs from 'fs';
 import path from 'path';
@@ -73,13 +73,13 @@ if (!config.apiKey) {
     'Falta FIREBASE_API_KEY. Opciones:\n' +
       '  1) Netlify → Site settings → Environment variables → FIREBASE_API_KEY\n' +
       '  2) Local: .env.firebase con FIREBASE_API_KEY\n' +
-      '  3) Añadir config/firebase.web.public.json con apiKey (clave web pública de Firebase)'
+      '  3) Local: config/firebase.web.public.json (gitignored; ver firebase.web.public.example.json)'
   );
   process.exit(1);
 }
 
 if (!env.FIREBASE_API_KEY && !fileEnv.FIREBASE_API_KEY && !fileEnvParent.FIREBASE_API_KEY) {
-  console.warn('⚠️ Usando apiKey de config/firebase.web.public.json (sin FIREBASE_API_KEY en entorno).');
+  console.warn('⚠️ Usando apiKey de config/firebase.web.public.json local (no commitear ese archivo).');
 }
 
 const jsDir = path.join(targetDir, 'js');

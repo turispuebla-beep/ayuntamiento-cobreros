@@ -84,13 +84,15 @@ La config Firebase se genera en el build (`js/firebase-config.generated.js`) des
 
 ## 4. Variables de entorno en Netlify (obligatorias)
 
-El build ejecuta `node scripts/inject-firebase-config.mjs` y **no debe** haber API keys en `index.html` ni `sw.js` (escaneo de secretos de Netlify).
+El build ejecuta `node scripts/inject-firebase-config.mjs` y genera `js/firebase-config.generated.js`.
 
-En **Site settings → Environment variables** añade:
+**No subas la API key al repositorio.** Netlify la detecta como secreto y falla el deploy.
+
+En **Site settings → Environment variables** añade (mínimo la primera):
 
 | Variable | Valor (ejemplo proyecto Cobreros) |
 |----------|-----------------------------------|
-| `FIREBASE_API_KEY` | Clave web de Firebase Console → Project settings → Your apps |
+| `FIREBASE_API_KEY` | **Obligatoria.** Clave web en Firebase Console → Project settings → Your apps |
 | `FIREBASE_AUTH_DOMAIN` | `ayuntamiento-de-cobreros.firebaseapp.com` |
 | `FIREBASE_PROJECT_ID` | `ayuntamiento-de-cobreros` |
 | `FIREBASE_STORAGE_BUCKET` | `ayuntamiento-de-cobreros.firebasestorage.app` |
