@@ -9,7 +9,8 @@ const CONFIG = {
         phone: '980 62 26 18',
         fax: '980 62 26 18',
         email: 'aytocobreros@gmail.com',
-        website: 'www.ayuntamientocobreros.es',
+        website: 'www.ayuntamientodecobreros.com',
+        canonicalUrl: 'https://www.ayuntamientodecobreros.com',
         comarca: 'Sanabria y Carballeda',
         inhabitants: 552,
         extension: '78 Km²'

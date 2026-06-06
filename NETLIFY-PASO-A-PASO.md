@@ -68,9 +68,10 @@ Sin esto, login y Firestore fallan en la URL de Netlify.
 1. [Firebase Console](https://console.firebase.google.com/project/ayuntamiento-de-cobreros/authentication/settings)
 2. **Authentication** → **Settings** → **Authorized domains**
 3. Añade:
-   - `ayuntamiento-cobreros.netlify.app` (o tu subdominio Netlify)
-   - `www.ayuntamientocobreros.es` (si usas dominio propio)
-   - `ayuntamientocobreros.es`
+   - `www.ayuntamientodecobreros.com`
+   - `ayuntamientodecobreros.com`
+   - `ayuntamientodecobreros.netlify.app`
+   - `localhost` (pruebas locales)
 
 La config Firebase se genera en el build (`js/firebase-config.generated.js`) desde variables de entorno (sección 4).
 
@@ -110,21 +111,20 @@ node scripts/inject-firebase-config.mjs ayuntamiento-cobreros-netlify
 
 ---
 
-## 5. Dominio personalizado
+## 5. Dominio personalizado (producción)
 
-Si ya usáis **www.ayuntamientocobreros.es**:
+**URL oficial:** `https://www.ayuntamientodecobreros.com`  
+**Sitio Netlify:** `ayuntamientodecobreros` · subdominio `ayuntamientodecobreros.netlify.app`
 
-1. Netlify → sitio → **Domain management** → **Add domain**
-2. Añade `www.ayuntamientocobreros.es` y `ayuntamientocobreros.es`
-3. En tu proveedor DNS (donde compraste el dominio), según indique Netlify:
+1. Netlify → sitio **ayuntamientodecobreros** → **Domain management**
+2. Dominio principal: `www.ayuntamientodecobreros.com`
+3. Redirección: `ayuntamientodecobreros.com` → www
+4. Si el dominio está registrado en Netlify, el DNS lo gestiona Netlify (esperar propagación).
+5. **Firebase → Authorized domains** y **reCAPTCHA Admin**: añadir los dominios nuevos (sección 3).
 
-| Tipo | Nombre | Valor |
-|------|--------|--------|
-| CNAME | `www` | `ayuntamiento-cobreros.netlify.app` (o el target que muestre Netlify) |
-| A / ALIAS | `@` | IPs de Netlify (las muestra el asistente) |
+### Dominio antiguo (sin "de")
 
-4. HTTPS: Netlify activa el certificado solo (Let's Encrypt).
-5. Vuelve a **Firebase → Authorized domains** y añade el dominio final.
+Si teníais `www.ayuntamientocobreros.com` en otro sitio Netlify o Porkbun, configurad allí una **redirección 301** a `https://www.ayuntamientodecobreros.com` para no perder visitas.
 
 Propagación DNS: desde minutos hasta 48 h.
 
@@ -166,6 +166,6 @@ Propagación DNS: desde minutos hasta 48 h.
 
 ## URLs de referencia
 
-- Producción documentada: `https://ayuntamiento-cobreros.netlify.app`
-- Dominio ayuntamiento: `https://www.ayuntamientocobreros.es`
+- Producción: `https://www.ayuntamientodecobreros.com`
+- Netlify: `https://ayuntamientodecobreros.netlify.app`
 - Firebase: `https://console.firebase.google.com/project/ayuntamiento-de-cobreros`

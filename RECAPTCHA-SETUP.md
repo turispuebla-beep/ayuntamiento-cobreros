@@ -11,9 +11,10 @@ https://www.google.com/recaptcha/admin/create
 - **Etiqueta**: Ayuntamiento de Cobreros
 - **Tipo**: reCAPTCHA v3
 - **Dominios**:
-  - `ayuntamiento-cobreros.netlify.app`
+  - `www.ayuntamientodecobreros.com`
+  - `ayuntamientodecobreros.com`
+  - `ayuntamientodecobreros.netlify.app`
   - `localhost` (para desarrollo)
-  - Tu dominio personalizado si lo tienes
 
 ### **1.3 Configurar para Android:**
 - **Nombre del paquete**: `com.turisteam.ayuntamientocobreros`

@@ -22,6 +22,17 @@ function getFirebaseAuthSafe() {
     }
 }
 
+/** URL canónica del ayuntamiento (producción: www.ayuntamientodecobreros.com) */
+function getSiteOrigin() {
+    if (typeof window !== 'undefined' && window.location && window.location.origin) {
+        return String(window.location.origin).replace(/\/$/, '');
+    }
+    if (typeof CONFIG !== 'undefined' && CONFIG.municipality && CONFIG.municipality.canonicalUrl) {
+        return String(CONFIG.municipality.canonicalUrl).replace(/\/$/, '');
+    }
+    return 'https://www.ayuntamientodecobreros.com';
+}
+
 /** Texto para ciudadanos/admin: sin jerga técnica (Firebase → nube). */
 function cloudUserText(text) {
     if (text == null) return text;
@@ -549,7 +560,7 @@ function downloadVecinosApk() {
 
 /** Mensaje para compartir la app de avisos (solo personal; sin enlace público directo). */
 function getAvisosApkShareMessage() {
-    const origin = window.location.origin || 'https://www.ayuntamientocobreros.es';
+    const origin = getSiteOrigin();
     return (
         'App COBREROS AVISOS (solo personal autorizado del ayuntamiento).\n\n' +
         '1) Abre la web del ayuntamiento e inicia sesión como administrador.\n' +
@@ -3200,7 +3211,7 @@ function showNotification(message, type = 'info') {
 }
 
 function getVecinosAppShareMessage() {
-    const origin = (window.location.origin || 'https://www.ayuntamientocobreros.es').replace(/\/$/, '');
+    const origin = getSiteOrigin();
     const webUrl = origin + '/';
     const apkUrl = origin + '/' + COBREROS_APK_VECINOS_URL.replace(/^\//, '');
     return (
@@ -13615,8 +13626,8 @@ function openCalendarioEventos() {
                     
                     <h4>📞 Información de Eventos</h4>
                     <p><strong>Ayuntamiento de Cobreros:</strong> 980 123 456</p>
-                    <p><strong>Email:</strong> info@ayuntamientocobreros.com</p>
-                    <p><strong>Web:</strong> www.ayuntamientocobreros.com</p>
+                    <p><strong>Email:</strong> aytocobreros@gmail.com</p>
+                    <p><strong>Web:</strong> www.ayuntamientodecobreros.com</p>
                 </div>
             </div>
             <div class="modal-footer">

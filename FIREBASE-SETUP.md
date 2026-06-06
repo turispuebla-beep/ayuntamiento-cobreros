@@ -57,8 +57,12 @@ sync-netlify.bat
 desplegar-netlify.bat
 ```
 
-Dominios en Firebase → Authentication → **Authorized domains**:  
-`ayuntamiento-cobreros.netlify.app`, `www.ayuntamientocobreros.es`
+Dominios en Firebase → Authentication → **Authorized domains** (obligatorio):  
+`www.ayuntamientodecobreros.com`, `ayuntamientodecobreros.com`, `ayuntamientodecobreros.netlify.app`, `localhost`
+
+En [Google reCAPTCHA Admin](https://www.google.com/recaptcha/admin), mismos dominios en la lista del sitio v3.
+
+Dominio antiguo (`www.ayuntamientocobreros.com`): opcional redirección en Netlify/Porkbun al nuevo; puede quitarse de Authorized domains cuando no se use.
 
 ## 6. Probar push
 
