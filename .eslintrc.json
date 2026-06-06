@@ -9,6 +9,23 @@
     "ecmaVersion": 2021,
     "sourceType": "module"
   },
+  "overrides": [
+    {
+      "files": ["js/rate-limiter.js", "__tests__/**/*.js"],
+      "parserOptions": {
+        "sourceType": "commonjs"
+      },
+      "env": {
+        "jest": true
+      }
+    },
+    {
+      "files": ["js/admin-access-bootstrap.js", "js/friendly-errors.js", "js/error-handler.js"],
+      "parserOptions": {
+        "sourceType": "script"
+      }
+    }
+  ],
   "rules": {
     "no-console": "warn",
     "no-unused-vars": "warn",
@@ -25,7 +42,8 @@
     "showNotification": "readonly",
     "isAdmin": "readonly",
     "isSuperAdmin": "readonly",
-    "currentUser": "readonly"
+    "currentUser": "readonly",
+    "cloudUserText": "readonly"
   }
 }
 
