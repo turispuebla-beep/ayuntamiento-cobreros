@@ -16,6 +16,8 @@ https://www.google.com/recaptcha/admin/create
   - `ayuntamientodecobreros.netlify.app`
   - `localhost` (para desarrollo)
 
+Site key en la web: `6LcZ6hAtAAAAANXSqXPVP-O4EdEPANlPctGoM0Qu` (`index.html` + `js/recaptcha.js`).
+
 ### **1.3 Configurar para Android:**
 - **Nombre del paquete**: `com.turisteam.ayuntamientocobreros`
 - **Certificado SHA-1**: (obtener de Android Studio)

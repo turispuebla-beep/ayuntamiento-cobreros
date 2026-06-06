@@ -2,7 +2,7 @@
 // Configuración y funciones para reCAPTCHA
 
 // ⚠️ IMPORTANTE: Reemplaza con tu SITE KEY real de Google reCAPTCHA Console
-const RECAPTCHA_SITE_KEY = '6LeBYM4rAAAAALaDVtPi1H4jWjpj_Ovjf9g8VnT4';
+const RECAPTCHA_SITE_KEY = '6LcZ6hAtAAAAANXSqXPVP-O4EdEPANlPctGoM0Qu';
 
 // Validación en servidor (Firebase Cloud Functions del proyecto ayuntamiento-de-cobreros)
 const RECAPTCHA_VALIDATION_URL =
