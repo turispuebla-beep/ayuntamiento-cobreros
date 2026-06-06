@@ -106,12 +106,16 @@
                             <i class="fab fa-android"></i>
                             App Android (avisos)
                         </button>
+                        <button type="button" class="btn btn-outline btn-large apk-vecinos-ios-only" onclick="openIosVecinosApp()" title="Instalar app de avisos en iPhone">
+                            <i class="fab fa-apple"></i>
+                            App iPhone (avisos)
+                        </button>
                     </div>
                     <p class="apk-download-hint apk-vecinos-android-only" style="margin-top: 1rem; font-size: 0.9rem; opacity: 0.9;">
                         ¿Prefieres no usar la web? Descarga <strong>Cobreros Vecinos</strong> para recibir avisos con sonido.
                     </p>
                     <p class="apk-download-hint apk-vecinos-ios-hint" style="display:none; margin-top: 1rem; font-size: 0.9rem; opacity: 0.9;">
-                        En iPhone: regístrate y añade esta web a la pantalla de inicio (PWA) para recibir avisos.
+                        En iPhone: pulsa <strong>App iPhone (avisos)</strong> y sigue los pasos en Safari para instalar con el escudo de Cobreros.
                     </p>
                 </div>
             </div>
@@ -373,10 +377,29 @@
 
     </main>
 
-    <button class="whatsapp-share-floating" onclick="shareOnWhatsApp()" title="Compartir por WhatsApp">
-        <i class="fab fa-whatsapp"></i>
-        <span>Compartir</span>
-    </button>
+    <div class="vecinos-share-fab-wrap" id="vecinosShareFab">
+        <div class="vecinos-share-panel" id="vecinosSharePanel" hidden>
+            <p class="vecinos-share-panel-title">Compartir con vecinos</p>
+            <button type="button" class="vecinos-share-option vecinos-share-wa" onclick="shareVecinosApp('whatsapp')">
+                <i class="fab fa-whatsapp"></i> WhatsApp
+            </button>
+            <button type="button" class="vecinos-share-option" onclick="shareVecinosApp('sms')">
+                <i class="fas fa-sms"></i> SMS
+            </button>
+            <button type="button" class="vecinos-share-option" onclick="shareVecinosApp('email')">
+                <i class="fas fa-envelope"></i> Email
+            </button>
+            <button type="button" class="vecinos-share-option" onclick="shareVecinosApp('copy')">
+                <i class="fas fa-link"></i> Copiar enlace
+            </button>
+            <button type="button" class="vecinos-share-option vecinos-share-more" onclick="shareVecinosApp('native')">
+                <i class="fas fa-share-alt"></i> Más opciones
+            </button>
+        </div>
+        <button type="button" class="vecinos-share-fab" id="vecinosShareFabBtn" onclick="toggleVecinosSharePanel()" title="Compartir app con vecinos" aria-label="Compartir app con vecinos" aria-expanded="false">
+            <i class="fas fa-share-alt"></i>
+        </button>
+    </div>
 
     <!-- Footer -->
     <footer class="footer">
@@ -1391,8 +1414,11 @@
                 <!-- Las notificaciones recibidas se cargarán dinámicamente -->
             </div>
             <div class="apk-vecinos-promo" style="margin-top: 1rem; padding: 0.75rem; background: #f0f9ff; border-radius: 8px; font-size: 0.85rem;">
-                <strong>📱 App Android</strong> — Recibe avisos con sonido sin depender del navegador.
-                <button type="button" class="btn btn-small btn-primary apk-vecinos-android-only" style="margin-top: 0.5rem;" onclick="downloadVecinosApk()">Descargar Cobreros Vecinos</button>
+                <strong>📱 App de avisos</strong> — Recibe avisos con sonido sin depender del navegador.
+                <div style="margin-top: 0.5rem; display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                    <button type="button" class="btn btn-small btn-primary apk-vecinos-android-only" onclick="downloadVecinosApk()">Android: Cobreros Vecinos</button>
+                    <button type="button" class="btn btn-small btn-primary apk-vecinos-ios-only" onclick="openIosVecinosApp()">iPhone: instalar app</button>
+                </div>
             </div>
         </div>
     </div>
@@ -3105,8 +3131,11 @@
         <button class="close-floating-info" onclick="closeDesktopInfo()" title="Cerrar">×</button>
         <div class="floating-content">
             <h4>📱 App COBREROS Vecinos</h4>
-            <p>Regístrate y descarga la app Android para recibir avisos del ayuntamiento (o usa la PWA en iPhone)</p>
-            <button type="button" class="btn btn-small btn-primary apk-vecinos-android-only" onclick="downloadVecinosApk()" style="margin-top: 0.5rem;">Descargar APK</button>
+            <p>Regístrate y recibe avisos: Android (APK) o iPhone (instalar desde Safari).</p>
+            <div style="margin-top: 0.5rem; display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                <button type="button" class="btn btn-small btn-primary apk-vecinos-android-only" onclick="downloadVecinosApk()">Descargar APK</button>
+                <button type="button" class="btn btn-small btn-primary apk-vecinos-ios-only" onclick="openIosVecinosApp()">Instalar en iPhone</button>
+            </div>
         </div>
     </div>
 

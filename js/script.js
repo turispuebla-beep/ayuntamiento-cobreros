@@ -67,6 +67,7 @@ document.addEventListener('DOMContentLoaded', function() {
     detectDevice();
     initializeApp();
     setupApkDownloadUi();
+    setupVecinosShareFab();
     setupEventListeners();
     loadData();
     void loadAdministrators();
@@ -485,11 +486,9 @@ function downloadMobileApp() {
     if (isAndroid) {
         downloadVecinosApk();
     } else if (isIOS) {
-        window.open('/notification-app/', '_blank');
-        showNotification('📱 Abre la PWA en Safari y añádela a la pantalla de inicio.', 'info');
+        openIosVecinosApp();
     } else {
-        showNotification('En Android descarga la APK. En iPhone usa la PWA desde el navegador.', 'info');
-        window.open(COBREROS_APK_VECINOS_URL, '_blank');
+        showNotification('En Android descarga la APK. En iPhone usa el botón App iPhone (Safari).', 'info');
     }
 
     setTimeout(() => {
@@ -626,16 +625,143 @@ async function shareAvisosApkToPhone(channel) {
     }
 }
 
-/** Muestra u oculta botones de APK según dispositivo. */
+/** Muestra u oculta botones de APK / app iOS según dispositivo. */
 function setupApkDownloadUi() {
     const isAndroid = /android/i.test(navigator.userAgent);
+    const isIOS = isIOSDevice();
     document.querySelectorAll('.apk-vecinos-android-only').forEach((el) => {
         el.style.display = isAndroid ? '' : 'none';
     });
+    document.querySelectorAll('.apk-vecinos-ios-only').forEach((el) => {
+        el.style.display = isIOS ? '' : 'none';
+    });
     document.querySelectorAll('.apk-vecinos-ios-hint').forEach((el) => {
-        el.style.display = /iphone|ipad|ipod/i.test(navigator.userAgent) ? '' : 'none';
+        el.style.display = isIOS && !isPwaStandalone() ? '' : 'none';
     });
 }
+
+// —— Instalación PWA en iPhone (sin App Store) ——
+
+const IOS_INSTALL_HINT_KEY = 'cobrerosIosInstallHintShown';
+
+function isIOSDevice() {
+    return /iphone|ipad|ipod/i.test(navigator.userAgent || '');
+}
+
+function isSafariBrowser() {
+    const ua = (navigator.userAgent || '').toLowerCase();
+    if (!isIOSDevice()) {
+        return false;
+    }
+    const isOtherBrowser = /crios|fxios|edgios|opios|mercury|gsa\//.test(ua);
+    return !isOtherBrowser && /safari/.test(ua);
+}
+
+function isPwaStandalone() {
+    const standaloneMedia = window.matchMedia && window.matchMedia('(display-mode: standalone)').matches;
+    const standaloneNav = typeof navigator !== 'undefined' && navigator.standalone === true;
+    return !!(standaloneMedia || standaloneNav);
+}
+
+function closeIosInstallModal() {
+    const modal = document.getElementById('ios-install-modal');
+    if (!modal) {
+        return;
+    }
+    modal.classList.remove('visible');
+    setTimeout(() => modal.remove(), 200);
+}
+
+function copySiteUrlForSafari() {
+    const url = window.location.href.split('#')[0];
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(url).then(() => {
+            showNotification('Enlace copiado. Ábrelo en Safari.', 'success');
+        }).catch(() => {
+            prompt('Copia este enlace y ábrelo en Safari:', url);
+        });
+        return;
+    }
+    prompt('Copia este enlace y ábrelo en Safari:', url);
+}
+
+function showIosInstallInstructions(options) {
+    options = options || {};
+    closeIosInstallModal();
+    localStorage.setItem(IOS_INSTALL_HINT_KEY, 'true');
+
+    if (isPwaStandalone() && !options.force) {
+        showNotification('Ya tienes la app instalada. Si no recibes avisos, activa las notificaciones en Ajustes.', 'info');
+        return;
+    }
+
+    const inSafari = isSafariBrowser();
+    const escudoUrl = new URL('images/escudo-cobreros-192.png', window.location.href).href;
+    const safariBlock = !inSafari ? `
+        <div class="ios-install-alert">
+            <strong>Abre esta página en Safari</strong>
+            <p>Para instalar en iPhone debes usar <strong>Safari</strong> (no Chrome, WhatsApp ni Facebook).</p>
+            <button type="button" class="btn btn-outline btn-small" onclick="copySiteUrlForSafari()">Copiar enlace</button>
+        </div>
+    ` : '';
+
+    const modal = document.createElement('div');
+    modal.id = 'ios-install-modal';
+    modal.className = 'ios-install-modal';
+    modal.innerHTML = `
+        <div class="ios-install-content" role="dialog" aria-modal="true" aria-labelledby="ios-install-title">
+            <button type="button" class="ios-install-close" onclick="closeIosInstallModal()" aria-label="Cerrar">&times;</button>
+            <div class="ios-install-header">
+                <img src="${escudoUrl}" alt="Escudo de Cobreros" class="ios-install-icon" width="72" height="72">
+                <div>
+                    <h3 id="ios-install-title">Instalar Cobreros Vecinos</h3>
+                    <p>Recibe avisos del ayuntamiento con el escudo en tu pantalla de inicio.</p>
+                </div>
+            </div>
+            ${safariBlock}
+            <ol class="ios-install-steps">
+                <li><strong>Regístrate</strong> en la web si aún no lo has hecho.</li>
+                <li>En <strong>Safari</strong>, pulsa <strong>Compartir</strong> <span aria-hidden="true">(⬆️)</span>.</li>
+                <li>Elige <strong>Añadir a pantalla de inicio</strong>.</li>
+                <li>Pulsa <strong>Añadir</strong> — verás el escudo de Cobreros.</li>
+                <li>Abre la app desde el inicio y <strong>acepta las notificaciones</strong>.</li>
+            </ol>
+            <div class="ios-install-footer">
+                <button type="button" class="btn btn-primary" onclick="closeIosInstallModal()">Entendido</button>
+            </div>
+        </div>
+    `;
+    modal.addEventListener('click', (event) => {
+        if (event.target === modal) {
+            closeIosInstallModal();
+        }
+    });
+    document.body.appendChild(modal);
+    requestAnimationFrame(() => modal.classList.add('visible'));
+}
+
+function openIosVecinosApp() {
+    if (!isIOSDevice()) {
+        showNotification('Este botón es para iPhone. En Android usa la descarga APK.', 'info');
+        return;
+    }
+    showIosInstallInstructions();
+}
+
+function maybeShowIosInstallHintOnFirstVisit() {
+    if (!isIOSDevice() || isPwaStandalone()) {
+        return;
+    }
+    if (localStorage.getItem(IOS_INSTALL_HINT_KEY) === 'true') {
+        return;
+    }
+    setTimeout(() => showIosInstallInstructions(), 1800);
+}
+
+window.openIosVecinosApp = openIosVecinosApp;
+window.closeIosInstallModal = closeIosInstallModal;
+window.copySiteUrlForSafari = copySiteUrlForSafari;
+window.showIosInstallInstructions = showIosInstallInstructions;
 
 // Descartar mensaje móvil
 function dismissMobileMessage() {
@@ -3021,17 +3147,94 @@ function showNotification(message, type = 'info') {
     }, 3000);
 }
 
-function shareOnWhatsApp() {
-    try {
-        const pageTitle = document.title || 'Ayuntamiento de Cobreros';
-        const pageUrl = window.location.href;
-        const text = `${pageTitle} - ${pageUrl}`;
-        const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(text)}`;
-        window.open(whatsappUrl, '_blank');
-    } catch (error) {
-        console.error('Error compartiendo por WhatsApp:', error);
-        showNotification('No se pudo abrir WhatsApp para compartir', 'error');
+function getVecinosAppShareMessage() {
+    const origin = (window.location.origin || 'https://www.ayuntamientocobreros.es').replace(/\/$/, '');
+    const webUrl = origin + '/';
+    const apkUrl = origin + '/' + COBREROS_APK_VECINOS_URL.replace(/^\//, '');
+    return (
+        '🏛️ Ayuntamiento de Cobreros — recibe avisos en tu móvil\n\n' +
+        '📱 Android: descarga la app Cobreros Vecinos\n' + apkUrl + '\n\n' +
+        '🍎 iPhone: abre en Safari e instala en la pantalla de inicio\n' + webUrl + '\n\n' +
+        'Regístrate en la web para recibir avisos de tu localidad.'
+    );
+}
+
+function toggleVecinosSharePanel(forceOpen) {
+    const panel = document.getElementById('vecinosSharePanel');
+    const btn = document.getElementById('vecinosShareFabBtn');
+    if (!panel || !btn) {
+        return;
     }
+    const open = typeof forceOpen === 'boolean' ? forceOpen : panel.hidden;
+    panel.hidden = !open;
+    btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+}
+
+function closeVecinosSharePanel() {
+    toggleVecinosSharePanel(false);
+}
+
+function shareVecinosApp(channel) {
+    const message = getVecinosAppShareMessage();
+    const origin = window.location.origin || '';
+    const webUrl = origin + '/';
+    const subject = encodeURIComponent('App avisos Ayuntamiento de Cobreros');
+    const body = encodeURIComponent(message);
+
+    closeVecinosSharePanel();
+
+    if (channel === 'whatsapp') {
+        window.open('https://wa.me/?text=' + body, '_blank', 'noopener');
+        return;
+    }
+    if (channel === 'sms') {
+        window.open('sms:?body=' + body, '_blank');
+        return;
+    }
+    if (channel === 'email') {
+        window.open('mailto:?subject=' + subject + '&body=' + body, '_blank');
+        return;
+    }
+    if (channel === 'copy') {
+        const text = message + '\n';
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(text).then(() => {
+                showNotification('Enlace copiado. Pégalo en WhatsApp o donde quieras.', 'success');
+            }).catch(() => prompt('Copia este mensaje:', text));
+        } else {
+            prompt('Copia este mensaje:', text);
+        }
+        return;
+    }
+    if (channel === 'native' && navigator.share) {
+        navigator.share({
+            title: 'App avisos — Ayuntamiento de Cobreros',
+            text: message,
+            url: webUrl
+        }).catch(() => {});
+        return;
+    }
+    if (channel === 'native') {
+        prompt('Copia y comparte este mensaje:', message);
+    }
+}
+
+function setupVecinosShareFab() {
+    document.addEventListener('click', (event) => {
+        const wrap = document.getElementById('vecinosShareFab');
+        if (!wrap || wrap.contains(event.target)) {
+            return;
+        }
+        closeVecinosSharePanel();
+    });
+}
+
+window.toggleVecinosSharePanel = toggleVecinosSharePanel;
+window.shareVecinosApp = shareVecinosApp;
+window.getVecinosAppShareMessage = getVecinosAppShareMessage;
+
+function shareOnWhatsApp() {
+    shareVecinosApp('whatsapp');
 }
 
 // Alternar menú móvil
@@ -10914,6 +11117,8 @@ function showPWAInstallBanner() {
 function initializePWA() {
     registerServiceWorker();
     showPWAInstallBanner();
+    setupApkDownloadUi();
+    maybeShowIosInstallHintOnFirstVisit();
     
     // Configurar recepción de notificaciones
     setupNotificationReception();
